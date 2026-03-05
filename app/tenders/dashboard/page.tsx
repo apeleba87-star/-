@@ -4,13 +4,28 @@ import TendersDashboardClient from "./TendersDashboardClient";
 
 export const revalidate = 60;
 
+type CategoryFilter = "all" | "cleaning" | "disinfection" | "both";
+
+function applyCategoryFilter(
+  q: ReturnType<ReturnType<typeof createClient>["from"]>,
+  category: CategoryFilter
+) {
+  if (category === "all") return q;
+  if (category === "cleaning") return q.contains("categories", ["cleaning"]);
+  if (category === "disinfection") return q.contains("categories", ["disinfection"]);
+  if (category === "both") return q.overlaps("categories", ["cleaning", "disinfection"]);
+  return q;
+}
+
 export default async function TendersDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clean_only?: string }>;
+  searchParams: Promise<{ category?: string }>;
 }) {
   const params = await searchParams;
-  const cleanOnly = params.clean_only !== "0";
+  const category: CategoryFilter = ["all", "cleaning", "disinfection", "both"].includes(params.category ?? "")
+    ? (params.category as CategoryFilter)
+    : "both";
   const supabase = createClient();
   const today = new Date().toISOString().slice(0, 10);
   const todayEnd = today + "T23:59:59.999Z";
@@ -29,22 +44,29 @@ export default async function TendersDashboardPage({
     .select("*", { count: "exact", head: true })
     .gte("bid_ntce_dt", today)
     .lt("bid_ntce_dt", todayEnd)
-    .eq("is_clean_related", true);
+    .contains("categories", ["cleaning"]);
 
-  const { count: currentOpenCleanCount } = await supabase
+  const { count: todayDisinfectionCount } = await supabase
+    .from("tenders")
+    .select("*", { count: "exact", head: true })
+    .gte("bid_ntce_dt", today)
+    .lt("bid_ntce_dt", todayEnd)
+    .contains("categories", ["disinfection"]);
+
+  const { count: currentOpenBothCount } = await supabase
     .from("tenders")
     .select("*", { count: "exact", head: true })
     .gt("bid_clse_dt", now)
-    .eq("is_clean_related", true);
+    .overlaps("categories", ["cleaning", "disinfection"]);
 
   let closingSoonQ = supabase
     .from("tenders")
-    .select("id, bid_ntce_nm, ntce_instt_nm, bid_clse_dt, is_clean_related")
+    .select("id, bid_ntce_nm, ntce_instt_nm, bid_clse_dt, categories")
     .gte("bid_clse_dt", in24h)
     .lte("bid_clse_dt", in72h)
     .order("bid_clse_dt", { ascending: true })
     .limit(50);
-  if (cleanOnly) closingSoonQ = closingSoonQ.eq("is_clean_related", true);
+  closingSoonQ = applyCategoryFilter(closingSoonQ, category);
   const { data: closingSoon } = await closingSoonQ;
 
   const days: { date: string; count: number; cleanCount: number }[] = [];
@@ -58,19 +80,19 @@ export default async function TendersDashboardPage({
       .select("*", { count: "exact", head: true })
       .gte("bid_ntce_dt", start)
       .lt("bid_ntce_dt", end);
-    const { count: cleanCount } = await supabase
+    const { count: relatedCount } = await supabase
       .from("tenders")
       .select("*", { count: "exact", head: true })
       .gte("bid_ntce_dt", start)
       .lt("bid_ntce_dt", end)
-      .eq("is_clean_related", true);
-    days.push({ date: start, count: count ?? 0, cleanCount: cleanCount ?? 0 });
+      .overlaps("categories", ["cleaning", "disinfection"]);
+    days.push({ date: start, count: count ?? 0, cleanCount: relatedCount ?? 0 });
   }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="mb-8 text-2xl font-bold text-slate-900">입찰 대시보드 (오늘)</h1>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
         <div className="card">
           <h3 className="text-sm font-medium text-slate-500">오늘 올라온 공고</h3>
           <p className="mt-1 text-3xl font-bold text-slate-800">{todayCount ?? 0}건</p>
@@ -80,8 +102,12 @@ export default async function TendersDashboardPage({
           <p className="mt-1 text-3xl font-bold text-emerald-600">{todayCleanCount ?? 0}건</p>
         </div>
         <div className="card">
-          <h3 className="text-sm font-medium text-slate-500">진행 중 청소 관련</h3>
-          <p className="mt-1 text-3xl font-bold text-emerald-600">{currentOpenCleanCount ?? 0}건</p>
+          <h3 className="text-sm font-medium text-slate-500">오늘 소독·방역 관련</h3>
+          <p className="mt-1 text-3xl font-bold text-amber-600">{todayDisinfectionCount ?? 0}건</p>
+        </div>
+        <div className="card">
+          <h3 className="text-sm font-medium text-slate-500">진행 중 (청소+소독·방역)</h3>
+          <p className="mt-1 text-3xl font-bold text-slate-800">{currentOpenBothCount ?? 0}건</p>
         </div>
         <Link href="/tenders" className="card block hover:border-blue-200">
           <h3 className="text-sm font-medium text-slate-500">전체 목록</h3>
@@ -90,7 +116,7 @@ export default async function TendersDashboardPage({
       </div>
 
       <section className="mt-10">
-        <TendersDashboardClient cleanOnly={cleanOnly} closingSoon={closingSoon ?? []} />
+        <TendersDashboardClient currentCategory={category} closingSoon={closingSoon ?? []} />
       </section>
 
       <section className="mt-10">

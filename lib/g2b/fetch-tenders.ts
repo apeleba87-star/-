@@ -11,7 +11,8 @@ import {
   extractItems,
 } from "./client";
 import { mapItemToTender, matchKeywords } from "./mapper";
-import { computeCleanScore, cleanReasonToJsonb } from "./clean-score";
+import { computeCategoryScores } from "./clean-score";
+import { getTenderKeywordOptionsByCategory } from "./keywords";
 
 function getSupabase() {
   return createClient();
@@ -34,17 +35,11 @@ function getDateRange(daysBack = 1): { inqryBgnDt: string; inqryEndDt: string } 
   };
 }
 
-async function getKeywords(): Promise<string[]> {
-  const supabase = getSupabase();
-  const { data } = await supabase.from("tender_keywords").select("keyword").eq("enabled", true);
-  if (data?.length) return data.map((r) => r.keyword as string);
-  return DEFAULT_KEYWORDS;
-}
-
 async function fetchAndUpsert(
   operation: "Servc" | "Cnstwk" | "Thng",
   params: { inqryBgnDt: string; inqryEndDt: string; pageNo: number; numOfRows: number },
-  keywords: string[]
+  allIncludeKeywords: string[],
+  optionsByCategory: { cleaning: { includeKeywords: string[]; excludeKeywords: string[] }; disinfection: { includeKeywords: string[]; excludeKeywords: string[] }; globalExclude: string[] }
 ): Promise<{ inserted: number; updated: number }> {
   const fetcher =
     operation === "Servc"
@@ -59,15 +54,16 @@ async function fetchAndUpsert(
   for (const item of items) {
     const mapped = mapItemToTender(item as Record<string, unknown>);
     const title = String(mapped.bid_ntce_nm ?? "");
-    const matched = matchKeywords(title, keywords);
+    const matched = matchKeywords(title, allIncludeKeywords);
     (mapped as Record<string, unknown>).keywords_matched = matched.length > 0 ? matched : null;
 
     const raw = item as Record<string, unknown>;
     const detailText = [raw.bidNtceDtl, raw.prcureObjDtl, raw.ntceSpecDocCn].filter(Boolean).join(" ");
-    const cleanResult = computeCleanScore(title, detailText || undefined);
-    (mapped as Record<string, unknown>).is_clean_related = cleanResult.isCleanRelated;
-    (mapped as Record<string, unknown>).clean_score = cleanResult.score;
-    (mapped as Record<string, unknown>).clean_reason = cleanReasonToJsonb(cleanResult);
+    const categories = computeCategoryScores(title, detailText || undefined, optionsByCategory);
+    (mapped as Record<string, unknown>).categories = categories;
+    (mapped as Record<string, unknown>).is_clean_related = categories.includes("cleaning");
+    (mapped as Record<string, unknown>).clean_score = categories.length ? 50 : 0;
+    (mapped as Record<string, unknown>).clean_reason = { categories };
     (mapped as Record<string, unknown>).manual_override = false;
     (mapped as Record<string, unknown>).manual_tag = null;
 
@@ -92,7 +88,9 @@ export async function runTenderFetch(options?: { daysBack?: number }): Promise<{
   error?: string;
 }> {
   const range = getDateRange(options?.daysBack ?? 1);
-  const keywords = await getKeywords();
+  const byCategory = await getTenderKeywordOptionsByCategory();
+  const allInclude = [...byCategory.cleaning.includeKeywords, ...byCategory.disinfection.includeKeywords];
+  const includeForMatch = allInclude.length ? allInclude : DEFAULT_KEYWORDS;
   let inserted = 0;
   let updated = 0;
   try {
@@ -104,7 +102,8 @@ export async function runTenderFetch(options?: { daysBack?: number }): Promise<{
           pageNo: 1,
           numOfRows: 100,
         },
-        keywords
+        includeForMatch,
+        byCategory
       );
       inserted += result.inserted;
       updated += result.updated;

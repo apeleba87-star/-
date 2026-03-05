@@ -45,6 +45,9 @@ export default async function AdminLayout({
         <Link href="/admin/ads" className="font-medium text-slate-700 hover:text-slate-900">
           광고 슬롯
         </Link>
+        <Link href="/admin/tender-keywords" className="font-medium text-slate-700 hover:text-slate-900">
+          입찰 키워드
+        </Link>
         <Link href="/" className="ml-auto text-slate-500 hover:text-slate-700">
           사이트로
         </Link>

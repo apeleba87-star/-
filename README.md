@@ -35,7 +35,9 @@ Next.js + Supabase + Tailwind CSS 기반 웹앱 프로젝트입니다.
    Supabase 대시보드 → **SQL Editor**에서 아래 순서로 실행합니다.  
    - `supabase/migrations/001_initial_schema.sql`  
    - `supabase/migrations/002_g2b_tenders.sql` (나라장터 입찰·계약·키워드 테이블)  
-   - `supabase/migrations/003_clean_related.sql` (청소 관련 필터 컬럼)
+   - `supabase/migrations/003_clean_related.sql` (청소 관련 필터 컬럼)  
+   - `supabase/migrations/004_tender_keywords_type.sql` (키워드 구분: 포함/제외)  
+   - `supabase/migrations/005_tender_categories.sql` (업종: 청소/소독·방역, tenders.categories)
 
 6. **관리자 로그인 설정**  
    - **회원가입:** 브라우저에서 [http://localhost:3001/signup](http://localhost:3001/signup) 접속 후 이메일·비밀번호로 가입  
@@ -52,7 +54,9 @@ Next.js + Supabase + Tailwind CSS 기반 웹앱 프로젝트입니다.
   Vercel Cron 등에서 예약 호출하거나, 수동으로 호출해도 됩니다.  
 - **키워드**: 청소·미화·위생 등은 `tender_keywords` 테이블에 있으며, 관리자 페이지에서 추후 수정 가능하도록 확장할 수 있습니다.  
 - **화면**: [입찰 공고](http://localhost:3001/tenders), [입찰 대시보드](http://localhost:3001/tenders/dashboard), [공고 상세](/tenders/[id]), [계약](/contracts)  
-- **청소 관련 필터**: 수집 시 제목/상세에 high·mid·제외 키워드로 점수 계산(`clean_score`), 60점 이상이면 `is_clean_related=true`. 입찰 목록·대시보드에서 "청소 관련만" 토글로 필터(기본 ON).
+- **업종별 필터**: 입찰 키워드를 **청소 관련** / **소독·방역 관련**으로 구분. 공고는 `tenders.categories` 배열에 매칭된 업종(cleaning, disinfection) 저장. 사용자 검색: **청소만** / **소독·방역만** / **청소+소독·방역** / **전체** 선택 가능.  
+- **관리자 키워드**: [관리자 → 입찰 키워드](/admin/tender-keywords)에서 포함(업종: 청소·소독·방역)·제외(공통) 단어 추가·수정·삭제.  
+- **백필**: 키워드 변경 후 기존 공고에 반영하려면 관리자 페이지의 "키워드 반영" 버튼 또는 `POST /api/cron/backfill-clean-score` 호출.
 
 ## 스크립트
 

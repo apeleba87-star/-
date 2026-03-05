@@ -4,6 +4,8 @@ import TendersListClient from "./TendersListClient";
 
 export const revalidate = 60;
 
+export type CategoryFilter = "all" | "cleaning" | "disinfection" | "both";
+
 function dday(clseDt: string | null): string {
   if (!clseDt) return "—";
   const end = new Date(clseDt).getTime();
@@ -14,33 +16,47 @@ function dday(clseDt: string | null): string {
   return `D-${day}`;
 }
 
+function applyCategoryFilter(
+  q: ReturnType<ReturnType<typeof createClient>["from"]>,
+  category: CategoryFilter
+) {
+  if (category === "all") return q;
+  if (category === "cleaning") return q.contains("categories", ["cleaning"]);
+  if (category === "disinfection") return q.contains("categories", ["disinfection"]);
+  if (category === "both") return q.overlaps("categories", ["cleaning", "disinfection"]);
+  return q;
+}
+
 export default async function TendersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clean_only?: string }>;
+  searchParams: Promise<{ category?: string }>;
 }) {
   const params = await searchParams;
-  const cleanOnly = params.clean_only !== "0";
+  const category = (params.category as CategoryFilter) || "both";
+  const validCategory: CategoryFilter =
+    ["all", "cleaning", "disinfection", "both"].includes(category) ? category : "both";
+
   const supabase = createClient();
   let q = supabase
     .from("tenders")
-    .select("id, bid_ntce_no, bid_ntce_ord, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_ntce_dt, bid_clse_dt, is_clean_related")
+    .select("id, bid_ntce_no, bid_ntce_ord, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_ntce_dt, bid_clse_dt, categories")
     .order("bid_clse_dt", { ascending: true, nullsFirst: false })
     .limit(100);
-  if (cleanOnly) q = q.eq("is_clean_related", true);
+  q = applyCategoryFilter(q, validCategory);
   const { data: tenders } = await q;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900">입찰 공고</h1>
-        <TendersListClient cleanOnly={cleanOnly} />
+        <TendersListClient currentCategory={validCategory} />
       </div>
       {!tenders?.length ? (
         <div className="card">
           <p className="text-slate-500">등록된 공고가 없습니다.</p>
-          {cleanOnly && (
-            <Link href="/tenders?clean_only=0" className="mt-2 inline-block text-blue-600 hover:underline">
+          {validCategory !== "all" && (
+            <Link href="/tenders?category=all" className="mt-2 inline-block text-blue-600 hover:underline">
               전체 보기
             </Link>
           )}
@@ -69,9 +85,14 @@ export default async function TendersPage({
                     <Link href={`/tenders/${t.id}`} className="font-medium text-blue-600 hover:underline">
                       {(t.bid_ntce_nm as string) || "(제목 없음)"}
                     </Link>
-                    {t.is_clean_related && (
-                      <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800">청소</span>
-                    )}
+                    <span className="ml-2 flex flex-wrap gap-1">
+                      {(t.categories as string[])?.includes("cleaning") && (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800">청소</span>
+                      )}
+                      {(t.categories as string[])?.includes("disinfection") && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">소독·방역</span>
+                      )}
+                    </span>
                   </td>
                   <td className="p-3 text-slate-600">{t.ntce_instt_nm as string}</td>
                   <td className="p-3 text-slate-600">{t.bsns_dstr_nm as string}</td>
