@@ -9,7 +9,8 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply min-h-screen text-slate-900 antialiased;
+  background: linear-gradient(165deg, rgb(248 250 252) 0%, rgba(239 246 255 / 0.3) 50%, rgba(250 245 255 / 0.2) 100%);
 }
 
 @layer components {

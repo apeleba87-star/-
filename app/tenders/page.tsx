@@ -16,10 +16,8 @@ function dday(clseDt: string | null): string {
   return `D-${day}`;
 }
 
-function applyCategoryFilter(
-  q: ReturnType<ReturnType<typeof createClient>["from"]>,
-  category: CategoryFilter
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyCategoryFilter(q: any, category: CategoryFilter) {
   if (category === "all") return q;
   if (category === "cleaning") return q.contains("categories", ["cleaning"]);
   if (category === "disinfection") return q.contains("categories", ["disinfection"]);
@@ -55,14 +53,6 @@ export default async function TendersPage({
       {!tenders?.length ? (
         <div className="card">
           <p className="text-slate-500">등록된 공고가 없습니다.</p>
-          {validCategory !== "all" && (
-            <Link href="/tenders?category=all" className="mt-2 inline-block text-blue-600 hover:underline">
-              전체 보기
-            </Link>
-          )}
-          <p className="mt-2 text-sm text-slate-500">
-            크론에서 <code className="rounded bg-slate-100 px-1">/api/cron/fetch-g2b</code>를 호출하거나, 공공데이터포털 인증키를 설정한 뒤 수집을 실행하세요.
-          </p>
         </div>
       ) : (
         <div className="overflow-x-auto">

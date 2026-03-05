@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
+import { submitUgc } from "./actions";
 
 type UgcType = "field" | "review" | "issue";
 
@@ -27,12 +27,8 @@ export default function NewUgcPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const payload = {
+    const result = await submitUgc({
       type,
-      user_id: user?.id ?? null,
       region: region || null,
       area_sqm: areaSqm ? Number(areaSqm) : null,
       frequency: frequency || null,
@@ -41,16 +37,13 @@ export default function NewUgcPage() {
       rating: type === "review" ? Number(rating) : null,
       comment: comment || null,
       issue_text: type === "issue" ? issueText : null,
-      status: "pending",
-    };
-
-    const { error: err } = await supabase.from("ugc").insert(payload);
-    if (err) {
-      setError(err.message);
-      setLoading(false);
+    });
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
-    router.push("/ugc");
+    router.push("/ugc?submitted=1");
     router.refresh();
   }
 

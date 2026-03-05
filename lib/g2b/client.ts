@@ -18,7 +18,7 @@ function parseResponse(text: string): G2BListResponse<Record<string, unknown>> {
     const items = item != null ? (Array.isArray(item) ? item : [item]) : [];
     return {
       response: {
-        header: raw.response?.header,
+        header: raw.response?.header as { resultCode: string; resultMsg: string } | undefined,
         body: { totalCount: body?.totalCount ?? items.length, items: { item: items as Record<string, unknown>[] } },
       },
     };

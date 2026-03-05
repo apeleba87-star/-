@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
  * 서버에서 사용. 인증 없이 공개 데이터만 읽을 때 (RLS에서 anon 허용된 것).
@@ -27,4 +28,12 @@ export async function createServerSupabase() {
       remove() {},
     },
   });
+}
+
+/**
+ * 서버 전용. RLS 무시(service role). cron/구독 갱신 등에서만 사용.
+ */
+export function createServiceSupabase() {
+  if (!url || !serviceKey) throw new Error("Supabase URL and SUPABASE_SERVICE_ROLE_KEY required");
+  return createSupabaseClient(url, serviceKey);
 }

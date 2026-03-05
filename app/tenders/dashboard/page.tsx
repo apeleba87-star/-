@@ -6,10 +6,8 @@ export const revalidate = 60;
 
 type CategoryFilter = "all" | "cleaning" | "disinfection" | "both";
 
-function applyCategoryFilter(
-  q: ReturnType<ReturnType<typeof createClient>["from"]>,
-  category: CategoryFilter
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyCategoryFilter(q: any, category: CategoryFilter) {
   if (category === "all") return q;
   if (category === "cleaning") return q.contains("categories", ["cleaning"]);
   if (category === "disinfection") return q.contains("categories", ["disinfection"]);

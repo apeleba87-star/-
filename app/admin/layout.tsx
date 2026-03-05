@@ -2,29 +2,38 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase-server";
 
+function isInvalidSessionError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return msg.includes("Refresh Token") || msg.includes("refresh_token") || msg.includes("Invalid Refresh Token");
+}
+
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login?next=/admin");
-  }
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error && isInvalidSessionError(error)) {
+      redirect("/login?next=/admin&reason=session_expired");
+    }
+    if (!user) {
+      redirect("/login?next=/admin");
+    }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
 
-  const isAdmin = profile?.role === "admin" || profile?.role === "editor";
-  if (!isAdmin) {
-    redirect("/");
-  }
+    const isAdmin = profile?.role === "admin" || profile?.role === "editor";
+    if (!isAdmin) {
+      redirect("/");
+    }
 
-  return (
+    return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <nav className="mb-8 flex flex-wrap gap-4 border-b border-slate-200 pb-4">
         <Link href="/admin" className="font-medium text-slate-700 hover:text-slate-900">
@@ -48,11 +57,20 @@ export default async function AdminLayout({
         <Link href="/admin/tender-keywords" className="font-medium text-slate-700 hover:text-slate-900">
           입찰 키워드
         </Link>
+        <Link href="/admin/estimate-config" className="font-medium text-slate-700 hover:text-slate-900">
+          견적 단가
+        </Link>
         <Link href="/" className="ml-auto text-slate-500 hover:text-slate-700">
           사이트로
         </Link>
       </nav>
       {children}
     </div>
-  );
+    );
+  } catch (e) {
+    if (isInvalidSessionError(e)) {
+      redirect("/login?next=/admin&reason=session_expired");
+    }
+    throw e;
+  }
 }

@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
+import UgcSubmittedBanner from "./UgcSubmittedBanner";
 
 export const revalidate = 30;
 
-export default async function UgcPage() {
+export default async function UgcPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ submitted?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = createClient();
   const { data: items } = await supabase
     .from("ugc")
@@ -20,6 +26,7 @@ export default async function UgcPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <UgcSubmittedBanner show={params.submitted === "1"} />
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900">현장 · 후기</h1>
         <Link href="/ugc/new" className="btn-primary">

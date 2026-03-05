@@ -4,14 +4,27 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 
+function isInvalidSessionError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return msg.includes("Refresh Token") || msg.includes("refresh_token") || msg.includes("Invalid Refresh Token");
+}
+
 export default function HeaderAuth() {
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setEmail(user?.email ?? null);
-    });
+    supabase.auth
+      .getUser()
+      .then(({ data: { user } }) => {
+        setEmail(user?.email ?? null);
+      })
+      .catch((err) => {
+        if (isInvalidSessionError(err)) {
+          void supabase.auth.signOut();
+          setEmail(null);
+        }
+      });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setEmail(session?.user?.email ?? null);
     });

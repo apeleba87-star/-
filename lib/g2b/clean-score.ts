@@ -131,8 +131,8 @@ export function computeCategoryScores(
 ): string[] {
   const matched: string[] = [];
   for (const [code, opts] of Object.entries(optionsByCategory)) {
-    if (code === "globalExclude" || !opts || typeof opts !== "object") continue;
-    const result = computeCleanScore(title, detailText, opts);
+    if (code === "globalExclude" || !opts || typeof opts !== "object" || !("includeKeywords" in opts)) continue;
+    const result = computeCleanScore(title, detailText, opts as CleanScoreOptions);
     if (result.isCleanRelated) matched.push(code);
   }
   return matched;
