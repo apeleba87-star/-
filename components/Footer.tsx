@@ -7,10 +7,10 @@ export default function Footer() {
         <div className="flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div>
             <Link href="/" className="font-semibold text-slate-800 hover:text-slate-900">
-              Newslett
+              클린인덱스
             </Link>
             <p className="mt-1 text-sm text-slate-500">
-              청소업 정보 데이터 + 커뮤니티 + 뉴스레터
+              청소업 정보 뉴스레터 - 클린인덱스
             </p>
           </div>
           <nav className="flex flex-wrap gap-4 sm:gap-6" aria-label="푸터 링크">
@@ -59,7 +59,7 @@ export default function Footer() {
           </nav>
         </div>
         <p className="mt-6 text-xs text-slate-400">
-          © {new Date().getFullYear()} Newslett. All rights reserved.
+          © {new Date().getFullYear()} 클린인덱스. All rights reserved.
         </p>
       </div>
     </footer>

@@ -4,8 +4,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Newslett — 청소업 정보 뉴스레터",
-  description: "청소업 정보를 데이터·커뮤니티·운영자 콘텐츠로 생산하고 뉴스레터로 배포하는 미디어 플랫폼",
+  title: "청소업 정보 뉴스레터 - 클린인덱스",
+  description: "청소업 정보 뉴스레터 클린인덱스 — 입찰·구인·현장 데이터와 커뮤니티",
 };
 
 export const viewport: Viewport = {

@@ -60,13 +60,13 @@ export default function Header() {
         <div className="mx-auto flex h-14 min-h-[56px] max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
           <Link href="/" className="flex min-h-[44px] items-center gap-2 touch-manipulation">
             <motion.span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-lg font-bold text-white shadow-md"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-md"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
             >
-              N
+              C
             </motion.span>
-            <span className="hidden font-bold text-slate-800 sm:inline">Newslett</span>
+            <span className="hidden font-bold text-slate-800 sm:inline">클린인덱스</span>
           </Link>
 
           {/* PC: 가로 네비 */}

@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     const payment = await requestBillingPayment({
       billing_key: sub.billing_key,
       order_id: orderId,
-      order_name: "Newslett 프리미엄 월 구독",
+      order_name: "클린인덱스 프리미엄 월 구독",
       price: sub.amount_cents,
     });
 

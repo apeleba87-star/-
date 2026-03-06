@@ -21,7 +21,7 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "발송할 큐 항목이 없습니다." }, { status: 400 });
   }
 
-  const subject = `Newslett ${new Date().toLocaleDateString("ko-KR")} 요약`;
+  const subject = `클린인덱스 ${new Date().toLocaleDateString("ko-KR")} 요약`;
   const parts: string[] = items.map(
     (i) => `<section style="margin:1em 0"><h3>${i.title || "제목 없음"}</h3>${i.summary ? `<p>${i.summary}</p>` : ""}${i.content_html || ""}</section>`
   );
