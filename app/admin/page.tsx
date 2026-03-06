@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
+import G2bFetchButton from "./G2bFetchButton";
 
 export default async function AdminDashboardPage() {
   const supabase = await createServerSupabase();
@@ -36,6 +37,9 @@ export default async function AdminDashboardPage() {
           <h3 className="text-sm font-medium text-slate-500">신고 대기</h3>
           <p className="mt-1 text-2xl font-bold text-slate-800">{reportsCount ?? 0}건</p>
         </Link>
+      </div>
+      <div className="mt-6">
+        <G2bFetchButton />
       </div>
     </div>
   );

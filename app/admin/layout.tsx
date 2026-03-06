@@ -60,6 +60,9 @@ export default async function AdminLayout({
         <Link href="/admin/estimate-config" className="font-medium text-slate-700 hover:text-slate-900">
           견적 단가
         </Link>
+        <Link href="/admin/categories" className="font-medium text-slate-700 hover:text-slate-900">
+          카테고리
+        </Link>
         <Link href="/" className="ml-auto text-slate-500 hover:text-slate-700">
           사이트로
         </Link>

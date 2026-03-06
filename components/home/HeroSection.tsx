@@ -7,33 +7,41 @@ import { TrendingUp, Newspaper, MapPin } from "lucide-react";
 const glass = "bg-white/60 backdrop-blur-xl border border-white/30 shadow-lg";
 
 export default function HeroSection({
-  tenderCount,
+  tenderRelatedCount,
+  tenderTodayCount,
   newsCount,
   ugcCount,
 }: {
-  tenderCount: number;
+  tenderRelatedCount: number;
+  tenderTodayCount: number;
   newsCount: number;
   ugcCount: number;
 }) {
   const cards = [
     {
-      href: "/tenders?category=cleaning",
-      count: tenderCount,
-      label: "오늘 나라장터 청소 공고",
+      href: "/tenders?category=both",
+      count: tenderRelatedCount,
+      subCount: tenderTodayCount,
+      label: "청소·방역·소독 입찰",
+      subLabel: "오늘 공고",
       color: "#2563eb",
       Icon: TrendingUp,
     },
     {
       href: "/categories/industry",
       count: newsCount,
+      subCount: undefined,
       label: "업계 소식",
+      subLabel: undefined,
       color: "#7c3aed",
       Icon: Newspaper,
     },
     {
       href: "/ugc",
       count: ugcCount,
+      subCount: undefined,
       label: "새 현장 공유",
+      subLabel: undefined,
       color: "#0891b2",
       Icon: MapPin,
     },
@@ -78,6 +86,11 @@ export default function HeroSection({
                   {item.count}건
                 </p>
                 <p className="mt-0.5 text-xs text-slate-600 sm:mt-1">{item.label}</p>
+                {item.subLabel != null && item.subCount != null && (
+                  <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">
+                    {item.subLabel} {item.subCount}건
+                  </p>
+                )}
               </motion.div>
             </Link>
           </motion.div>

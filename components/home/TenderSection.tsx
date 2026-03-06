@@ -23,7 +23,9 @@ type Tender = {
   bsns_dstr_nm: string | null;
 };
 
-export default function TenderSection({ tenders }: { tenders: Tender[] }) {
+type Props = { tenders: Tender[]; relatedCount: number; todayCount: number };
+
+export default function TenderSection({ tenders, relatedCount, todayCount }: Props) {
   return (
     <motion.section
       initial={{ opacity: 0, y: 24 }}
@@ -34,8 +36,10 @@ export default function TenderSection({ tenders }: { tenders: Tender[] }) {
       <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
         <FileText className="h-5 w-5" />
       </div>
-      <h2 className="text-xl font-bold text-slate-900">오늘의 청소 입찰</h2>
-      <p className="mt-0.5 text-sm text-slate-600">오늘 올라온 청소 관련 입찰 공고</p>
+      <h2 className="text-xl font-bold text-slate-900">청소·방역·소독 입찰</h2>
+      <p className="mt-0.5 text-xs text-slate-500">
+        관련건수 {relatedCount}건 · 오늘 공고 {todayCount}건
+      </p>
 
       {tenders.length === 0 ? (
         <motion.div
@@ -45,7 +49,7 @@ export default function TenderSection({ tenders }: { tenders: Tender[] }) {
           transition={{ delay: 0.2 }}
         >
           <FileText className="h-12 w-12 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-500">오늘 올라온 청소 입찰 공고가 없습니다.</p>
+          <p className="mt-3 text-sm text-slate-500">현재 접수 중인 청소·방역·소독 입찰 공고가 없습니다.</p>
         </motion.div>
       ) : (
         <ul className="mt-4 space-y-3">

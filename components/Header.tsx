@@ -15,6 +15,8 @@ import {
   Gavel,
   LayoutDashboard,
   FileSignature,
+  Briefcase,
+  UserPlus,
   MapPin,
   Calculator,
 } from "lucide-react";
@@ -27,6 +29,8 @@ const navItems = [
   { href: "/tenders", label: "입찰 공고", Icon: Gavel },
   { href: "/tenders/dashboard", label: "입찰 대시보드", Icon: LayoutDashboard },
   { href: "/contracts", label: "계약", Icon: FileSignature },
+  { href: "/listings", label: "현장·구인", Icon: Briefcase },
+  { href: "/jobs", label: "인력 구인", Icon: UserPlus },
   { href: "/ugc", label: "현장후기", Icon: MapPin },
   { href: "/estimate", label: "견적 계산기", Icon: Calculator },
 ];

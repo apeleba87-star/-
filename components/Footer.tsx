@@ -27,10 +27,22 @@ export default function Footer() {
               카테고리
             </Link>
             <Link
+              href="/listings"
+              className="min-h-[44px] py-2 text-sm text-slate-600 hover:text-slate-900 touch-manipulation"
+            >
+              현장·구인
+            </Link>
+            <Link
+              href="/jobs"
+              className="min-h-[44px] py-2 text-sm text-slate-600 hover:text-slate-900 touch-manipulation"
+            >
+              인력 구인
+            </Link>
+            <Link
               href="/ugc"
               className="min-h-[44px] py-2 text-sm text-slate-600 hover:text-slate-900 touch-manipulation"
             >
-              현장·후기
+              현장후기
             </Link>
             <Link
               href="/estimate"

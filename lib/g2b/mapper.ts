@@ -26,7 +26,7 @@ export function mapItemToTender(row: Record<string, unknown>): Record<string, un
     srvce_div_nm: get(["srvceDivNm", "srvce_div_nm", "업무구분명"]),
     prcure_obj_nm: get(["prcureObjNm", "prcure_obj_nm", "계약대상"]),
     bsns_dstr_nm: get(["bsnsDstrNm", "bsns_dstr_nm", "사업지역", "참가가능지역"]),
-    base_amt: parseNum(get(["bsisAmt", "base_amt", "기초금액", "추정가격"])),
+    base_amt: parseNum(get(["bsisAmt", "base_amt", "기초금액", "추정가격", "estmtAmt", "estmt_amt", "예정가격"])),
     estmt_amt: parseNum(get(["estmtAmt", "estmt_amt", "예정가격"])),
     ntce_url: buildNtceUrl(bidNo, ord),
     raw: row,
@@ -55,9 +55,17 @@ function parseNum(v: unknown): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+/** 나라장터 공고 상세 URL. bidNtceOrd는 2자리(00, 01…)로 보내야 404를 피할 수 있음. */
 function buildNtceUrl(bidNo: string, ord: string): string {
   if (!bidNo) return "";
-  return `https://www.g2b.go.kr/ep/invitation/publish/bidPblancDtl.do?bidNtceNo=${encodeURIComponent(bidNo)}&bidNtceOrd=${encodeURIComponent(ord)}`;
+  const ord2 = String(ord ?? "00").padStart(2, "0");
+  return `https://www.g2b.go.kr/ep/invitation/publish/bidPblancDtl.do?bidNtceNo=${encodeURIComponent(bidNo)}&bidNtceOrd=${encodeURIComponent(ord2)}`;
+}
+
+/** 공고번호·공고차수로 나라장터 원문 URL 생성 (상세 페이지 등에서 사용) */
+export function getNtceDetailUrl(bidNo: string | null, bidOrd: string | null): string {
+  if (!bidNo) return "";
+  return buildNtceUrl(bidNo, String(bidOrd ?? "00"));
 }
 
 /** 공고명/내용에 키워드가 하나라도 포함되면 매칭 */
