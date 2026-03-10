@@ -8,7 +8,7 @@ export default async function NewListingPage() {
 
   const { data: categories } = await supabase
     .from("categories")
-    .select("id, name, parent_id, slug, sort_order, is_active")
+    .select("id, name, parent_id, slug, sort_order, is_active, created_at, updated_at")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
@@ -31,8 +31,8 @@ export default async function NewListingPage() {
 
   return (
     <NewListingForm
-      mainCategories={mainCategories as { id: string; name: string; parent_id: string | null; slug: string; sort_order: number; is_active: boolean }[]}
-      subCategories={subCategories as { id: string; name: string; parent_id: string | null; slug: string; sort_order: number; is_active: boolean }[]}
+      mainCategories={mainCategories}
+      subCategories={subCategories}
     />
   );
 }

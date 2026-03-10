@@ -14,13 +14,12 @@ import {
   FolderOpen,
   Gavel,
   LayoutDashboard,
-  FileSignature,
   Briefcase,
   UserPlus,
-  MapPin,
   Calculator,
 } from "lucide-react";
 import HeaderAuth from "./HeaderAuth";
+import HeaderAdminLink from "./HeaderAdminLink";
 
 const navItems = [
   { href: "/", label: "홈", Icon: Home },
@@ -28,10 +27,8 @@ const navItems = [
   { href: "/categories", label: "카테고리", Icon: FolderOpen },
   { href: "/tenders", label: "입찰 공고", Icon: Gavel },
   { href: "/tenders/dashboard", label: "입찰 대시보드", Icon: LayoutDashboard },
-  { href: "/contracts", label: "계약", Icon: FileSignature },
-  { href: "/listings", label: "현장·구인", Icon: Briefcase },
+  { href: "/listings", label: "현장 거래", Icon: Briefcase },
   { href: "/jobs", label: "인력 구인", Icon: UserPlus },
-  { href: "/ugc", label: "현장후기", Icon: MapPin },
   { href: "/estimate", label: "견적 계산기", Icon: Calculator },
 ];
 
@@ -113,16 +110,7 @@ export default function Header() {
                 <HeaderAuth />
               </motion.span>
             </span>
-            <Link href="/admin" className="hidden min-h-[44px] items-center md:flex">
-              <motion.span
-                className="flex items-center gap-1.5 rounded-lg bg-slate-100/80 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200/80"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <User className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">관리자</span>
-              </motion.span>
-            </Link>
+            <HeaderAdminLink variant="pc" />
             <motion.button
               type="button"
               className={`${iconBtnClass} md:hidden`}
@@ -189,14 +177,7 @@ export default function Header() {
                 <div className="flex min-h-[44px] items-center md:hidden">
                   <HeaderAuth />
                 </div>
-                <Link
-                  href="/admin"
-                  className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80 md:hidden"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <User className="h-5 w-5 shrink-0 text-slate-500" />
-                  <span className="font-medium">관리자</span>
-                </Link>
+                <HeaderAdminLink variant="mobile" onClick={() => setMenuOpen(false)} />
               </div>
             </motion.aside>
           </>

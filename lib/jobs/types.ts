@@ -13,6 +13,7 @@ export interface JobPostRow {
   title: string;
   region: string;
   district: string;
+  address: string | null;
   work_date: string | null;
   start_time: string | null;
   end_time: string | null;
@@ -29,6 +30,9 @@ export interface JobPostPositionRow {
   category_main_id: string;
   category_sub_id: string | null;
   custom_subcategory_text: string | null;
+  job_type_input: string | null;
+  normalized_job_type_key: string | null;
+  normalization_status: string | null;
   skill_level: string | null;
   pay_amount: number;
   pay_unit: PayUnit;
@@ -44,18 +48,47 @@ export interface JobPostPositionRow {
 }
 
 export interface PositionInput {
-  category_main_id: string;
-  category_sub_id: string | null;
-  custom_subcategory_text: string | null;
+  /** 프리셋 키 또는 "__other__" */
+  job_type_key?: string | null;
+  /** 사용자가 선택/입력한 작업 종류 (표시용 + 저장) */
+  job_type_input?: string | null;
+  /** 서버에서 채움: 프리셋 매핑 시 */
+  category_main_id?: string | null;
+  category_sub_id?: string | null;
+  custom_subcategory_text?: string | null;
+  /** expert | general */
+  skill_level?: "expert" | "general" | null;
   pay_amount: number;
   pay_unit: PayUnit;
   required_count: number;
   work_scope?: string | null;
   notes?: string | null;
+  work_period?: "am" | "pm" | null;
+  start_time?: string | null;
+  end_time?: string | null;
 }
+
+export type ApplicationStatus =
+  | "applied"
+  | "reviewing"
+  | "accepted"
+  | "rejected"
+  | "cancelled"
+  | "no_show_reported";
+
+export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  applied: "지원함",
+  reviewing: "검토 중",
+  accepted: "확정",
+  rejected: "거절됨",
+  cancelled: "취소됨",
+  no_show_reported: "노쇼 신고됨",
+};
 
 export const POSITION_STATUS_LABELS: Record<PositionStatus, string> = {
   open: "모집중",
   partial: "일부마감",
   closed: "마감",
 };
+
+export type WorkPeriod = "am" | "pm";

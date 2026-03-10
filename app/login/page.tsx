@@ -2,12 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
 
+function isValidNext(path: string | null): path is string {
+  if (!path || typeof path !== "string") return false;
+  const p = path.trim();
+  return p.startsWith("/") && !p.startsWith("//");
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextUrl = searchParams?.get("next");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,7 +32,7 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.push("/");
+    router.push(isValidNext(nextUrl) ? nextUrl : "/onboarding");
     router.refresh();
   }
 

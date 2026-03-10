@@ -28,8 +28,8 @@ export default function MarketComparisonBox({
   const lowTrust = sampleCount >= 3 && sampleCount < 5;
 
   return (
-    <section className="rounded-xl border-2 border-blue-100 bg-blue-50/50 p-5">
-      <h2 className="text-lg font-semibold text-slate-800">시장 평균 비교</h2>
+    <section className="rounded-2xl border border-slate-200/80 bg-blue-50/40 p-5">
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">시장 평균 비교</h3>
       {dataPoor ? (
         <p className="mt-2 text-sm text-slate-600">표본 수가 부족해 평균을 산출하지 않습니다. (기준: 3건 이상)</p>
       ) : (
@@ -37,19 +37,19 @@ export default function MarketComparisonBox({
           {lowTrust && (
             <p className="mt-1 text-xs text-amber-700">표본 수가 적어 신뢰도가 낮을 수 있습니다. (현재 {sampleCount}건)</p>
           )}
-          <dl className="mt-4 space-y-3">
+          <dl className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-slate-600">현재 {payUnitLabel}</dt>
               <dd className="font-semibold text-slate-900">{formatMoney(currentPay)}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-slate-600">평균 {payUnitLabel}</dt>
-              <dd className="text-slate-800">{averagePay != null ? formatMoney(averagePay) : "—"}</dd>
+              <dd className="font-medium text-slate-800">{averagePay != null ? formatMoney(averagePay) : "—"}</dd>
             </div>
             {gapPercent != null && (
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-600">평균 대비</dt>
-                <dd className={gapPercent >= 0 ? "font-medium text-emerald-600" : "font-medium text-slate-700"}>
+                <dd className={gapPercent >= 0 ? "font-semibold text-emerald-600" : "font-medium text-slate-700"}>
                   {gapPercent >= 0 ? "+" : ""}{gapPercent}%
                 </dd>
               </div>
@@ -57,11 +57,11 @@ export default function MarketComparisonBox({
             {grade && (
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-600">등급</dt>
-                <dd>
+                <dd className="flex items-center gap-2">
                   <span className="rounded-full bg-slate-200 px-2.5 py-0.5 font-semibold text-slate-800">
                     {grade}
                   </span>
-                  <span className="ml-2 text-sm text-slate-600">{getGradeLabel(grade)}</span>
+                  <span className="text-slate-600">{getGradeLabel(grade)}</span>
                 </dd>
               </div>
             )}

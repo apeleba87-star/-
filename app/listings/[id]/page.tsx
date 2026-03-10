@@ -59,14 +59,14 @@ export default async function ListingDetailPage({
     listing.category_sub ||
     null;
 
-  const displayTitle = listing.status === "closed" ? `마감)) ${listing.title}` : listing.title;
+  const displayTitle = listing.status === "closed" ? `(마감) ${listing.title}` : listing.title;
   const payUnitLabel = PAY_UNIT_LABELS[listing.pay_unit as PayUnit];
   const normalizedDaily = listing.normalized_daily_wage != null ? Number(listing.normalized_daily_wage) : Number(listing.pay_amount);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <Link href="/listings" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
-        ← 목록
+        ← 현장 거래 목록
       </Link>
 
       <article className="space-y-6">

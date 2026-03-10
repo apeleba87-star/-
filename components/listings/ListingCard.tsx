@@ -35,10 +35,10 @@ export default function ListingCard({
   sampleCount,
   sellerGrade,
 }: Props) {
-  const displayTitle = status === "closed" ? `마감)) ${title}` : title;
+  const displayTitle = status === "closed" ? `(마감) ${title}` : title;
   const gapPercent = wageGapPercent(
-    normalizedDailyWage ?? undefined,
-    averageNormalizedDailyWage ?? undefined
+    normalizedDailyWage ?? null,
+    averageNormalizedDailyWage ?? null
   );
   const grade = sampleCount >= 3 ? percentToGrade(gapPercent) : null;
   const payUnitLabel = PAY_UNIT_LABELS[payUnit];

@@ -18,10 +18,12 @@ function benchmarkKey(
 export default async function ListingsPage() {
   const supabase = createClient();
 
+  const fieldDealTypes = ["referral_regular", "referral_one_time", "sale_regular", "subcontract"];
   const [listingsRes, benchmarksRes, metricsRes, categoriesRes] = await Promise.all([
     supabase
       .from("listings")
       .select("id, user_id, title, status, region, category_main_id, category_sub_id, custom_subcategory_text, category_main, category_sub, pay_amount, pay_unit, normalized_daily_wage")
+      .in("listing_type", fieldDealTypes)
       .order("created_at", { ascending: false })
       .limit(100),
     supabase
@@ -76,9 +78,9 @@ export default async function ListingsPage() {
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">현장 공유 · 구인</h1>
+          <h1 className="text-2xl font-bold text-slate-900">현장 거래</h1>
           <p className="mt-1 text-sm text-slate-600">
-            청소업 시장 평균 단가와 비교해 등급을 확인할 수 있습니다.
+            현장의 평균 단가와 비교해 등급을 확인할 수 있습니다. (정기/일회 소개, 매매, 도급)
           </p>
         </div>
         <Link

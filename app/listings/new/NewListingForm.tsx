@@ -7,15 +7,7 @@ import { createListing } from "./actions";
 import { REGION_SIDO_LIST, REGION_GUGUN, formatRegionForDb } from "@/lib/listings/regions";
 import type { CategoryRow } from "@/lib/listings/types";
 
-/** 1차 분기: 인력구인 vs 현장거래 */
-const FLOW_TYPES = [
-  { value: "job_posting", label: "인력 구인", description: "직원·인력을 구하는 글" },
-  {
-    value: "field_deal",
-    label: "현장 거래",
-    description: "정기/일회 소개, 매매, 도급",
-  },
-] as const;
+/** 현장 거래 전용 (인력 구인은 /jobs/new에서 작성) */
 
 /** 현장거래 하위 유형 */
 const FIELD_DEAL_TYPES = [
@@ -42,7 +34,6 @@ export default function NewListingForm({ mainCategories, subCategories }: Props)
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [flowType, setFlowType] = useState<"job_posting" | "field_deal">("job_posting");
   const [fieldDealType, setFieldDealType] = useState<(typeof FIELD_DEAL_TYPES)[number]["value"]>(
     "referral_regular"
   );
@@ -70,7 +61,7 @@ export default function NewListingForm({ mainCategories, subCategories }: Props)
   const [payUnit, setPayUnit] = useState("day");
   const [contactPhone, setContactPhone] = useState("");
 
-  const listingType = flowType === "job_posting" ? "job_posting" : fieldDealType;
+  const listingType = fieldDealType;
   const showCustomSubInput = categorySubId === OTHER_SUB_ID;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -134,51 +125,28 @@ export default function NewListingForm({ mainCategories, subCategories }: Props)
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <Link href="/listings" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
-        ← 목록
+        ← 현장 거래 목록
       </Link>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">글쓰기 · 현장·구인</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">글쓰기 · 현장 거래</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
         {error && (
           <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>
         )}
 
-        {/* 1차 분기: 인력구인 vs 현장거래 */}
         <section className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-          <p className="mb-3 text-sm font-medium text-slate-700">글 유형</p>
-          <div className="flex flex-wrap gap-3">
-            {FLOW_TYPES.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setFlowType(f.value)}
-                className={`min-w-[140px] rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition-colors ${
-                  flowType === f.value
-                    ? "border-slate-800 bg-slate-800 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                }`}
-              >
-                <span className="block">{f.label}</span>
-                <span className="mt-0.5 block text-xs opacity-80">{f.description}</span>
-              </button>
+          <label className="block text-sm font-medium text-slate-700">현장 거래 유형</label>
+          <select
+            value={fieldDealType}
+            onChange={(e) => setFieldDealType(e.target.value as typeof fieldDealType)}
+            className="mt-2 w-full max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900"
+          >
+            {FIELD_DEAL_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
             ))}
-          </div>
-          {flowType === "field_deal" && (
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-slate-500">현장 거래 유형</label>
-              <select
-                value={fieldDealType}
-                onChange={(e) => setFieldDealType(e.target.value as typeof fieldDealType)}
-                className="mt-1 w-full max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-              >
-                {FIELD_DEAL_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          </select>
         </section>
 
         <div>
