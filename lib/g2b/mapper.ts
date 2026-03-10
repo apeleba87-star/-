@@ -14,6 +14,7 @@ export function mapItemToTender(row: Record<string, unknown>): Record<string, un
   const bidNo = String(get(["bidNtceNo", "bid_ntce_no", "공고번호"]) ?? "");
   const ord = String(get(["bidNtceOrd", "bid_ntce_ord", "공고차수"]) ?? "00");
   return {
+    source: "g2b",
     bid_ntce_no: bidNo,
     bid_ntce_ord: ord,
     bid_ntce_nm: get(["bidNtceNm", "bid_ntce_nm", "공고명"]) ?? get(["bidNtceNm", "bid_ntce_nm"]),

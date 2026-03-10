@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function POST() {
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -20,17 +20,34 @@ export async function POST() {
     .eq("id", user.id)
     .single();
   if (profile?.role !== "admin" && profile?.role !== "editor") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+
+  const apiKey = process.env.DATA_GO_KR_SERVICE_KEY?.trim();
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      error: "DATA_GO_KR_SERVICE_KEY가 .env.local에 없습니다. 공공데이터포털에서 인증키(Encoding) 복사 후 추가하세요.",
+    }, { status: 400 });
   }
 
   try {
     const result = await runTenderFetch({ daysBack: 3 });
+    let errorMsg: string | undefined;
+    if (!result.ok) {
+      const raw = result.error;
+      if (typeof raw === "string" && raw.trim()) {
+        errorMsg = raw.trim();
+      } else {
+        errorMsg = raw != null ? `수집 실패 (원인: ${String(raw).replace(/^\[object Object\]$/i, "서버 응답 확인")})` : "수집 실패. 원인을 확인할 수 없습니다.";
+      }
+    }
     return NextResponse.json({
       ok: result.ok,
       tenders: result.tenders,
       inserted: result.inserted,
       updated: result.updated,
-      error: result.error,
+      error: errorMsg,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

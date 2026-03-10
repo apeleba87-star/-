@@ -49,8 +49,11 @@ async function fetchAndUpsert(
         : getBidPblancListInfoThng;
   const data = await fetcher(params);
   const items = extractItems(data);
+  const supabase = getSupabase();
+  let useSource = true;
   let inserted = 0;
   let updated = 0;
+
   for (const item of items) {
     const mapped = mapItemToTender(item as Record<string, unknown>);
     const title = String(mapped.bid_ntce_nm ?? "");
@@ -67,14 +70,32 @@ async function fetchAndUpsert(
     (mapped as Record<string, unknown>).manual_override = false;
     (mapped as Record<string, unknown>).manual_tag = null;
 
-    const supabase = getSupabase();
-    const { error } = await supabase.from("tenders").upsert(mapped as Record<string, unknown>, {
-      onConflict: "bid_ntce_no,bid_ntce_ord",
+    let payload = mapped as Record<string, unknown>;
+    let conflictCols = "source,bid_ntce_no,bid_ntce_ord";
+    if (!useSource) {
+      const { source: _, ...rest } = payload;
+      payload = rest;
+      conflictCols = "bid_ntce_no,bid_ntce_ord";
+    }
+
+    const { error } = await supabase.from("tenders").upsert(payload, {
+      onConflict: conflictCols,
       ignoreDuplicates: false,
     });
     if (error) {
       if (error.code === "23505") updated++;
-      else throw error;
+      else if (useSource && /source|column.*exist/i.test(error.message)) {
+        useSource = false;
+        const { source: __, ...rest } = (mapped as Record<string, unknown>);
+        const retry = await supabase.from("tenders").upsert(rest, {
+          onConflict: "bid_ntce_no,bid_ntce_ord",
+          ignoreDuplicates: false,
+        });
+        if (retry.error) {
+          if (retry.error.code === "23505") updated++;
+          else throw retry.error;
+        } else inserted++;
+      } else throw error;
     } else inserted++;
   }
   return { inserted, updated };

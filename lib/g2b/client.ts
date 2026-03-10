@@ -86,21 +86,24 @@ export type G2BAtchFileParams = {
 };
 
 function getServiceKey(): string {
-  const key = process.env.DATA_GO_KR_SERVICE_KEY;
+  const key = process.env.DATA_GO_KR_SERVICE_KEY?.trim();
   if (!key) throw new Error("DATA_GO_KR_SERVICE_KEY is not set");
   return key;
 }
 
+/**
+ * 공공데이터포털: "Encoding 된 인증키"를 URL에 그대로 사용.
+ * URLSearchParams에 넣으면 이중 인코딩되어 인증 오류가 나므로, serviceKey는 쿼리 앞에 직접 붙임.
+ */
 function buildUrl(operation: string, params: Record<string, string | number | undefined>, baseUrl = BASE_URL): string {
   const key = getServiceKey();
-  const search = new URLSearchParams({
-    serviceKey: key,
+  const rest = new URLSearchParams({
     returnType: "json",
     ...Object.fromEntries(
       Object.entries(params).filter(([, v]) => v != null && v !== "") as [string, string][]
     ) as Record<string, string>,
-  });
-  return `${baseUrl}/${operation}?${search.toString()}`;
+  }).toString();
+  return `${baseUrl}/${operation}?serviceKey=${key}&${rest}`;
 }
 
 export interface G2BListResponse<T> {
