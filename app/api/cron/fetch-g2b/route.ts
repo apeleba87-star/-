@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase-server";
 import { runTenderFetch } from "@/lib/g2b/fetch-tenders";
 
@@ -17,7 +18,11 @@ export async function POST(req: NextRequest) {
 
   if (process.env.DATA_GO_KR_SERVICE_KEY) {
     try {
-      const result = await runTenderFetch({ daysBack: 3 });
+      const result = await runTenderFetch({ daysBack: 1 });
+      if (result.ok) {
+        revalidatePath("/tenders");
+        revalidatePath("/");
+      }
       return NextResponse.json({
         ok: result.ok,
         tenders: result.tenders,

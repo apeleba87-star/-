@@ -17,9 +17,9 @@ const CATEGORY_OPTIONS = [
 
 const SORT_OPTIONS = [
   { id: "deadline", label: "마감일순" },
+  { id: "posted", label: "등록일순" },
   { id: "amount-high", label: "금액 높은순" },
   { id: "amount-low", label: "금액 낮은순" },
-  { id: "recent", label: "최신순" },
 ] as const;
 
 const REGION_OPTIONS = [
@@ -77,7 +77,7 @@ export default function TendersListWithFilters({ tenders }: Props) {
   const [selectedRegion, setSelectedRegion] = useState<string>("전체 지역");
   const [sortBy, setSortBy] = useState<SortId>("deadline");
 
-  const filteredTenders = useMemo(() => {
+  const { openTenders, closedTenders } = useMemo(() => {
     let list = tenders.filter((t) => {
       const categoryMatch_ = categoryMatch(t, selectedCategory);
       const regionMatch =
@@ -85,22 +85,26 @@ export default function TendersListWithFilters({ tenders }: Props) {
       return categoryMatch_ && regionMatch;
     });
 
-    list = [...list].sort((a, b) => {
+    const sortFn = (a: TenderBidCardT, b: TenderBidCardT) => {
       switch (sortBy) {
         case "deadline":
           return ddayNumber(a.bid_clse_dt) - ddayNumber(b.bid_clse_dt);
+        case "posted":
+          const dtCmp = (b.bid_ntce_dt ?? "").localeCompare(a.bid_ntce_dt ?? "");
+          if (dtCmp !== 0) return dtCmp;
+          return (a.bid_ntce_no ?? "").localeCompare(b.bid_ntce_no ?? "");
         case "amount-high":
           return getBaseAmount(b) - getBaseAmount(a);
         case "amount-low":
           return getBaseAmount(a) - getBaseAmount(b);
-        case "recent":
-          return (b.bid_ntce_dt ?? b.id).localeCompare(a.bid_ntce_dt ?? a.id);
         default:
           return 0;
       }
-    });
+    };
 
-    return list;
+    const open = list.filter((t) => ddayNumber(t.bid_clse_dt) >= 0).sort(sortFn);
+    const closed = list.filter((t) => ddayNumber(t.bid_clse_dt) < 0).sort(sortFn);
+    return { openTenders: open, closedTenders: closed };
   }, [tenders, selectedCategory, selectedRegion, sortBy]);
 
   const hasActiveFilters = selectedCategory !== "all" || selectedRegion !== "전체 지역";
@@ -207,32 +211,65 @@ export default function TendersListWithFilters({ tenders }: Props) {
         </div>
       )}
 
-      {/* 검색 결과 카운트 */}
+      {/* 검색 결과 카운트: 진행 중 / 마감 구분 */}
       <p className="mb-4 text-sm text-slate-600">
-        총 <span className="font-semibold text-blue-600">{filteredTenders.length}</span>개의 공고
+        진행 중{" "}
+        <span className="font-semibold text-blue-600">{openTenders.length}</span>개
+        {closedTenders.length > 0 && (
+          <>
+            {" "}
+            · 마감{" "}
+            <span className="font-semibold text-slate-500">{closedTenders.length}</span>개
+          </>
+        )}
       </p>
 
-      {/* 카드 리스트 */}
-      {filteredTenders.length === 0 ? (
+      {/* 진행 중인 공고 */}
+      {openTenders.length === 0 && closedTenders.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
           <FileText className="mx-auto mb-3 size-12 text-slate-400" aria-hidden />
           <p className="font-medium text-slate-600">검색 결과가 없습니다</p>
           <p className="mt-1 text-sm text-slate-500">다른 필터 조건을 선택해보세요</p>
         </div>
       ) : (
-        <ul className="space-y-4">
-          {filteredTenders.map((t) => (
-            <li key={t.id}>
-              <TenderBidCard tender={t} />
-            </li>
-          ))}
-        </ul>
-      )}
+        <>
+          {openTenders.length > 0 && (
+            <section className="mb-10">
+              <h2 className="mb-4 text-lg font-semibold text-slate-800">
+                진행 중인 공고
+              </h2>
+              <ul className="space-y-4">
+                {openTenders.map((t) => (
+                  <li key={t.id}>
+                    <TenderBidCard tender={t} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-      {filteredTenders.length > 0 && (
-        <p className="mt-8 text-center text-sm text-slate-500">
-          💡 예상 낙찰 하한가를 확인하려면 공고를 클릭하세요
-        </p>
+          {/* 마감된 공고 (참고용) */}
+          {closedTenders.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-slate-600">
+                마감된 공고 <span className="text-sm font-normal text-slate-500">(참고용)</span>
+              </h2>
+              <ul className="space-y-4">
+                {closedTenders.map((t) => (
+                  <li key={t.id}>
+                    <TenderBidCard tender={t} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {(openTenders.length > 0 || closedTenders.length > 0) && (
+            <p className="mt-8 text-center text-sm text-slate-500">
+              💡 예상 낙찰 하한가를 확인하려면 공고를 클릭하세요
+            </p>
+          )}
+        </>
       )}
     </>
   );

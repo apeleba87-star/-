@@ -23,38 +23,65 @@ const DEFAULT_KEYWORDS = [
 ];
 
 function getDateRange(daysBack = 1): { inqryBgnDt: string; inqryEndDt: string } {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - daysBack);
   const pad = (n: number) => String(n).padStart(2, "0");
   const toYmdHm = (d: Date) =>
     `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const start = new Date();
+  start.setDate(start.getDate() - daysBack);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
   return {
     inqryBgnDt: toYmdHm(start),
     inqryEndDt: toYmdHm(end),
   };
 }
 
-async function fetchAndUpsert(
+const NUM_OF_ROWS = 100;
+const BATCH_UPSERT_SIZE = 100;
+
+export type FetchProgress = {
+  phase: "fetch" | "upsert";
+  total?: number;
+  done?: number;
+  message?: string;
+};
+
+const OPERATION_LABEL: Record<string, string> = { Servc: "용역", Cnstwk: "공사", Thng: "물품" };
+
+async function fetchOperation(
   operation: "Servc" | "Cnstwk" | "Thng",
-  params: { inqryBgnDt: string; inqryEndDt: string; pageNo: number; numOfRows: number },
+  range: { inqryBgnDt: string; inqryEndDt: string },
   allIncludeKeywords: string[],
-  optionsByCategory: { cleaning: { includeKeywords: string[]; excludeKeywords: string[] }; disinfection: { includeKeywords: string[]; excludeKeywords: string[] }; globalExclude: string[] }
-): Promise<{ inserted: number; updated: number }> {
+  optionsByCategory: { cleaning: { includeKeywords: string[]; excludeKeywords: string[] }; disinfection: { includeKeywords: string[]; excludeKeywords: string[] }; globalExclude: string[] },
+  onProgress?: (p: FetchProgress) => void
+): Promise<Record<string, unknown>[]> {
   const fetcher =
     operation === "Servc"
       ? getBidPblancListInfoServc
       : operation === "Cnstwk"
         ? getBidPblancListInfoCnstwk
         : getBidPblancListInfoThng;
-  const data = await fetcher(params);
-  const items = extractItems(data);
-  const supabase = getSupabase();
-  let useSource = true;
-  let inserted = 0;
-  let updated = 0;
+  const label = OPERATION_LABEL[operation] ?? operation;
+  const allItems: Record<string, unknown>[] = [];
+  let pageNo = 1;
+  for (;;) {
+    const data = await fetcher({
+      ...range,
+      pageNo,
+      numOfRows: NUM_OF_ROWS,
+    });
+    const items = extractItems(data);
+    const list = Array.isArray(items) ? items : [items];
+    allItems.push(...(list as Record<string, unknown>[]));
+    onProgress?.({ phase: "fetch", done: allItems.length, message: `${label} API 수집 중… ${allItems.length}건` });
+    if (list.length < NUM_OF_ROWS) break;
+    pageNo += 1;
+    if (pageNo > 50) break;
+  }
 
-  for (const item of items) {
+  const payloads: Record<string, unknown>[] = [];
+  for (const item of allItems) {
     const mapped = mapItemToTender(item as Record<string, unknown>);
     const title = String(mapped.bid_ntce_nm ?? "");
     const matched = matchKeywords(title, allIncludeKeywords);
@@ -70,38 +97,17 @@ async function fetchAndUpsert(
     (mapped as Record<string, unknown>).manual_override = false;
     (mapped as Record<string, unknown>).manual_tag = null;
 
-    let payload = mapped as Record<string, unknown>;
-    let conflictCols = "source,bid_ntce_no,bid_ntce_ord";
-    if (!useSource) {
-      const { source: _, ...rest } = payload;
-      payload = rest;
-      conflictCols = "bid_ntce_no,bid_ntce_ord";
-    }
-
-    const { error } = await supabase.from("tenders").upsert(payload, {
-      onConflict: conflictCols,
-      ignoreDuplicates: false,
-    });
-    if (error) {
-      if (error.code === "23505") updated++;
-      else if (useSource && /source|column.*exist/i.test(error.message)) {
-        useSource = false;
-        const { source: __, ...rest } = (mapped as Record<string, unknown>);
-        const retry = await supabase.from("tenders").upsert(rest, {
-          onConflict: "bid_ntce_no,bid_ntce_ord",
-          ignoreDuplicates: false,
-        });
-        if (retry.error) {
-          if (retry.error.code === "23505") updated++;
-          else throw retry.error;
-        } else inserted++;
-      } else throw error;
-    } else inserted++;
+    const payload = mapped as Record<string, unknown>;
+    const { source: _s, ...rest } = payload;
+    payloads.push(rest);
   }
-  return { inserted, updated };
+  return payloads;
 }
 
-export async function runTenderFetch(options?: { daysBack?: number }): Promise<{
+export async function runTenderFetch(options?: {
+  daysBack?: number;
+  onProgress?: (p: FetchProgress) => void;
+}): Promise<{
   ok: boolean;
   tenders: number;
   inserted: number;
@@ -112,33 +118,51 @@ export async function runTenderFetch(options?: { daysBack?: number }): Promise<{
   const byCategory = await getTenderKeywordOptionsByCategory();
   const allInclude = [...byCategory.cleaning.includeKeywords, ...byCategory.disinfection.includeKeywords];
   const includeForMatch = allInclude.length ? allInclude : DEFAULT_KEYWORDS;
-  let inserted = 0;
-  let updated = 0;
+  const onProgress = options?.onProgress;
+
   try {
-    for (const op of ["Servc", "Cnstwk", "Thng"] as const) {
-      const result = await fetchAndUpsert(
-        op,
-        {
-          ...range,
-          pageNo: 1,
-          numOfRows: 100,
-        },
-        includeForMatch,
-        byCategory
-      );
-      inserted += result.inserted;
-      updated += result.updated;
+    onProgress?.({ phase: "fetch", message: "API 수집 중 (용역)…" });
+
+    const results = await Promise.all(
+      (["Servc"] as const).map((op) =>
+        fetchOperation(op, range, includeForMatch, byCategory, onProgress)
+      )
+    );
+    const allPayloads = results.flat();
+    const total = allPayloads.length;
+
+    onProgress?.({ phase: "upsert", total, done: 0, message: `저장 중 (총 ${total}건)…` });
+
+    const supabase = getSupabase();
+    let processed = 0;
+    for (let i = 0; i < allPayloads.length; i += BATCH_UPSERT_SIZE) {
+      const batch = allPayloads.slice(i, i + BATCH_UPSERT_SIZE);
+      const { error } = await supabase.from("tenders").upsert(batch, {
+        onConflict: "bid_ntce_no,bid_ntce_ord",
+        ignoreDuplicates: false,
+      });
+      if (error) throw error;
+      processed += batch.length;
+      onProgress?.({ phase: "upsert", total, done: processed });
     }
+
     const bgnDate = `${range.inqryBgnDt.slice(0, 4)}-${range.inqryBgnDt.slice(4, 6)}-${range.inqryBgnDt.slice(6, 8)}`;
     const endDate = `${range.inqryEndDt.slice(0, 4)}-${range.inqryEndDt.slice(4, 6)}-${range.inqryEndDt.slice(6, 8)}`;
-    const supabase = getSupabase();
     await supabase.from("g2b_fetch_checkpoints").upsert(
       { operation: "tender_list", inqry_bgn_dt: bgnDate, inqry_end_dt: endDate, last_fetched_at: new Date().toISOString() },
       { onConflict: "operation,inqry_bgn_dt,inqry_end_dt" }
     );
-    return { ok: true, tenders: inserted + updated, inserted, updated };
+    return { ok: true, tenders: processed, inserted: processed, updated: 0 };
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    let message: string;
+    if (e instanceof Error) {
+      message = e.message || String(e);
+    } else if (e != null && typeof (e as { message?: string }).message === "string") {
+      message = (e as { message: string }).message;
+    } else {
+      message = String(e);
+    }
+    if (!message.trim()) message = "알 수 없는 오류";
     return { ok: false, tenders: 0, inserted: 0, updated: 0, error: message };
   }
 }
