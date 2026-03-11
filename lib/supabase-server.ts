@@ -6,7 +6,7 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-/** 빌드 시 환경변수 없을 때 사용. .from().select() 등 호출 시 빈 결과 반환 */
+/** 빌드 시 환경변수 없을 때 사용. .from().select(), .auth.getUser() 등 호출 시 빈/무효 결과 반환 */
 function createStubClient() {
   const empty = { data: [] as unknown[], error: null as { message: string } | null };
   const chain = {
@@ -26,8 +26,13 @@ function createStubClient() {
     maybeSingle: () => chain,
     then: (resolve: (v: typeof empty) => unknown) => Promise.resolve(resolve(empty)),
   };
+  const noUser = { data: { user: null }, error: null };
   return {
     from: () => chain,
+    auth: {
+      getUser: () => Promise.resolve(noUser),
+      getSession: () => Promise.resolve(noUser),
+    },
   };
 }
 
