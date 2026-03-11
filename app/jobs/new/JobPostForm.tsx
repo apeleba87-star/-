@@ -1,16 +1,34 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, Calendar } from "lucide-react";
+import { Plus, Trash2, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { createJobPost } from "./actions";
 import { updateJobPost } from "@/app/jobs/[id]/actions";
-import { glassCard } from "@/lib/ui-styles";
-import { REGION_SIDO_LIST, REGION_GUGUN, formatRegionForDb } from "@/lib/listings/regions";
+import { REGION_SIDO_LIST, REGION_GUGUN } from "@/lib/listings/regions";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PositionInput, PayUnit } from "@/lib/jobs/types";
 import { JOB_TYPE_PRESETS, JOB_TYPE_OTHER, SKILL_LEVEL_LABELS } from "@/lib/jobs/job-type-presets";
+
+/** Step 블록: 현장 거래와 동일 스타일 */
+function StepSection({
+  step,
+  title,
+  children,
+}: { step: number; title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-sm font-bold text-white">
+          {step}
+        </span>
+        <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 /** 연락처 입력용: 숫자만 남기고 010-XXXX-XXXX 형식으로 포맷 */
 function formatPhoneInput(value: string): string {
@@ -20,8 +38,8 @@ function formatPhoneInput(value: string): string {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
-/** 금액 입력: 천단위 콤마 표시용 */
-function formatAmountInput(value: number | string | null | undefined): string {
+/** 금액 입력: 190,000 형식 표시 (문자열로 표시용) */
+function formatAmountDisplay(value: number | string | null | undefined): string {
   if (value === "" || value === null || value === undefined) return "";
   const n = typeof value === "string" ? parseInt(value.replace(/\D/g, ""), 10) : Number(value);
   if (Number.isNaN(n) || n <= 0) return "";
@@ -32,6 +50,11 @@ function formatAmountInput(value: number | string | null | undefined): string {
 function parseAmountInput(value: string): number {
   const n = parseInt(value.replace(/\D/g, ""), 10);
   return Number.isNaN(n) ? 0 : n;
+}
+
+/** 금액 표기: 190,000원 */
+function formatAmountWon(n: number): string {
+  return `${Number(n).toLocaleString("ko-KR")}원`;
 }
 
 export type EditInitialData = {
@@ -97,6 +120,31 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
   const [positions, setPositions] = useState<(PositionInput & { id?: string })[]>(
     initialData?.positions ?? [{ ...defaultPosition }]
   );
+  const [expandPrivateBlock, setExpandPrivateBlock] = useState(true);
+
+  const suggestedTitle = useMemo(() => {
+    const regionPart = [regionSido, effectiveGugun].filter(Boolean).join(" ");
+    const first = positions[0];
+    const jobLabel =
+      first?.job_type_key && first.job_type_key !== JOB_TYPE_OTHER
+        ? (JOB_TYPE_PRESETS.find((p) => p.key === first.job_type_key)?.label ?? first.job_type_input?.trim() ?? "")
+        : first?.job_type_input?.trim() ?? "";
+    const workPart = jobLabel || `${positions.length}포지션`;
+    const datePart = workDate.trim()
+      ? new Date(workDate + "T12:00:00").toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })
+      : "";
+    const parts = [regionPart, workPart, datePart].filter(Boolean);
+    return parts.length ? `${parts.join(" · ")} 구인` : "";
+  }, [regionSido, effectiveGugun, workDate, positions]);
+
+  const lastSuggestedTitleRef = useRef(suggestedTitle);
+  useEffect(() => {
+    if (isEdit) return;
+    if (title === "" || title === lastSuggestedTitleRef.current) {
+      setTitle(suggestedTitle);
+    }
+    lastSuggestedTitleRef.current = suggestedTitle;
+  }, [suggestedTitle, isEdit, title]);
 
   function handleContactChange(raw: string) {
     setContactPhone(formatPhoneInput(raw));
@@ -235,7 +283,9 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
         <span aria-hidden>←</span> {isEdit ? "글 보기" : "목록"}
       </Link>
       <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{isEdit ? "구인글 수정" : "인력 구인 글쓰기"}</h1>
-      <p className="mt-0.5 text-sm text-slate-600">{isEdit ? "변경 후 저장하면 수정 내용이 반영됩니다." : "현장 정보와 모집 포지션을 입력하세요."}</p>
+      <p className="mt-0.5 text-sm text-slate-600">
+        {isEdit ? "변경 후 저장하면 수정 내용이 반영됩니다." : "지역과 일시를 먼저 입력한 뒤, 포지션별로 직종·인원·급여를 정하세요."}
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {error && (
@@ -244,23 +294,12 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
           </p>
         )}
 
-        <section className={`${glassCard} p-5`}>
-          <h2 className="text-base font-semibold text-slate-800">현장 공통 정보</h2>
-          <p className="mt-0.5 text-xs text-slate-500">제목, 지역, 작업일, 연락처를 입력하세요.</p>
-          <div className="mt-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700">제목 *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className={inputClass}
-                required
-              />
-            </div>
+        <StepSection step={1} title="어디·언제인가?">
+          <p className="mb-4 text-sm text-slate-600">지역, 상세 주소, 작업 일시를 한 번에 입력하세요.</p>
+          <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700">지역 *</label>
+                <label className="block text-sm font-medium text-slate-700">지역 (시·도) *</label>
                 <select
                   value={regionSido}
                   onChange={(e) => {
@@ -276,7 +315,7 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">지역구 *</label>
+                <label className="block text-sm font-medium text-slate-700">지역 (구·군) *</label>
                 <select
                   value={effectiveGugun}
                   onChange={(e) => setRegionGugun(e.target.value)}
@@ -289,14 +328,14 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">현장 상세 주소</label>
-              <p className="mt-0.5 text-xs text-slate-500">확정된 지원자에게만 공개됩니다.</p>
+              <label className="block text-sm font-medium text-slate-700">현장 상세 주소 (선택)</label>
+              <p className="mt-0.5 text-xs text-slate-500">매칭 확정 후 지원자에게만 공개됩니다.</p>
               <input
                 type="text"
                 value={fullAddress}
                 onChange={(e) => setFullAddress(e.target.value)}
                 className={inputClass}
-                placeholder="길음로 15길 55"
+                placeholder="예: 길음로 15길 55"
               />
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/30 p-4">
@@ -304,7 +343,7 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
                 <Calendar className="h-4 w-4 text-slate-500" aria-hidden />
                 <span className="text-sm font-semibold">작업 일시</span>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500">몇 시부터 몇 시까지인지 선택하세요. 빠른 선택을 누르면 시간이 자동으로 채워집니다.</p>
+              <p className="mt-0.5 text-xs text-slate-500">빠른 선택을 누르면 시간이 자동으로 채워집니다.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {timePresets.map((preset) => (
                   <button
@@ -323,7 +362,7 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
               </div>
               <div className="mt-4 flex flex-wrap items-end gap-3 sm:gap-4">
                 <div className="min-w-[140px] flex-1 sm:flex-none">
-                  <label className="block text-xs font-medium text-slate-600">날짜</label>
+                  <label className="block text-xs font-medium text-slate-600">날짜 *</label>
                   <input
                     type="date"
                     value={workDate}
@@ -369,81 +408,18 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
                 이 작업 일시를 모든 포지션에 그대로 적용
               </label>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">연락처 (전화/문자) *</label>
-              <input
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
-                value={contactPhone}
-                onChange={(e) => handleContactChange(e.target.value)}
-                className={inputClass}
-                placeholder="010-1111-2222"
-                maxLength={13}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">현장 간편 설명</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className={inputClass}
-                placeholder="통상적인 학교 청소 입니다"
-              />
-            </div>
-
-            <div className="rounded-xl border border-amber-200/60 bg-amber-50/30 p-4">
-              <h3 className="text-sm font-semibold text-slate-800">현장 안내 (확정된 지원자에게만 공개)</h3>
-              <p className="mt-0.5 text-xs text-slate-500">지원을 확정한 분에게만 아래 내용이 공개됩니다. 위에서 입력한 현장 상세 주소와 함께 공개됩니다.</p>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">출입 방법</label>
-                  <input
-                    type="text"
-                    value={accessInstructions}
-                    onChange={(e) => setAccessInstructions(e.target.value)}
-                    className={inputClass}
-                    placeholder="예: 정문 경비실에서 출입증 수령"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">주차 안내</label>
-                  <input
-                    type="text"
-                    value={parkingInfo}
-                    onChange={(e) => setParkingInfo(e.target.value)}
-                    className={inputClass}
-                    placeholder="예: 병설 유치원 내 주차"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">주의사항</label>
-                  <textarea
-                    value={siteNotes}
-                    onChange={(e) => setSiteNotes(e.target.value)}
-                    rows={2}
-                    className={inputClass}
-                    placeholder="개인 준비물, 신분증 등"
-                  />
-                </div>
-              </div>
-            </div>
           </div>
-        </section>
+        </StepSection>
 
-        <section className={`${glassCard} p-5`}>
+        <StepSection step={2} title="모집 포지션">
+          <p className="mb-4 text-sm text-slate-600">직종, 인원, 급여(190,000원 형식)를 입력하세요.</p>
           <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-800">모집 포지션</h2>
-              <p className="mt-0.5 text-xs text-slate-500">직종, 인원, 급여를 입력하세요.</p>
-            </div>
+            <span className="text-sm text-slate-500">포지션을 추가해 모집 인원과 조건을 정하세요.</span>
             {!isEdit && (
               <button
                 type="button"
                 onClick={addPosition}
-                className="shrink-0 rounded-xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:from-blue-600 hover:to-blue-700"
+                className="shrink-0 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
               >
                 <Plus className="inline h-4 w-4" aria-hidden /> 포지션 추가
               </button>
@@ -462,15 +438,107 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
               />
             ))}
           </div>
-        </section>
+        </StepSection>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full min-h-[52px] rounded-2xl bg-slate-900 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-slate-800 disabled:opacity-50"
-        >
-          {loading ? (isEdit ? "수정 중…" : "등록 중…") : isEdit ? "수정 완료" : "등록하기"}
-        </button>
+        <StepSection step={3} title="연락처·상세·확정자 안내">
+          <p className="mb-4 text-sm text-slate-600">연락처와 현장 설명을 입력하세요. 확정된 지원자에게만 공개할 안내는 아래에서 입력할 수 있습니다.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">연락처 (전화/문자) *</label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                value={contactPhone}
+                onChange={(e) => handleContactChange(e.target.value)}
+                className={inputClass}
+                placeholder="010-1111-2222"
+                maxLength={13}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">현장 간편 설명 (선택)</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className={inputClass}
+                placeholder="통상적인 학교 청소 입니다"
+              />
+            </div>
+            <div className="rounded-xl border border-amber-200/60 bg-amber-50/30 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setExpandPrivateBlock((b) => !b)}
+                className="flex w-full items-center justify-between gap-2 p-4 text-left"
+              >
+                <span className="text-sm font-semibold text-slate-800">현장 안내 (확정된 지원자에게만 공개)</span>
+                {expandPrivateBlock ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+              </button>
+              {expandPrivateBlock && (
+                <div className="border-t border-amber-200/60 bg-white/60 p-4 space-y-3">
+                  <p className="text-xs text-slate-500">지원을 확정한 분에게만 아래 내용이 공개됩니다.</p>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600">출입 방법 (선택)</label>
+                    <input
+                      type="text"
+                      value={accessInstructions}
+                      onChange={(e) => setAccessInstructions(e.target.value)}
+                      className={inputClass}
+                      placeholder="예: 정문 경비실에서 출입증 수령"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600">주차 안내 (선택)</label>
+                    <input
+                      type="text"
+                      value={parkingInfo}
+                      onChange={(e) => setParkingInfo(e.target.value)}
+                      className={inputClass}
+                      placeholder="예: 병설 유치원 내 주차"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600">주의사항 (선택)</label>
+                    <textarea
+                      value={siteNotes}
+                      onChange={(e) => setSiteNotes(e.target.value)}
+                      rows={2}
+                      className={inputClass}
+                      placeholder="개인 준비물, 신분증 등"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </StepSection>
+
+        <StepSection step={4} title="제목 확인 · 등록">
+          <p className="mb-4 text-sm text-slate-600">입력한 내용으로 제목이 자동 생성됩니다. 필요하면 수정한 뒤 등록하세요.</p>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">제목 *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={inputClass}
+              placeholder={suggestedTitle || "예: 서울 강남 · 유리청소 · 3/15 구인"}
+              required
+            />
+            {suggestedTitle && title === suggestedTitle && (
+              <p className="mt-1 text-xs text-slate-500">자동 생성된 제목입니다. 필요하면 수정하세요.</p>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-6 w-full min-h-[52px] rounded-2xl bg-slate-900 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-slate-800 disabled:opacity-50"
+          >
+            {loading ? (isEdit ? "수정 중…" : "등록 중…") : isEdit ? "수정 완료" : "등록하기"}
+          </button>
+        </StepSection>
       </form>
     </div>
   );
@@ -578,10 +646,14 @@ function PositionFormBlock({
           <input
             type="text"
             inputMode="numeric"
-            value={formatAmountInput(position.pay_amount)}
+            value={formatAmountDisplay(position.pay_amount)}
             onChange={(e) => onUpdate({ pay_amount: parseAmountInput(e.target.value) })}
             className={inputClass}
+            placeholder="190,000"
           />
+          {position.pay_amount > 0 && (
+            <p className="mt-0.5 text-xs text-slate-500">{formatAmountWon(position.pay_amount)} (지급 단위별)</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700">지급 단위</label>

@@ -45,6 +45,9 @@ export default async function AdminLayout({
         <Link href="/admin/newsletter" className="font-medium text-slate-700 hover:text-slate-900">
           뉴스레터 큐·발송
         </Link>
+        <Link href="/admin/content-runs" className="font-medium text-slate-700 hover:text-slate-900">
+          자동 생성 로그
+        </Link>
         <Link href="/admin/ugc" className="font-medium text-slate-700 hover:text-slate-900">
           UGC 검수
         </Link>

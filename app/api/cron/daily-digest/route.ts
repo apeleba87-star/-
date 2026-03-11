@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * @deprecated Use POST /api/cron/generate-content?type=daily instead.
+ * 이 엔드포인트는 queue에 제목만 넣고 post를 만들지 않습니다.
+ */
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {

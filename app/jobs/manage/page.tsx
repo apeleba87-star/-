@@ -41,10 +41,15 @@ export default async function JobsManagePage() {
   if (!jobPosts?.length) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
+        <div className="mb-6 flex items-center gap-3">
+          <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <Link href="/jobs" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+            <span aria-hidden>←</span> 인력 구인
+          </Link>
         </div>
         <h1 className="text-xl font-bold text-slate-900">내 구인 관리</h1>
         <p className="mt-0.5 text-sm text-slate-600">내가 쓴 구인글이 없습니다.</p>
@@ -291,10 +296,15 @@ export default async function JobsManagePage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
+      <div className="mb-6 flex items-center gap-3">
+        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <Link href="/jobs" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+          <span aria-hidden>←</span> 인력 구인
+        </Link>
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -310,12 +320,6 @@ export default async function JobsManagePage() {
           구인하기
         </Link>
       </div>
-
-      <p className="mt-4">
-        <Link href="/jobs" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-          ← 인력 구인 목록
-        </Link>
-      </p>
 
       <ManageView
         calendarItems={calendarItems}
