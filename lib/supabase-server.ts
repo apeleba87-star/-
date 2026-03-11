@@ -18,6 +18,7 @@ function createStubClient() {
     limit: () => chain,
     not: () => chain,
     is: () => chain,
+    in: () => chain,
     eq: () => chain,
     gt: () => chain,
     gte: () => chain,
