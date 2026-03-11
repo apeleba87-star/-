@@ -168,22 +168,39 @@ export default async function JobPostDetailPage({
 
   const regionFull = [post.region, post.district].filter(Boolean).join(" ").trim() || post.region;
 
-  const benchmarks = await Promise.all(
-    (positions ?? []).map(async (pos) => {
-      let q = supabase
-        .from("market_benchmarks")
-        .select("sample_count, average_pay, average_normalized_daily_wage")
-        .eq("region", regionFull)
-        .eq("category_main_id", pos.category_main_id)
-        .eq("pay_unit", pos.pay_unit)
-        .eq("skill_level", pos.skill_level ?? "");
-      q = pos.category_sub_id ? q.eq("category_sub_id", pos.category_sub_id) : q.is("category_sub_id", null);
-      const { data } = await q.maybeSingle();
-      return { positionId: pos.id, data };
-    })
-  );
+  const { data: benchmarkRows } =
+    (positions ?? []).length > 0
+      ? await supabase
+          .from("market_benchmarks")
+          .select("category_main_id, category_sub_id, pay_unit, skill_level, sample_count, average_pay, average_normalized_daily_wage")
+          .eq("region", regionFull)
+      : { data: [] };
 
-  const benchmarkByPosId = new Map(benchmarks.map((b) => [b.positionId, b.data]));
+  const benchmarkKey = (mainId: string, subId: string | null, unit: string, level: string) =>
+    `${mainId}|${subId ?? ""}|${unit}|${level ?? ""}`;
+  const benchmarkByKey = new Map(
+    (benchmarkRows ?? []).map((r) => [
+      benchmarkKey(r.category_main_id, r.category_sub_id ?? null, r.pay_unit, r.skill_level ?? ""),
+      {
+        sample_count: r.sample_count,
+        average_pay: r.average_pay,
+        average_normalized_daily_wage: r.average_normalized_daily_wage,
+      },
+    ])
+  );
+  const benchmarkByPosId = new Map(
+    (positions ?? []).map((pos) => [
+      pos.id,
+      benchmarkByKey.get(
+        benchmarkKey(
+          pos.category_main_id,
+          pos.category_sub_id ?? null,
+          pos.pay_unit,
+          pos.skill_level ?? ""
+        )
+      ) ?? null,
+    ])
+  );
 
   const displayTitle = post.status === "closed" ? `(마감) ${post.title}` : post.title;
   const regionDisplay = post.district ? `${post.region} ${post.district}` : post.region;

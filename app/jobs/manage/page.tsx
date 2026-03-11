@@ -220,8 +220,8 @@ export default async function JobsManagePage() {
   }
 
   const sortedPosts = [...jobPosts].sort((a, b) => {
-    const countA = applicationCountByPost.get(a.id) ?? 0;
-    const countB = applicationCountByPost.get(b.id) ?? 0;
+    const countA = Number(applicationCountByPost.get(a.id)) || 0;
+    const countB = Number(applicationCountByPost.get(b.id)) || 0;
     if (countB !== countA) return countB - countA;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
@@ -239,7 +239,7 @@ export default async function JobsManagePage() {
       title: post.title,
       work_date: post.work_date,
       status: post.status,
-      applicationCount: applicationCountByPost.get(post.id) ?? 0,
+      applicationCount: Number(applicationCountByPost.get(post.id)) || 0,
       region: post.region,
       district: post.district,
       displayStatus,
@@ -267,7 +267,7 @@ export default async function JobsManagePage() {
             region={post.region}
             district={post.district ?? ""}
             work_date={workDateFormatted}
-            applicationCount={applicationCountByPost.get(post.id) ?? 0}
+            applicationCount={Number(applicationCountByPost.get(post.id)) || 0}
             isOwner
             hasNoShowApplicant={postIdsWithNoShow.has(post.id)}
             urgentLabel={getUrgentLabel(post.work_date)}

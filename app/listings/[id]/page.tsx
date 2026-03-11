@@ -98,6 +98,26 @@ export default async function ListingDetailPage({
 
         <ContactButtons phone={listing.contact_phone} />
 
+        {categorySubName === "계단청소" && (() => {
+          const s = listing as { stairs_floors?: number | null; visits_per_week?: number | null; stairs_restroom_count?: number | null; stairs_has_recycle?: boolean; stairs_has_corridor?: boolean; stairs_elevator?: boolean; stairs_parking?: boolean; stairs_window?: boolean };
+          const hasStairsInfo = s.stairs_floors != null || s.visits_per_week != null || s.stairs_restroom_count != null || s.stairs_has_recycle || s.stairs_has_corridor || s.stairs_elevator || s.stairs_parking || s.stairs_window;
+          return hasStairsInfo ? (
+            <section className="rounded-xl border border-slate-200 bg-white p-5">
+              <h2 className="text-lg font-semibold text-slate-800">계단 청소 현장 정보</h2>
+              <ul className="mt-3 space-y-1.5 text-sm text-slate-700">
+                {s.stairs_floors != null && <li>· 층수: {s.stairs_floors}층</li>}
+                {s.visits_per_week != null && <li>· 주 회수: {s.visits_per_week}회</li>}
+                {s.stairs_restroom_count != null && s.stairs_restroom_count > 0 && <li>· 화장실: {s.stairs_restroom_count}개</li>}
+                {s.stairs_has_recycle && <li>· 분리수거 있음</li>}
+                {s.stairs_has_corridor && <li>· 복도 청소 있음</li>}
+                {s.stairs_elevator && <li>· 엘리베이터 청소</li>}
+                {s.stairs_parking && <li>· 주차장 청소</li>}
+                {s.stairs_window && <li>· 창틀 먼지 청소</li>}
+              </ul>
+            </section>
+          ) : null;
+        })()}
+
         <MarketComparisonBox
           currentPay={normalizedDaily}
           averagePay={bench?.average_normalized_daily_wage ?? null}

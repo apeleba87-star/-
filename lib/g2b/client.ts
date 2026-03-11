@@ -2,9 +2,17 @@
  * 공공데이터포털 나라장터 입찰공고정보서비스 API 클라이언트
  * Base: https://apis.data.go.kr/1230000/ad/BidPublicInfoService
  * (API는 returnType=json 요청 시에도 XML을 반환할 수 있음 → XML 파싱 처리)
+ * SSRF 방지: safeFetch + 허용 host, 타임아웃 5초
  */
 
 import { XMLParser } from "fast-xml-parser";
+import { safeFetch, G2B_ALLOWED_HOSTS } from "@/lib/safe-fetch";
+
+const G2B_FETCH_OPTIONS: { allowedHosts: string[]; timeoutMs: number; next?: { revalidate: number } } = {
+  allowedHosts: G2B_ALLOWED_HOSTS,
+  timeoutMs: 5000,
+  next: { revalidate: 0 },
+};
 
 const BASE_URL = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
 
@@ -128,7 +136,7 @@ export async function getBidPblancListInfoServc(
     inqryEndDt: params.inqryEndDt,
     inqryDiv: params.inqryDiv ?? "1",
   });
-  const res = await fetch(url, { next: { revalidate: 0 } });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
   const text = await res.text();
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
@@ -156,7 +164,7 @@ export async function getBidPblancListInfoCnstwk(
     inqryEndDt: params.inqryEndDt,
     inqryDiv: params.inqryDiv ?? "1",
   });
-  const res = await fetch(url, { next: { revalidate: 0 } });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
   const text = await res.text();
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
@@ -184,7 +192,7 @@ export async function getBidPblancListInfoThng(
     inqryEndDt: params.inqryEndDt,
     inqryDiv: params.inqryDiv ?? "1",
   });
-  const res = await fetch(url, { next: { revalidate: 0 } });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
   const text = await res.text();
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
@@ -214,7 +222,7 @@ export async function getBidPblancListInfoEorderAtchFileInfo(
   let lastError: Error | null = null;
   for (const baseUrl of ATCH_BASE_URL_ALTERNATIVES) {
     const url = buildUrl("getBidPblancListInfoEorderAtchFileInfo", opParams, baseUrl);
-    const res = await fetch(url, { next: { revalidate: 0 } });
+    const res = await safeFetch(url, G2B_FETCH_OPTIONS);
     const text = await res.text();
     if (res.ok) return parseResponse(text) as G2BListResponse<Record<string, unknown>>;
     lastError = new Error(
@@ -243,7 +251,7 @@ export async function getBidPblancListInfoEorderAtchFileInfoRaw(
 
   for (const baseUrl of ATCH_BASE_URL_ALTERNATIVES) {
     const url = buildUrl("getBidPblancListInfoEorderAtchFileInfo", opParams, baseUrl);
-    const res = await fetch(url, { next: { revalidate: 0 } });
+    const res = await safeFetch(url, G2B_FETCH_OPTIONS);
     const raw = await res.text();
     const parsed = parseResponse(raw);
     last = { raw, parsed, httpStatus: res.status, baseUrlUsed: baseUrl };
@@ -263,7 +271,7 @@ export async function getBidPblancListInfoServcBsisAmount(
     bidNtceNo: params.bidNtceNo,
     bidNtceOrd: String(params.bidNtceOrd ?? "00").padStart(2, "0"),
   });
-  const res = await fetch(url, { next: { revalidate: 0 } });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
   const text = await res.text();
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
@@ -290,7 +298,7 @@ export async function getBidPblancListInfoPrtcptPsblRgn(
     bidNtceNo: params.bidNtceNo,
     bidNtceOrd: String(params.bidNtceOrd ?? "00").padStart(2, "0"),
   });
-  const res = await fetch(url, { next: { revalidate: 0 } });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
   const text = await res.text();
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;

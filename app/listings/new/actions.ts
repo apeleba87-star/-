@@ -24,10 +24,22 @@ type CreateListingInput = {
   area_pyeong?: number | null;
   visits_per_week?: number | null;
   difficulty?: "easy" | "normal" | "hard" | null;
+  /** 소개: 견적/현장 확인 필요 여부 */
+  estimate_check_required?: boolean;
   /** 소개: 성사 예상 금액. 금액 미정이면 미입력 */
   expected_amount?: number | null;
   /** 소개: 소개비 수수료율 0~100 */
   fee_rate_percent?: number | null;
+  /** 정기 매매: 배수. 직접 입력하거나 월수금·매매가로 역산 */
+  sale_multiplier?: number | null;
+  /** 계단 청소 전용 (category_preset_key === 'stairs') */
+  stairs_floors?: number | null;
+  stairs_restroom_count?: number | null;
+  stairs_has_recycle?: boolean;
+  stairs_has_corridor?: boolean;
+  stairs_elevator?: boolean;
+  stairs_parking?: boolean;
+  stairs_window?: boolean;
 };
 
 export async function createListing(input: CreateListingInput) {
@@ -57,11 +69,25 @@ export async function createListing(input: CreateListingInput) {
 
   const listingType = input.listing_type as string;
   const isReferral = listingType === "referral_regular" || listingType === "referral_one_time";
+  const isSaleRegular = listingType === "sale_regular";
+  let monthlyForPay = input.monthly_amount ?? null;
+  let dealForPay = input.deal_amount ?? null;
+  let saleMultiplierToStore = input.sale_multiplier ?? null;
+  if (isSaleRegular && (monthlyForPay != null || dealForPay != null || saleMultiplierToStore != null)) {
+    const monthly = monthlyForPay != null ? Number(monthlyForPay) : null;
+    const deal = dealForPay != null ? Number(dealForPay) : null;
+    const mult = saleMultiplierToStore != null ? Number(saleMultiplierToStore) : null;
+    if (monthly != null && monthly > 0 && deal != null && deal > 0) {
+      saleMultiplierToStore = Math.round((deal / monthly) * 10) / 10;
+    } else if (monthly != null && monthly > 0 && mult != null && mult > 0) {
+      dealForPay = Math.round(monthly * mult);
+    }
+  }
   const payAmount =
     listingType === "subcontract" && input.monthly_amount != null
       ? Number(input.monthly_amount)
-      : listingType === "sale_regular" && (input.monthly_amount != null || input.deal_amount != null)
-        ? Number(input.monthly_amount ?? input.deal_amount ?? input.pay_amount)
+      : isSaleRegular && (monthlyForPay != null || dealForPay != null)
+        ? Number(monthlyForPay ?? dealForPay ?? input.pay_amount)
         : listingType === "sale_one_time" && input.deal_amount != null
           ? Number(input.deal_amount)
           : isReferral &&
@@ -87,13 +113,22 @@ export async function createListing(input: CreateListingInput) {
     pay_amount: payAmount,
     pay_unit: input.pay_unit,
     contact_phone: input.contact_phone.trim(),
-    monthly_amount: input.monthly_amount ?? null,
-    deal_amount: input.deal_amount ?? null,
+    monthly_amount: monthlyForPay ?? input.monthly_amount ?? null,
+    deal_amount: dealForPay ?? input.deal_amount ?? null,
+    sale_multiplier: isSaleRegular ? saleMultiplierToStore : null,
     expected_amount: input.expected_amount ?? null,
     fee_rate_percent: input.fee_rate_percent ?? null,
     area_pyeong: input.area_pyeong ?? null,
     visits_per_week: input.visits_per_week ?? null,
     difficulty: input.difficulty ?? null,
+    estimate_check_required: input.estimate_check_required ?? false,
+    stairs_floors: input.stairs_floors ?? null,
+    stairs_restroom_count: input.stairs_restroom_count ?? null,
+    stairs_has_recycle: input.stairs_has_recycle ?? false,
+    stairs_has_corridor: input.stairs_has_corridor ?? false,
+    stairs_elevator: input.stairs_elevator ?? false,
+    stairs_parking: input.stairs_parking ?? false,
+    stairs_window: input.stairs_window ?? false,
   });
 
   if (error) return { ok: false, error: error.message };

@@ -1,6 +1,7 @@
 /**
  * 부트페이 서버 SDK 래퍼 (토큰, 영수증 검증, 빌링 결제)
  * 환경변수: BOOTPAY_APPLICATION_ID, BOOTPAY_PRIVATE_KEY
+ * 외부 API 타임아웃 5초 적용 (worker block 방지)
  */
 
 import Bootpay from "@bootpay/backend-js";
@@ -8,6 +9,17 @@ import Bootpay from "@bootpay/backend-js";
 const APPLICATION_ID = process.env.BOOTPAY_APPLICATION_ID;
 const PRIVATE_KEY = process.env.BOOTPAY_PRIVATE_KEY;
 const MODE = (process.env.BOOTPAY_MODE as "development" | "production" | "stage") || "production";
+
+const BOOTPAY_TIMEOUT_MS = 5000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Bootpay API timeout")), ms)
+    ),
+  ]);
+}
 
 function getConfig() {
   if (!APPLICATION_ID || !PRIVATE_KEY) {
@@ -22,16 +34,22 @@ function getConfig() {
 
 export async function getBootpayToken(): Promise<string> {
   getConfig();
-  const res = await Bootpay.getAccessToken();
+  const res = await withTimeout(
+    Promise.resolve(Bootpay.getAccessToken()),
+    BOOTPAY_TIMEOUT_MS
+  );
   return (res as { access_token: string }).access_token;
 }
 
 /** 영수증 조회로 결제 검증 (빌링키 발급/결제 완료 후) */
 export async function verifyReceipt(receiptId: string): Promise<{ price: number; status: number } | null> {
   getConfig();
-  await Bootpay.getAccessToken();
+  await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
   try {
-    const data = await Bootpay.receiptPayment(receiptId);
+    const data = await withTimeout(
+      Promise.resolve(Bootpay.receiptPayment(receiptId)),
+      BOOTPAY_TIMEOUT_MS
+    );
     const d = data as unknown as { price: number; status: number };
     return { price: d?.price ?? 0, status: d?.status ?? 0 };
   } catch {
@@ -42,9 +60,12 @@ export async function verifyReceipt(receiptId: string): Promise<{ price: number;
 /** 빌링키 발급 시 받은 receipt_id로 빌링키 조회 (redirect 복귀 후 사용) */
 export async function lookupBillingKeyByReceipt(receiptId: string): Promise<{ billing_key: string } | null> {
   getConfig();
-  await Bootpay.getAccessToken();
+  await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
   try {
-    const res = await Bootpay.lookupSubscribeBillingKey(receiptId);
+    const res = await withTimeout(
+      Promise.resolve(Bootpay.lookupSubscribeBillingKey(receiptId)),
+      BOOTPAY_TIMEOUT_MS
+    );
     const d = res as unknown as { billing_key?: string };
     return d?.billing_key ? { billing_key: d.billing_key } : null;
   } catch {
@@ -61,15 +82,20 @@ export async function requestBillingPayment(params: {
   user?: { username?: string; phone?: string; email?: string };
 }): Promise<{ success: boolean; receipt_id?: string; status?: number; error?: string }> {
   getConfig();
-  await Bootpay.getAccessToken();
+  await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
   try {
-    const res = await Bootpay.requestSubscribeCardPayment({
-      billing_key: params.billing_key,
-      order_id: params.order_id,
-      order_name: params.order_name,
-      price: params.price,
-      user: params.user,
-    });
+    const res = await withTimeout(
+      Promise.resolve(
+        Bootpay.requestSubscribeCardPayment({
+          billing_key: params.billing_key,
+          order_id: params.order_id,
+          order_name: params.order_name,
+          price: params.price,
+          user: params.user,
+        })
+      ),
+      BOOTPAY_TIMEOUT_MS
+    );
     const data = res as unknown as { receipt_id?: string; status?: number };
     return { success: true, receipt_id: data?.receipt_id, status: data?.status };
   } catch (err: unknown) {

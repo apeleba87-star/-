@@ -11,7 +11,11 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/onboarding";
+  let next = searchParams.get("next") ?? "/onboarding";
+  if (typeof next !== "string" || next.startsWith("//") || next.startsWith("http://") || next.startsWith("https://") || next.includes("..")) {
+    next = "/onboarding";
+  }
+  if (!next.startsWith("/")) next = "/onboarding";
 
   const cookieStore = await cookies();
 

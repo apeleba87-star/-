@@ -134,10 +134,12 @@ export default async function JobsListPage({
       }
     }
   } else {
+    const MAX_LIST_LIMIT = 50;
     const { data } = await supabase
       .from("job_posts")
       .select("id, title, status, region, district, work_date, created_at, user_id")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(MAX_LIST_LIMIT);
     jobPosts = data ?? [];
     postIds = jobPosts.map((p) => p.id);
   }
@@ -171,10 +173,14 @@ export default async function JobsListPage({
     postIds = jobPosts.map((p) => p.id);
   }
 
-  const { data: dayPositions } = await supabase
-    .from("job_post_positions")
-    .select("pay_amount, pay_unit, normalized_daily_wage")
-    .eq("pay_unit", "day");
+  const { data: dayPositions } =
+    postIds.length > 0
+      ? await supabase
+          .from("job_post_positions")
+          .select("pay_amount, pay_unit, normalized_daily_wage")
+          .in("job_post_id", postIds)
+          .eq("pay_unit", "day")
+      : { data: [] };
 
   const dayWages =
     dayPositions?.map((p) =>
@@ -508,10 +514,10 @@ export default async function JobsListPage({
               title={post.title}
               status={post.status}
               region={post.region}
-              district={post.district}
+              district={post.district ?? ""}
               work_date={workDateFormatted}
               ownerNickname={nicknameByOwner.get(post.user_id) || undefined}
-              applicationCount={applicationCountByPost.get(post.id) ?? 0}
+              applicationCount={Number(applicationCountByPost.get(post.id)) || 0}
               myStatusLabel={myStatusByPostId.get(post.id)}
               isOwner={user?.id === post.user_id}
               urgentLabel={getUrgentLabel(post.work_date)}

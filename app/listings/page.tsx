@@ -25,7 +25,7 @@ export default async function ListingsPage() {
       .select("id, user_id, title, status, region, category_main_id, category_sub_id, custom_subcategory_text, category_main, category_sub, pay_amount, pay_unit, normalized_daily_wage")
       .in("listing_type", fieldDealTypes)
       .order("created_at", { ascending: false })
-      .limit(100),
+      .limit(50),
     supabase
       .from("market_benchmarks")
       .select("region, category_main_id, category_sub_id, pay_unit, sample_count, average_normalized_daily_wage"),
