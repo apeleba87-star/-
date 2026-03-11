@@ -17,6 +17,7 @@ function createStubClient() {
     order: () => chain,
     limit: () => chain,
     not: () => chain,
+    is: () => chain,
     eq: () => chain,
     gt: () => chain,
     gte: () => chain,
