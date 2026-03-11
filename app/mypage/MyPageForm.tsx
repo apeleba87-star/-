@@ -16,7 +16,7 @@ function formatPhoneInput(value: string): string {
 type Props = {
   initial: {
     nickname: string;
-    birth_year: number | null;
+    birth_date: string | null;
     gender: string | null;
     bio: string | null;
     contact_phone: string | null;
@@ -26,8 +26,8 @@ type Props = {
 export default function MyPageForm({ initial }: Props) {
   const router = useRouter();
   const [nickname, setNickname] = useState(initial.nickname ?? "");
-  const [birthYear, setBirthYear] = useState(
-    initial.birth_year != null ? String(initial.birth_year) : ""
+  const [birthDate, setBirthDate] = useState(
+    initial.birth_date ?? ""
   );
   const [gender, setGender] = useState(initial.gender ?? "");
   const [bio, setBio] = useState(initial.bio ?? "");
@@ -43,8 +43,8 @@ export default function MyPageForm({ initial }: Props) {
     setSaved(false);
     const result = await updateWorkerProfileForApply({
       nickname,
-      birth_year: birthYear ? parseInt(birthYear, 10) : null,
-      gender: gender || null,
+      birth_date: birthDate.trim() || null,
+      gender: gender === "M" || gender === "F" ? gender : null,
       bio: bio || null,
       contact_phone: contactPhone || null,
     });
@@ -57,8 +57,6 @@ export default function MyPageForm({ initial }: Props) {
     router.refresh();
     setTimeout(() => setSaved(false), 5000);
   }
-
-  const currentYear = new Date().getFullYear();
 
   return (
     <form onSubmit={handleSubmit} className={`${glassCard} p-6 space-y-5`}>
@@ -88,18 +86,15 @@ export default function MyPageForm({ initial }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">출생년도 (나이) *</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">생일 *</label>
         <input
-          type="number"
-          min={1900}
-          max={2100}
-          value={birthYear}
-          onChange={(e) => { setSaved(false); setBirthYear(e.target.value); }}
+          type="date"
+          value={birthDate}
+          onChange={(e) => { setSaved(false); setBirthDate(e.target.value); }}
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-800"
-          placeholder="예: 1990"
           required
         />
-        <p className="mt-0.5 text-xs text-slate-500">{currentYear}년 기준 만 나이로 활용됩니다.</p>
+        <p className="mt-0.5 text-xs text-slate-500">1990 / 01 / 01 형식으로 저장되며, 만 나이·나이대 표시에 활용됩니다.</p>
       </div>
 
       <div>
@@ -126,17 +121,6 @@ export default function MyPageForm({ initial }: Props) {
               className="rounded-full border-slate-300 text-emerald-600"
             />
             <span className="text-slate-700">여</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="gender"
-              value="other"
-              checked={gender === "other"}
-              onChange={(e) => { setSaved(false); setGender(e.target.value); }}
-              className="rounded-full border-slate-300 text-emerald-600"
-            />
-            <span className="text-slate-700">기타</span>
           </label>
         </div>
       </div>

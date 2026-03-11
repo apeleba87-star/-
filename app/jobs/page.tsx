@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import JobPostCard from "@/components/jobs/JobPostCard";
@@ -8,6 +9,7 @@ import {
   type SortOption,
   type JobsListSearchParams,
 } from "@/lib/jobs/job-list-options";
+import { getKstTodayString, getKstTomorrowString, addDaysToDateString } from "@/lib/jobs/kst-date";
 
 export const revalidate = 60;
 
@@ -86,6 +88,8 @@ export default async function JobsListPage({
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
 
+  if (mine === "posted") redirect("/jobs/manage");
+
   type JobPostRow = {
     id: string;
     title: string;
@@ -99,19 +103,15 @@ export default async function JobsListPage({
   let jobPosts: JobPostRow[] | null = null;
   let postIds: string[] = [];
 
-  if (filter === "posted" && user) {
-    const { data } = await authSupabase
-      .from("job_posts")
-      .select("id, title, status, region, district, work_date, created_at, user_id")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    jobPosts = data ?? [];
-    postIds = jobPosts.map((p) => p.id);
+  if (filter === "applied" && !user) {
+    jobPosts = [];
+    postIds = [];
   } else if (filter === "applied" && user) {
     const { data: myApps } = await authSupabase
       .from("job_applications")
-      .select("position_id")
-      .eq("user_id", user.id);
+      .select("position_id, status")
+      .eq("user_id", user.id)
+      .neq("status", "accepted");
     const positionIds = (myApps ?? []).map((a) => a.position_id).filter(Boolean);
     if (positionIds.length === 0) {
       jobPosts = [];
@@ -144,6 +144,33 @@ export default async function JobsListPage({
 
   jobPosts = jobPosts ?? [];
 
+  if (filter === "all" && user && jobPosts.length > 0) {
+    const { data: myApps } = await authSupabase
+      .from("job_applications")
+      .select("position_id")
+      .eq("user_id", user.id);
+    const appliedPositionIds = (myApps ?? []).map((a) => a.position_id).filter(Boolean);
+    if (appliedPositionIds.length > 0) {
+      const { data: posRows } = await supabase
+        .from("job_post_positions")
+        .select("job_post_id")
+        .in("id", appliedPositionIds);
+      const myAppliedPostIds = new Set((posRows ?? []).map((p) => p.job_post_id));
+      jobPosts = jobPosts.filter((p) => !myAppliedPostIds.has(p.id));
+      postIds = jobPosts.map((p) => p.id);
+    }
+  }
+
+  if (filter === "applied" && jobPosts.length > 0) {
+    const todayKstForFilter = getKstTodayString();
+    jobPosts = jobPosts.filter((p) => {
+      if (!p.work_date) return true;
+      const dayAfterWork = addDaysToDateString(p.work_date, 1);
+      return dayAfterWork >= todayKstForFilter;
+    });
+    postIds = jobPosts.map((p) => p.id);
+  }
+
   const { data: dayPositions } = await supabase
     .from("job_post_positions")
     .select("pay_amount, pay_unit, normalized_daily_wage")
@@ -161,12 +188,13 @@ export default async function JobsListPage({
   const hasPosts = (jobPosts?.length ?? 0) > 0;
 
   if (!hasPosts) {
+    const isAppliedGuest = filter === "applied" && !user;
     const emptyMessage =
-      filter === "posted"
-        ? "내가 쓴 구인글이 없습니다."
+      isAppliedGuest
+        ? "로그인하면 지원한 현장을 볼 수 있습니다."
         : filter === "applied"
-        ? "지원한 구인글이 없습니다."
-        : "등록된 구인글이 없습니다.";
+          ? "지원한 구인글이 없습니다."
+          : "등록된 구인글이 없습니다.";
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
@@ -177,15 +205,24 @@ export default async function JobsListPage({
         <div className="mt-6 rounded-2xl border border-white/30 bg-white/60 p-8 shadow-lg backdrop-blur-xl">
           {filter === "all" ? (
             <>
-              <p className="text-center text-slate-500">첫 구인글을 등록해 보세요.</p>
-              <Link href="/jobs/new" className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-medium text-white shadow-lg hover:from-blue-600 hover:to-blue-700">
-                글쓰기
+              <p className="text-center text-slate-500">구인글 작성은 내 구인 관리에서 할 수 있습니다.</p>
+              <Link href="/jobs/manage" className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-medium text-white shadow-lg hover:from-blue-600 hover:to-blue-700">
+                내 구인 관리로 이동
+              </Link>
+            </>
+          ) : isAppliedGuest ? (
+            <>
+              <p className="text-center text-slate-500">
+                지원한 구인글은 로그인 후 확인할 수 있습니다.
+              </p>
+              <Link href={`/login?next=${encodeURIComponent("/jobs?mine=applied")}`} className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-medium text-white shadow-lg hover:from-blue-600 hover:to-blue-700">
+                로그인하기
               </Link>
             </>
           ) : (
             <>
               <p className="text-center text-slate-500">
-                {filter === "posted" ? "구인글을 작성하면 여기에 모입니다." : "지원한 구인글이 여기에 모입니다."}
+                지원한 구인글이 여기에 모입니다.
               </p>
               <Link href="/jobs" className="mt-4 inline-block w-full text-center text-sm font-medium text-blue-600 hover:underline">
                 전체 목록 보기
@@ -228,6 +265,15 @@ export default async function JobsListPage({
 
   // 필터: 지역, 작업종류, 숙련도, 일당 이상, 작업일
   let filteredPosts = jobPosts;
+  // 전체 목록: 작업일이 지난 글(마감)은 제외. 내가 쓴 글/지원한 글은 전부 노출
+  const todayKst = getKstTodayString();
+  if (filter === "all") {
+    filteredPosts = filteredPosts.filter(
+      (p) =>
+        p.status !== "closed" &&
+        (p.work_date == null || p.work_date >= todayKst)
+    );
+  }
   if (filterRegion != null)
     filteredPosts = filteredPosts.filter((p) => p.region === filterRegion);
   if (filterDistrict != null)
@@ -292,14 +338,9 @@ export default async function JobsListPage({
     return 0;
   });
 
-  // 급구 뱃지: 오늘/내일 (KST 기준)
-  const kstToday = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })
-  );
-  const todayStr = kstToday.toISOString().slice(0, 10);
-  const tomorrowDate = new Date(kstToday);
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrowStr = tomorrowDate.toISOString().slice(0, 10);
+  // 급구 뱃지: 작업일 기준 오늘/내일 (KST). 11일엔 작업일 12일 → 내일 현장, 12일엔 오늘 현장
+  const todayStr = getKstTodayString();
+  const tomorrowStr = getKstTomorrowString();
   function getUrgentLabel(workDate: string | null): "today" | "tomorrow" | undefined {
     if (!workDate) return undefined;
     const d = workDate.slice(0, 10);
@@ -339,13 +380,20 @@ export default async function JobsListPage({
         accepted: "확정됨",
         rejected: "거절됨",
         cancelled: "취소함",
+        no_show_reported: "노쇼 발생",
       };
+      // 내가 지원한 현장 목록에서는 노쇼 발생을 노출하지 않고 마감으로만 표시
+      const statusLabelsForApplicant: Record<string, string> = {
+        ...statusLabels,
+        no_show_reported: "마감",
+      };
+      const labels = filter === "applied" ? statusLabelsForApplicant : statusLabels;
       for (const post of jobPosts ?? []) {
         const posList = positionsByPost.get(post.id) ?? [];
         for (const pos of posList) {
           const st = statusByPositionId.get(pos.id);
           if (st) {
-            myStatusByPostId.set(post.id, statusLabels[st] ?? st);
+            myStatusByPostId.set(post.id, labels[st] ?? st);
             break;
           }
         }
@@ -372,24 +420,16 @@ export default async function JobsListPage({
       <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
       </div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
-          {avgDailyWage != null && dayWages.length > 0 ? (
-            <p className="mt-0.5 text-sm text-slate-600">
-              일당 평균 <span className="font-semibold text-slate-800">{avgDailyWage.toLocaleString()}원</span>
-              <span className="text-slate-500"> (최근 {dayWages.length}건)</span>
-            </p>
-          ) : (
-            <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>
-          )}
-        </div>
-        <Link
-          href="/jobs/new"
-          className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:from-blue-600 hover:to-blue-700"
-        >
-          글쓰기
-        </Link>
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
+        {avgDailyWage != null && dayWages.length > 0 ? (
+          <p className="mt-0.5 text-sm text-slate-600">
+            일당 평균 <span className="font-semibold text-slate-800">{avgDailyWage.toLocaleString()}원</span>
+            <span className="text-slate-500"> (최근 {dayWages.length}건)</span>
+          </p>
+        ) : (
+          <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>
+        )}
       </div>
 
       {user && (
@@ -408,14 +448,10 @@ export default async function JobsListPage({
             전체
           </Link>
           <Link
-            href={`/jobs${buildJobsQuery({ ...currentQuery, mine: "posted" })}`}
-            className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-              filter === "posted"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
+            href="/jobs/manage"
+            className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
-            내가 쓴 글
+            내 구인 관리
           </Link>
           <Link
             href={`/jobs${buildJobsQuery({ ...currentQuery, mine: "applied" })}`}
@@ -425,7 +461,13 @@ export default async function JobsListPage({
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            내가 지원한 글
+            내가 지원한 현장
+          </Link>
+          <Link
+            href="/jobs/matches"
+            className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+          >
+            내 매칭
           </Link>
         </nav>
       )}

@@ -8,9 +8,11 @@ import { glassCard } from "@/lib/ui-styles";
 import MarketComparisonBox from "@/components/listings/MarketComparisonBox";
 import ContactButtons from "@/components/listings/ContactButtons";
 import ApplicationList, { type ApplicantRow } from "@/components/jobs/ApplicationList";
+import { getKstTodayString } from "@/lib/jobs/kst-date";
 import ApplyButton from "@/components/jobs/ApplyButton";
 import JobPostPrivateDetails from "@/components/jobs/JobPostPrivateDetails";
 import JobPostOwnerActions from "@/components/jobs/JobPostOwnerActions";
+import NoShowAppealBlock from "@/components/jobs/NoShowAppealBlock";
 
 export const revalidate = 60;
 
@@ -54,24 +56,54 @@ export default async function JobPostDetailPage({
   const applicantUserIds = [...new Set((applications ?? []).map((a) => a.user_id))];
   const { data: workerProfiles } = await supabase
     .from("worker_profiles")
-    .select("user_id, nickname, birth_year, gender, bio")
+    .select("user_id, nickname, birth_date, gender, bio, contact_phone")
     .in("user_id", applicantUserIds.length ? applicantUserIds : ["00000000-0000-0000-0000-000000000000"]);
 
   const profileByUser = new Map((workerProfiles ?? []).map((p) => [p.user_id, p]));
 
+  // 확정된 지원자의 연락처·이메일: 구인자만 조회 가능(RLS). authSupabase로 요청해야 함.
+  let applicantContactByUser = new Map<string, { email: string | null; phone: string | null }>();
+  if (isOwner && applicantUserIds.length > 0) {
+    const { data: applicantProfiles } = await authSupabase
+      .from("profiles")
+      .select("id, email, phone")
+      .in("id", applicantUserIds);
+    applicantContactByUser = new Map(
+      (applicantProfiles ?? []).map((p) => [
+        p.id,
+        { email: p.email ?? null, phone: p.phone ?? null },
+      ])
+    );
+  }
+
   const since = new Date();
   since.setDate(since.getDate() - REPORT_PERIOD_DAYS);
   const sinceIso = since.toISOString();
+  const applicantIdsForReport = applicantUserIds.length ? applicantUserIds : ["00000000-0000-0000-0000-000000000000"];
+
   const { data: reports } = await supabase
     .from("job_reports")
     .select("reported_user_id")
-    .in("reported_user_id", applicantUserIds.length ? applicantUserIds : ["00000000-0000-0000-0000-000000000000"])
+    .in("reported_user_id", applicantIdsForReport)
     .gte("created_at", sinceIso)
     .neq("status", "rescinded");
 
   const reportCountByUser = new Map<string, number>();
   for (const r of reports ?? []) {
     reportCountByUser.set(r.reported_user_id, (reportCountByUser.get(r.reported_user_id) ?? 0) + 1);
+  }
+
+  const { data: noShowReports } = await supabase
+    .from("job_reports")
+    .select("reported_user_id")
+    .eq("reason_type", "no_show")
+    .in("reported_user_id", applicantIdsForReport)
+    .gte("created_at", sinceIso)
+    .neq("status", "rescinded");
+
+  const noShowCountByUser = new Map<string, number>();
+  for (const r of noShowReports ?? []) {
+    noShowCountByUser.set(r.reported_user_id, (noShowCountByUser.get(r.reported_user_id) ?? 0) + 1);
   }
 
   const applicationsByPosition = new Map<string, typeof applications>();
@@ -87,6 +119,27 @@ export default async function JobPostDetailPage({
       )
     : new Map();
 
+  const myNoShowAppIds =
+    user && applications
+      ? applications.filter((a) => a.user_id === user.id && a.status === "no_show_reported").map((a) => a.id)
+      : [];
+  const { data: myNoShowReports } =
+    myNoShowAppIds.length > 0
+      ? await authSupabase
+          .from("job_reports")
+          .select("id, job_application_id, appealed_at")
+          .eq("reason_type", "no_show")
+          .eq("status", "open")
+          .in("job_application_id", myNoShowAppIds)
+      : { data: [] };
+  const reportByApplicationId = new Map<string, { reportId: string; appealedAt: string | null }>();
+  for (const r of myNoShowReports ?? []) {
+    reportByApplicationId.set(r.job_application_id, {
+      reportId: r.id,
+      appealedAt: r.appealed_at ?? null,
+    });
+  }
+
   const isAcceptedForThisPost =
     user &&
     (applications ?? []).some((a) => a.user_id === user.id && a.status === "accepted");
@@ -95,18 +148,17 @@ export default async function JobPostDetailPage({
     user && !isOwner
       ? await authSupabase
           .from("worker_profiles")
-          .select("birth_year, gender")
+          .select("birth_date, gender")
           .eq("user_id", user.id)
           .maybeSingle()
       : { data: null };
   const workerProfileComplete =
-    myWorker?.birth_year != null &&
-    myWorker.birth_year >= 1900 &&
-    myWorker.birth_year <= 2100 &&
+    myWorker?.birth_date != null &&
+    String(myWorker.birth_date).trim() !== "" &&
     myWorker.gender != null &&
-    String(myWorker.gender).trim() !== "";
+    (myWorker.gender === "M" || myWorker.gender === "F");
 
-  const { data: privateDetails } = await supabase
+  const { data: privateDetails } = await authSupabase
     .from("job_post_private_details")
     .select("full_address, contact_phone, access_instructions, parking_info, notes")
     .eq("job_post_id", id)
@@ -139,15 +191,22 @@ export default async function JobPostDetailPage({
   type AppRow = NonNullable<typeof applications>[number];
   function toApplicantRow(a: AppRow): ApplicantRow {
     const profile = profileByUser.get(a.user_id);
+    const contact = applicantContactByUser.get(a.user_id);
     return {
       applicationId: a.id,
       userId: a.user_id,
       status: a.status as ApplicantRow["status"],
       nickname: profile?.nickname ?? "",
-      birthYear: profile?.birth_year ?? null,
+      birthYear: profile?.birth_date
+        ? new Date(profile.birth_date + "T12:00:00").getFullYear()
+        : null,
       gender: profile?.gender ?? null,
       bio: profile?.bio ?? null,
       reportCountInPeriod: reportCountByUser.get(a.user_id) ?? 0,
+      noShowCountInPeriod: noShowCountByUser.get(a.user_id) ?? 0,
+      // 확정된 지원자만 구인자에게 노출(RLS로 accepted만 조회됨)
+      contactPhone: contact?.phone ?? profile?.contact_phone ?? null,
+      contactEmail: contact?.email ?? null,
     };
   }
 
@@ -193,12 +252,14 @@ export default async function JobPostDetailPage({
               </div>
             )}
           </dl>
-          <div className="mt-5">
-            <ContactButtons
-              phone={post.contact_phone}
-              disabled={!isOwner && !isAcceptedForThisPost}
-            />
-          </div>
+          {!isOwner && (
+            <div className="mt-5">
+              <ContactButtons
+                phone={post.contact_phone}
+                disabled={!isAcceptedForThisPost}
+              />
+            </div>
+          )}
         </header>
 
         {isOwner && (
@@ -306,28 +367,44 @@ export default async function JobPostDetailPage({
                         positionLabel={posCategoryDisplay}
                         requiredCount={pos.required_count}
                         applicants={applicantRows}
+                        allowCancelConfirm={!post.work_date || post.work_date >= getKstTodayString()}
                       />
                     </div>
                   )}
 
                   {!isOwner && user && pos.status !== "closed" && (
                     <div className="mt-4 border-t border-slate-100 pt-4">
-                      {!workerProfileComplete && (
-                        <div className="mb-3 rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 text-sm text-amber-900">
-                          <p>
-                            지원하려면 <Link href="/mypage" className="font-medium underline underline-offset-2">마이페이지</Link>에서 <strong>나이(출생년도)</strong>와 <strong>성별</strong>을 먼저 입력해 주세요.
-                          </p>
-                          <p className="mt-1 text-xs text-amber-800">
-                            잘못 입력된 정보로 인한 피해는 본인이 책임지셔야 합니다.
-                          </p>
-                        </div>
-                      )}
-                      <ApplyButton
-                        positionId={pos.id}
-                        jobPostId={id}
-                        disabled={post.status === "closed" || !workerProfileComplete}
-                        alreadyApplied={alreadyApplied}
-                      />
+                      {(() => {
+                        const myApp = myApplicationByPosition.get(pos.id);
+                        const appealData = myApp ? reportByApplicationId.get(myApp.id) : null;
+                        const showAppeal = myApp?.status === "no_show_reported" && appealData;
+                        return (
+                          <>
+                            {showAppeal && (
+                              <NoShowAppealBlock
+                                reportId={appealData.reportId}
+                                appealedAt={appealData.appealedAt}
+                              />
+                            )}
+                            {!workerProfileComplete && (
+                              <div className="mb-3 rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 text-sm text-amber-900">
+                                <p>
+                                  지원하려면 <Link href="/mypage" className="font-medium underline underline-offset-2">마이페이지</Link>에서 <strong>생일</strong>과 <strong>성별</strong>을 먼저 입력해 주세요.
+                                </p>
+                                <p className="mt-1 text-xs text-amber-800">
+                                  잘못 입력된 정보로 인한 피해는 본인이 책임지셔야 합니다.
+                                </p>
+                              </div>
+                            )}
+                            <ApplyButton
+                              positionId={pos.id}
+                              jobPostId={id}
+                              disabled={post.status === "closed" || !workerProfileComplete}
+                              alreadyApplied={alreadyApplied}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </li>

@@ -2,17 +2,30 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { FileText } from "lucide-react";
+import { FileText, ChevronRight } from "lucide-react";
+import { formatMoneyMan, getBaseAmtFromRaw, ddayNumber } from "@/lib/tender-utils";
+import {
+  homeCardClass,
+  homeFooterBtnClass,
+  homeSectionIconBox,
+  homeSectionSpacing,
+} from "./home-section-styles";
 
-const glass = "bg-white/60 backdrop-blur-xl border border-white/30 shadow-lg";
+function getBaseAmount(t: Tender): number | null {
+  if (t.base_amt != null) return Number(t.base_amt);
+  return getBaseAmtFromRaw(t.raw) ?? null;
+}
 
-function dday(clseDt: string | null): string {
-  if (!clseDt) return "—";
-  const end = new Date(clseDt).getTime();
-  const day = Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000));
-  if (day < 0) return "마감";
-  if (day === 0) return "D-Day";
-  return `D-${day}`;
+function getDaysStyle(days: number): string {
+  if (days <= 3) return "bg-red-50 text-red-700 border-red-200";
+  if (days <= 7) return "bg-orange-50 text-orange-700 border-orange-200";
+  return "bg-blue-50 text-blue-700 border-blue-200";
+}
+
+function getDaysText(days: number): string {
+  if (days < 0) return "마감";
+  if (days === 0) return "D-Day";
+  return `D-${days}`;
 }
 
 type Tender = {
@@ -21,6 +34,8 @@ type Tender = {
   ntce_instt_nm: string | null;
   bid_clse_dt: string | null;
   bsns_dstr_nm: string | null;
+  base_amt?: number | null;
+  raw?: unknown;
 };
 
 type Props = { tenders: Tender[]; relatedCount: number; todayCount: number };
@@ -28,12 +43,12 @@ type Props = { tenders: Tender[]; relatedCount: number; todayCount: number };
 export default function TenderSection({ tenders, relatedCount, todayCount }: Props) {
   return (
     <motion.section
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
-      className="mb-10"
+      transition={{ duration: 0.4, delay: 0.05 }}
+      className={homeSectionSpacing}
     >
-      <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
+      <div className={`${homeSectionIconBox} bg-blue-500`}>
         <FileText className="h-5 w-5" />
       </div>
       <h2 className="text-xl font-bold text-slate-900">청소·방역·소독 입찰</h2>
@@ -42,54 +57,58 @@ export default function TenderSection({ tenders, relatedCount, todayCount }: Pro
       </p>
 
       {tenders.length === 0 ? (
-        <motion.div
-          className={`${glass} mt-4 flex flex-col items-center justify-center rounded-2xl p-8`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
+        <div className={`${homeCardClass} mt-4 flex flex-col items-center justify-center p-8`}>
           <FileText className="h-12 w-12 text-slate-300" />
           <p className="mt-3 text-sm text-slate-500">현재 접수 중인 청소·방역·소독 입찰 공고가 없습니다.</p>
-        </motion.div>
+        </div>
       ) : (
         <ul className="mt-4 space-y-3">
-          {tenders.map((t, i) => (
-            <motion.li
-              key={t.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * i }}
-            >
-              <Link href={`/tenders/${t.id}`} className="block touch-manipulation">
-                <motion.div
-                  className={`${glass} flex min-h-[72px] flex-col justify-center rounded-2xl p-4 sm:min-h-0`}
-                  whileHover={{ scale: 1.02, boxShadow: "0 20px 40px -12px rgba(0,0,0,0.12)" }}
-                  whileTap={{ scale: 0.98 }}
+          {tenders.map((t) => {
+            const baseAmt = getBaseAmount(t);
+            const days = ddayNumber(t.bid_clse_dt);
+            return (
+              <li key={t.id}>
+                <Link
+                  href={`/tenders/${t.id}`}
+                  className="group block rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:border-blue-200 hover:shadow-md"
                 >
-                  <span className="font-medium text-slate-900 line-clamp-2">{t.bid_ntce_nm || "(제목 없음)"}</span>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
-                    <span>발주 : {t.ntce_instt_nm || "—"}</span>
-                    {t.bsns_dstr_nm && <span>{t.bsns_dstr_nm}</span>}
-                    <span className="font-medium text-red-600">마감 : {dday(t.bid_clse_dt)}</span>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="min-w-0 flex-1 line-clamp-2 text-base font-semibold text-slate-900 group-hover:text-blue-600">
+                        {t.bid_ntce_nm || "(제목 없음)"}
+                      </h3>
+                      <span
+                        className={`shrink-0 rounded-lg border px-2.5 py-1 text-sm font-bold ${getDaysStyle(days)}`}
+                      >
+                        {getDaysText(days)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-600 line-clamp-1">
+                      {t.ntce_instt_nm || "—"}
+                      {t.bsns_dstr_nm ? ` · ${t.bsns_dstr_nm}` : ""}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-500">
+                        기초금액
+                      </span>
+                      <span className="text-sm font-semibold text-slate-800">
+                        {baseAmt != null ? formatMoneyMan(baseAmt) : "—"}
+                      </span>
+                      <span className="ml-auto flex items-center gap-0.5 text-xs font-medium text-slate-400 group-hover:text-blue-500">
+                        상세보기
+                        <ChevronRight className="h-4 w-4" />
+                      </span>
+                    </div>
                   </div>
-                </motion.div>
-              </Link>
-            </motion.li>
-          ))}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      <Link href="/tenders?category=both" className="mt-4 block touch-manipulation">
-        <motion.span
-          className={`${glass} flex min-h-[48px] w-full items-center justify-center rounded-2xl py-3.5 text-sm font-medium text-slate-700`}
-          whileHover={{
-            background: "linear-gradient(135deg, rgba(37,99,235,0.9) 0%, rgba(124,58,237,0.9) 100%)",
-            color: "white",
-          }}
-          whileTap={{ scale: 0.98 }}
-        >
-          전체 공고 보기
-        </motion.span>
+      <Link href="/tenders?category=both" className={`${homeFooterBtnClass} block`}>
+        전체 공고 보기
       </Link>
     </motion.section>
   );

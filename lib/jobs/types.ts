@@ -82,7 +82,7 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   accepted: "확정",
   rejected: "거절됨",
   cancelled: "취소됨",
-  no_show_reported: "노쇼 신고됨",
+  no_show_reported: "노쇼 발생",
 };
 
 export const POSITION_STATUS_LABELS: Record<PositionStatus, string> = {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { applyToPosition } from "@/app/jobs/[id]/actions";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 
 export default function ApplyButton({ positionId, jobPostId, disabled, alreadyApplied }: Props) {
   const [loading, setLoading] = useState(false);
+  const [justApplied, setJustApplied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleApply() {
@@ -24,10 +26,12 @@ export default function ApplyButton({ positionId, jobPostId, disabled, alreadyAp
       setError(result.error ?? "지원 실패");
       return;
     }
-    window.location.reload();
+    setJustApplied(true);
   }
 
-  if (alreadyApplied) {
+  const showCompleted = alreadyApplied || justApplied;
+
+  if (showCompleted) {
     return (
       <div className="border-t border-slate-200/80 pt-4">
         <button
@@ -48,11 +52,18 @@ export default function ApplyButton({ positionId, jobPostId, disabled, alreadyAp
         type="button"
         disabled={disabled || loading}
         onClick={handleApply}
-        className="min-h-[48px] w-full rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 sm:w-auto sm:min-w-[140px]"
+        className="min-h-[48px] w-full rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 sm:w-auto sm:min-w-[140px] inline-flex items-center justify-center gap-2"
         whileHover={disabled || loading ? {} : { scale: 1.02 }}
         whileTap={disabled || loading ? {} : { scale: 0.98 }}
       >
-        {loading ? "지원 중…" : "지원하기"}
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            <span>지원중</span>
+          </>
+        ) : (
+          "지원하기"
+        )}
       </motion.button>
       {error && (
         <p className="mt-2 text-sm text-red-600" role="alert">

@@ -4,6 +4,7 @@ import { createServerSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import type { PositionInput } from "@/lib/jobs/types";
 import { resolveJobType } from "@/lib/jobs/resolve-job-type";
+import { getKstTodayString } from "@/lib/jobs/kst-date";
 
 type PrivateDetailsInput = {
   full_address?: string | null;
@@ -41,6 +42,30 @@ export async function createJobPost(input: CreateJobPostInput) {
   if (!input.region?.trim()) return { ok: false, error: "지역을 선택하세요." };
   if (!input.contact_phone?.trim()) return { ok: false, error: "연락처를 입력하세요." };
   if (!input.positions?.length) return { ok: false, error: "모집 포지션을 1개 이상 추가하세요." };
+  const todayKst = getKstTodayString();
+  if (input.work_date?.trim() && input.work_date.trim() < todayKst) {
+    return { ok: false, error: "근무일은 오늘 이후로 선택해 주세요." };
+  }
+
+  const now = Date.now();
+  const oneMinAgo = new Date(now - 60 * 1000).toISOString();
+  const tenMinAgo = new Date(now - 10 * 60 * 1000).toISOString();
+  const { count: count1 } = await supabase
+    .from("job_posts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", oneMinAgo);
+  if ((count1 ?? 0) >= 3) {
+    return { ok: false, error: "1분에 구인글은 3개까지 등록할 수 있습니다. 잠시 후 다시 시도해 주세요." };
+  }
+  const { count: count10 } = await supabase
+    .from("job_posts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", tenMinAgo);
+  if ((count10 ?? 0) >= 10) {
+    return { ok: false, error: "10분 내 구인글은 10개까지 등록할 수 있습니다. 잠시 후 다시 시도해 주세요." };
+  }
 
   const { data: mainCategories } = await supabase
     .from("categories")
@@ -86,11 +111,15 @@ export async function createJobPost(input: CreateJobPostInput) {
     );
   }
 
+  const FAKE_PAY_DAILY_LIMIT = 2_000_000;
   for (let i = 0; i < input.positions.length; i++) {
     const p = input.positions[i];
     const jobTypeInput = (p.job_type_input ?? "").trim();
     if (!jobTypeInput) return { ok: false, error: `${i + 1}번째 포지션의 작업 종류를 선택하거나 입력하세요.` };
     if (Number(p.pay_amount) <= 0) return { ok: false, error: `${i + 1}번째 포지션의 금액을 입력하세요.` };
+    if (p.pay_unit === "day" && Number(p.pay_amount) >= FAKE_PAY_DAILY_LIMIT) {
+      return { ok: false, error: "일당 200만원 이상은 허위 금액으로 등록할 수 없습니다." };
+    }
     const skillLevel = p.skill_level === "expert" || p.skill_level === "general" ? p.skill_level : "general";
 
     const resolved = await resolveJobType(supabase, p.job_type_key ?? null, jobTypeInput || undefined, fallbackMainId);

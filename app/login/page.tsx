@@ -5,12 +5,19 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
+import type { Provider } from "@supabase/supabase-js";
 
 function isValidNext(path: string | null): path is string {
   if (!path || typeof path !== "string") return false;
   const p = path.trim();
   return p.startsWith("/") && !p.startsWith("//");
 }
+
+const SOCIAL_PROVIDERS: { provider: Provider; label: string; className?: string }[] = [
+  { provider: "google", label: "Google로 로그인", className: "border-slate-300 bg-white text-slate-800 hover:bg-slate-50" },
+  { provider: "naver", label: "네이버로 로그인", className: "border-[#03C75A] bg-[#03C75A] text-white hover:bg-[#02b350]" },
+  { provider: "kakao", label: "카카오로 로그인", className: "border-[#FEE500] bg-[#FEE500] text-[#191919] hover:bg-[#f5d900]" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +26,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,9 +44,53 @@ export default function LoginPage() {
     router.refresh();
   }
 
+  async function handleOAuth(provider: Provider) {
+    setError(null);
+    setOauthLoading(provider);
+    const supabase = createClient();
+    const next = isValidNext(nextUrl) ? nextUrl : "/onboarding";
+    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` : undefined;
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
+    });
+    if (err) {
+      setError(err.message);
+      setOauthLoading(null);
+      return;
+    }
+    // redirect는 signInWithOAuth가 처리 (같은 창 이동)
+    setOauthLoading(null);
+  }
+
   return (
     <div className="mx-auto max-w-md px-4 py-16">
       <h1 className="mb-8 text-2xl font-bold text-slate-900">로그인</h1>
+
+      {/* 소셜 로그인 */}
+      <div className="mb-6 space-y-2">
+        {SOCIAL_PROVIDERS.map(({ provider, label, className }) => (
+          <button
+            key={provider}
+            type="button"
+            onClick={() => handleOAuth(provider)}
+            disabled={!!oauthLoading}
+            className={`w-full rounded-lg border px-4 py-2.5 text-center text-sm font-medium transition disabled:opacity-50 ${className}`}
+          >
+            {oauthLoading === provider ? "연결 중…" : label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-slate-200" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-2 text-slate-500">또는</span>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <label className="label">이메일</label>

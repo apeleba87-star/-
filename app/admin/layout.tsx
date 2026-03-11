@@ -51,6 +51,9 @@ export default async function AdminLayout({
         <Link href="/admin/reports" className="font-medium text-slate-700 hover:text-slate-900">
           신고
         </Link>
+        <Link href="/admin/job-reports" className="font-medium text-slate-700 hover:text-slate-900">
+          노쇼 신고
+        </Link>
         <Link href="/admin/ads" className="font-medium text-slate-700 hover:text-slate-900">
           광고 슬롯
         </Link>

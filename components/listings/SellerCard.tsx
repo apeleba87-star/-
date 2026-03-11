@@ -1,7 +1,6 @@
 "use client";
 
 import { getSellerGradeLabel } from "@/lib/listings/grade";
-import { formatMoney } from "@/lib/tender-utils";
 
 type Props = {
   displayName: string | null;
@@ -10,6 +9,8 @@ type Props = {
   completionRate?: number | null;
   reviewRating?: number | null;
   reviewCount?: number;
+  completedSalesCount?: number;
+  incidentReportCount?: number;
 };
 
 export default function SellerCard({
@@ -18,9 +19,13 @@ export default function SellerCard({
   completionRate,
   reviewRating,
   reviewCount = 0,
+  completedSalesCount = 0,
+  incidentReportCount = 0,
 }: Props) {
   const gradeLabel = getSellerGradeLabel(sellerGrade);
   const dataPoor = !sellerGrade || sellerGrade === "N";
+  const showCaution =
+    (sellerGrade === "C" || sellerGrade === "D") || incidentReportCount > 0;
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5">
@@ -34,25 +39,35 @@ export default function SellerCard({
         ) : (
           <p className="mt-1 text-sm text-slate-500">평가 데이터 부족</p>
         )}
+        {showCaution && (
+          <p className="mt-1.5 text-sm font-medium text-amber-700">거래 시 주의해 주세요.</p>
+        )}
       </div>
-      {(completionRate != null || (reviewRating != null && reviewCount > 0)) && (
-        <dl className="mt-4 space-y-1 text-sm">
-          {completionRate != null && (
-            <div className="flex justify-between">
-              <dt className="text-slate-500">완료율</dt>
-              <dd className="text-slate-800">{Math.round(completionRate * 100)}%</dd>
-            </div>
-          )}
-          {reviewRating != null && reviewCount > 0 && (
-            <div className="flex justify-between">
-              <dt className="text-slate-500">후기</dt>
-              <dd className="text-slate-800">
-                {reviewRating.toFixed(1)} / 5 ({reviewCount}개)
-              </dd>
-            </div>
-          )}
-        </dl>
-      )}
+      <dl className="mt-4 space-y-1 text-sm">
+        {completedSalesCount > 0 && (
+          <div className="flex justify-between">
+            <dt className="text-slate-500">거래 완료</dt>
+            <dd className="text-slate-800">{completedSalesCount}건</dd>
+          </div>
+        )}
+        {completionRate != null && (
+          <div className="flex justify-between">
+            <dt className="text-slate-500">완료율</dt>
+            <dd className="text-slate-800">{Math.round(completionRate * 100)}%</dd>
+          </div>
+        )}
+        {reviewRating != null && reviewCount > 0 && (
+          <div className="flex justify-between items-center gap-2">
+            <dt className="text-slate-500">후기</dt>
+            <dd className="text-slate-800 flex items-center gap-2">
+              {reviewRating.toFixed(1)} / 5 ({reviewCount}개)
+              <a href="#seller-reviews" className="text-blue-600 text-xs hover:underline">
+                후기 보기
+              </a>
+            </dd>
+          </div>
+        )}
+      </dl>
     </section>
   );
 }

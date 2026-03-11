@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, Calendar } from "lucide-react";
 import { createJobPost } from "./actions";
+import { updateJobPost } from "@/app/jobs/[id]/actions";
 import { glassCard } from "@/lib/ui-styles";
 import { REGION_SIDO_LIST, REGION_GUGUN, formatRegionForDb } from "@/lib/listings/regions";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
@@ -33,9 +34,29 @@ function parseAmountInput(value: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+export type EditInitialData = {
+  title: string;
+  regionSido: (typeof REGION_SIDO_LIST)[number];
+  regionGugun: string;
+  workDate: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+  contactPhone: string;
+  address: string;
+  fullAddress: string;
+  accessInstructions: string;
+  parkingInfo: string;
+  siteNotes: string;
+  useSameTimeForPositions: boolean;
+  positions: (PositionInput & { id: string })[];
+};
+
 type Props = {
   mainCategories: { id: string }[];
   subCategories: unknown[];
+  initialData?: EditInitialData;
+  jobPostId?: string;
 };
 
 const defaultPosition: PositionInput = {
@@ -52,26 +73,30 @@ const defaultPosition: PositionInput = {
   end_time: null,
 };
 
-export default function JobPostForm({ mainCategories, subCategories }: Props) {
+export default function JobPostForm({ mainCategories, subCategories, initialData, jobPostId }: Props) {
   const router = useRouter();
+  const isEdit = Boolean(jobPostId && initialData);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [regionSido, setRegionSido] = useState<(typeof REGION_SIDO_LIST)[number]>("서울");
+  const [title, setTitle] = useState(initialData?.title ?? "");
+  const [regionSido, setRegionSido] = useState<(typeof REGION_SIDO_LIST)[number]>(initialData?.regionSido ?? "서울");
   const gugunOptions = useMemo(() => REGION_GUGUN[regionSido] ?? [], [regionSido]);
-  const [regionGugun, setRegionGugun] = useState("");
+  const [regionGugun, setRegionGugun] = useState(initialData?.regionGugun ?? "");
   const effectiveGugun = regionGugun && gugunOptions.includes(regionGugun) ? regionGugun : gugunOptions[0] ?? "";
-  const [workDate, setWorkDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [description, setDescription] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [fullAddress, setFullAddress] = useState("");
-  const [accessInstructions, setAccessInstructions] = useState("");
-  const [parkingInfo, setParkingInfo] = useState("");
-  const [siteNotes, setSiteNotes] = useState("");
-  const [useSameTimeForPositions, setUseSameTimeForPositions] = useState(true);
-  const [positions, setPositions] = useState<PositionInput[]>([{ ...defaultPosition }]);
+  const [workDate, setWorkDate] = useState(initialData?.workDate ?? "");
+  const [startTime, setStartTime] = useState(initialData?.startTime ?? "");
+  const [endTime, setEndTime] = useState(initialData?.endTime ?? "");
+  const [description, setDescription] = useState(initialData?.description ?? "");
+  const [contactPhone, setContactPhone] = useState(initialData?.contactPhone ?? "");
+  const [fullAddress, setFullAddress] = useState(initialData?.fullAddress ?? "");
+  const [accessInstructions, setAccessInstructions] = useState(initialData?.accessInstructions ?? "");
+  const [parkingInfo, setParkingInfo] = useState(initialData?.parkingInfo ?? "");
+  const [siteNotes, setSiteNotes] = useState(initialData?.siteNotes ?? "");
+  const [useSameTimeForPositions, setUseSameTimeForPositions] = useState(initialData?.useSameTimeForPositions ?? true);
+  const [positions, setPositions] = useState<(PositionInput & { id?: string })[]>(
+    initialData?.positions ?? [{ ...defaultPosition }]
+  );
 
   function handleContactChange(raw: string) {
     setContactPhone(formatPhoneInput(raw));
@@ -88,10 +113,12 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
   }
 
   function addPosition() {
+    if (isEdit) return;
     setPositions((prev) => [...prev, { ...defaultPosition }]);
   }
 
   function removePosition(index: number) {
+    if (isEdit) return;
     setPositions((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
   }
 
@@ -103,7 +130,6 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const regionFull = formatRegionForDb(regionSido, effectiveGugun);
     if (!title.trim()) {
       setError("제목을 입력하세요.");
       setLoading(false);
@@ -114,7 +140,7 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
       setLoading(false);
       return;
     }
-    const result = await createJobPost({
+    const payload = {
       title: title.trim(),
       region: regionSido,
       district: effectiveGugun,
@@ -133,6 +159,7 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
       },
       positions: positions.map((p) => ({
         ...p,
+        id: "id" in p && p.id ? p.id : "",
         job_type_key: p.job_type_key ?? null,
         job_type_input: (p.job_type_input ?? "").trim() || null,
         skill_level: p.skill_level === "expert" || p.skill_level === "general" ? p.skill_level : "general",
@@ -142,7 +169,51 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
         start_time: useSameTimeForPositions ? (startTime.trim() || null) : (p.start_time?.trim() || null),
         end_time: useSameTimeForPositions ? (endTime.trim() || null) : (p.end_time?.trim() || null),
       })),
-    });
+    };
+
+    if (isEdit && jobPostId) {
+      const positionsWithId = positions.map((p) => {
+        const withId = p as (PositionInput & { id?: string });
+        if (!withId.id) throw new Error("수정 모드에서 포지션 id가 없습니다.");
+        return {
+          id: withId.id,
+          job_type_key: withId.job_type_key ?? null,
+          job_type_input: (withId.job_type_input ?? "").trim() || null,
+          skill_level: withId.skill_level === "expert" || withId.skill_level === "general" ? withId.skill_level : "general",
+          pay_amount: typeof withId.pay_amount === "number" ? withId.pay_amount : parseAmountInput(String(withId.pay_amount ?? "")),
+          pay_unit: withId.pay_unit,
+          required_count: Math.max(1, Math.floor(Number(withId.required_count) || 1)),
+          work_scope: withId.work_scope?.trim() || null,
+          notes: withId.notes?.trim() || null,
+          work_period: withId.pay_unit === "half_day" ? (withId.work_period ?? null) : null,
+          start_time: useSameTimeForPositions ? (startTime.trim() || null) : (withId.start_time?.trim() || null),
+          end_time: useSameTimeForPositions ? (endTime.trim() || null) : (withId.end_time?.trim() || null),
+        };
+      });
+      const result = await updateJobPost(jobPostId, {
+        title: payload.title,
+        region: payload.region,
+        district: payload.district,
+        address: initialData?.address ?? undefined,
+        work_date: payload.work_date,
+        start_time: payload.start_time,
+        end_time: payload.end_time,
+        description: payload.description,
+        contact_phone: payload.contact_phone,
+        private_details: payload.private_details,
+        positions: positionsWithId,
+      });
+      setLoading(false);
+      if (!result.ok) {
+        setError(result.error ?? "수정 실패");
+        return;
+      }
+      router.push(`/jobs/${jobPostId}`);
+      router.refresh();
+      return;
+    }
+
+    const result = await createJobPost(payload);
     setLoading(false);
     if (!result.ok) {
       setError(result.error ?? "저장 실패");
@@ -158,13 +229,13 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
-        href="/jobs"
+        href={isEdit && jobPostId ? `/jobs/${jobPostId}` : "/jobs"}
         className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900"
       >
-        <span aria-hidden>←</span> 목록
+        <span aria-hidden>←</span> {isEdit ? "글 보기" : "목록"}
       </Link>
-      <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">인력 구인 글쓰기</h1>
-      <p className="mt-0.5 text-sm text-slate-600">현장 정보와 모집 포지션을 입력하세요.</p>
+      <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{isEdit ? "구인글 수정" : "인력 구인 글쓰기"}</h1>
+      <p className="mt-0.5 text-sm text-slate-600">{isEdit ? "변경 후 저장하면 수정 내용이 반영됩니다." : "현장 정보와 모집 포지션을 입력하세요."}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {error && (
@@ -368,13 +439,15 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
               <h2 className="text-base font-semibold text-slate-800">모집 포지션</h2>
               <p className="mt-0.5 text-xs text-slate-500">직종, 인원, 급여를 입력하세요.</p>
             </div>
-            <button
-              type="button"
-              onClick={addPosition}
-              className="shrink-0 rounded-xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:from-blue-600 hover:to-blue-700"
-            >
-              <Plus className="inline h-4 w-4" aria-hidden /> 포지션 추가
-            </button>
+            {!isEdit && (
+              <button
+                type="button"
+                onClick={addPosition}
+                className="shrink-0 rounded-xl bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:from-blue-600 hover:to-blue-700"
+              >
+                <Plus className="inline h-4 w-4" aria-hidden /> 포지션 추가
+              </button>
+            )}
           </div>
           <div className="mt-6 space-y-4">
             {positions.map((pos, idx) => (
@@ -385,7 +458,7 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
                 inputClass={inputClass}
                 useSameTime={useSameTimeForPositions}
                 onUpdate={(patch) => updatePosition(idx, patch)}
-                onRemove={positions.length > 1 ? () => removePosition(idx) : undefined}
+                onRemove={!isEdit && positions.length > 1 ? () => removePosition(idx) : undefined}
               />
             ))}
           </div>
@@ -396,7 +469,7 @@ export default function JobPostForm({ mainCategories, subCategories }: Props) {
           disabled={loading}
           className="w-full min-h-[52px] rounded-2xl bg-slate-900 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-slate-800 disabled:opacity-50"
         >
-          {loading ? "등록 중…" : "등록하기"}
+          {loading ? (isEdit ? "수정 중…" : "등록 중…") : isEdit ? "수정 완료" : "등록하기"}
         </button>
       </form>
     </div>

@@ -3,9 +3,22 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
+/** YYYY-MM-DD 형식인지 및 유효 날짜 범위(1900~2100년) 검사 */
+function isValidBirthDate(value: string | null): boolean {
+  if (!value || typeof value !== "string") return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return false;
+  const y = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const d = parseInt(match[3], 10);
+  if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+}
+
 export async function updateWorkerProfileForApply(input: {
   nickname: string;
-  birth_year: number | null;
+  birth_date: string | null;
   gender: string | null;
   bio: string | null;
   contact_phone: string | null;
@@ -16,14 +29,14 @@ export async function updateWorkerProfileForApply(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
 
-  const birthYear = input.birth_year != null ? Number(input.birth_year) : null;
-  const gender = input.gender === "M" || input.gender === "F" || input.gender === "other" ? input.gender : null;
+  const birthDate = (input.birth_date ?? "").trim() || null;
+  const gender = input.gender === "M" || input.gender === "F" ? input.gender : null;
 
-  if (birthYear == null || birthYear < 1900 || birthYear > 2100) {
-    return { ok: false, error: "나이(출생년도)를 올바르게 입력해 주세요. (1900~2100)" };
+  if (!birthDate || !isValidBirthDate(birthDate)) {
+    return { ok: false, error: "생일을 올바르게 입력해 주세요. (예: 1990-01-01)" };
   }
-  if (!gender || gender === "") {
-    return { ok: false, error: "성별을 선택해 주세요." };
+  if (!gender) {
+    return { ok: false, error: "성별을 선택해 주세요. (남/여)" };
   }
 
   const { data: existing } = await supabase
@@ -41,7 +54,7 @@ export async function updateWorkerProfileForApply(input: {
       {
         user_id: user.id,
         nickname: keptNickname,
-        birth_year: birthYear,
+        birth_date: birthDate,
         gender,
         bio: (input.bio ?? "").trim() || null,
         contact_phone: (input.contact_phone ?? "").trim() || null,

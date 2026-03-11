@@ -25,7 +25,7 @@ export default async function ListingDetailPage({
 
   if (error || !listing) notFound();
 
-  const [benchRes, profileRes, metricsRes, categoriesRes] = await Promise.all([
+  const [benchRes, profileRes, metricsRes, categoriesRes, closedCountRes, sellerListingsRes] = await Promise.all([
     listing.category_main_id
       ? (() => {
           const q = supabase
@@ -42,12 +42,27 @@ export default async function ListingDetailPage({
     supabase.from("profiles").select("display_name").eq("id", listing.user_id).single(),
     supabase.from("seller_metrics").select("*").eq("user_id", listing.user_id).single(),
     supabase.from("categories").select("id, name"),
+    supabase.from("listings").select("id", { count: "exact", head: true }).eq("user_id", listing.user_id).eq("status", "closed"),
+    supabase.from("listings").select("id").eq("user_id", listing.user_id),
   ]);
+
+  const sellerListingIds = (sellerListingsRes.data ?? []).map((r) => r.id);
+  const reviewsRes =
+    sellerListingIds.length > 0
+      ? await supabase
+          .from("listing_reviews")
+          .select("id, listing_id, rating, comment, created_at")
+          .in("listing_id", sellerListingIds)
+          .order("created_at", { ascending: false })
+          .limit(10)
+      : { data: [] as { id: string; listing_id: string; rating: number; comment: string | null; created_at: string }[] };
 
   const bench = benchRes.data;
   const profile = profileRes.data;
   const metrics = metricsRes.data;
   const categories = categoriesRes.data ?? [];
+  const completedSalesCount = closedCountRes.count ?? 0;
+  const sellerReviews = reviewsRes.data ?? [];
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const categoryMainName =
     (listing.category_main_id && categoryNameById.get(listing.category_main_id)) ??
@@ -103,7 +118,30 @@ export default async function ListingDetailPage({
           completionRate={metrics?.completion_rate ?? null}
           reviewRating={metrics?.average_review_rating ?? null}
           reviewCount={metrics?.total_review_count ?? 0}
+          completedSalesCount={completedSalesCount}
+          incidentReportCount={metrics?.incident_report_count ?? 0}
         />
+
+        {sellerReviews.length > 0 && (
+          <section id="seller-reviews" className="rounded-xl border border-slate-200 bg-white p-5">
+            <h2 className="text-lg font-semibold text-slate-800">이 판매자의 후기</h2>
+            <ul className="mt-3 space-y-3">
+              {sellerReviews.map((rev) => (
+                <li key={rev.id} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-500" aria-hidden>
+                      {"★".repeat(rev.rating)}{"☆".repeat(5 - rev.rating)}
+                    </span>
+                    <span className="text-sm text-slate-500">
+                      {new Date(rev.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                  {rev.comment && <p className="mt-1 text-sm text-slate-700">{rev.comment}</p>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </article>
     </div>
   );

@@ -3,6 +3,9 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { slotsOverlap, type Slot } from "@/lib/jobs/conflict";
+import { getKstTodayString } from "@/lib/jobs/kst-date";
+import { resolveJobType } from "@/lib/jobs/resolve-job-type";
+import type { PositionInput } from "@/lib/jobs/types";
 
 /** 포지션에 지원 */
 export async function applyToPosition(positionId: string, jobPostId: string) {
@@ -17,18 +20,18 @@ export async function applyToPosition(positionId: string, jobPostId: string) {
 
   const { data: worker } = await supabase
     .from("worker_profiles")
-    .select("birth_year, gender")
+    .select("birth_date, gender")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const hasBirthYear = worker?.birth_year != null && worker.birth_year >= 1900 && worker.birth_year <= 2100;
-  const hasGender = worker?.gender != null && worker.gender !== "";
+  const hasBirthDate = worker?.birth_date != null && String(worker.birth_date).trim() !== "";
+  const hasGender = worker?.gender === "M" || worker?.gender === "F";
 
-  if (!hasBirthYear || !hasGender) {
+  if (!hasBirthDate || !hasGender) {
     return {
       ok: false,
       error:
-        "지원하려면 마이페이지에서 나이(출생년도)와 성별을 먼저 입력해 주세요. 잘못 입력된 정보로 인한 피해는 본인이 책임지셔야 합니다.",
+        "지원하려면 마이페이지에서 생일과 성별을 먼저 입력해 주세요. 잘못 입력된 정보로 인한 피해는 본인이 책임지셔야 합니다.",
     };
   }
 
@@ -192,7 +195,7 @@ export async function confirmApplication(applicationId: string, jobPostId: strin
   return { ok: true };
 }
 
-/** 확정 취소 (구인자) → 포지션 재오픈 */
+/** 확정 취소 (구인자) → 포지션 재오픈. 현장일이 지나면 불가(노쇼·신고는 별도 처리). */
 export async function cancelApplicationByCompany(applicationId: string, jobPostId: string) {
   const supabase = await createServerSupabase();
   const {
@@ -200,8 +203,12 @@ export async function cancelApplicationByCompany(applicationId: string, jobPostI
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
 
-  const { data: post } = await supabase.from("job_posts").select("user_id").eq("id", jobPostId).single();
+  const { data: post } = await supabase.from("job_posts").select("user_id, work_date").eq("id", jobPostId).single();
   if (!post || post.user_id !== user.id) return { ok: false, error: "권한이 없습니다." };
+
+  if (post.work_date && post.work_date < getKstTodayString()) {
+    return { ok: false, error: "현장일이 지나면 확정 취소할 수 없습니다. 노쇼·분쟁은 신고로 처리해 주세요." };
+  }
 
   const { data: app } = await supabase
     .from("job_applications")
@@ -216,6 +223,215 @@ export async function cancelApplicationByCompany(applicationId: string, jobPostI
 
   await supabase.from("job_applications").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", applicationId);
   await supabase.from("completed_job_assignments").delete().eq("job_application_id", applicationId);
+
+  revalidatePath(`/jobs/${jobPostId}`);
+  revalidatePath("/jobs");
+  return { ok: true };
+}
+
+const NO_SHOW_SUBTYPES = ["no_show_absent", "no_show_left", "no_show_other"] as const;
+export type NoShowSubtype = (typeof NO_SHOW_SUBTYPES)[number];
+
+/** 노쇼 신고 (구인자) → job_reports 삽입(사유 선택), 지원 상태를 no_show_reported 로 변경 */
+export async function reportNoShow(
+  applicationId: string,
+  jobPostId: string,
+  reasonSubtype: NoShowSubtype,
+  reasonText?: string | null
+) {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  if (!NO_SHOW_SUBTYPES.includes(reasonSubtype)) {
+    return { ok: false, error: "유효한 노쇼 사유를 선택해 주세요." };
+  }
+
+  const { data: post } = await supabase.from("job_posts").select("user_id").eq("id", jobPostId).single();
+  if (!post || post.user_id !== user.id) return { ok: false, error: "권한이 없습니다." };
+
+  const { data: app } = await supabase
+    .from("job_applications")
+    .select("id, position_id, user_id, status")
+    .eq("id", applicationId)
+    .single();
+  if (!app) return { ok: false, error: "지원을 찾을 수 없습니다." };
+  if (app.status === "no_show_reported") return { ok: false, error: "이미 노쇼 신고하셨습니다." };
+  if (app.status !== "accepted") return { ok: false, error: "확정된 지원에 대해서만 노쇼 신고할 수 있습니다." };
+
+  const { data: pos } = await supabase.from("job_post_positions").select("job_post_id").eq("id", app.position_id).single();
+  if (!pos || pos.job_post_id !== jobPostId) return { ok: false, error: "포지션이 이 글에 속하지 않습니다." };
+
+  const { data: existing } = await supabase
+    .from("job_reports")
+    .select("id")
+    .eq("job_application_id", applicationId)
+    .eq("reporter_id", user.id)
+    .eq("reason_type", "no_show")
+    .maybeSingle();
+  if (existing) return { ok: false, error: "이미 노쇼 신고하셨습니다." };
+
+  const now = Date.now();
+  const oneMinAgo = new Date(now - 60 * 1000).toISOString();
+  const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+  const { count: count1 } = await supabase
+    .from("job_reports")
+    .select("id", { count: "exact", head: true })
+    .eq("reporter_id", user.id)
+    .eq("reason_type", "no_show")
+    .gte("created_at", oneMinAgo);
+  if ((count1 ?? 0) >= 5) {
+    return { ok: false, error: "노쇼 신고는 1분에 5건까지 가능합니다. 잠시 후 다시 시도해 주세요." };
+  }
+  const { count: count24 } = await supabase
+    .from("job_reports")
+    .select("id", { count: "exact", head: true })
+    .eq("reporter_id", user.id)
+    .eq("reason_type", "no_show")
+    .gte("created_at", oneDayAgo);
+  if ((count24 ?? 0) >= 20) {
+    return { ok: false, error: "노쇼 신고는 24시간에 20건까지 가능합니다. 과도한 신고는 관리자 검토 대상이 됩니다." };
+  }
+
+  const { error: insertErr } = await supabase.from("job_reports").insert({
+    job_application_id: applicationId,
+    reporter_id: user.id,
+    reported_user_id: app.user_id,
+    reason_type: "no_show",
+    reason_subtype: reasonSubtype,
+    reason_text: reasonText?.trim() || null,
+  });
+  if (insertErr) return { ok: false, error: insertErr.message };
+
+  await supabase
+    .from("job_applications")
+    .update({ status: "no_show_reported", updated_at: new Date().toISOString() })
+    .eq("id", applicationId);
+
+  await supabase.from("completed_job_assignments").delete().eq("job_application_id", applicationId);
+
+  revalidatePath(`/jobs/${jobPostId}`);
+  revalidatePath("/jobs");
+  return { ok: true };
+}
+
+/** 구인글 수정 (본인만). job_posts + job_post_private_details + 기존 포지션 업데이트만(추가/삭제 없음). */
+type UpdateJobPostPrivate = {
+  full_address?: string | null;
+  contact_phone?: string | null;
+  access_instructions?: string | null;
+  parking_info?: string | null;
+  notes?: string | null;
+};
+type UpdateJobPostPosition = PositionInput & { id: string };
+export async function updateJobPost(
+  jobPostId: string,
+  input: {
+    title: string;
+    region: string;
+    district: string;
+    address?: string | null;
+    work_date?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
+    description?: string | null;
+    contact_phone: string;
+    private_details?: UpdateJobPostPrivate | null;
+    positions: UpdateJobPostPosition[];
+  }
+) {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const { data: post } = await supabase.from("job_posts").select("user_id").eq("id", jobPostId).single();
+  if (!post || post.user_id !== user.id) return { ok: false, error: "권한이 없습니다." };
+
+  if (!input.title?.trim()) return { ok: false, error: "제목을 입력하세요." };
+  if (!input.region?.trim()) return { ok: false, error: "지역을 선택하세요." };
+  if (!input.contact_phone?.trim()) return { ok: false, error: "연락처를 입력하세요." };
+  if (!input.positions?.length) return { ok: false, error: "모집 포지션을 1개 이상 두세요." };
+  const todayKst = getKstTodayString();
+  if (input.work_date?.trim() && input.work_date.trim() < todayKst) {
+    return { ok: false, error: "근무일은 오늘 이후로 선택해 주세요." };
+  }
+
+  const { error: postErr } = await supabase
+    .from("job_posts")
+    .update({
+      title: input.title.trim(),
+      region: input.region.trim(),
+      district: (input.district ?? "").trim(),
+      address: input.address?.trim() || null,
+      work_date: input.work_date?.trim() || null,
+      start_time: input.start_time?.trim() || null,
+      end_time: input.end_time?.trim() || null,
+      description: input.description?.trim() || null,
+      contact_phone: input.contact_phone.trim(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobPostId);
+
+  if (postErr) return { ok: false, error: postErr.message };
+
+  const priv = input.private_details;
+  if (priv) {
+    await supabase.from("job_post_private_details").upsert(
+      {
+        job_post_id: jobPostId,
+        full_address: priv.full_address?.trim() || null,
+        contact_phone: priv.contact_phone?.trim() || input.contact_phone.trim() || null,
+        access_instructions: priv.access_instructions?.trim() || null,
+        parking_info: priv.parking_info?.trim() || null,
+        notes: priv.notes?.trim() || null,
+      },
+      { onConflict: "job_post_id" }
+    );
+  }
+
+  const { data: mainCategories } = await supabase.from("categories").select("id").is("parent_id", null).eq("is_active", true).limit(1);
+  const fallbackMainId = mainCategories?.[0]?.id;
+  if (!fallbackMainId) return { ok: false, error: "카테고리가 없습니다." };
+
+  const FAKE_PAY_DAILY_LIMIT = 2_000_000;
+  for (const p of input.positions) {
+    const jobTypeInput = (p.job_type_input ?? "").trim();
+    if (!jobTypeInput) return { ok: false, error: "모든 포지션의 작업 종류를 입력하세요." };
+    if (Number(p.pay_amount) <= 0) return { ok: false, error: "모든 포지션의 금액을 입력하세요." };
+    if (p.pay_unit === "day" && Number(p.pay_amount) >= FAKE_PAY_DAILY_LIMIT) {
+      return { ok: false, error: "일당 200만원 이상은 허위 금액으로 등록할 수 없습니다." };
+    }
+    const skillLevel = p.skill_level === "expert" || p.skill_level === "general" ? p.skill_level : "general";
+
+    const resolved = await resolveJobType(supabase, p.job_type_key ?? null, jobTypeInput || undefined, fallbackMainId);
+
+    const { error: posErr } = await supabase
+      .from("job_post_positions")
+      .update({
+        category_main_id: resolved.category_main_id,
+        category_sub_id: resolved.category_sub_id,
+        custom_subcategory_text: null,
+        job_type_input: resolved.job_type_input,
+        normalized_job_type_key: resolved.normalized_job_type_key,
+        normalization_status: resolved.normalization_status,
+        skill_level: skillLevel,
+        pay_amount: Number(p.pay_amount),
+        pay_unit: p.pay_unit,
+        required_count: Math.max(1, Math.floor(Number(p.required_count) || 1)),
+        work_scope: p.work_scope?.trim() || null,
+        notes: p.notes?.trim() || null,
+        work_period: p.pay_unit === "half_day" ? (p.work_period ?? null) : null,
+        start_time: p.start_time?.trim() || null,
+        end_time: p.end_time?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", p.id)
+      .eq("job_post_id", jobPostId);
+
+    if (posErr) return { ok: false, error: `포지션 수정 실패: ${posErr.message}` };
+  }
 
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
@@ -241,5 +457,136 @@ export async function closeJobPost(jobPostId: string) {
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
+  return { ok: true };
+}
+
+const MAX_APPEAL_TEXT_LENGTH = 500;
+
+/** 노쇼 이의 제기 (구직자) — job_reports의 appealed_at, appeal_text만 업데이트 */
+export async function submitNoShowAppeal(reportId: string, appealText: string) {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const { data: report } = await supabase
+    .from("job_reports")
+    .select("id, reported_user_id, status, appealed_at, job_application_id")
+    .eq("id", reportId)
+    .single();
+  if (!report) return { ok: false, error: "해당 신고를 찾을 수 없습니다." };
+  if (report.reported_user_id !== user.id) return { ok: false, error: "권한이 없습니다." };
+  if (report.status !== "open") return { ok: false, error: "이미 처리된 신고입니다." };
+  if (report.appealed_at) return { ok: false, error: "이미 이의 제기하셨습니다." };
+
+  const text = (appealText ?? "").trim();
+  if (text.length > MAX_APPEAL_TEXT_LENGTH) {
+    return { ok: false, error: `이의 사유는 ${MAX_APPEAL_TEXT_LENGTH}자 이내로 입력해 주세요.` };
+  }
+
+  const { error } = await supabase
+    .from("job_reports")
+    .update({
+      appealed_at: new Date().toISOString(),
+      appeal_text: text || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", reportId);
+  if (error) return { ok: false, error: error.message };
+
+  const { data: appRow } = await supabase
+    .from("job_applications")
+    .select("position_id")
+    .eq("id", report.job_application_id)
+    .single();
+  const { data: posRow } =
+    appRow
+      ? await supabase.from("job_post_positions").select("job_post_id").eq("id", appRow.position_id).single()
+      : { data: null };
+  if (posRow?.job_post_id) revalidatePath(`/jobs/${posRow.job_post_id}`);
+  revalidatePath("/jobs");
+  return { ok: true };
+}
+
+/** 노쇼 취소(철회) — 관리자 전용. report → rescinded, application → accepted, completed_job_assignments 복구 */
+export async function rescindNoShowReport(reportId: string) {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const isAdmin = profile?.role === "admin" || profile?.role === "editor";
+  if (!isAdmin) return { ok: false, error: "권한이 없습니다." };
+
+  const { data: report } = await supabase
+    .from("job_reports")
+    .select("id, job_application_id, status")
+    .eq("id", reportId)
+    .single();
+  if (!report) return { ok: false, error: "해당 신고를 찾을 수 없습니다." };
+  if (report.status !== "open") return { ok: false, error: "이미 처리된 신고입니다." };
+
+  const applicationId = report.job_application_id;
+
+  const { data: app } = await supabase
+    .from("job_applications")
+    .select("id, position_id, user_id")
+    .eq("id", applicationId)
+    .single();
+  if (!app) return { ok: false, error: "지원 건을 찾을 수 없습니다." };
+
+  const { data: pos } = await supabase
+    .from("job_post_positions")
+    .select("job_post_id, category_main_id, category_sub_id, pay_amount, pay_unit, normalized_daily_wage, skill_level, normalized_job_type_key")
+    .eq("id", app.position_id)
+    .single();
+  if (!pos) return { ok: false, error: "포지션을 찾을 수 없습니다." };
+
+  const { data: post } = await supabase
+    .from("job_posts")
+    .select("region, district, work_date")
+    .eq("id", pos.job_post_id)
+    .single();
+  if (!post) return { ok: false, error: "구인글을 찾을 수 없습니다." };
+
+  const { error: reportErr } = await supabase
+    .from("job_reports")
+    .update({
+      status: "rescinded",
+      rescinded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", reportId);
+  if (reportErr) return { ok: false, error: reportErr.message };
+
+  const { error: appErr } = await supabase
+    .from("job_applications")
+    .update({ status: "accepted", updated_at: new Date().toISOString() })
+    .eq("id", applicationId);
+  if (appErr) return { ok: false, error: "지원 상태 복구 실패: " + appErr.message };
+
+  const { error: insertErr } = await supabase.from("completed_job_assignments").insert({
+    job_application_id: applicationId,
+    position_id: app.position_id,
+    job_post_id: pos.job_post_id,
+    worker_id: app.user_id,
+    region: post.region,
+    district: post.district ?? "",
+    category_main_id: pos.category_main_id,
+    category_sub_id: pos.category_sub_id ?? null,
+    pay_unit: pos.pay_unit,
+    pay_amount: pos.pay_amount,
+    normalized_daily_wage: pos.normalized_daily_wage ?? null,
+    work_date: post.work_date ?? null,
+    skill_level: pos.skill_level ?? null,
+    normalized_job_type_key: pos.normalized_job_type_key ?? null,
+  });
+  if (insertErr) return { ok: false, error: "완료 기록 복구 실패: " + insertErr.message };
+
+  revalidatePath("/jobs");
+  revalidatePath("/admin/job-reports");
   return { ok: true };
 }

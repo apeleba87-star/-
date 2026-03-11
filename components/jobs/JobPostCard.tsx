@@ -28,12 +28,14 @@ type Props = {
   ownerNickname?: string;
   /** 해당 구인글 총 지원자 수 (목록용) */
   applicationCount?: number;
-  /** 내가 지원한 글일 때 내 지원 상태 라벨 (예: 지원함, 확정됨) */
+  /** 내가 지원한 현장일 때 내 지원 상태 라벨 (예: 지원함, 확정됨) */
   myStatusLabel?: string;
   /** 현재 사용자가 구인글 작성자인지 (카드에 "내 글" 표시) */
   isOwner?: boolean;
   /** 급구 뱃지: 오늘/내일 작업일 */
   urgentLabel?: "today" | "tomorrow";
+  /** 내 구인 관리: 노쇼 신고된 지원자가 있을 때 true */
+  hasNoShowApplicant?: boolean;
   positions: PositionSummary[];
   index?: number;
 };
@@ -64,6 +66,7 @@ export default function JobPostCard({
   myStatusLabel,
   isOwner,
   urgentLabel,
+  hasNoShowApplicant,
   positions,
   index = 0,
 }: Props) {
@@ -123,6 +126,11 @@ export default function JobPostCard({
                   내 글
                 </span>
               )}
+              {hasNoShowApplicant && (
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+                  노쇼 인력 있음
+                </span>
+              )}
               {myStatusLabel && (
                 <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
                   {myStatusLabel}
@@ -132,34 +140,37 @@ export default function JobPostCard({
             </div>
           </div>
           <ul className="mt-4 space-y-2 border-t border-slate-200/80 pt-4">
-            {positions.map((pos) => (
-              <li
-                key={pos.id}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="text-slate-700">
-                  <span className="font-medium text-slate-800">{pos.categoryDisplay}</span>
-                  <span className="mx-1.5 text-slate-400">·</span>
-                  <span>{pos.required_count}명</span>
-                  <span className="mx-1.5 text-slate-400">·</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatMoney(pos.pay_amount)}
-                  </span>
-                  <span className="ml-0.5 text-slate-500">{payUnitLabel[pos.pay_unit] ?? pos.pay_unit}</span>
-                </span>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    pos.status === "closed"
-                      ? "bg-slate-200 text-slate-600"
-                      : pos.status === "partial"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-emerald-100 text-emerald-800"
-                  }`}
+            {positions.map((pos) => {
+              const posDisplayStatus = status === "closed" ? "closed" : pos.status;
+              return (
+                <li
+                  key={pos.id}
+                  className="flex items-center justify-between gap-2 text-sm"
                 >
-                  {POSITION_STATUS_LABELS[pos.status]}
-                </span>
-              </li>
-            ))}
+                  <span className="text-slate-700">
+                    <span className="font-medium text-slate-800">{pos.categoryDisplay}</span>
+                    <span className="mx-1.5 text-slate-400">·</span>
+                    <span>{pos.required_count}명</span>
+                    <span className="mx-1.5 text-slate-400">·</span>
+                    <span className="font-semibold text-slate-900">
+                      {formatMoney(pos.pay_amount)}
+                    </span>
+                    <span className="ml-0.5 text-slate-500">{payUnitLabel[pos.pay_unit] ?? pos.pay_unit}</span>
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      posDisplayStatus === "closed"
+                        ? "bg-slate-200 text-slate-600"
+                        : posDisplayStatus === "partial"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-100 text-emerald-800"
+                    }`}
+                  >
+                    {POSITION_STATUS_LABELS[posDisplayStatus as PositionStatus]}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </motion.article>
       </Link>

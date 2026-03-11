@@ -1,0 +1,255 @@
+"use client";
+
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  TrendingUp,
+  Newspaper,
+  Briefcase,
+  UserPlus,
+  Mail,
+  BarChart3,
+  ClipboardList,
+  CalendarCheck,
+  ChevronRight,
+} from "lucide-react";
+import { homeDashboardCardClass } from "./home-section-styles";
+
+type DashboardCardProps = {
+  title: string;
+  href: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  children: React.ReactNode;
+  delay?: number;
+};
+
+function DashboardCard({ title, href, icon, iconBg, children, delay = 0 }: DashboardCardProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay }}
+    >
+      <Link href={href} className="block h-full">
+        <div className={`${homeDashboardCardClass} flex h-full flex-col`}>
+          <div className="flex items-start justify-between gap-2">
+            <span
+              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${iconBg}`}
+            >
+              {icon}
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+              <ChevronRight className="h-5 w-5" />
+            </span>
+          </div>
+          <h3 className="mt-3 font-semibold text-slate-900">{title}</h3>
+          <div className="mt-2 flex-1 text-sm text-slate-600">{children}</div>
+          <span className="mt-3 inline-flex items-center text-sm font-medium text-blue-600">
+            확인하기
+          </span>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+type Props = {
+  tenderCount: number;
+  tenderTodayCount: number;
+  newsCount: number;
+  listingsCount: number;
+  recentListings: { id: string; title: string | null }[];
+  jobsOpenCount: number;
+  latestNewsletter: { id: string; subject: string; sent_at: string } | null;
+  userStats?: {
+    myJobPostsCount: number;
+    myApplicationsCount: number;
+    myMatchesCount: number;
+  };
+};
+
+export default function HomeDashboard({
+  tenderCount,
+  tenderTodayCount,
+  newsCount,
+  listingsCount,
+  recentListings,
+  jobsOpenCount,
+  latestNewsletter,
+  userStats,
+}: Props) {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+        <motion.header
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-8"
+        >
+          <h1 className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
+            청소업 브리핑
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">오늘의 요약을 한눈에 확인하세요.</p>
+        </motion.header>
+
+        {/* 1행: 입찰 · 인력 구인 · 업계 소식 */}
+        <section className="mb-6 grid gap-4 sm:grid-cols-3">
+          <DashboardCard
+            title="청소·방역 입찰"
+            href="/tenders?category=both"
+            icon={<TrendingUp className="h-5 w-5" />}
+            iconBg="bg-blue-500"
+            delay={0.05}
+          >
+            <p className="font-semibold text-slate-800">{tenderCount}건 접수 중</p>
+            {tenderTodayCount > 0 && (
+              <p className="mt-0.5 text-slate-500">오늘 공고 {tenderTodayCount}건</p>
+            )}
+          </DashboardCard>
+
+          <DashboardCard
+            title="인력 구인"
+            href="/jobs"
+            icon={<UserPlus className="h-5 w-5" />}
+            iconBg="bg-emerald-500"
+            delay={0.1}
+          >
+            <p className="font-semibold text-slate-800">{jobsOpenCount}건 모집 중</p>
+            <p className="mt-0.5 text-slate-500">일당·현장 구인</p>
+          </DashboardCard>
+
+          <DashboardCard
+            title="업계 소식"
+            href="/categories/industry"
+            icon={<Newspaper className="h-5 w-5" />}
+            iconBg="bg-violet-500"
+            delay={0.15}
+          >
+            <p className="font-semibold text-slate-800">{newsCount}건</p>
+            <p className="mt-0.5 text-slate-500">뉴스·이슈 요약</p>
+          </DashboardCard>
+        </section>
+
+        {/* 2행: 현장 거래 · 뉴스레터 · 데이터 인사이트 */}
+        <section className="mb-6 grid gap-4 sm:grid-cols-3">
+          <DashboardCard
+            title="현장 거래"
+            href="/listings"
+            icon={<Briefcase className="h-5 w-5" />}
+            iconBg="bg-amber-500"
+            delay={0.2}
+          >
+            <p className="font-semibold text-slate-800">{listingsCount}건</p>
+            {recentListings.length > 0 ? (
+              <ul className="mt-1.5 space-y-0.5 text-slate-500">
+                {recentListings.slice(0, 2).map((l) => (
+                  <li key={l.id} className="truncate">
+                    {l.title || "(제목 없음)"}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-0.5 text-slate-500">소개·위탁 현장</p>
+            )}
+          </DashboardCard>
+
+          <DashboardCard
+            title="뉴스레터"
+            href={latestNewsletter ? `/archive/${latestNewsletter.id}` : "/archive"}
+            icon={<Mail className="h-5 w-5" />}
+            iconBg="bg-rose-500"
+            delay={0.25}
+          >
+            {latestNewsletter ? (
+              <>
+                <p className="line-clamp-2 font-medium text-slate-800">{latestNewsletter.subject}</p>
+                <p className="mt-1 text-slate-500">
+                  {new Date(latestNewsletter.sent_at).toLocaleDateString("ko-KR", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </>
+            ) : (
+              <p className="text-slate-500">발송된 호가 없습니다.</p>
+            )}
+          </DashboardCard>
+
+          <DashboardCard
+            title="데이터 인사이트"
+            href="/subscribe"
+            icon={<BarChart3 className="h-5 w-5" />}
+            iconBg="bg-slate-600"
+            delay={0.3}
+          >
+            <p className="text-slate-600">키즈카페·사무실 청소 평균 단가</p>
+            <p className="mt-0.5 text-slate-500">구독 시 더 많은 인사이트</p>
+          </DashboardCard>
+        </section>
+
+        {/* 3행: 로그인 시 내 구인 · 내 지원·매칭 */}
+        {userStats && (
+          <section className="mb-8 grid gap-4 sm:grid-cols-2">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.35 }}
+            >
+              <Link href="/jobs/manage" className="block h-full">
+                <div className={`${homeDashboardCardClass} flex h-full flex-col border-emerald-200 bg-emerald-50/50`}>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500 text-white">
+                      <ClipboardList className="h-4 w-4" />
+                    </span>
+                    <h3 className="font-semibold text-slate-900">내 구인 현황</h3>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                    <span className="text-slate-700">
+                      <strong className="text-slate-900">{userStats.myJobPostsCount}</strong>건 등록
+                    </span>
+                  </div>
+                  <span className="mt-3 inline-flex items-center text-sm font-medium text-emerald-700">
+                    확인하기
+                    <ChevronRight className="ml-0.5 h-4 w-4" />
+                  </span>
+                </div>
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.4 }}
+            >
+              <Link href="/jobs" className="block h-full">
+                <div className={`${homeDashboardCardClass} flex h-full flex-col border-blue-200 bg-blue-50/50`}>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500 text-white">
+                      <CalendarCheck className="h-4 w-4" />
+                    </span>
+                    <h3 className="font-semibold text-slate-900">내 지원·매칭</h3>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-700">
+                    <span>
+                      지원 <strong className="text-slate-900">{userStats.myApplicationsCount}</strong>건
+                    </span>
+                    <span>
+                      매칭 <strong className="text-slate-900">{userStats.myMatchesCount}</strong>건
+                    </span>
+                  </div>
+                  <span className="mt-3 inline-flex items-center text-sm font-medium text-blue-700">
+                    확인하기
+                    <ChevronRight className="ml-0.5 h-4 w-4" />
+                  </span>
+                </div>
+              </Link>
+            </motion.div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
