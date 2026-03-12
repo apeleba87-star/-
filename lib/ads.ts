@@ -1,10 +1,10 @@
 /**
- * 홈 광고: 슬롯 on/off + 기간 내 캠페인 1건 조회
+ * 홈·글상세 광고: 슬롯 on/off + 기간 내 캠페인 1건 조회
  */
 
 import { createClient } from "@/lib/supabase-server";
 
-export type HomeAdSlotKey = "premium_banner" | "native_card";
+export type HomeAdSlotKey = "premium_banner" | "native_card" | "post_top" | "post_bottom";
 
 export type HomeAdCampaign = {
   id: string;
@@ -20,7 +20,7 @@ export type HomeAdCampaign = {
 };
 
 export type HomeAdSlotWithCampaign = {
-  key: HomeAdSlotKey;
+  key: string;
   name: string;
   enabled: boolean;
   campaign: HomeAdCampaign | null;
@@ -28,27 +28,22 @@ export type HomeAdSlotWithCampaign = {
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-/** 슬롯별 enabled 여부 + 현재 진행중 캠페인 1건 (기간·sort_order 적용) */
-export async function getActiveHomeAds(): Promise<{
-  premium_banner: HomeAdSlotWithCampaign | null;
-  native_card: HomeAdSlotWithCampaign | null;
-}> {
-  const supabase = createClient();
+async function getActiveAdsForSlotKeys(
+  supabase: ReturnType<typeof createClient>,
+  slotKeys: string[]
+): Promise<Record<string, HomeAdSlotWithCampaign | null>> {
+  const result: Record<string, HomeAdSlotWithCampaign | null> = {};
+  for (const k of slotKeys) result[k] = null;
 
   const { data: slots } = await supabase
     .from("home_ad_slots")
     .select("id, key, name, enabled")
-    .in("key", ["premium_banner", "native_card"]);
-
-  const result: {
-    premium_banner: HomeAdSlotWithCampaign | null;
-    native_card: HomeAdSlotWithCampaign | null;
-  } = { premium_banner: null, native_card: null };
+    .in("key", slotKeys);
 
   if (!slots?.length) return result;
 
   for (const slot of slots) {
-    const key = slot.key as HomeAdSlotKey;
+    const key = slot.key as string;
     const item: HomeAdSlotWithCampaign = {
       key,
       name: slot.name ?? "",
@@ -73,4 +68,30 @@ export async function getActiveHomeAds(): Promise<{
   }
 
   return result;
+}
+
+/** 슬롯별 enabled 여부 + 현재 진행중 캠페인 1건 (기간·sort_order 적용) */
+export async function getActiveHomeAds(): Promise<{
+  premium_banner: HomeAdSlotWithCampaign | null;
+  native_card: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, ["premium_banner", "native_card"]);
+  return {
+    premium_banner: map.premium_banner ?? null,
+    native_card: map.native_card ?? null,
+  };
+}
+
+/** 글 상세 페이지용: 상단·하단 슬롯 캠페인 조회 */
+export async function getActivePostDetailAds(): Promise<{
+  post_top: HomeAdSlotWithCampaign | null;
+  post_bottom: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, ["post_top", "post_bottom"]);
+  return {
+    post_top: map.post_top ?? null,
+    post_bottom: map.post_bottom ?? null,
+  };
 }
