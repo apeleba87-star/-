@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { createListing, getListingBenchmarks, type ListingBenchmarkRow } from "./actions";
 import { REGION_SIDO_LIST, REGION_GUGUN, formatRegionForDb } from "@/lib/listings/regions";
 import {
@@ -11,21 +12,46 @@ import {
   type ListingCategoryGroupId,
 } from "@/lib/listings/listing-category-presets";
 
-/** Step 블록: 현장 설명 흐름용 */
-function StepSection({
+/** 접기/펼치기 가능한 Step 블록. 기본은 접힘. */
+function CollapsibleStepSection({
   step,
   title,
+  open,
+  onToggle,
+  summary,
   children,
-}: { step: number; title: string; children: React.ReactNode }) {
+}: {
+  step: number;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  summary?: string | null;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-sm font-bold text-white">
+    <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 p-5 text-left hover:bg-slate-50/80 transition-colors"
+        aria-expanded={open}
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-sm font-bold text-white">
           {step}
         </span>
-        <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
-      </div>
-      {children}
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+          {summary && !open && (
+            <p className="mt-0.5 truncate text-sm text-slate-500">{summary}</p>
+          )}
+        </div>
+        {open ? (
+          <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
+        ) : (
+          <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
+        )}
+      </button>
+      {open && <div className="border-t border-slate-100 p-5 pt-4">{children}</div>}
     </section>
   );
 }
@@ -129,6 +155,13 @@ export default function NewListingForm({ mainCategories }: Props) {
   const [contactPhone, setContactPhone] = useState("");
   const [benchmarks, setBenchmarks] = useState<ListingBenchmarkRow[]>([]);
   const [showSummary, setShowSummary] = useState(false);
+
+  const [openStep1, setOpenStep1] = useState(false);
+  const [openStep2, setOpenStep2] = useState(false);
+  const [openStep3, setOpenStep3] = useState(false);
+  const [openStep4, setOpenStep4] = useState(false);
+  const [openStep5, setOpenStep5] = useState(false);
+
 
   const isReferral = listingType === "referral_regular" || listingType === "referral_one_time";
   const isSale = listingType === "sale_regular" || listingType === "sale_one_time";
@@ -354,16 +387,22 @@ export default function NewListingForm({ mainCategories }: Props) {
       <Link href="/listings" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
         ← 현장 거래 목록
       </Link>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">글쓰기 · 현장 거래</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">현장 거래</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>
         )}
 
-        {/* STEP 1: 어떤 현장인가 */}
-        <StepSection step={1} title="어떤 현장인가?">
-          <p className="mb-3 text-sm text-slate-600">현장 거래 유형과 업무 종류를 선택하세요.</p>
+        {/* STEP 1: 어떤 현장인가 — 유형 선택 시 업무 종류 펼침 */}
+        <CollapsibleStepSection
+          step={1}
+          title="어떤 현장인가?"
+          open={openStep1}
+          onToggle={() => setOpenStep1((o) => !o)}
+          summary={openStep1 ? null : [typeLabel, categoryGroup === "regular" ? "정기 청소" : categoryGroup === "one_time" ? "일회성 청소" : "", currentGroup ? (options.find((o) => o.key === categoryPresetKey)?.label ?? "") : ""].filter(Boolean).join(" · ") || undefined}
+        >
+          <p className="mb-3 text-sm text-slate-600">현장 거래 유형을 선택한 뒤, 업무 종류를 선택하세요.</p>
           <div className="mb-4">
             <label className="block text-sm font-medium text-slate-700">현장 거래 유형</label>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -386,7 +425,8 @@ export default function NewListingForm({ mainCategories }: Props) {
               ))}
             </div>
           </div>
-          <div>
+          {transactionType && (
+          <div className="mt-6 pt-4 border-t border-slate-100">
             <label className="block text-sm font-medium text-slate-700">업무 종류 *</label>
             <p className="mt-0.5 text-xs text-slate-500">
               정기 청소 / 일회성 청소 중 하나를 고른 뒤, 해당 업무(사무실청소, 계단청소 등)를 선택하세요.
@@ -400,6 +440,7 @@ export default function NewListingForm({ mainCategories }: Props) {
                   const first = g?.options.find((o) => o.key !== LISTING_CATEGORY_OTHER);
                   setCategoryPresetKey(first?.key ?? LISTING_CATEGORY_OTHER);
                   setCategoryCustomText("");
+                  setOpenStep2(true);
                 }}
                 className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
                   categoryGroup === "regular"
@@ -420,6 +461,7 @@ export default function NewListingForm({ mainCategories }: Props) {
                   const first = g?.options.find((o) => o.key !== LISTING_CATEGORY_OTHER);
                   setCategoryPresetKey(first?.key ?? LISTING_CATEGORY_OTHER);
                   setCategoryCustomText("");
+                  setOpenStep2(true);
                 }}
                 className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
                   categoryGroup === "one_time"
@@ -435,7 +477,10 @@ export default function NewListingForm({ mainCategories }: Props) {
                 <button
                   key={opt.key}
                   type="button"
-                  onClick={() => setCategoryPresetKey(opt.key)}
+                  onClick={() => {
+                  setCategoryPresetKey(opt.key);
+                  setOpenStep2(true);
+                }}
                   className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
                     categoryPresetKey === opt.key
                       ? "bg-slate-700 text-white"
@@ -456,10 +501,17 @@ export default function NewListingForm({ mainCategories }: Props) {
               />
             )}
           </div>
-        </StepSection>
+          )}
+        </CollapsibleStepSection>
 
-        {/* STEP 2: 어디 현장인가 */}
-        <StepSection step={2} title="어디 현장인가?">
+        {/* STEP 2: 어디 현장인가 — 업무 종류 선택 시 펼침 */}
+        <CollapsibleStepSection
+          step={2}
+          title="어디 현장인가?"
+          open={openStep2}
+          onToggle={() => setOpenStep2((o) => !o)}
+          summary={openStep2 ? null : (regionSido && effectiveGugun ? `${regionSido} ${effectiveGugun}` : undefined)}
+        >
           <p className="mb-3 text-sm text-slate-600">지역(시·구)을 선택하세요.</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -471,6 +523,7 @@ export default function NewListingForm({ mainCategories }: Props) {
                   setRegionSido(nextSido);
                   const nextGugunList = REGION_GUGUN[nextSido];
                   setRegionGugun(nextGugunList?.[0] ?? "");
+                  setOpenStep3(true);
                 }}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
                 required
@@ -484,7 +537,10 @@ export default function NewListingForm({ mainCategories }: Props) {
               <label className="block text-sm font-medium text-slate-700">구·군 *</label>
               <select
                 value={effectiveGugun}
-                onChange={(e) => setRegionGugun(e.target.value)}
+                onChange={(e) => {
+                  setRegionGugun(e.target.value);
+                  setOpenStep3(true);
+                }}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
                 required
               >
@@ -494,10 +550,16 @@ export default function NewListingForm({ mainCategories }: Props) {
               </select>
             </div>
           </div>
-        </StepSection>
+        </CollapsibleStepSection>
 
         {/* STEP 3: 현장 규모 (견적 정보) — 계단 청소는 층수·옵션, 그 외는 평수·주회수·난이도 */}
-        <StepSection step={3} title="현장 규모">
+        <CollapsibleStepSection
+          step={3}
+          title="현장 규모"
+          open={openStep3}
+          onToggle={() => setOpenStep3((o) => !o)}
+          summary={openStep3 ? null : (areaPyeong || visitsPerWeek || stairsFloors ? [areaPyeong && `${areaPyeong}평`, visitsPerWeek && `주${visitsPerWeek}회`, stairsFloors && `${stairsFloors}층`].filter(Boolean).join(" · ") : undefined)}
+        >
           {isStairs ? (
             <>
               <p className="mb-3 text-sm text-slate-600">계단 청소는 평수 대신 층수·주 회수·옵션으로 안내합니다. 견적계산기와 동일한 기준입니다.</p>
@@ -720,10 +782,16 @@ export default function NewListingForm({ mainCategories }: Props) {
               </div>
             </>
           )}
-        </StepSection>
+        </CollapsibleStepSection>
 
         {/* STEP 4: 금액 조건 (유형별) */}
-        <StepSection step={4} title="금액 조건">
+        <CollapsibleStepSection
+          step={4}
+          title="금액 조건"
+          open={openStep4}
+          onToggle={() => setOpenStep4((o) => !o)}
+          summary={openStep4 ? null : (monthlyAmount || dealAmount || expectedAmount || feeRatePercent ? "입력함" : undefined)}
+        >
         {isSubcontract && (
           <div>
             <label className="block text-sm font-medium text-slate-700">월 도급금 *</label>
@@ -971,10 +1039,16 @@ export default function NewListingForm({ mainCategories }: Props) {
             </div>
           </div>
         )}
-        </StepSection>
+        </CollapsibleStepSection>
 
         {/* STEP 5: 글 설명 — 제목(자동 제안) · 상세 · 연락처 · 일정 */}
-        <StepSection step={5} title="글 설명">
+        <CollapsibleStepSection
+          step={5}
+          title="글 설명"
+          open={openStep5}
+          onToggle={() => setOpenStep5((o) => !o)}
+          summary={openStep5 ? null : (title ? `${title.slice(0, 30)}${title.length > 30 ? "…" : ""}` : undefined)}
+        >
           <p className="mb-3 text-sm text-slate-600">현장을 정리했으니 제목과 설명을 적어 주세요. 제목은 입력 내용으로 자동 생성되며 수정할 수 있습니다.</p>
           <div className="space-y-4">
             <div>
@@ -1022,7 +1096,7 @@ export default function NewListingForm({ mainCategories }: Props) {
               />
             </div>
           </div>
-        </StepSection>
+        </CollapsibleStepSection>
         {showSummary && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
             <p className="font-medium text-slate-700">입력 내용 요약</p>

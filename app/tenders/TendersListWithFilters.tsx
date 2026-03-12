@@ -16,8 +16,8 @@ const CATEGORY_OPTIONS = [
 ] as const;
 
 const SORT_OPTIONS = [
+  { id: "posted", label: "최신순" },
   { id: "deadline", label: "마감일순" },
-  { id: "posted", label: "등록일순" },
   { id: "amount-high", label: "금액 높은순" },
   { id: "amount-low", label: "금액 낮은순" },
 ] as const;
@@ -75,7 +75,7 @@ type Props = {
 export default function TendersListWithFilters({ tenders }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>("cleaning-disinfection");
   const [selectedRegion, setSelectedRegion] = useState<string>("전체 지역");
-  const [sortBy, setSortBy] = useState<SortId>("deadline");
+  const [sortBy, setSortBy] = useState<SortId>("posted");
 
   const { openTenders, closedTenders } = useMemo(() => {
     let list = tenders.filter((t) => {

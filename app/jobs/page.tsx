@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import JobPostCard from "@/components/jobs/JobPostCard";
 import JobsListToolbar from "@/components/jobs/JobsListToolbar";
+import AuthRequiredCta from "@/components/AuthRequiredCta";
 import {
   SORT_OPTIONS,
   type SortOption,
@@ -423,19 +424,31 @@ export default async function JobsListPage({
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-      </div>
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
-        {avgDailyWage != null && dayWages.length > 0 ? (
-          <p className="mt-0.5 text-sm text-slate-600">
-            일당 평균 <span className="font-semibold text-slate-800">{avgDailyWage.toLocaleString()}원</span>
-            <span className="text-slate-500"> (최근 {dayWages.length}건)</span>
-          </p>
-        ) : (
-          <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>
-        )}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex gap-3">
+          <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
+            {avgDailyWage != null && dayWages.length > 0 ? (
+              <p className="mt-0.5 text-sm text-slate-600">
+                일당 평균 <span className="font-semibold text-slate-800">{avgDailyWage.toLocaleString()}원</span>
+                <span className="text-slate-500"> (최근 {dayWages.length}건)</span>
+              </p>
+            ) : (
+              <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>
+            )}
+          </div>
+        </div>
+        <AuthRequiredCta
+          isLoggedIn={!!user}
+          href="/jobs/new"
+          message="로그인 후에만 구인이 가능합니다."
+          className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          구인하기
+        </AuthRequiredCta>
       </div>
 
       {user && (

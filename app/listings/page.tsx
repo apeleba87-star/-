@@ -1,6 +1,7 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import ListingCard from "@/components/listings/ListingCard";
 import Link from "next/link";
+import AuthRequiredCta from "@/components/AuthRequiredCta";
 import type { PayUnit } from "@/lib/listings/types";
 
 export const revalidate = 60;
@@ -17,6 +18,8 @@ function benchmarkKey(
 
 export default async function ListingsPage() {
   const supabase = createClient();
+  const authSupabase = await createServerSupabase();
+  const { data: { user } } = await authSupabase.auth.getUser();
 
   const fieldDealTypes = ["referral_regular", "referral_one_time", "sale_regular", "subcontract"];
   const [listingsRes, benchmarksRes, metricsRes, categoriesRes] = await Promise.all([
@@ -83,12 +86,14 @@ export default async function ListingsPage() {
             현장의 평균 단가와 비교해 등급을 확인할 수 있습니다. (정기/일회 소개, 매매, 도급)
           </p>
         </div>
-        <Link
+        <AuthRequiredCta
+          isLoggedIn={!!user}
           href="/listings/new"
+          message="로그인 후에만 현장 거래 등록이 가능합니다."
           className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
         >
           글 쓰기
-        </Link>
+        </AuthRequiredCta>
       </div>
 
       {listingsWithMeta.length === 0 ? (
