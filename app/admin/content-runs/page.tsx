@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
+import GenerateContentButton from "@/components/admin/GenerateContentButton";
 
 export default async function AdminContentRunsPage() {
   const supabase = await createServerSupabase();
@@ -24,14 +25,23 @@ export default async function AdminContentRunsPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900">자동 생성 로그</h1>
         <Link href="/admin/posts?filter=auto_drafts" className="text-sm text-blue-600 hover:underline">
           자동 생성 초안 목록 →
         </Link>
       </div>
+
+      <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <p className="mb-3 text-sm font-medium text-slate-700">수동 생성</p>
+        <p className="mb-3 text-sm text-slate-600">
+          버튼을 누르면 그 시점 기준으로 오늘 회차 일간 입찰 리포트를 생성합니다. 이미 생성된 회차가 있으면 건너뜀(재생성 체크 시 덮어쓰기).
+        </p>
+        <GenerateContentButton />
+      </div>
+
       <p className="mb-4 text-sm text-slate-600">
-        일간 입찰 리포트 등 자동 콘텐츠 생성 실행 이력입니다. 실패 시 error_message를 확인하세요.
+        아래는 자동 콘텐츠 생성 실행 이력입니다. 실패 시 error_message를 확인하세요.
       </p>
       {!runs?.length ? (
         <div className="card">

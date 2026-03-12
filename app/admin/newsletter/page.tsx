@@ -24,11 +24,17 @@ export default async function AdminNewsletterPage() {
   return (
     <div>
       <h1 className="mb-8 text-2xl font-bold text-slate-900">뉴스레터 큐 · 발송</h1>
-      <div className="mb-6 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <p className="text-sm text-slate-600">
-          다음 발송 예정 큐 (미사용 항목). 발송 시 위 항목들이 한 회차로 묶여 전송됩니다.
-        </p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div>
+          <p className="text-sm font-medium text-slate-700">수동 발송</p>
+          <p className="mt-0.5 text-sm text-slate-600">
+            버튼을 누르면 그 시점의 큐(미사용 항목) 전체가 한 회차로 발송됩니다. 자동 발송과 별도로 원할 때만 사용하세요.
+          </p>
+        </div>
         <SendNewsletterButton />
+      </div>
+      <div className="mb-4 text-sm text-slate-500">
+        아래는 다음 발송 예정 큐 (미사용 항목) 목록입니다.
       </div>
       {!queue?.length ? (
         <div className="card">

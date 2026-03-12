@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
 
-export async function POST() {
+/**
+ * 뉴스레터 발송
+ * - 수동: POST /api/newsletter/send (또는 ?manual=1) → 미사용 큐 전체를 한 회차로 발송
+ * - 자동(Cron): 같은 API 호출 시 동일하게 미사용 큐 전체 발송
+ */
+export async function POST(req: NextRequest) {
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -10,12 +15,19 @@ export async function POST() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: items } = await supabase
+  const { searchParams } = new URL(req.url ?? "", "http://localhost");
+  const manual = searchParams.get("manual") === "1";
+
+  const query = supabase
     .from("newsletter_queue")
     .select("id, type, title, summary, content_html, ref_type, ref_id")
     .is("used_in_issue_id", null)
-    .lte("scheduled_for", new Date().toISOString().slice(0, 10))
+    .order("scheduled_for")
     .order("sort_order");
+
+  const { data: items } = manual
+    ? await query
+    : await query.lte("scheduled_for", new Date().toISOString().slice(0, 10));
 
   if (!items?.length) {
     return NextResponse.json({ ok: false, error: "발송할 큐 항목이 없습니다." }, { status: 400 });

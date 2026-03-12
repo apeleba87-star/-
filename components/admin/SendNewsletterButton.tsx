@@ -8,11 +8,11 @@ export default function SendNewsletterButton() {
   const [result, setResult] = useState<string | null>(null);
 
   async function handleSend() {
-    if (!confirm("뉴스레터를 지금 발송하시겠습니까? (실제 이메일 발송은 이메일 서비스 연동 후 가능합니다)")) return;
+    if (!confirm("뉴스레터를 지금 발송하시겠습니까? 큐에 있는 항목이 한 회차로 발송됩니다.")) return;
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch("/api/newsletter/send", { method: "POST" });
+      const res = await fetch("/api/newsletter/send?manual=1", { method: "POST" });
       const data = await res.json();
       if (data.ok) setResult("발송 요청이 완료되었습니다. (이메일 연동 시 실제 발송됩니다)");
       else setResult(data.error || "실패");
