@@ -45,13 +45,21 @@ type PostForRender = {
   excerpt: string | null;
   published_at: string | null;
   source_type?: string | null;
+  slug?: string | null;
   category?: { slug: string; name: string } | null;
 };
 
 type PostDetailAds = Awaited<ReturnType<typeof getActivePostDetailAds>>;
 
+/** 자동 생성 입찰 리포트 여부: source_type 있거나 slug가 일간 디제스트 패턴이면 리포트 */
+function isReportPost(post: PostForRender): boolean {
+  if (post.source_type) return true;
+  const slug = typeof post.slug === "string" ? post.slug : "";
+  return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
+}
+
 function renderPost(post: PostForRender, ads: PostDetailAds) {
-  const isReport = Boolean(post.source_type);
+  const isReport = isReportPost(post);
   const showTopAd = ads.post_top?.enabled && ads.post_top.campaign;
   const showBottomAd = ads.post_bottom?.enabled && ads.post_bottom.campaign;
 
