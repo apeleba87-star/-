@@ -50,6 +50,12 @@ export default function Footer() {
             >
               로그인
             </Link>
+            <Link
+              href="/privacy"
+              className="min-h-[44px] py-2 text-sm text-slate-600 hover:text-slate-900 touch-manipulation"
+            >
+              개인정보 처리방침
+            </Link>
           </nav>
         </div>
         <p className="mt-6 text-xs text-slate-400">
