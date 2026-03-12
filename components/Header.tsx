@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -35,6 +36,7 @@ const iconBtnClass =
   "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-white/60 hover:text-slate-900 touch-manipulation";
 
 export default function Header() {
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdminNav, setShowAdminNav] = useState(false);
 
@@ -88,18 +90,25 @@ export default function Header() {
           <nav className="hidden items-center gap-0.5 lg:flex" aria-label="메인 메뉴">
             {navItems
               .filter((item) => !item.adminOnly || showAdminNav)
-              .map((item) => (
-              <Link key={item.href} href={item.href}>
-                <motion.span
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-600 hover:bg-white/60 hover:text-slate-900"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <item.Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                </motion.span>
-              </Link>
-            ))}
+              .map((item) => {
+                const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <motion.span
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium ${
+                        isActive
+                          ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      }`}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <item.Icon className="h-4 w-4 shrink-0" />
+                      {item.label}
+                    </motion.span>
+                  </Link>
+                );
+              })}
           </nav>
 
           {/* 우측: 검색, 알림, 유저, 관리자(PC) / 햄버거(모바일) */}
@@ -183,17 +192,24 @@ export default function Header() {
               <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-4" aria-label="모바일 메뉴">
                 {navItems
                   .filter((item) => !item.adminOnly || showAdminNav)
-                  .map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80 touch-manipulation"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <item.Icon className="h-5 w-5 shrink-0 text-slate-500" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                ))}
+                  .map((item) => {
+                    const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 touch-manipulation ${
+                          isActive
+                            ? "bg-gradient-to-r from-teal-500/90 to-emerald-600/90 text-white"
+                            : "text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
+                        }`}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <item.Icon className={`h-5 w-5 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
+                        <span className="font-medium">{item.label}</span>
+                      </Link>
+                    );
+                  })}
               </nav>
               <div className="border-t border-slate-200/80 p-4 space-y-2">
                 <div className="flex min-h-[44px] items-center md:hidden">

@@ -15,17 +15,17 @@ type Props = { current: NewsCategoryKey };
 export default function NewsCategoryTabs({ current }: Props) {
   return (
     <nav
-      className="flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 p-1"
+      className="flex gap-1.5 overflow-x-auto rounded-xl border border-slate-200/80 bg-white/60 p-1.5 scrollbar-thin"
       aria-label="업계 소식 카테고리"
     >
       {TABS.map((tab) => (
         <Link
           key={tab.key}
           href={tab.href}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+          className={`shrink-0 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
             current === tab.key
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
+              ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md"
+              : "bg-white text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-50 hover:text-slate-900"
           }`}
         >
           {tab.label}

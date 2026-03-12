@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { Lock, LockOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase-server";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
+import NewsCard, { type NewsCardBadge } from "@/components/news/NewsCard";
 
 export const revalidate = 60;
 
@@ -49,41 +48,47 @@ export default async function NewsPage({
       posts = data ?? [];
     }
 
+    const categoryLabels: Record<string, string> = {
+      chemical: "약품",
+      equipment: "장비",
+      labor: "근로",
+      industry: "업계이슈",
+    };
+
     return (
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="mb-2 text-2xl font-bold text-slate-900">업계 소식</h1>
-        <p className="mb-6 text-sm text-slate-500">
-          청소·소독·방역 관련 약품, 장비, 근로, 업계이슈 소식입니다.
-        </p>
-        <NewsCategoryTabs current={category} />
-        {!posts?.length ? (
-          <div className="card mt-6">
-            <p className="text-slate-500">아직 올라온 글이 없습니다.</p>
-          </div>
-        ) : (
-          <ul className="mt-6 space-y-3">
-            {posts.map((post) => (
-              <li key={post.id}>
-                <Link
-                  href={post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`}
-                  className="card block hover:border-blue-200"
-                >
-                  <h2 className="font-semibold text-slate-800">{post.title}</h2>
-                  {post.excerpt && (
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-600">
-                      {post.excerpt}
-                    </p>
-                  )}
-                  <time className="mt-2 block text-xs text-slate-500">
-                    {post.published_at
-                      ? new Date(post.published_at).toLocaleDateString("ko-KR")
-                      : ""}
-                  </time>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
+        <div className="mx-auto max-w-6xl px-4 py-10">
+          <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+            업계 소식
+          </h1>
+          <p className="mb-6 text-sm text-slate-600">
+            청소·소독·방역 관련 약품, 장비, 근로, 업계이슈 소식입니다.
+          </p>
+          <NewsCategoryTabs current={category} />
+          {!posts?.length ? (
+            <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
+              <p className="text-slate-500">아직 올라온 글이 없습니다.</p>
+            </div>
+          ) : (
+            <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {posts.map((post) => (
+                <li key={post.id}>
+                  <NewsCard
+                    href={post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`}
+                    title={post.title}
+                    excerpt={post.excerpt}
+                    date={
+                      post.published_at
+                        ? new Date(post.published_at).toLocaleDateString("ko-KR")
+                        : ""
+                    }
+                    categoryTag={categoryLabels[category] ?? category}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     );
   }
@@ -97,75 +102,55 @@ export default async function NewsPage({
     .limit(50);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="mb-2 text-2xl font-bold text-slate-900">업계 소식</h1>
-      <p className="mb-6 text-sm text-slate-500">
-        청소·소독·방역 입찰 일간 리포트와 업계 관련 소식입니다. 오늘 리포트는
-        무료, 이전 소식은 구독 후 이용할 수 있습니다.
-      </p>
-      <NewsCategoryTabs current={category} />
-      {!posts?.length ? (
-        <div className="card mt-6">
-          <p className="text-slate-500">아직 올라온 소식이 없습니다.</p>
-        </div>
-      ) : (
-        <ul className="mt-6 space-y-3">
-          {posts.map((post, index) => {
-            const sourceRef = (post as { source_ref?: string | null })
-              .source_ref ?? null;
-            const isToday = sourceRef === todayKst;
-            const isFree = isToday || index === 0;
-            const listTitle = isToday
-              ? "오늘 청소 입찰 리포트"
-              : formatReportDateLabel(sourceRef);
-            return (
-              <li key={post.id}>
-                <Link
-                  href={
-                    post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`
-                  }
-                  className="card flex items-start justify-between gap-4 hover:border-blue-200"
-                >
-                  <div className="min-w-0 flex-1">
-                    <h2 className="font-semibold text-slate-800">{listTitle}</h2>
-                    {post.excerpt && (
-                      <p className="mt-1 line-clamp-2 text-sm text-slate-600">
-                        {post.excerpt}
-                      </p>
-                    )}
-                    <time className="mt-2 block text-xs text-slate-500">
-                      {post.published_at
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
+      <div className="mx-auto max-w-6xl px-4 py-10">
+        <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+          업계 소식
+        </h1>
+        <p className="mb-6 text-sm text-slate-600">
+          청소·소독·방역 입찰 일간 리포트와 업계 관련 소식입니다. 오늘 리포트는
+          무료, 이전 소식은 구독 후 이용할 수 있습니다.
+        </p>
+        <NewsCategoryTabs current={category} />
+        {!posts?.length ? (
+          <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
+            <p className="text-slate-500">아직 올라온 소식이 없습니다.</p>
+          </div>
+        ) : (
+          <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post, index) => {
+              const sourceRef = (post as { source_ref?: string | null })
+                .source_ref ?? null;
+              const isToday = sourceRef === todayKst;
+              const isFree = isToday || index === 0;
+              const listTitle = isToday
+                ? "오늘 청소 입찰 리포트"
+                : formatReportDateLabel(sourceRef);
+              const badge: NewsCardBadge = isFree ? "free" : "premium";
+              return (
+                <li key={post.id}>
+                  <NewsCard
+                    href={
+                      post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`
+                    }
+                    title={listTitle}
+                    excerpt={post.excerpt}
+                    date={
+                      post.published_at
                         ? new Date(post.published_at).toLocaleDateString(
                             "ko-KR"
                           )
-                        : ""}
-                    </time>
-                  </div>
-                  <span
-                    className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium ${
-                      isFree
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {isFree ? (
-                      <>
-                        <LockOpen className="h-4 w-4" aria-hidden />
-                        무료
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-4 w-4" aria-hidden />
-                        구독
-                      </>
-                    )}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                        : ""
+                    }
+                    badge={badge}
+                    categoryTag="입찰 리포트"
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
