@@ -44,7 +44,10 @@ function getSido(row: TenderRow): string {
   return region ?? "기타";
 }
 
-/** 일간: KST 오늘 기준 tenders 조회 후 집계 */
+/** 입찰 공고 목록(청소+소독방역)과 동일: categories에 cleaning 또는 disinfection 포함된 공고만 */
+const CLEANING_DISINFECTION_CATEGORIES = ["cleaning", "disinfection"] as const;
+
+/** 일간: KST 기준 해당 일자 + 청소·소독·방역만 조회 후 집계 (입찰 공고 196건 기준과 동일) */
 export async function aggregateDailyTenders(
   supabase: SupabaseClient,
   date?: Date
@@ -57,6 +60,7 @@ export async function aggregateDailyTenders(
     .select("id, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_clse_dt, bid_ntce_dt")
     .gte("bid_ntce_dt", start)
     .lte("bid_ntce_dt", end)
+    .overlaps("categories", [...CLEANING_DISINFECTION_CATEGORIES])
     .order("base_amt", { ascending: false, nullsFirst: false });
 
   if (error) throw new Error(`tenders 조회 실패: ${error.message}`);
