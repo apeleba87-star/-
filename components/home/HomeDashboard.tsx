@@ -17,39 +17,57 @@ import { homeDashboardCardClass } from "./home-section-styles";
 
 type DashboardCardProps = {
   title: string;
-  href: string;
+  href?: string;
   icon: React.ReactNode;
   iconBg: string;
   children: React.ReactNode;
   delay?: number;
+  /** true면 링크 비활성화, "출시 예정" 표시 */
+  comingSoon?: boolean;
 };
 
-function DashboardCard({ title, href, icon, iconBg, children, delay = 0 }: DashboardCardProps) {
+function DashboardCard({ title, href, icon, iconBg, children, delay = 0, comingSoon = false }: DashboardCardProps) {
+  const content = (
+    <div
+      className={`${homeDashboardCardClass} flex h-full flex-col ${comingSoon ? "cursor-not-allowed opacity-75" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${iconBg}`}
+        >
+          {icon}
+        </span>
+        {comingSoon ? (
+          <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+            출시 예정
+          </span>
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <ChevronRight className="h-5 w-5" />
+          </span>
+        )}
+      </div>
+      <h3 className="mt-3 font-semibold text-slate-900">{title}</h3>
+      <div className="mt-2 flex-1 text-sm text-slate-600">{children}</div>
+      {comingSoon ? (
+        <span className="mt-3 inline-flex items-center text-sm font-medium text-slate-500">준비 중입니다</span>
+      ) : (
+        <span className="mt-3 inline-flex items-center text-sm font-medium text-blue-600">확인하기</span>
+      )}
+    </div>
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
     >
-      <Link href={href} className="block h-full">
-        <div className={`${homeDashboardCardClass} flex h-full flex-col`}>
-          <div className="flex items-start justify-between gap-2">
-            <span
-              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${iconBg}`}
-            >
-              {icon}
-            </span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-              <ChevronRight className="h-5 w-5" />
-            </span>
-          </div>
-          <h3 className="mt-3 font-semibold text-slate-900">{title}</h3>
-          <div className="mt-2 flex-1 text-sm text-slate-600">{children}</div>
-          <span className="mt-3 inline-flex items-center text-sm font-medium text-blue-600">
-            확인하기
-          </span>
-        </div>
-      </Link>
+      {comingSoon || !href ? (
+        <div className="block h-full" aria-disabled="true">{content}</div>
+      ) : (
+        <Link href={href} className="block h-full">{content}</Link>
+      )}
     </motion.div>
   );
 }
@@ -180,13 +198,13 @@ export default function HomeDashboard({
 
           <DashboardCard
             title="데이터 인사이트"
-            href="/subscribe"
             icon={<BarChart3 className="h-5 w-5" />}
             iconBg="bg-slate-600"
             delay={0.3}
+            comingSoon
           >
             <p className="text-slate-600">키즈카페·사무실 청소 평균 단가</p>
-            <p className="mt-0.5 text-slate-500">구독 시 더 많은 인사이트</p>
+            <p className="mt-0.5 text-slate-500">출시 예정 · 구독 시 더 많은 인사이트</p>
           </DashboardCard>
         </section>
 
