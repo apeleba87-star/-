@@ -166,7 +166,7 @@ export default function DailyTenderReportDashboard({
                     borderRadius: 8,
                     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                   }}
-                  formatter={(value: number) => [`${value}건`, "건수"]}
+                  formatter={(value) => [`${value != null ? Number(value) : 0}건`, "건수"]}
                   labelFormatter={(label) => `지역: ${label}`}
                 />
                 <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={48}>
