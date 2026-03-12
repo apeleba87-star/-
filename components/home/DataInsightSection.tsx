@@ -24,12 +24,12 @@ export default function DataInsightSection() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className={`${homeCardClass} border-blue-200/60 opacity-90`}>
-          <p className="text-sm text-slate-500">키즈카페 평균 단가</p>
-          <p className="mt-1 text-xl font-bold text-blue-600">평당 4,200원</p>
+          <p className="text-sm text-slate-500">사무실 청소 평균 단가</p>
+          <p className="mt-1 text-xl font-bold text-blue-600">평당 출시 예정</p>
         </div>
         <div className={`${homeCardClass} border-violet-200/60 opacity-90`}>
-          <p className="text-sm text-slate-500">사무실 청소 평균</p>
-          <p className="mt-1 text-xl font-bold text-violet-600">평당 3,200원</p>
+          <p className="text-sm text-slate-500">계단청소 평균 단가</p>
+          <p className="mt-1 text-xl font-bold text-violet-600">평당 출시 예정</p>
         </div>
       </div>
 

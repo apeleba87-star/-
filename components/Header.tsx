@@ -5,9 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search,
   Bell,
-  User,
   Menu,
   X,
   Home,
@@ -39,6 +37,7 @@ export default function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdminNav, setShowAdminNav] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     if (menuOpen) document.body.style.overflow = "hidden";
@@ -51,6 +50,7 @@ export default function Header() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user);
       if (!user) {
         setShowAdminNav(false);
         return;
@@ -111,29 +111,24 @@ export default function Header() {
               })}
           </nav>
 
-          {/* 우측: 검색, 알림, 유저, 관리자(PC) / 햄버거(모바일) */}
+          {/* 우측: 알림(로그인 시만), 유저, 관리자(PC) / 햄버거(모바일) */}
           <div className="flex items-center gap-0.5 sm:gap-1">
-            <motion.button
-              type="button"
-              className={`${iconBtnClass} hidden sm:flex`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
-              aria-label="검색"
-            >
-              <Search className="h-5 w-5" />
-            </motion.button>
-            <motion.div
-              className={`${iconBtnClass} relative hidden sm:flex`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Bell className="h-5 w-5" />
-              <motion.span
-                className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"
-                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.8, 1] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-              />
-            </motion.div>
+            {isLoggedIn && (
+              <motion.button
+                type="button"
+                className={`${iconBtnClass} relative hidden sm:flex`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                aria-label="알림"
+              >
+                <Bell className="h-5 w-5" />
+                <motion.span
+                  className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"
+                  animate={{ scale: [1, 1.2, 1], opacity: [1, 0.8, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                />
+              </motion.button>
+            )}
             <span className="hidden min-h-[44px] items-center md:flex">
               <motion.span className="contents" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <HeaderAuth />

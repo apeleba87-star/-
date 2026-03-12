@@ -8,9 +8,16 @@
   --color-edge: 226 232 240;
 }
 
+/* 모바일 최소: S25 기준 360px 뷰포트. 가로 스크롤 방지 */
+html {
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   @apply min-h-screen text-slate-900 antialiased;
   background: linear-gradient(165deg, rgb(248 250 252) 0%, rgba(239 246 255 / 0.3) 50%, rgba(250 245 255 / 0.2) 100%);
+  min-width: 0;
 }
 
 @layer components {
