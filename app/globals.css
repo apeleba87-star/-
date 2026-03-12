@@ -36,26 +36,25 @@ body {
     @apply mb-1 block text-sm font-medium text-slate-700;
   }
 
-  /* 자동 생성 리포트 전용: 섹션 카드·표·요약 박스 */
-  /* 첫 번째 h2 다음 단락(요약) 박스 */
-  .post-report .prose h2:first-of-type + p,
-  .post-report .prose h2:first-of-type + p + p {
+  /* 자동 생성 리포트 전용: 섹션 카드·표·요약 박스 (post-report와 prose가 같은 div에 있음) */
+  .post-report h2:first-of-type + p,
+  .post-report h2:first-of-type + p + p {
     @apply rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-slate-700;
   }
-  .post-report .prose h2 {
-    @apply mt-8 border-b border-slate-200 pb-2 text-lg font-semibold text-slate-800 first:mt-0;
+  .post-report h2 {
+    @apply mt-8 border-b-2 border-slate-200 pb-2 text-lg font-semibold text-slate-800 first:mt-0;
   }
-  .post-report .prose table {
-    @apply w-full border-collapse text-sm;
+  .post-report table {
+    @apply my-4 w-full border-collapse rounded-lg border border-slate-200 text-sm shadow-sm;
   }
-  .post-report .prose th,
-  .post-report .prose td {
-    @apply border border-slate-200 px-3 py-2 text-left;
+  .post-report th,
+  .post-report td {
+    @apply border border-slate-200 px-3 py-2.5 text-left;
   }
-  .post-report .prose th {
-    @apply bg-slate-100 font-medium text-slate-700;
+  .post-report th {
+    @apply bg-slate-100 font-semibold text-slate-700;
   }
-  .post-report .prose tbody tr:hover {
-    @apply bg-slate-50/50;
+  .post-report tbody tr:hover {
+    @apply bg-slate-50/80;
   }
 }
