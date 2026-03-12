@@ -76,11 +76,31 @@
 
 ---
 
-## 4. 네이버 로그인 (선택)
+## 4. 네이버 로그인
 
-1. [Naver Developers](https://developers.naver.com/) → **Application** 등록
-2. **API 설정** → **Callback URL**에 Supabase Callback URL 등록
-3. **Client ID**, **Client Secret**을 Supabase **Providers** → **Naver**에 입력
+### 4-1. Naver Developers (네이버 개발자 센터)
+
+1. **[Naver Developers](https://developers.naver.com/)** 로그인 → **Application** → **애플리케이션 등록** (또는 기존 앱 선택)
+2. **사용 API**: **네이버 로그인** 선택
+3. **서비스 URL**: `https://www.cleanidex.co.kr` (또는 `https://cleanidex.co.kr`)
+4. **Callback URL** (네이버에서는 **Callback URL**이라고 표기):
+   - Supabase **Authentication** → **Providers** → **Naver** 에서 표시되는 **Callback URL** 복사  
+     (예: `https://yrrhqdcvfbjdmjqfssnr.supabase.co/auth/v1/callback`)
+   - 이 URL을 네이버 애플리케이션의 **Callback URL**에 **그대로** 한 줄 등록
+5. 등록 완료 후 **Client ID**, **Client Secret** 복사
+
+### 4-2. Supabase에 등록
+
+1. Supabase **Authentication** → **Providers** → **Naver** 활성화
+2. **Client ID**, **Client Secret** 붙여넣기 → **Save**
+
+### 네이버 로그인 체크리스트
+
+| 확인 항목 | 위치 |
+|----------|------|
+| **Callback URL** = Supabase Callback URL과 **완전 일치** | Naver Application → API 설정 |
+| Supabase **Redirect URLs**에 운영 주소 포함 | Supabase Auth → URL Configuration |
+| **Site URL** 운영 도메인으로 설정 | Supabase Auth → URL Configuration |
 
 ---
 

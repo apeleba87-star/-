@@ -12,10 +12,9 @@ function isValidNext(path: string | null): path is string {
   return p.startsWith("/") && !p.startsWith("//");
 }
 
-type SocialProvider = "google" | "naver" | "kakao";
+type SocialProvider = "google" | "kakao";
 const SOCIAL_PROVIDERS: { provider: SocialProvider; label: string; className?: string }[] = [
   { provider: "google", label: "Google로 로그인", className: "border-slate-300 bg-white text-slate-800 hover:bg-slate-50" },
-  { provider: "naver", label: "네이버로 로그인", className: "border-[#03C75A] bg-[#03C75A] text-white hover:bg-[#02b350]" },
   { provider: "kakao", label: "카카오로 로그인", className: "border-[#FEE500] bg-[#FEE500] text-[#191919] hover:bg-[#f5d900]" },
 ];
 
@@ -51,7 +50,7 @@ export default function LoginClient() {
     const next = isValidNext(nextUrl) ? nextUrl : "/onboarding";
     const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` : undefined;
     const { error: err } = await supabase.auth.signInWithOAuth({
-      provider: provider as "google" | "kakao",
+      provider,
       options: { redirectTo },
     });
     if (err) {
