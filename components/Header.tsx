@@ -11,19 +11,20 @@ import {
   X,
   Home,
   FileText,
-  FolderOpen,
   Gavel,
   Briefcase,
   UserPlus,
   Calculator,
+  Newspaper,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 import HeaderAuth from "./HeaderAuth";
 import HeaderAdminLink from "./HeaderAdminLink";
 
-const navItems = [
+const navItems: { href: string; label: string; Icon: typeof Home; adminOnly?: boolean }[] = [
   { href: "/", label: "홈", Icon: Home },
-  { href: "/archive", label: "뉴스레터 아카이브", Icon: FileText },
-  { href: "/categories", label: "카테고리", Icon: FolderOpen },
+  { href: "/archive", label: "뉴스레터 아카이브", Icon: FileText, adminOnly: true },
+  { href: "/news", label: "업계 소식", Icon: Newspaper },
   { href: "/tenders", label: "입찰 공고", Icon: Gavel },
   { href: "/listings", label: "현장 거래", Icon: Briefcase },
   { href: "/jobs", label: "인력 구인", Icon: UserPlus },
@@ -35,6 +36,7 @@ const iconBtnClass =
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showAdminNav, setShowAdminNav] = useState(false);
 
   useEffect(() => {
     if (menuOpen) document.body.style.overflow = "hidden";
@@ -43,6 +45,24 @@ export default function Header() {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        setShowAdminNav(false);
+        return;
+      }
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          setShowAdminNav(data?.role === "admin" || data?.role === "editor");
+        });
+    });
+  }, []);
 
   return (
     <>
@@ -66,7 +86,9 @@ export default function Header() {
 
           {/* PC: 가로 네비 */}
           <nav className="hidden items-center gap-0.5 lg:flex" aria-label="메인 메뉴">
-            {navItems.map((item) => (
+            {navItems
+              .filter((item) => !item.adminOnly || showAdminNav)
+              .map((item) => (
               <Link key={item.href} href={item.href}>
                 <motion.span
                   className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-600 hover:bg-white/60 hover:text-slate-900"
@@ -159,7 +181,9 @@ export default function Header() {
                 </motion.button>
               </div>
               <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-4" aria-label="모바일 메뉴">
-                {navItems.map((item) => (
+                {navItems
+                  .filter((item) => !item.adminOnly || showAdminNav)
+                  .map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}

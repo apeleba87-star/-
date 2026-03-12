@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActivePostDetailAds } from "@/lib/ads";
 import AdNativeCard from "@/components/home/AdNativeCard";
 import { aggregateDailyTenders } from "@/lib/content/tender-report-queries";
 import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
+import { getKstDateString } from "@/lib/content/kst-utils";
 import DailyTenderReportDashboard from "@/components/report/DailyTenderReportDashboard";
+import ReportPaywallLock from "@/components/report/ReportPaywallLock";
 
 export const revalidate = 60;
 
@@ -70,9 +72,54 @@ export default async function PostPage({
         }
       }
     }
-    return renderPost(slugPost, adsResult, reportData);
+    const reportLocked = await getReportLocked(slugPost, reportData);
+    return renderPost(slugPost, adsResult, reportData, reportLocked);
   }
-  return renderPost(post!, adsResult, reportData);
+  const reportLocked = await getReportLocked(post!, reportData);
+  return renderPost(post!, adsResult, reportData, reportLocked);
+}
+
+async function getReportLocked(
+  post: PostForRender,
+  reportData: ReportData | null
+): Promise<boolean> {
+  if (!isReportPost(post) || !reportData) return false;
+  const reportDate = getReportDate(post);
+  const todayKst = getKstDateString();
+  if (!reportDate || reportDate >= todayKst) return false;
+  const authSupabase = await createServerSupabase();
+  const { data: { user } } = await authSupabase.auth.getUser();
+  if (!user) return true;
+  const { data: profile } = await authSupabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  const role = (profile as { role?: string } | null)?.role;
+  if (role === "admin" || role === "editor") return false;
+  const { data: sub } = await authSupabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (sub) return false;
+  const { data: grant } = await authSupabase
+    .from("report_share_grants")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("post_id", post.id)
+    .eq("grant_date", todayKst)
+    .is("used_at", null)
+    .maybeSingle();
+  if (grant) {
+    await authSupabase
+      .from("report_share_grants")
+      .update({ used_at: new Date().toISOString() })
+      .eq("id", grant.id);
+    return false;
+  }
+  return true;
 }
 
 type PostForRender = {
@@ -97,11 +144,17 @@ function isReportPost(post: PostForRender): boolean {
   return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
 }
 
-function renderPost(post: PostForRender, ads: PostDetailAds, reportData: ReportData | null) {
+function renderPost(
+  post: PostForRender,
+  ads: PostDetailAds,
+  reportData: ReportData | null,
+  reportLocked: boolean
+) {
   const isReport = isReportPost(post);
   const showTopAd = ads.post_top?.enabled && ads.post_top.campaign;
   const showBottomAd = ads.post_bottom?.enabled && ads.post_bottom.campaign;
   const useDashboard = isReport && reportData;
+  const showLock = useDashboard && reportLocked;
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-6 sm:px-6 sm:py-10">
@@ -109,7 +162,15 @@ function renderPost(post: PostForRender, ads: PostDetailAds, reportData: ReportD
         ← 카테고리
       </Link>
 
-      {useDashboard ? (
+      {showLock ? (
+        <ReportPaywallLock
+          postId={post.id}
+          loginReturnPath={`/posts/${post.id}`}
+          title={post.title}
+          excerpt={post.excerpt}
+          dateLabel={reportData?.payload.dateLabel}
+        />
+      ) : useDashboard ? (
         <>
           {showTopAd && ads.post_top?.campaign && (
             <div className="mb-6">
@@ -117,10 +178,10 @@ function renderPost(post: PostForRender, ads: PostDetailAds, reportData: ReportD
             </div>
           )}
           <DailyTenderReportDashboard
-            payload={reportData.payload}
+            payload={reportData!.payload}
             title={post.title}
-            dateLabel={reportData.payload.dateLabel}
-            insightSentence={reportData.insightSentence}
+            dateLabel={reportData!.payload.dateLabel}
+            insightSentence={reportData!.insightSentence}
             excerpt={post.excerpt}
           />
           {showBottomAd && ads.post_bottom?.campaign && (
