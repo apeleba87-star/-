@@ -50,15 +50,7 @@ export default function DailyTenderReportDashboard({
   insightSentence,
   excerpt,
 }: Props) {
-  const {
-    count_total,
-    budget_total,
-    budget_label,
-    region_breakdown,
-    top_budget_tenders,
-    deadline_soon_tenders,
-    has_budget_unknown,
-  } = payload;
+  const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders } = payload;
 
   const topRegionShare =
     count_total > 0 && region_breakdown[0]
@@ -72,104 +64,95 @@ export default function DailyTenderReportDashboard({
   }));
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 rounded-2xl p-6 bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50">
+    <div className="mx-auto max-w-[1400px] space-y-4 rounded-2xl p-3 bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 sm:space-y-6 sm:p-6">
       {/* 1. 헤더 (히어로 배너) */}
-      <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-8 shadow-2xl">
+      <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-4 shadow-2xl sm:p-8">
         <div
-          className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl"
+          className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-3xl sm:-right-20 sm:-top-20 sm:h-64 sm:w-64"
           aria-hidden
         />
         <div
-          className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-white/5 blur-3xl"
+          className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5 blur-3xl sm:-bottom-32 sm:-left-32 sm:h-96 sm:w-96"
           aria-hidden
         />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md">
-              <Sparkles className="h-8 w-8 text-white" />
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md sm:h-14 sm:w-14">
+              <Sparkles className="h-5 w-5 text-white sm:h-8 sm:w-8" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{title}</h1>
-              <p className="mt-1 text-lg text-blue-100">{excerpt ?? "청소·소독·방역 입찰 요약"}</p>
-              <p className="mt-2 text-xl font-medium text-blue-100">{dateLabel}</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold leading-snug tracking-tight text-white sm:text-4xl">
+                {title}
+              </h1>
+              <p className="mt-1 text-xs text-blue-100 sm:text-lg">
+                {excerpt ?? "청소·소독·방역 입찰 요약"}
+              </p>
+              <p className="mt-2 text-base font-medium text-blue-100 sm:text-xl">{dateLabel}</p>
             </div>
           </div>
         </div>
       </header>
 
-      {/* 2. 핵심 지표 카드 3개 */}
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="rounded-xl border-0 bg-white p-6 shadow-lg transition-shadow duration-300 hover:shadow-xl">
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm text-slate-500">총 공고</span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <FileText className="h-5 w-5 text-blue-600" />
+      {/* 2. 핵심 지표 카드 2개 (총 공고, 1위 지역 비중) */}
+      <section className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
+        <div className="rounded-xl border-0 bg-white p-4 shadow-lg transition-shadow duration-300 hover:shadow-xl sm:p-6">
+          <div className="mb-3 flex items-center justify-between space-y-0 sm:mb-4">
+            <span className="text-xs text-slate-500 sm:text-sm">총 공고</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 sm:h-10 sm:w-10">
+              <FileText className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
             </div>
           </div>
-          <p className="text-4xl font-bold text-blue-600">{count_total.toLocaleString()}건</p>
-          <p className="mt-2 text-xs text-slate-500">청소·소독·방역 분류 공고</p>
-        </div>
-        <div className="rounded-xl border-0 bg-white p-6 shadow-lg transition-shadow duration-300 hover:shadow-xl">
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm text-slate-500">총 예산</span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-              <DollarSign className="h-5 w-5 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-4xl font-bold text-emerald-600">
-            {budget_total > 0 ? budget_label : "—"}
+          <p className="text-2xl font-bold text-blue-600 sm:text-4xl">
+            {count_total.toLocaleString()}건
           </p>
-          <p className="mt-2 text-xs text-slate-500">
-            {budget_total === 0
-              ? "공개 예산 없음"
-              : has_budget_unknown
-                ? "일부 공고 예산 미공개"
-                : "추정 규모"}
-          </p>
+          <p className="mt-1.5 text-xs text-slate-500 sm:mt-2">청소·소독·방역 분류 공고</p>
         </div>
-        <div className="rounded-xl border-0 bg-white p-6 shadow-lg transition-shadow duration-300 hover:shadow-xl">
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm text-slate-500">1위 지역 비중</span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-              <MapPin className="h-5 w-5 text-purple-600" />
+        <div className="rounded-xl border-0 bg-white p-4 shadow-lg transition-shadow duration-300 hover:shadow-xl sm:p-6">
+          <div className="mb-3 flex items-center justify-between space-y-0 sm:mb-4">
+            <span className="text-xs text-slate-500 sm:text-sm">1위 지역 비중</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 sm:h-10 sm:w-10">
+              <MapPin className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
             </div>
           </div>
-          <p className="text-4xl font-bold text-purple-600">{topRegionShare}%</p>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="text-2xl font-bold text-purple-600 sm:text-4xl">{topRegionShare}%</p>
+          <p className="mt-1.5 text-xs text-slate-500 sm:mt-2">
             {region_breakdown[0]?.name ?? "—"} ({region_breakdown[0]?.count ?? 0}건)
           </p>
         </div>
       </section>
 
       {/* 3. 지역별 분포 */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100">
-            <MapPin className="h-6 w-6 text-indigo-600" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 sm:h-12 sm:w-12">
+            <MapPin className="h-5 w-5 text-indigo-600 sm:h-6 sm:w-6" />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">지역별 분포</h2>
-            <p className="text-sm text-slate-500">{buildRegionSummarySentence(region_breakdown)}</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">지역별 분포</h2>
+            <p className="mt-0.5 text-xs text-slate-500 sm:text-sm leading-snug">
+              {buildRegionSummarySentence(region_breakdown)}
+            </p>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="h-[320px] w-full">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+          <div className="h-64 w-full min-w-0 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={regionChartData} margin={{ top: 8, right: 8, left: 0, bottom: 24 }}>
+              <BarChart data={regionChartData} margin={{ top: 8, right: 4, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fill: "#666", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#666", fontSize: 12 }} />
+                <XAxis dataKey="name" tick={{ fill: "#666", fontSize: 10 }} />
+                <YAxis tick={{ fill: "#666", fontSize: 10 }} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "white",
                     border: "1px solid #e2e8f0",
                     borderRadius: 8,
                     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                    fontSize: 12,
                   }}
                   formatter={(value) => [`${value != null ? Number(value) : 0}건`, "건수"]}
                   labelFormatter={(label) => `지역: ${label}`}
                 />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={48}>
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={40}>
                   {regionChartData.map((_, i) => (
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
@@ -177,24 +160,24 @@ export default function DailyTenderReportDashboard({
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             {region_breakdown.slice(0, 10).map((r, i) => {
               const pct = count_total > 0 ? (r.count / count_total) * 100 : 0;
               return (
                 <div key={r.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
                       <span
-                        className="h-3 w-3 shrink-0 rounded-full"
+                        className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
                         style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
                       />
-                      {r.name}
+                      <span className="truncate">{r.name}</span>
                     </span>
-                    <span className="text-slate-600">
+                    <span className="shrink-0 text-slate-600">
                       {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
                     </span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
                     <div
                       className="h-full rounded-full transition-all duration-300"
                       style={{
@@ -211,40 +194,40 @@ export default function DailyTenderReportDashboard({
       </section>
 
       {/* 4. 예산 상위 공고 */}
-      <section className="space-y-4">
-        <h2 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
-          <DollarSign className="h-8 w-8 text-emerald-600" />
+      <section className="space-y-3 sm:space-y-4">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:gap-3 sm:text-2xl">
+          <DollarSign className="h-6 w-6 text-emerald-600 sm:h-8 sm:w-8" />
           예산 상위 공고
         </h2>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {top_budget_tenders.length === 0 ? (
-            <p className="rounded-xl bg-slate-50 p-6 text-center text-slate-500">
+            <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500 sm:p-6">
               등록된 공고가 없습니다.
             </p>
           ) : (
             top_budget_tenders.map((t, i) => (
               <div
                 key={i}
-                className="flex gap-4 rounded-xl border-2 border-slate-200 bg-gradient-to-r from-white to-slate-50/50 p-5 transition-all duration-300 hover:border-blue-300 hover:shadow-md"
+                className="flex min-w-0 gap-3 rounded-xl border-2 border-slate-200 bg-gradient-to-r from-white to-slate-50/50 p-4 transition-all duration-300 hover:border-blue-300 hover:shadow-md active:border-blue-400 sm:gap-4 sm:p-5"
               >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white shadow-lg">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-base font-bold text-white shadow-lg sm:h-12 sm:w-12 sm:text-lg">
                   {i + 1}
                 </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <h3 className="text-lg font-bold text-slate-900 transition-colors duration-300 hover:text-blue-600 line-clamp-2">
+                <div className="min-w-0 flex-1 space-y-1.5 sm:space-y-2">
+                  <h3 className="text-sm font-bold leading-snug text-slate-900 line-clamp-2 transition-colors duration-300 hover:text-blue-600 sm:text-lg">
                     {t.title}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
-                    <span className="flex items-center gap-1">
-                      <Building2 className="h-4 w-4" />
-                      {t.agency}
+                  <div className="flex flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:text-sm">
+                    <span className="flex items-center gap-1 truncate">
+                      <Building2 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                      <span className="truncate">{t.agency}</span>
                     </span>
                     <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                      <DollarSign className="h-4 w-4" />
+                      <DollarSign className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
                       {t.budgetLabel}
                     </span>
                     <span className="flex items-center gap-1 text-amber-600">
-                      <Clock className="h-4 w-4" />
+                      <Clock className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
                       {t.deadlineLabel}
                     </span>
                   </div>
@@ -256,28 +239,30 @@ export default function DailyTenderReportDashboard({
       </section>
 
       {/* 5. 마감 임박 공고 */}
-      <section className="space-y-4">
-        <h2 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
-          <Clock className="h-8 w-8 text-amber-600" />
+      <section className="space-y-3 sm:space-y-4">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:gap-3 sm:text-2xl">
+          <Clock className="h-6 w-6 text-amber-600 sm:h-8 sm:w-8" />
           마감 임박 공고
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {deadline_soon_tenders.length === 0 ? (
-            <p className="col-span-full rounded-xl bg-slate-50 p-6 text-center text-slate-500">
+            <p className="col-span-full rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500 sm:p-6">
               해당 일자 기준 마감 임박 공고가 없습니다.
             </p>
           ) : (
             deadline_soon_tenders.map((t, i) => (
               <div
                 key={i}
-                className="relative rounded-xl border-2 border-red-200 bg-gradient-to-br from-red-50/80 to-amber-50/80 p-4"
+                className="relative min-w-0 rounded-xl border-2 border-red-200 bg-gradient-to-br from-red-50/80 to-amber-50/80 p-3.5 active:shadow-xl sm:p-4"
               >
-                <span className="absolute right-3 top-3 rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                <span className="absolute right-2.5 top-2.5 flex min-h-[28px] min-w-[44px] items-center justify-center rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white sm:right-3 sm:top-3 sm:py-1">
                   D-Day
                 </span>
-                <h3 className="pr-16 text-base font-semibold text-slate-900 line-clamp-2">{t.title}</h3>
-                <p className="mt-1 truncate text-sm text-slate-600">{t.agency}</p>
-                <p className="mt-2 text-sm font-medium text-red-600">{t.deadlineLabel}</p>
+                <h3 className="pr-14 text-sm font-semibold leading-snug text-slate-900 line-clamp-2 sm:pr-16 sm:text-base">
+                  {t.title}
+                </h3>
+                <p className="mt-1 truncate text-xs text-slate-600 sm:text-sm">{t.agency}</p>
+                <p className="mt-2 text-xs font-medium text-red-600 sm:text-sm">{t.deadlineLabel}</p>
               </div>
             ))
           )}
@@ -285,27 +270,27 @@ export default function DailyTenderReportDashboard({
       </section>
 
       {/* 6. 오늘의 인사이트 */}
-      <section className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-slate-50 to-blue-50/50 p-6 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-            <Lightbulb className="h-5 w-5 text-blue-600" />
+      <section className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-slate-50 to-blue-50/50 p-4 shadow-lg sm:p-6">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 sm:h-10 sm:w-10">
+            <Lightbulb className="h-5 w-5 text-blue-600 sm:h-6 sm:w-6" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">오늘의 인사이트</h2>
+          <h2 className="text-base font-bold text-slate-900 sm:text-xl">오늘의 인사이트</h2>
         </div>
-        <div className="mt-4 rounded-lg border border-blue-100 bg-white p-4">
-          <p className="text-slate-700">{insightSentence}</p>
+        <div className="mt-3 rounded-lg border border-blue-100 bg-white p-3 sm:mt-4 sm:p-4">
+          <p className="text-sm leading-snug text-slate-700 sm:text-base">{insightSentence}</p>
         </div>
       </section>
 
       {/* 7. 푸터 안내 */}
-      <footer className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-700 p-6 shadow-lg">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md">
-            <Info className="h-6 w-6 text-white" />
+      <footer className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-700 p-4 shadow-lg sm:p-6">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md sm:h-12 sm:w-12">
+            <Info className="h-5 w-5 text-white sm:h-6 sm:w-6" />
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">클린인덱스</h3>
-            <p className="mt-2 text-blue-100 leading-relaxed">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-bold text-white sm:text-lg">클린인덱스</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-blue-100 sm:mt-2 sm:text-base">
               클린인덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다.{" "}
               <Link href="/tenders" className="underline hover:text-white">
                 입찰 공고

@@ -104,7 +104,7 @@ function renderPost(post: PostForRender, ads: PostDetailAds, reportData: ReportD
   const useDashboard = isReport && reportData;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-10">
+    <div className="mx-auto max-w-[1400px] px-3 py-6 sm:px-6 sm:py-10">
       <Link href="/categories" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
         ← 카테고리
       </Link>

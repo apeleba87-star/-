@@ -1,17 +1,14 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import SendNewsletterButton from "@/components/admin/SendNewsletterButton";
+import DeleteQueueItemButton from "@/components/admin/DeleteQueueItemButton";
 
 export default async function AdminNewsletterPage() {
   const supabase = await createServerSupabase();
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const scheduledFor = tomorrow.toISOString().slice(0, 10);
 
   const { data: queue } = await supabase
     .from("newsletter_queue")
     .select("id, type, title, summary, ref_type, scheduled_for, created_at")
     .is("used_in_issue_id", null)
-    .gte("scheduled_for", new Date().toISOString().slice(0, 10))
     .order("scheduled_for")
     .order("sort_order");
 
@@ -34,7 +31,7 @@ export default async function AdminNewsletterPage() {
         <SendNewsletterButton />
       </div>
       <div className="mb-4 text-sm text-slate-500">
-        아래는 다음 발송 예정 큐 (미사용 항목) 목록입니다.
+        아래는 아직 발송되지 않은 큐(미사용 항목) 목록입니다. 삭제하면 해당 항목은 뉴스레터에 포함되지 않습니다.
       </div>
       {!queue?.length ? (
         <div className="card">
@@ -50,7 +47,7 @@ export default async function AdminNewsletterPage() {
               key={item.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-4"
             >
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                   {typeLabel[item.type] ?? item.type}
                 </span>
@@ -59,9 +56,12 @@ export default async function AdminNewsletterPage() {
                   <p className="mt-1 line-clamp-1 text-sm text-slate-500">{item.summary}</p>
                 )}
               </div>
-              <span className="text-sm text-slate-500">
-                {item.scheduled_for} · {new Date(item.created_at).toLocaleDateString("ko-KR")}
-              </span>
+              <div className="flex shrink-0 items-center gap-4">
+                <span className="text-sm text-slate-500">
+                  {item.scheduled_for} · {new Date(item.created_at).toLocaleDateString("ko-KR")}
+                </span>
+                <DeleteQueueItemButton queueItemId={item.id} title={item.title} />
+              </div>
             </li>
           ))}
         </ul>
