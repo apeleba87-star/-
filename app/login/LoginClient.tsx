@@ -51,7 +51,7 @@ export default function LoginClient() {
     const next = isValidNext(nextUrl) ? nextUrl : "/onboarding";
     const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` : undefined;
     const { error: err } = await supabase.auth.signInWithOAuth({
-      provider,
+      provider: provider as "google" | "kakao",
       options: { redirectTo },
     });
     if (err) {
