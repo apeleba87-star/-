@@ -8,6 +8,7 @@ type Result = {
   tenders?: number;
   inserted?: number;
   updated?: number;
+  licenseReflected?: number;
   error?: string;
 };
 
@@ -78,7 +79,7 @@ export default function G2bFetchButton() {
           const t = line.trim();
           if (!t) continue;
           try {
-            const data = JSON.parse(t) as { type?: string; phase?: string; total?: number; done?: number; message?: string; ok?: boolean; tenders?: number; inserted?: number; updated?: number; error?: string };
+            const data = JSON.parse(t) as { type?: string; phase?: string; total?: number; done?: number; message?: string; ok?: boolean; tenders?: number; inserted?: number; updated?: number; licenseReflected?: number; error?: string };
             if (data.type === "progress") {
               setProgress({
                 phase: data.phase ?? "upsert",
@@ -102,6 +103,7 @@ export default function G2bFetchButton() {
                 tenders: Number(data.tenders) ?? 0,
                 inserted: Number(data.inserted) ?? 0,
                 updated: Number(data.updated) ?? 0,
+                licenseReflected: data.licenseReflected != null ? Number(data.licenseReflected) : 0,
                 error: err,
               });
               setProgress(null);
@@ -113,7 +115,7 @@ export default function G2bFetchButton() {
       }
       if (buffer.trim()) {
         try {
-          const data = JSON.parse(buffer.trim()) as { type?: string; phase?: string; total?: number; done?: number; message?: string; ok?: boolean; tenders?: number; inserted?: number; updated?: number; error?: string };
+          const data = JSON.parse(buffer.trim()) as { type?: string; phase?: string; total?: number; done?: number; message?: string; ok?: boolean; tenders?: number; inserted?: number; updated?: number; licenseReflected?: number; error?: string };
           if (data.type === "complete") {
             gotComplete = true;
             const err = data.ok
@@ -130,6 +132,7 @@ export default function G2bFetchButton() {
               tenders: Number(data.tenders) ?? 0,
               inserted: Number(data.inserted) ?? 0,
               updated: Number(data.updated) ?? 0,
+              licenseReflected: data.licenseReflected != null ? Number(data.licenseReflected) : 0,
               error: err,
             });
             setProgress(null);
@@ -209,6 +212,9 @@ export default function G2bFetchButton() {
               <p className="font-medium text-emerald-700">수집 성공</p>
               <p className="mt-1 text-slate-700">
                 신규 {result.inserted ?? 0}건, 갱신 {result.updated ?? 0}건 (총 {result.tenders ?? 0}건)
+              </p>
+              <p className="mt-1 text-slate-600 text-sm">
+                면허제한 API: {(result.licenseReflected ?? 0) > 0 ? `${result.licenseReflected}건 반영` : "미반영 (0건)"}
               </p>
               <p className="mt-1.5 text-sm text-slate-600">
                 <Link href="/tenders" className="underline hover:text-slate-900">

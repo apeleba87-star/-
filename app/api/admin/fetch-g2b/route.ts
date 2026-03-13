@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
             tenders: result.tenders,
             inserted: result.inserted,
             updated: result.updated,
+            licenseReflected: result.licenseReflected,
             error: errStr,
           });
         } catch (e) {
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
             : typeof (e as { message?: string })?.message === "string"
               ? (e as { message: string }).message
               : String(e);
-          send({ type: "complete", ok: false, error: message || "수집 중 예외 발생", tenders: 0, inserted: 0, updated: 0 });
+          send({ type: "complete", ok: false, error: message || "수집 중 예외 발생", tenders: 0, inserted: 0, updated: 0, licenseReflected: 0 });
         } finally {
           controller.close();
         }
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
       tenders: result.tenders,
       inserted: result.inserted,
       updated: result.updated,
+      licenseReflected: result.licenseReflected,
       error: errorMsg,
     });
   } catch (e) {

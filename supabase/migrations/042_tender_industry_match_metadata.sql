@@ -7,7 +7,7 @@ ALTER TABLE public.tender_industries
   ADD COLUMN IF NOT EXISTS match_source TEXT,
   ADD COLUMN IF NOT EXISTS raw_value TEXT;
 
-COMMENT ON COLUMN public.tender_industries.match_source IS 'direct_code | direct_name | alias';
+COMMENT ON COLUMN public.tender_industries.match_source IS 'direct_code | direct_name | alias | text_estimated';
 COMMENT ON COLUMN public.tender_industries.raw_value IS 'raw에서 추출한 원문';
 
 -- 2. tenders 업종·백필 보조

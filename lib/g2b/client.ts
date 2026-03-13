@@ -21,7 +21,7 @@ function atchBidNtceOrd(ord: string | undefined): string {
   return String(ord ?? "0").replace(/\D/g, "").padStart(3, "0").slice(-3);
 }
 
-/** 첨부파일 API 404/500 시 대체 base URL (문서: 변경 후 BidPublicInfoService02 우선) */
+/** 첨부파일/상세 API 404 시 대체 base URL (문서: 1230000/BidPublicInfoService 또는 02, ad 경로 혼용) */
 const ATCH_BASE_URL_ALTERNATIVES = [
   "https://apis.data.go.kr/1230000/BidPublicInfoService02",
   "https://apis.data.go.kr/1230000/BidPublicInfoService",
@@ -313,6 +313,116 @@ export async function getBidPblancListInfoPrtcptPsblRgn(
     throw new Error(errMsg);
   }
   return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+}
+
+/** 면허제한정보 (공고번호·차수 기준). 문서 기준 필수: inqryDiv, bidNtceOrd. */
+export async function getBidPblancListInfoLicenseLimit(
+  params: G2BAtchFileParams
+): Promise<G2BListResponse<Record<string, unknown>>> {
+  const ord = String(params.bidNtceOrd ?? "00").padStart(2, "0");
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 365);
+  const inqryBgnDt = `${start.getFullYear()}${pad(start.getMonth() + 1)}${pad(start.getDate())}0000`;
+  const inqryEndDt = `${end.getFullYear()}${pad(end.getMonth() + 1)}${pad(end.getDate())}2359`;
+  const url = buildUrl("getBidPblancListInfoLicenseLimit", {
+    pageNo: params.pageNo ?? 1,
+    numOfRows: params.numOfRows ?? 100,
+    inqryDiv: "1",
+    inqryBgnDt,
+    inqryEndDt,
+    bidNtceNo: params.bidNtceNo,
+    bidNtceOrd: ord,
+  });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
+  const text = await res.text();
+  if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error("G2B API 429 - 요청 한도 초과. 잠시 후 재시도하세요.");
+    }
+    let errMsg = `G2B API error: ${res.status}`;
+    try {
+      const parsed = parseResponse(text);
+      const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
+      const msg = header?.resultMsg ?? header?.resultCode;
+      if (msg) errMsg += ` - ${msg}`;
+    } catch {
+      if (text.length < 200) errMsg += ` - ${text}`;
+    }
+    throw new Error(errMsg);
+  }
+  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+}
+
+/** 면허제한정보 (등록일시범위만). 기간으로 한 번에 조회해 수집 속도·비용 절감. */
+export async function getBidPblancListInfoLicenseLimitByRange(
+  params: G2BListParams & { pageNo?: number; numOfRows?: number }
+): Promise<G2BListResponse<Record<string, unknown>>> {
+  const url = buildUrl("getBidPblancListInfoLicenseLimit", {
+    pageNo: params.pageNo ?? 1,
+    numOfRows: params.numOfRows ?? 1000,
+    inqryDiv: "1",
+    inqryBgnDt: params.inqryBgnDt,
+    inqryEndDt: params.inqryEndDt,
+  });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
+  const text = await res.text();
+  if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error("G2B API 429 - 요청 한도 초과. 잠시 후 재시도하세요.");
+    }
+    let errMsg = `G2B API error: ${res.status}`;
+    try {
+      const parsed = parseResponse(text);
+      const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
+      const msg = header?.resultMsg ?? header?.resultCode;
+      if (msg) errMsg += ` - ${msg}`;
+    } catch {
+      if (text.length < 200) errMsg += ` - ${text}`;
+    }
+    throw new Error(errMsg);
+  }
+  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+}
+
+/** 용역 입찰공고 상세정보 (입찰제한·업종제한 등). 공고번호·차수 기준 1건 조회. 404 시 대체 base URL·3자리 차수 재시도. (※ 25개 오퍼레이션에 없음, 면허제한 API 사용 권장) */
+export async function getBidPblancListInfoServcDtlInfo(
+  params: G2BAtchFileParams
+): Promise<G2BListResponse<Record<string, unknown>>> {
+  const ord2 = String(params.bidNtceOrd ?? "00").padStart(2, "0");
+  const ord3 = atchBidNtceOrd(params.bidNtceOrd);
+  const opts = {
+    pageNo: params.pageNo ?? 1,
+    numOfRows: params.numOfRows ?? 10,
+    bidNtceNo: params.bidNtceNo,
+  };
+  let lastError: Error | null = null;
+  for (const baseUrl of ATCH_BASE_URL_ALTERNATIVES) {
+    for (const bidNtceOrd of [ord2, ord3]) {
+      try {
+        const url = buildUrl("getBidPblancListInfoServcDtlInfo", { ...opts, bidNtceOrd }, baseUrl);
+        const res = await safeFetch(url, G2B_FETCH_OPTIONS);
+        const text = await res.text();
+        if (res.ok) return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+        let errMsg = `G2B API ${res.status}`;
+        try {
+          const parsed = parseResponse(text);
+          const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
+          const msg = header?.resultMsg ?? header?.resultCode;
+          if (msg) errMsg += ` - ${msg}`;
+        } catch {
+          if (text.length < 200) errMsg += ` - ${text.slice(0, 100)}`;
+        }
+        lastError = new Error(errMsg);
+        if (res.status !== 404 && res.status !== 500) throw lastError;
+      } catch (e) {
+        if (e instanceof Error && !e.message.includes("404") && !e.message.includes("500")) throw e;
+        lastError = e instanceof Error ? e : new Error(String(e));
+      }
+    }
+  }
+  throw lastError ?? new Error("상세 API 조회 실패(404/500). 오퍼레이션 미지원이거나 일시 장애일 수 있음.");
 }
 
 /** 응답에서 item 배열 추출 (단일 객체면 배열로) */

@@ -13,18 +13,29 @@ export type IndustryRow = {
 
 export type IndustryMatch = {
   code: string;
-  match_source: "direct_code" | "direct_name" | "alias";
+  match_source: "direct_code" | "direct_name" | "alias" | "text_estimated" | "detail_api";
   raw_value: string;
 };
 
 export type IndustryMatchResult = {
   matches: IndustryMatch[];
-  match_status: "matched" | "alias_matched" | "unclassified";
+  match_status: "matched" | "alias_matched" | "text_estimated" | "unclassified";
   raw_values: string[];
 };
 
-const RAW_KEYS_CODE = ["indstryCd", "indstry_cd", "업종코드", "prcureObjCd", "prcure_obj_cd"];
-const RAW_KEYS_NAME = ["indstryNm", "indstry_nm", "업종명", "prcureObjNm", "prcure_obj_nm", "계약대상"];
+const RAW_KEYS_CODE = [
+  "indstryCd", "indstry_cd", "IndstryCd", "업종코드", "prcureObjCd", "prcure_obj_cd", "PrcureObjCd",
+  "indstryCode", "industryCd", "industry_code",
+];
+const RAW_KEYS_NAME = [
+  "indstryNm", "indstry_nm", "IndstryNm", "업종명", "prcureObjNm", "prcure_obj_nm", "PrcureObjNm", "계약대상",
+  "indstryName", "industryNm", "industry_nm", "srvceDivNm", "srvce_div_nm", "업무구분",
+];
+const RAW_KEYS_TEXT_FOR_ESTIMATE = [
+  "bidNtceNm", "bid_ntce_nm", "공고명", "bidNtceDtl", "bid_ntce_dtl", "공고상세",
+  "prcureObjNm", "prcure_obj_nm", "계약대상", "prcureObjDtl", "prcure_obj_dtl", "계약대상상세",
+  "srvceDivNm", "srvce_div_nm", "업무구분", "ntceSpecDocCn", "ntce_spec_doc_cn", "공고명세문서내용",
+];
 
 /** 대표 업종 선정 우선순위: cleaning > disinfection > facility > labor > 기타(sort_order) */
 const GROUP_PRIORITY: Record<string, number> = {
@@ -77,11 +88,83 @@ function collectValues(raw: Record<string, unknown>, keys: string[]): string[] {
     } else if (typeof v === "string") {
       const parts = v.split(/[,，\/]/).map((p) => p.trim()).filter(Boolean);
       out.push(...parts);
+    } else if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Date)) {
+      for (const val of Object.values(v as Record<string, unknown>)) {
+        if (typeof val === "string" && val.trim()) out.push(val.trim());
+      }
     } else {
       out.push(String(v).trim());
     }
   }
   return [...new Set(out)];
+}
+
+/** 공고명·계약대상·상세 등에서 검색용 텍스트 한 덩어리 생성 (텍스트 기반 업종 추정용) */
+function buildSearchableText(raw: Record<string, unknown>): string {
+  let parts = collectValues(raw, RAW_KEYS_TEXT_FOR_ESTIMATE);
+  if (parts.join("").length < 10) {
+    const fallback: string[] = [];
+    for (const [k, v] of Object.entries(raw)) {
+      if (typeof v === "string" && v.trim().length >= 2) {
+        const keyLower = k.toLowerCase();
+        if (/nm|명|제목|내용|title|name|text|dtl|상세/.test(keyLower) || keyLower.includes("obj") || keyLower.includes("ntce")) {
+          fallback.push(v.trim());
+        }
+      }
+    }
+    for (const v of Object.values(raw)) {
+      if (typeof v === "string" && v.trim().length >= 3 && !fallback.includes(v.trim())) fallback.push(v.trim());
+      if (Array.isArray(v)) {
+        for (const x of v) {
+          if (typeof x === "string" && x.trim().length >= 3) fallback.push(x.trim());
+        }
+      }
+      if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+        for (const val of Object.values(v as Record<string, unknown>)) {
+          if (typeof val === "string" && val.trim().length >= 3) fallback.push(val.trim());
+        }
+      }
+    }
+    if (fallback.length > 0) parts = [...parts, ...fallback];
+  }
+  return normalize(parts.join(" "));
+}
+
+/** 최소 길이 미만 별칭은 텍스트 매칭에서 제외 (과매칭 방지) */
+const MIN_ALIAS_LENGTH_FOR_TEXT = 2;
+
+/** 공백 제거한 문자열 (띄어쓰기 차이로 매칭 누락 방지) */
+function compact(s: string): string {
+  return s.replace(/\s+/g, "");
+}
+
+/** 텍스트에 업종명/별칭이 포함되어 있으면 해당 업종 추정. match_source = text_estimated */
+function matchByTextSearch(
+  searchText: string,
+  industries: IndustryRow[]
+): IndustryMatch[] {
+  if (!searchText || searchText.length < MIN_ALIAS_LENGTH_FOR_TEXT) return [];
+  const searchCompact = compact(normalize(searchText));
+  const out: IndustryMatch[] = [];
+  for (const ind of industries) {
+    const nameNorm = normalize(ind.name);
+    const nameCompact = compact(nameNorm);
+    if (nameCompact.length >= MIN_ALIAS_LENGTH_FOR_TEXT && searchCompact.includes(nameCompact)) {
+      out.push({ code: ind.code, match_source: "text_estimated", raw_value: ind.name });
+      continue;
+    }
+    if (ind.aliases?.length) {
+      for (const a of ind.aliases) {
+        const aliasNorm = normalize(String(a));
+        const aliasCompact = compact(aliasNorm);
+        if (aliasCompact.length >= MIN_ALIAS_LENGTH_FOR_TEXT && searchCompact.includes(aliasCompact)) {
+          out.push({ code: ind.code, match_source: "text_estimated", raw_value: String(a) });
+          break;
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -120,8 +203,20 @@ export function extractIndustryMatchesFromRaw(
     }
   }
 
+  let hasTextEstimated = false;
+  if (matchMap.size === 0) {
+    const searchText = buildSearchableText(raw);
+    const textMatches = matchByTextSearch(searchText, industries);
+    for (const m of textMatches) {
+      if (!matchMap.has(m.code)) {
+        matchMap.set(m.code, m);
+        hasTextEstimated = true;
+      }
+    }
+  }
+
   const match_status =
-    hasDirectCode ? "matched" : hasNameOrAlias ? "alias_matched" : "unclassified";
+    hasDirectCode ? "matched" : hasNameOrAlias ? "alias_matched" : hasTextEstimated ? "text_estimated" : "unclassified";
   return {
     matches: [...matchMap.values()],
     match_status,

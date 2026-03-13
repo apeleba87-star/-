@@ -37,6 +37,129 @@ export default function IndustriesForm({ initialIndustries }: { initialIndustrie
     message: string;
   } | null>(null);
   const [clearAllLoading, setClearAllLoading] = useState(false);
+  const [detailBackfillLoading, setDetailBackfillLoading] = useState(false);
+  const [detailBackfillProgress, setDetailBackfillProgress] = useState<{
+    processed: number;
+    success: number;
+    skipped: number;
+    failed: number;
+    total: number | null;
+    percent: number | null;
+    message: string;
+  } | null>(null);
+  const [testBidNo, setTestBidNo] = useState("");
+  const [testBidOrd, setTestBidOrd] = useState("00");
+  const [testLicenseLoading, setTestLicenseLoading] = useState(false);
+  const [testLicenseResult, setTestLicenseResult] = useState<{
+    ok: boolean;
+    codes?: string[];
+    has1162?: boolean;
+    raw?: unknown;
+    itemsCount?: number;
+    error?: string;
+  } | null>(null);
+
+  async function handleTestLicenseApi() {
+    const no = testBidNo.trim();
+    if (!no) {
+      setMessage({ ok: false, text: "공고번호를 입력하세요." });
+      return;
+    }
+    setTestLicenseLoading(true);
+    setTestLicenseResult(null);
+    setMessage(null);
+    try {
+      const params = new URLSearchParams({ bidNtceNo: no, bidNtceOrd: testBidOrd.trim() || "00" });
+      const res = await fetch(`/api/admin/test-license-api?${params}`);
+      const data = await res.json();
+      setTestLicenseResult(data);
+      if (!data.ok && data.error) setMessage({ ok: false, text: data.error });
+    } catch (e) {
+      setTestLicenseResult({ ok: false, error: e instanceof Error ? e.message : "요청 실패" });
+      setMessage({ ok: false, text: "테스트 요청 실패" });
+    } finally {
+      setTestLicenseLoading(false);
+    }
+  }
+
+  async function handleDetailBackfill() {
+    setDetailBackfillLoading(true);
+    setMessage(null);
+    setDetailBackfillProgress(null);
+    try {
+      const res = await fetch("/api/admin/backfill-tender-detail-industries?stream=1&limit=200", {
+        method: "POST",
+      });
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({}));
+        setMessage({ ok: false, text: data.error ?? `요청 실패 (${res.status})` });
+        setDetailBackfillLoading(false);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const data = JSON.parse(trimmed) as {
+              type: string;
+              processed?: number;
+              success?: number;
+              skipped?: number;
+              failed?: number;
+              total?: number | null;
+              percent?: number | null;
+              message?: string;
+              ok?: boolean;
+              error?: string;
+            };
+            if (data.type === "progress") {
+              setDetailBackfillProgress({
+                processed: data.processed ?? 0,
+                success: data.success ?? 0,
+                skipped: data.skipped ?? 0,
+                failed: data.failed ?? 0,
+                total: data.total ?? null,
+                percent: data.percent ?? null,
+                message: data.message ?? "처리 중…",
+              });
+            } else             if (data.type === "complete") {
+              if (data.ok) {
+                const firstErr = (data as { firstError?: string }).firstError;
+                setMessage({
+                  ok: firstErr ? false : true,
+                  text: firstErr
+                    ? `면허제한 API 백필 완료: ${data.processed ?? 0}건 처리 (성공 ${data.success ?? 0}, 실패 ${data.failed ?? 0}). 실패 원인: ${firstErr}`
+                    : `면허제한 API 백필 완료: ${data.processed ?? 0}건 처리 (성공 ${data.success ?? 0}, 스킵 ${data.skipped ?? 0}, 실패 ${data.failed ?? 0})`,
+                });
+              } else {
+                const firstErr = (data as { firstError?: string }).firstError;
+                setMessage({
+                  ok: false,
+                  text: [data.error, firstErr].filter(Boolean).join(". ") || "면허제한 API 백필 실패",
+                });
+              }
+              setDetailBackfillProgress(null);
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } catch (e) {
+      setMessage({ ok: false, text: e instanceof Error ? e.message : "요청 실패" });
+      setDetailBackfillProgress(null);
+    }
+    setDetailBackfillLoading(false);
+  }
 
   async function handleClearAllTenders() {
     if (!confirm("DB에 저장된 입찰 공고를 모두 삭제하고 수집 체크포인트를 초기화합니다. 삭제 후 API 수집을 다시 실행하면 됩니다. 계속할까요?")) return;
@@ -239,6 +362,95 @@ export default function IndustriesForm({ initialIndustries }: { initialIndustrie
           </button>
           <span className="text-xs text-slate-500">기본: primary_industry_code 없는 행만. force: 전량 재계산</span>
         </div>
+
+        <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder="공고번호 (예: R26BK01393967-000)"
+              value={testBidNo}
+              onChange={(e) => setTestBidNo(e.target.value)}
+              className="rounded border border-slate-300 px-2 py-1.5 text-sm font-mono"
+            />
+            <input
+              type="text"
+              placeholder="차수"
+              value={testBidOrd}
+              onChange={(e) => setTestBidOrd(e.target.value)}
+              className="w-14 rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleTestLicenseApi}
+              disabled={testLicenseLoading}
+              className="rounded bg-slate-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            >
+              {testLicenseLoading ? "호출 중…" : "면허제한 API 1건 테스트"}
+            </button>
+          </div>
+          <span className="text-xs text-slate-500">
+            1162 등 업종 코드가 API 응답에서 파싱되는지 확인.
+          </span>
+        </div>
+        {testLicenseResult && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <p className="mb-1 font-medium text-slate-800">
+              면허제한 API 테스트 결과: {testLicenseResult.ok ? "성공" : "실패"}
+              {testLicenseResult.has1162 !== undefined && (
+                <span className={testLicenseResult.has1162 ? " ml-2 text-green-700" : " ml-2 text-amber-700"}>
+                  {testLicenseResult.has1162 ? "→ 1162 추출됨" : "→ 1162 없음"}
+                </span>
+              )}
+            </p>
+            {testLicenseResult.ok && (
+              <>
+                <p className="text-slate-700">추출된 업종 코드: [{testLicenseResult.codes?.join(", ") ?? "-"}], item 수: {testLicenseResult.itemsCount ?? 0}</p>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-slate-600">원문(raw) 보기</summary>
+                  <pre className="mt-1 max-h-48 overflow-auto rounded bg-white p-2 text-xs">
+                    {JSON.stringify(testLicenseResult.raw, null, 2)}
+                  </pre>
+                </details>
+              </>
+            )}
+            {!testLicenseResult.ok && testLicenseResult.error && (
+              <p className="text-red-700">{testLicenseResult.error}</p>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-3">
+          <button
+            type="button"
+            onClick={handleDetailBackfill}
+            disabled={detailBackfillLoading || backfillLoading}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {detailBackfillLoading ? "면허제한 API 백필 중…" : "면허제한 API 백필 (미분류·추정건, 최대 200건)"}
+          </button>
+          <span className="text-xs text-slate-500">
+            면허제한정보 API(getBidPblancListInfoLicenseLimit) 호출 → 업종/면허 확정. 트래픽 소모 있음.
+          </span>
+        </div>
+        {detailBackfillProgress && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50/80 p-4">
+            <p className="mb-2 text-sm font-medium text-blue-900">면허제한 API 백필 진행 중</p>
+            <p className="mb-2 text-sm text-blue-800">{detailBackfillProgress.message}</p>
+            {detailBackfillProgress.percent != null && (
+              <div className="h-2 w-full overflow-hidden rounded-full bg-blue-200">
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-[width] duration-300"
+                  style={{ width: `${Math.min(100, detailBackfillProgress.percent)}%` }}
+                />
+              </div>
+            )}
+            {detailBackfillProgress.total != null && (
+              <p className="mt-2 text-xs text-blue-700">
+                {detailBackfillProgress.processed} / {detailBackfillProgress.total}건 · 성공 {detailBackfillProgress.success} · 스킵 {detailBackfillProgress.skipped} · 실패 {detailBackfillProgress.failed}
+              </p>
+            )}
+          </div>
+        )}
+
         {backfillProgress && (
           <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4">
             <p className="mb-2 text-sm font-medium text-amber-900">업종 백필 진행 중</p>

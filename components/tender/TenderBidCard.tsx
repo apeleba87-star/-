@@ -7,7 +7,6 @@ import {
   ddayNumber,
   getBaseAmtFromRaw,
   getLowerRateFromRaw,
-  categoryLabel,
   shortRegion,
   formatCurrency,
 } from "@/lib/tender-utils";
@@ -51,18 +50,6 @@ function getDaysText(days: number): string {
   return `D-${days}`;
 }
 
-/** 분야 뱃지 라벨 및 스타일 (D-Day 앞에 표시) */
-function categoryBadge(categories: string[] | null): { label: string; className: string } | null {
-  const cats = categories ?? [];
-  const hasCleaning = cats.includes("cleaning");
-  const hasDisinfection = cats.includes("disinfection");
-  if (hasCleaning && hasDisinfection)
-    return { label: "청소+소독방역", className: "border-indigo-200 bg-indigo-50 text-indigo-700" };
-  if (hasCleaning) return { label: "청소", className: "border-emerald-200 bg-emerald-50 text-emerald-700" };
-  if (hasDisinfection) return { label: "소독방역", className: "border-amber-200 bg-amber-50 text-amber-700" };
-  return null;
-}
-
 export default function TenderBidCard({
   tender,
   industryNames,
@@ -76,10 +63,9 @@ export default function TenderBidCard({
   const daysRemaining = ddayNumber(tender.bid_clse_dt);
   const metaRegion = shortRegion(tender.bsns_dstr_nm ?? tender.ntce_instt_nm);
   const industryLabel =
-    (tender.tender_industries?.length && industryNames
+    tender.tender_industries?.length && industryNames
       ? tender.tender_industries.map((ti) => industryNames[ti.industry_code] ?? ti.industry_code).join(", ")
-      : null) ?? categoryLabel(tender.categories);
-  const badge = categoryBadge(tender.categories);
+      : "—";
 
   return (
     <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-lg">
@@ -99,11 +85,6 @@ export default function TenderBidCard({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {badge && (
-              <span className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${badge.className}`}>
-                {badge.label}
-              </span>
-            )}
             <span
               className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${getDaysStyle(daysRemaining)}`}
             >
