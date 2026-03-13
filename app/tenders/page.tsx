@@ -45,7 +45,7 @@ export default async function TendersPage({ searchParams }: PageProps) {
     .order("sort_order", { ascending: true })
     .order("code", { ascending: true });
 
-  let tendersRes: { data: unknown[] };
+  let tendersRes: { data: unknown[] | null };
   if (tenderIds !== null && tenderIds.length === 0) {
     tendersRes = { data: [] };
   } else {
@@ -60,7 +60,7 @@ export default async function TendersPage({ searchParams }: PageProps) {
   }
 
   const industries = industriesRes.data ?? [];
-  const tendersRaw = Array.isArray((tendersRes as { data?: unknown[] }).data) ? (tendersRes as { data: unknown[] }).data : [];
+  const tendersRaw = Array.isArray(tendersRes.data) ? tendersRes.data : [];
   const tenders = tendersRaw.map((t) => {
     const { tender_industries, ...rest } = t as typeof t & { tender_industries?: { industry_code: string }[] };
     return { ...rest, tender_industries: tender_industries ?? [] };
