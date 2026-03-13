@@ -13,11 +13,17 @@ export default async function MypagePage() {
     redirect("/login?next=/mypage");
   }
 
-  const { data: worker } = await supabase
-    .from("worker_profiles")
-    .select("nickname, birth_date, gender, bio, contact_phone")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [workerRes, profileRes] = await Promise.all([
+    supabase
+      .from("worker_profiles")
+      .select("nickname, birth_date, gender, bio, contact_phone")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
+  ]);
+
+  const worker = workerRes.data;
+  const isAdmin = profileRes.data?.role === "admin" || profileRes.data?.role === "editor";
 
   const initial = {
     nickname: worker?.nickname ?? "",
@@ -53,6 +59,13 @@ export default async function MypagePage() {
       <section className={`${glassCard} p-5 mt-6`}>
         <h2 className="text-sm font-semibold text-slate-700 mb-3">바로가기</h2>
         <ul className="space-y-2">
+          {isAdmin && (
+            <li>
+              <Link href="/admin" className="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50/80 px-4 py-3 text-sm font-medium text-teal-800 hover:bg-teal-100">
+                관리자 모드
+              </Link>
+            </li>
+          )}
           <li>
             <Link href="/jobs/manage" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
               내 구인 관리

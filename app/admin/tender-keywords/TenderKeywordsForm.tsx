@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addTenderKeyword, updateTenderKeyword, deleteTenderKeyword, runBackfillAction } from "./actions";
+import { addTenderKeyword, updateTenderKeyword, deleteTenderKeyword, runBackfillAction, setTenderKeywordsEnabled } from "./actions";
 
 type Row = {
   id: string;
@@ -12,14 +12,21 @@ type Row = {
   enabled: boolean;
 };
 
-export default function TenderKeywordsForm({ initialKeywords }: { initialKeywords: Row[] }) {
+type Props = {
+  initialKeywords: Row[];
+  initialKeywordsEnabled: boolean;
+};
+
+export default function TenderKeywordsForm({ initialKeywords, initialKeywordsEnabled }: Props) {
   const [keywords, setKeywords] = useState(initialKeywords);
+  const [keywordsEnabled, setKeywordsEnabledState] = useState(initialKeywordsEnabled);
   const [newKeyword, setNewKeyword] = useState("");
   const [newType, setNewType] = useState<"include" | "exclude">("include");
   const [newCategory, setNewCategory] = useState<"cleaning" | "disinfection">("cleaning");
   const [newSort, setNewSort] = useState(0);
   const [loading, setLoading] = useState(false);
   const [backfillLoading, setBackfillLoading] = useState(false);
+  const [switchLoading, setSwitchLoading] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
@@ -64,8 +71,50 @@ export default function TenderKeywordsForm({ initialKeywords }: { initialKeyword
     }
   }
 
+  async function handleKeywordsEnabledToggle() {
+    setSwitchLoading(true);
+    setMessage(null);
+    const next = !keywordsEnabled;
+    const result = await setTenderKeywordsEnabled(next);
+    setSwitchLoading(false);
+    if (result.ok) {
+      setKeywordsEnabledState(next);
+      setMessage({ ok: true, text: next ? "입찰 키워드를 사용합니다. 수집·백필 시 키워드가 적용됩니다." : "입찰 키워드를 사용하지 않습니다. 수집·백필 시 키워드가 적용되지 않습니다." });
+    } else {
+      setMessage({ ok: false, text: result.error ?? "설정 변경 실패" });
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+        <span className="text-sm font-medium text-slate-700">입찰 키워드 사용</span>
+        <button
+          type="button"
+          onClick={handleKeywordsEnabledToggle}
+          disabled={switchLoading}
+          role="switch"
+          aria-checked={keywordsEnabled}
+          className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 ${
+            keywordsEnabled ? "bg-teal-600" : "bg-slate-300"
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition-transform ${
+              keywordsEnabled ? "translate-x-5" : "translate-x-1"
+            }`}
+          />
+        </button>
+        <span className="text-sm text-slate-600">
+          {keywordsEnabled ? "사용" : "비사용"}
+        </span>
+        <span className="text-xs text-slate-500">
+          {keywordsEnabled
+            ? "수집·백필 시 키워드(포함/제외)가 적용됩니다."
+            : "수집·백필 시 키워드는 적용되지 않습니다. 업종 필터만 사용됩니다."}
+        </span>
+      </div>
+
       <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-slate-700">키워드</span>

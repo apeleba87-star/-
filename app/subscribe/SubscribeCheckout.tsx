@@ -78,7 +78,7 @@ export default function SubscribeCheckout({
         application_id: applicationId,
         pg: "nicepay",
         method: "card_rebill",
-        order_name: "클린인덱스 프리미엄 월 구독",
+        order_name: "클린아이덱스 프리미엄 월 구독",
         subscription_id: subscriptionId,
         redirect_url: redirectUrl,
         user: userEmail ? { email: userEmail } : undefined,

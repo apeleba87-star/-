@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-16">
-      <h1 className="mb-2 text-2xl font-bold text-slate-900">클린인덱스에서 어떤 활동을 하시나요?</h1>
+      <h1 className="mb-2 text-2xl font-bold text-slate-900">클린아이덱스에서 어떤 활동을 하시나요?</h1>
       <p className="mb-8 text-slate-600">복수 선택 가능합니다.</p>
       <OnboardingForm />
     </div>

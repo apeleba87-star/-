@@ -1,19 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { FileText, ChevronDown } from "lucide-react";
 import TenderBidCard from "@/components/tender/TenderBidCard";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import { parseRegionSido } from "@/lib/tender-utils";
 import { getBaseAmtFromRaw } from "@/lib/tender-utils";
 import { ddayNumber } from "@/lib/tender-utils";
-
-const CATEGORY_OPTIONS = [
-  { id: "cleaning-disinfection", label: "청소+소독방역" },
-  { id: "cleaning", label: "청소만" },
-  { id: "disinfection", label: "소독방역만" },
-  { id: "all", label: "전체" },
-] as const;
 
 const SORT_OPTIONS = [
   { id: "posted", label: "최신순" },
@@ -43,23 +37,21 @@ const REGION_OPTIONS = [
   "제주",
 ] as const;
 
-type CategoryId = (typeof CATEGORY_OPTIONS)[number]["id"];
 type SortId = (typeof SORT_OPTIONS)[number]["id"];
 
 function getTenderRegionSido(t: TenderBidCardT): string | null {
   return parseRegionSido(t.bsns_dstr_nm ?? t.ntce_instt_nm ?? null);
 }
 
-function categoryMatch(tender: TenderBidCardT, selected: CategoryId): boolean {
-  const cats = tender.categories ?? [];
-  const hasCleaning = cats.includes("cleaning");
-  const hasDisinfection = cats.includes("disinfection");
-  if (selected === "all") return true;
-  // 청소+소독방역: 청소 또는 소독방역 관련 공고 모두 (둘 다인 경우만이 아님)
-  if (selected === "cleaning-disinfection") return hasCleaning || hasDisinfection;
-  if (selected === "cleaning") return hasCleaning;
-  if (selected === "disinfection") return hasDisinfection;
-  return true;
+function getTenderIndustryCodes(t: TenderBidCardT): string[] {
+  return (t.tender_industries ?? []).map((ti) => ti.industry_code);
+}
+
+function industryMatch(tender: TenderBidCardT, selectedCodes: string[]): boolean {
+  if (selectedCodes.length === 0) return true;
+  const tenderCodes = getTenderIndustryCodes(tender);
+  if (tenderCodes.length === 0) return false;
+  return selectedCodes.some((c) => tenderCodes.includes(c));
 }
 
 function getBaseAmount(t: TenderBidCardT): number {
@@ -68,23 +60,40 @@ function getBaseAmount(t: TenderBidCardT): number {
   return fromRaw ?? 0;
 }
 
+type IndustryRow = { code: string; name: string };
+
 type Props = {
   tenders: TenderBidCardT[];
+  industries: IndustryRow[];
+  initialIndustryCodes?: string[];
+  initialRegion?: string;
+  initialSort?: SortId;
 };
 
-export default function TendersListWithFilters({ tenders }: Props) {
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId>("cleaning-disinfection");
-  const [selectedRegion, setSelectedRegion] = useState<string>("전체 지역");
-  const [sortBy, setSortBy] = useState<SortId>("posted");
+function buildTendersUrl(params: { industry: string[]; region: string; sort: string }): string {
+  const q = new URLSearchParams();
+  if (params.industry.length > 0) q.set("industry", params.industry.join(","));
+  if (params.region && params.region !== "전체 지역") q.set("region", params.region);
+  if (params.sort && params.sort !== "posted") q.set("sort", params.sort);
+  const s = q.toString();
+  return s ? `/tenders?${s}` : "/tenders";
+}
+
+export default function TendersListWithFilters({
+  tenders,
+  industries,
+  initialIndustryCodes = [],
+  initialRegion = "전체 지역",
+  initialSort = "posted",
+}: Props) {
+  const router = useRouter();
+  const selectedIndustryCodes = initialIndustryCodes;
+  const selectedRegion = initialRegion;
+  const sortBy = initialSort;
+
+  const industryNames = useMemo(() => Object.fromEntries(industries.map((i) => [i.code, i.name])), [industries]);
 
   const { openTenders, closedTenders } = useMemo(() => {
-    let list = tenders.filter((t) => {
-      const categoryMatch_ = categoryMatch(t, selectedCategory);
-      const regionMatch =
-        selectedRegion === "전체 지역" || getTenderRegionSido(t) === selectedRegion;
-      return categoryMatch_ && regionMatch;
-    });
-
     const sortFn = (a: TenderBidCardT, b: TenderBidCardT) => {
       switch (sortBy) {
         case "deadline":
@@ -101,37 +110,60 @@ export default function TendersListWithFilters({ tenders }: Props) {
           return 0;
       }
     };
-
-    const open = list.filter((t) => ddayNumber(t.bid_clse_dt) >= 0).sort(sortFn);
-    const closed = list.filter((t) => ddayNumber(t.bid_clse_dt) < 0).sort(sortFn);
+    const open = tenders.filter((t) => ddayNumber(t.bid_clse_dt) >= 0).sort(sortFn);
+    const closed = tenders.filter((t) => ddayNumber(t.bid_clse_dt) < 0).sort(sortFn);
     return { openTenders: open, closedTenders: closed };
-  }, [tenders, selectedCategory, selectedRegion, sortBy]);
+  }, [tenders, sortBy]);
 
-  const hasActiveFilters = selectedCategory !== "all" || selectedRegion !== "전체 지역";
+  const hasActiveFilters = selectedIndustryCodes.length > 0 || selectedRegion !== "전체 지역";
 
-  const clearFilters = () => {
-    setSelectedCategory("all");
-    setSelectedRegion("전체 지역");
+  const clearFilters = () => router.push("/tenders");
+
+  const toggleIndustry = (code: string) => {
+    const next = selectedIndustryCodes.includes(code)
+      ? selectedIndustryCodes.filter((c) => c !== code)
+      : [...selectedIndustryCodes, code];
+    router.push(buildTendersUrl({ industry: next, region: selectedRegion, sort: sortBy }));
+  };
+
+  const setRegion = (region: string) => {
+    router.push(buildTendersUrl({ industry: selectedIndustryCodes, region, sort: sortBy }));
+  };
+
+  const setSort = (sort: SortId) => {
+    router.push(buildTendersUrl({ industry: selectedIndustryCodes, region: selectedRegion, sort }));
   };
 
   return (
     <>
-      {/* 필터: 분야별 */}
+      {/* 필터: 업종 (다중 선택). 화면은 업종명, 필터 로직은 업종 코드 기준 */}
       <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">분야별 공고</h2>
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">업종</h2>
+        <p className="mb-3 text-xs text-slate-500">업종명으로 선택 시, 수집된 공고는 업종 코드 기준으로 필터됩니다.</p>
         <div className="flex flex-wrap gap-2">
-          {CATEGORY_OPTIONS.map((opt) => (
+          <button
+            type="button"
+            onClick={() => router.push("/tenders")}
+            className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 ${
+              selectedIndustryCodes.length === 0
+                ? "border-transparent bg-blue-600 text-white shadow-md"
+                : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            전체
+          </button>
+          {industries.map((ind) => (
             <button
-              key={opt.id}
+              key={ind.code}
               type="button"
-              onClick={() => setSelectedCategory(opt.id)}
+              onClick={() => toggleIndustry(ind.code)}
               className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 ${
-                selectedCategory === opt.id
+                selectedIndustryCodes.includes(ind.code)
                   ? "border-transparent bg-blue-600 text-white shadow-md"
                   : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
               }`}
             >
-              {opt.label}
+              {ind.name}
             </button>
           ))}
         </div>
@@ -147,7 +179,7 @@ export default function TendersListWithFilters({ tenders }: Props) {
             <select
               id="tenders-region"
               value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
+              onChange={(e) => setRegion(e.target.value)}
               className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {REGION_OPTIONS.map((r) => (
@@ -170,7 +202,7 @@ export default function TendersListWithFilters({ tenders }: Props) {
             <select
               id="tenders-sort"
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortId)}
+              onChange={(e) => setSort(e.target.value as SortId)}
               className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {SORT_OPTIONS.map((opt) => (
@@ -191,11 +223,12 @@ export default function TendersListWithFilters({ tenders }: Props) {
       {hasActiveFilters && (
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-slate-600">필터 적용:</span>
-          {selectedCategory !== "all" && (
-            <span className="rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-700">
-              {CATEGORY_OPTIONS.find((o) => o.id === selectedCategory)?.label}
-            </span>
-          )}
+          {selectedIndustryCodes.length > 0 &&
+            selectedIndustryCodes.map((code) => (
+              <span key={code} className="rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-700">
+                {industryNames[code] ?? code}
+              </span>
+            ))}
           {selectedRegion !== "전체 지역" && (
             <span className="rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-700">
               {selectedRegion}
@@ -241,7 +274,7 @@ export default function TendersListWithFilters({ tenders }: Props) {
               <ul className="space-y-4">
                 {openTenders.map((t) => (
                   <li key={t.id}>
-                    <TenderBidCard tender={t} />
+                    <TenderBidCard tender={t} industryNames={industryNames} />
                   </li>
                 ))}
               </ul>
@@ -257,7 +290,7 @@ export default function TendersListWithFilters({ tenders }: Props) {
               <ul className="space-y-4">
                 {closedTenders.map((t) => (
                   <li key={t.id}>
-                    <TenderBidCard tender={t} />
+                    <TenderBidCard tender={t} industryNames={industryNames} />
                   </li>
                 ))}
               </ul>

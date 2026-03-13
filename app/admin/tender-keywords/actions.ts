@@ -3,6 +3,7 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { runBackfillCleanScore } from "@/lib/g2b/backfill-clean-score";
+import { setTenderKeywordsEnabled as setTenderKeywordsEnabledSetting } from "@/lib/app-settings";
 
 export async function addTenderKeyword(
   keyword: string,
@@ -54,5 +55,18 @@ export async function runBackfillAction() {
   revalidatePath("/admin/tender-keywords");
   revalidatePath("/tenders");
   revalidatePath("/tenders/dashboard");
+  return result;
+}
+
+/** 입찰 키워드 사용/비사용 스위치 (관리자 전용) */
+export async function setTenderKeywordsEnabled(enabled: boolean) {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인 필요" };
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin" && profile?.role !== "editor")
+    return { ok: false, error: "권한 없음" };
+  const result = await setTenderKeywordsEnabledSetting(supabase, enabled);
+  if (result.ok) revalidatePath("/admin/tender-keywords");
   return result;
 }

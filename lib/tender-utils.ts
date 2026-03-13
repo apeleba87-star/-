@@ -185,6 +185,24 @@ export function parseRegionSido(text: string | null | undefined): string | null 
   return null;
 }
 
+/** 텍스트에서 시/도 목록 추출 (쉼표 등 구분, region_sido_list 캐시용) */
+export function parseRegionSidoList(text: string | null | undefined): string[] {
+  if (!text?.trim()) return [];
+  const parts = text.split(/[,，\/]/).map((p) => p.trim()).filter(Boolean);
+  const list: string[] = [];
+  const seen = new Set<string>();
+  for (const part of parts) {
+    const sido = parseRegionSido(part);
+    if (sido && !seen.has(sido)) {
+      seen.add(sido);
+      list.push(sido);
+    }
+  }
+  if (list.length > 0) return list;
+  const single = parseRegionSido(text);
+  return single ? [single] : [];
+}
+
 /** 억/만원 포맷 (입찰 목록용) */
 export function formatCurrency(amount: number | null | undefined): string {
   if (amount == null || Number.isNaN(amount) || amount < 0) return "—";

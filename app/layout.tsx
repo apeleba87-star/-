@@ -4,8 +4,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "청소업 정보 뉴스레터 - 클린인덱스",
-  description: "청소업 정보 뉴스레터 클린인덱스 — 입찰·구인·현장 데이터와 커뮤니티",
+  title: "청소업 정보 뉴스레터 - 클린아이덱스",
+  description: "청소업 정보 뉴스레터 클린아이덱스 — 입찰·구인·현장 데이터와 커뮤니티",
 };
 
 export const viewport: Viewport = {

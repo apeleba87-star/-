@@ -1,11 +1,12 @@
 /**
  * 기존 tenders 행에 대해 업종별 categories·is_clean_related 백필
- * DB tender_keywords(업종별 include/exclude) 사용.
+ * DB tender_keywords(업종별 include/exclude) 사용. app_settings에서 키워드 사용 시에만 동작.
  */
 
 import { createClient } from "@/lib/supabase-server";
 import { computeCategoryScores } from "./clean-score";
 import { getTenderKeywordOptionsByCategory } from "./keywords";
+import { getTenderKeywordsEnabled } from "@/lib/app-settings";
 
 const BATCH = 100;
 
@@ -15,6 +16,8 @@ export async function runBackfillCleanScore(): Promise<{
   error?: string;
 }> {
   const supabase = createClient();
+  const keywordsEnabled = await getTenderKeywordsEnabled(supabase);
+  if (!keywordsEnabled) return { ok: true, updated: 0 };
   const optionsByCategory = await getTenderKeywordOptionsByCategory();
 
   let updated = 0;

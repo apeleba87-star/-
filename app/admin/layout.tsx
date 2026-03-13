@@ -63,6 +63,9 @@ export default async function AdminLayout({
         <Link href="/admin/tender-keywords" className="font-medium text-slate-700 hover:text-slate-900">
           입찰 키워드
         </Link>
+        <Link href="/admin/industries" className="font-medium text-slate-700 hover:text-slate-900">
+          업종 관리
+        </Link>
         <Link href="/admin/estimate-config" className="font-medium text-slate-700 hover:text-slate-900">
           견적 단가
         </Link>

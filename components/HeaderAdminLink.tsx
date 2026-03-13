@@ -37,7 +37,7 @@ export default function HeaderAdminLink({ variant, onClick }: Props) {
 
   const isPc = variant === "pc";
   const linkClass = isPc
-    ? "hidden min-h-[44px] items-center md:flex"
+    ? "flex min-h-[44px] items-center gap-1.5"
     : "flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80 md:hidden";
 
   return (
@@ -52,7 +52,7 @@ export default function HeaderAdminLink({ variant, onClick }: Props) {
         whileTap={isPc ? { scale: 0.98 } : {}}
       >
         <User className={`shrink-0 text-slate-500 ${isPc ? "h-4 w-4" : "h-5 w-5"}`} />
-        <span className={isPc ? "hidden sm:inline" : "font-medium"}>관리자</span>
+        <span className={isPc ? "text-sm font-medium" : "font-medium"}>관리자 모드</span>
       </motion.span>
     </Link>
   );

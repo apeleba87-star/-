@@ -83,7 +83,7 @@ export default function Header() {
             >
               C
             </motion.span>
-            <span className="hidden font-bold text-slate-800 sm:inline">클린인덱스</span>
+            <span className="hidden font-bold text-slate-800 sm:inline">클린아이덱스</span>
           </Link>
 
           {/* PC: 가로 네비 */}

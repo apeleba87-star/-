@@ -289,9 +289,9 @@ export default function DailyTenderReportDashboard({
             <Info className="h-5 w-5 text-white sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-base font-bold text-white sm:text-lg">클린인덱스</h3>
+            <h3 className="text-base font-bold text-white sm:text-lg">클린아이덱스</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-blue-100 sm:mt-2 sm:text-base">
-              클린인덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다.{" "}
+              클린아이덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다.{" "}
               <Link href="/tenders" className="underline hover:text-white">
                 입찰 공고
               </Link>

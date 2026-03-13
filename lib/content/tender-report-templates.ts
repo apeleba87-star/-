@@ -27,7 +27,7 @@ export function getDailySummaryText(payload: DailyTenderPayload): string {
 
 export function buildSummarySection(payload: DailyTenderPayload): string {
   const { dateLabel, count_total, budget_total, budget_label, has_budget_unknown } = payload;
-  let body = `${dateLabel} 기준, 클린인덱스가 분류한 청소·소독·방역 관련 공고는 총 **${count_total}건**입니다.`;
+  let body = `${dateLabel} 기준, 클린아이덱스가 분류한 청소·소독·방역 관련 공고는 총 **${count_total}건**입니다.`;
   if (budget_total > 0) {
     body += `\n총 추정 예산 규모는 **${budget_label}**입니다.`;
     if (has_budget_unknown) body += "\n\n(일부 공고는 예산 미공개입니다.)";
@@ -79,7 +79,7 @@ export function buildDailyBody(payload: DailyTenderPayload): string {
     buildTopBudgetSection(payload),
     buildDeadlineSection(payload),
     buildInsightSection(payload),
-    "\n---\n\n클린인덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다.",
+    "\n---\n\n클린아이덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다.",
   ];
   return sections.join("\n\n");
 }

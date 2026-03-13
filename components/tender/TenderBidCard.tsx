@@ -25,6 +25,8 @@ export type TenderBidCardT = {
   bid_clse_dt: string | null;
   categories: string[] | null;
   raw?: unknown;
+  primary_industry_code?: string | null;
+  tender_industries?: { industry_code: string }[];
 };
 
 function pad3(v: unknown): string {
@@ -61,13 +63,22 @@ function categoryBadge(categories: string[] | null): { label: string; className:
   return null;
 }
 
-export default function TenderBidCard({ tender }: { tender: TenderBidCardT }) {
+export default function TenderBidCard({
+  tender,
+  industryNames,
+}: {
+  tender: TenderBidCardT;
+  industryNames?: Record<string, string>;
+}) {
   const basePrice =
     tender.base_amt != null ? Number(tender.base_amt) : getBaseAmtFromRaw(tender.raw);
   const lowerRate = getLowerRateFromRaw(tender.raw);
   const daysRemaining = ddayNumber(tender.bid_clse_dt);
   const metaRegion = shortRegion(tender.bsns_dstr_nm ?? tender.ntce_instt_nm);
-  const industryLabel = categoryLabel(tender.categories);
+  const industryLabel =
+    (tender.tender_industries?.length && industryNames
+      ? tender.tender_industries.map((ti) => industryNames[ti.industry_code] ?? ti.industry_code).join(", ")
+      : null) ?? categoryLabel(tender.categories);
   const badge = categoryBadge(tender.categories);
 
   return (

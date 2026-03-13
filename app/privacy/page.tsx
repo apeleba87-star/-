@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "개인정보 처리방침 | 클린인덱스",
-  description: "클린인덱스 개인정보 처리방침",
+  title: "개인정보 처리방침 | 클린아이덱스",
+  description: "클린아이덱스 개인정보 처리방침",
 };
 
 export default function PrivacyPage() {
@@ -13,7 +13,7 @@ export default function PrivacyPage() {
       </Link>
       <h1 className="mb-8 text-2xl font-bold text-slate-900">개인정보 처리방침</h1>
       <p className="mb-8 text-sm text-slate-500">
-        클린인덱스(이하 &quot;서비스&quot;)는 개인정보 보호법에 따라 이용자의 개인정보 보호 및 권익을 보장하고자 다음과 같이 개인정보 처리방침을 수립·공개합니다.
+        클린아이덱스(이하 &quot;서비스&quot;)는 개인정보 보호법에 따라 이용자의 개인정보 보호 및 권익을 보장하고자 다음과 같이 개인정보 처리방침을 수립·공개합니다.
       </p>
 
       <section className="mb-8">
