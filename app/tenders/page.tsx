@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import TendersListWithFilters from "./TendersListWithFilters";
 
 export const revalidate = 60;
@@ -61,9 +62,10 @@ export default async function TendersPage({ searchParams }: PageProps) {
 
   const industries = industriesRes.data ?? [];
   const tendersRaw = Array.isArray(tendersRes.data) ? tendersRes.data : [];
-  const tenders = tendersRaw.map((t) => {
-    const { tender_industries, ...rest } = t as typeof t & { tender_industries?: { industry_code: string }[] };
-    return { ...rest, tender_industries: tender_industries ?? [] };
+  const tenders: TenderBidCardT[] = tendersRaw.map((t) => {
+    const row = t as Record<string, unknown> & { tender_industries?: { industry_code: string }[] };
+    const { tender_industries, ...rest } = row;
+    return { ...rest, tender_industries: tender_industries ?? [] } as TenderBidCardT;
   });
 
   return (
