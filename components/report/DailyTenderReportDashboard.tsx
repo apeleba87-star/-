@@ -208,9 +208,12 @@ export default function DailyTenderReportDashboard({
                         stroke="none"
                         label={({ cx, cy, midAngle, outerRadius, name, value }) => {
                           const RADIAN = Math.PI / 180;
-                          const radius = Number(outerRadius) + 24;
-                          const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                          const _cx = Number(cx) || 0;
+                          const _cy = Number(cy) || 0;
+                          const _mid = midAngle ?? 0;
+                          const radius = (Number(outerRadius) || 0) + 24;
+                          const x = _cx + radius * Math.cos(-_mid * RADIAN);
+                          const y = _cy + radius * Math.sin(-_mid * RADIAN);
                           const pct =
                             count_total > 0
                               ? ((value / count_total) * 100).toFixed(1)
@@ -223,7 +226,7 @@ export default function DailyTenderReportDashboard({
                               x={x}
                               y={y}
                               fill="#334155"
-                              textAnchor={x >= Number(cx) ? "start" : "end"}
+                              textAnchor={x >= _cx ? "start" : "end"}
                               dominantBaseline="central"
                               className="text-[10px] sm:text-xs font-medium"
                             >
