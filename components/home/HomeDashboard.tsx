@@ -7,7 +7,7 @@ import {
   Newspaper,
   Briefcase,
   UserPlus,
-  Mail,
+  Calculator,
   BarChart3,
   ClipboardList,
   CalendarCheck,
@@ -72,18 +72,34 @@ function DashboardCard({ title, href, icon, iconBg, children, delay = 0, comingS
   );
 }
 
+type IndustryBreakdownItem = { industry_code: string; industry_name: string; count: number };
+type TopIndustry = { code: string; name: string; count: number } | null;
+type TenderPreview = {
+  id: string;
+  bid_ntce_nm: string | null;
+  ntce_instt_nm: string | null;
+  bid_clse_dt: string | null;
+  bsns_dstr_nm: string | null;
+  base_amt: number | null;
+  raw?: unknown;
+};
+
 type Props = {
   tenderCount: number;
   tenderTodayCount: number;
+  topIndustry?: TopIndustry;
+  industryBreakdown?: IndustryBreakdownItem[];
+  recentTenders?: TenderPreview[];
   newsCount: number;
   listingsCount: number;
   recentListings: { id: string; title: string | null }[];
   jobsOpenCount: number;
   latestNewsletter: { id: string; subject: string; sent_at: string } | null;
   userStats?: {
-    myJobPostsCount: number;
-    myApplicationsCount: number;
-    myMatchesCount: number;
+    jobPostsClosed30d: number;
+    jobPostsOpen: number;
+    applications30d: number;
+    matchesCompleted30d: number;
   };
 };
 
@@ -116,15 +132,13 @@ export default function HomeDashboard({
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <DashboardCard
             title="청소·방역 입찰"
-            href="/tenders?category=both"
+            href="/tenders"
             icon={<TrendingUp className="h-5 w-5" />}
             iconBg="bg-blue-500"
             delay={0.05}
           >
-            <p className="font-semibold text-slate-800">{tenderCount}건 접수 중</p>
-            {tenderTodayCount > 0 && (
-              <p className="mt-0.5 text-slate-500">오늘 공고 {tenderTodayCount}건</p>
-            )}
+            <p className="font-semibold text-slate-800">등록 업종 기준 {tenderCount}건 접수 중</p>
+            <p className="mt-0.5 text-slate-500">오늘 공고 {tenderTodayCount}건</p>
           </DashboardCard>
 
           <DashboardCard
@@ -140,7 +154,7 @@ export default function HomeDashboard({
 
           <DashboardCard
             title="업계 소식"
-            href="/categories/industry"
+            href="/news"
             icon={<Newspaper className="h-5 w-5" />}
             iconBg="bg-violet-500"
             delay={0.15}
@@ -150,7 +164,7 @@ export default function HomeDashboard({
           </DashboardCard>
         </section>
 
-        {/* 2행: 현장 거래 · 뉴스레터 · 데이터 인사이트 */}
+        {/* 2행: 현장 거래 · 견적 계산기 · 데이터 인사이트 */}
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <DashboardCard
             title="현장 거래"
@@ -174,26 +188,14 @@ export default function HomeDashboard({
           </DashboardCard>
 
           <DashboardCard
-            title="뉴스레터"
-            href={latestNewsletter ? `/archive/${latestNewsletter.id}` : "/archive"}
-            icon={<Mail className="h-5 w-5" />}
-            iconBg="bg-rose-500"
+            title="견적 계산기"
+            href="/estimate"
+            icon={<Calculator className="h-5 w-5" />}
+            iconBg="bg-teal-500"
             delay={0.25}
           >
-            {latestNewsletter ? (
-              <>
-                <p className="line-clamp-2 font-medium text-slate-800">{latestNewsletter.subject}</p>
-                <p className="mt-1 text-slate-500">
-                  {new Date(latestNewsletter.sent_at).toLocaleDateString("ko-KR", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </>
-            ) : (
-              <p className="text-slate-500">발송된 호가 없습니다.</p>
-            )}
+            <p className="font-semibold text-slate-800">예상 견적 산출</p>
+            <p className="mt-0.5 text-slate-500">면적·인건비 기준 · 업계 단가 비교</p>
           </DashboardCard>
 
           <DashboardCard
@@ -224,9 +226,13 @@ export default function HomeDashboard({
                     </span>
                     <h3 className="font-semibold text-slate-900">내 구인 현황</h3>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                    <span className="text-slate-700">
-                      <strong className="text-slate-900">{userStats.myJobPostsCount}</strong>건 등록
+                  <p className="mt-1 text-xs text-slate-500">30일 집계 기준</p>
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-slate-700">
+                    <span>
+                      구인중 <strong className="text-slate-900">{userStats.jobPostsOpen}</strong>건
+                    </span>
+                    <span>
+                      구인 마감건 <strong className="text-slate-900">{userStats.jobPostsClosed30d}</strong>건
                     </span>
                   </div>
                   <span className="mt-3 inline-flex items-center text-sm font-medium text-emerald-700">
@@ -250,14 +256,23 @@ export default function HomeDashboard({
                     </span>
                     <h3 className="font-semibold text-slate-900">내 지원·매칭</h3>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-700">
+                  <p className="mt-1 text-xs text-slate-500">30일 집계 기준</p>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-slate-700">
                     <span>
-                      지원 <strong className="text-slate-900">{userStats.myApplicationsCount}</strong>건
-                    </span>
-                    <span>
-                      매칭 <strong className="text-slate-900">{userStats.myMatchesCount}</strong>건
+                      <strong className="text-slate-900">{userStats.applications30d}</strong>건 지원 /{" "}
+                      <strong className="text-slate-900">{userStats.matchesCompleted30d}</strong>건 완료
                     </span>
                   </div>
+                  <p className="mt-1 text-sm text-slate-600">
+                    지원 성공율{" "}
+                    {userStats.applications30d > 0 ? (
+                      <strong className="text-slate-900">
+                        {Math.round((userStats.matchesCompleted30d / userStats.applications30d) * 100)}%
+                      </strong>
+                    ) : (
+                      <span className="text-slate-500">—</span>
+                    )}
+                  </p>
                   <span className="mt-3 inline-flex items-center text-sm font-medium text-blue-700">
                     확인하기
                     <ChevronRight className="ml-0.5 h-4 w-4" />

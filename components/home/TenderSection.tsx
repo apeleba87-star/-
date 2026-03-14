@@ -38,9 +38,23 @@ type Tender = {
   raw?: unknown;
 };
 
-type Props = { tenders: Tender[]; relatedCount: number; todayCount: number };
+type IndustryBreakdownItem = { industry_code: string; industry_name: string; count: number };
 
-export default function TenderSection({ tenders, relatedCount, todayCount }: Props) {
+type Props = {
+  tenders: Tender[];
+  relatedCount: number;
+  todayCount: number;
+  industryBreakdown?: IndustryBreakdownItem[];
+};
+
+export default function TenderSection({
+  tenders,
+  relatedCount,
+  todayCount,
+  industryBreakdown = [],
+}: Props) {
+  const industryLineItems = industryBreakdown.filter((i) => i.count > 0);
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 16 }}
@@ -53,8 +67,25 @@ export default function TenderSection({ tenders, relatedCount, todayCount }: Pro
       </div>
       <h2 className="text-xl font-bold text-slate-900">청소·방역·소독 입찰</h2>
       <p className="mt-0.5 text-xs text-slate-500">
-        관련건수 {relatedCount}건 · 오늘 공고 {todayCount}건
+        등록 업종 기준 {relatedCount}건 · 오늘 공고 {todayCount}건
       </p>
+
+      {industryLineItems.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+          <span className="text-slate-500">업종별:</span>
+          {industryLineItems.map((item, idx) => (
+            <span key={item.industry_code}>
+              {idx > 0 && <span className="text-slate-300">·</span>}
+              <Link
+                href={`/tenders?industry=${encodeURIComponent(item.industry_code)}`}
+                className="ml-1 font-medium text-slate-700 underline-offset-2 hover:text-blue-600 hover:underline"
+              >
+                {item.industry_name} {item.count}건
+              </Link>
+            </span>
+          ))}
+        </div>
+      )}
 
       {tenders.length === 0 ? (
         <div className={`${homeCardClass} mt-4 flex flex-col items-center justify-center p-8`}>
@@ -107,7 +138,7 @@ export default function TenderSection({ tenders, relatedCount, todayCount }: Pro
         </ul>
       )}
 
-      <Link href="/tenders?category=both" className={`${homeFooterBtnClass} block`}>
+      <Link href="/tenders" className={`${homeFooterBtnClass} block`}>
         전체 공고 보기
       </Link>
     </motion.section>

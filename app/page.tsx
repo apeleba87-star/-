@@ -1,6 +1,7 @@
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActiveHomeAds } from "@/lib/ads";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
+import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
 import HomeDashboard from "@/components/home/HomeDashboard";
 import AdPremiumBanner from "@/components/home/AdPremiumBanner";
 import TenderSection from "@/components/home/TenderSection";
@@ -15,15 +16,13 @@ const LISTING_DEAL_TYPES = ["referral_regular", "referral_one_time", "sale_regul
 export default async function HomePage() {
   const supabase = createClient();
   const authSupabase = await createServerSupabase();
-  const today = new Date().toISOString().slice(0, 10);
-  const todayEnd = today + "T23:59:59.999Z";
   const now = new Date().toISOString();
   const todayKst = getKstTodayString();
+  const today = new Date().toISOString().slice(0, 10);
+  const todayEnd = today + "T23:59:59.999Z";
 
   const [
-    relatedOpenCountRes,
-    todayRelatedCountRes,
-    openTendersRes,
+    tenderStats,
     newsCountRes,
     newsPostsRes,
     listingsCountRes,
@@ -32,24 +31,7 @@ export default async function HomePage() {
     jobsOpenCountRes,
     userRes,
   ] = await Promise.all([
-    supabase
-      .from("tenders")
-      .select("*", { count: "exact", head: true })
-      .gt("bid_clse_dt", now)
-      .overlaps("categories", ["cleaning", "disinfection"]),
-    supabase
-      .from("tenders")
-      .select("*", { count: "exact", head: true })
-      .gte("bid_ntce_dt", today)
-      .lt("bid_ntce_dt", todayEnd)
-      .overlaps("categories", ["cleaning", "disinfection"]),
-    supabase
-      .from("tenders")
-      .select("id, bid_ntce_nm, ntce_instt_nm, bid_clse_dt, bsns_dstr_nm, base_amt, raw")
-      .gt("bid_clse_dt", now)
-      .overlaps("categories", ["cleaning", "disinfection"])
-      .order("bid_clse_dt", { ascending: true })
-      .limit(5),
+    getHomeTenderStats(supabase, { now }),
     supabase
       .from("posts")
       .select("*", { count: "exact", head: true })
@@ -86,10 +68,7 @@ export default async function HomePage() {
     authSupabase.auth.getUser(),
   ]);
 
-  const relatedOpenCount = relatedOpenCountRes.count ?? 0;
-  const todayRelatedCount = todayRelatedCountRes.count ?? 0;
   const newsCount = newsCountRes.count ?? 0;
-  const tenders = openTendersRes.data ?? [];
   const news = newsPostsRes.data ?? [];
   const listingsCount = listingsCountRes.count ?? 0;
   const recentListings = recentListingsRes.data ?? [];
@@ -97,22 +76,50 @@ export default async function HomePage() {
   const jobsOpenCount = jobsOpenCountRes.count ?? 0;
   const user = userRes.data.user;
 
-  let userStats: { myJobPostsCount: number; myApplicationsCount: number; myMatchesCount: number } | undefined;
+  let userStats:
+    | {
+        jobPostsClosed30d: number;
+        jobPostsOpen: number;
+        applications30d: number;
+        matchesCompleted30d: number;
+      }
+    | undefined;
   if (user) {
-    const [myPostsRes, myAppsRes] = await Promise.all([
-      authSupabase.from("job_posts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const [
+      jobPostsClosedRes,
+      jobPostsOpenRes,
+      applications30dRes,
+      matchesCompleted30dRes,
+    ] = await Promise.all([
+      authSupabase
+        .from("job_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .gte("updated_at", thirtyDaysAgo),
+      authSupabase
+        .from("job_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "open"),
       authSupabase
         .from("job_applications")
-        .select("id, status")
-        .eq("user_id", user.id),
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("created_at", thirtyDaysAgo),
+      authSupabase
+        .from("job_applications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "accepted")
+        .gte("updated_at", thirtyDaysAgo),
     ]);
-    const myApplications = myAppsRes.data ?? [];
-    const appliedCount = myApplications.filter((a) => a.status !== "accepted").length;
-    const matchesCount = myApplications.filter((a) => a.status === "accepted").length;
     userStats = {
-      myJobPostsCount: myPostsRes.count ?? 0,
-      myApplicationsCount: appliedCount,
-      myMatchesCount: matchesCount,
+      jobPostsClosed30d: jobPostsClosedRes.count ?? 0,
+      jobPostsOpen: jobPostsOpenRes.count ?? 0,
+      applications30d: applications30dRes.count ?? 0,
+      matchesCompleted30d: matchesCompleted30dRes.count ?? 0,
     };
   }
 
@@ -121,8 +128,8 @@ export default async function HomePage() {
   return (
     <>
       <HomeDashboard
-        tenderCount={relatedOpenCount}
-        tenderTodayCount={todayRelatedCount}
+        tenderCount={tenderStats.tenderCount}
+        tenderTodayCount={tenderStats.tenderTodayCount}
         newsCount={newsCount}
         listingsCount={listingsCount}
         recentListings={recentListings}
@@ -137,9 +144,10 @@ export default async function HomePage() {
         ) : null}
 
         <TenderSection
-          tenders={tenders}
-          relatedCount={relatedOpenCount}
-          todayCount={todayRelatedCount}
+          tenders={tenderStats.recentTenders}
+          relatedCount={tenderStats.tenderCount}
+          todayCount={tenderStats.tenderTodayCount}
+          industryBreakdown={tenderStats.industryBreakdown}
         />
         <NewsSection posts={news} />
 

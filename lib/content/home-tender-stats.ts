@@ -1,0 +1,142 @@
+/**
+ * 홈 대시보드용: 등록 업종 기준 접수 중 입찰 건수·업종별 집계·최근 공고.
+ */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { getKstDayRange } from "./kst-utils";
+
+export type HomeIndustryBreakdownItem = { industry_code: string; industry_name: string; count: number };
+export type HomeTopIndustry = { code: string; name: string; count: number } | null;
+export type HomeTenderPreview = {
+  id: string;
+  bid_ntce_nm: string | null;
+  ntce_instt_nm: string | null;
+  bid_clse_dt: string | null;
+  bsns_dstr_nm: string | null;
+  base_amt: number | null;
+  raw?: unknown;
+};
+
+export type HomeTenderStats = {
+  tenderCount: number;
+  tenderTodayCount: number;
+  topIndustry: HomeTopIndustry;
+  industryBreakdown: HomeIndustryBreakdownItem[];
+  recentTenders: HomeTenderPreview[];
+};
+
+const OPEN_TENDERS_LIMIT = 2000;
+
+/**
+ * 등록 업종(is_active) 기준으로 접수 중(bid_clse_dt > now) 입찰을 집계하고,
+ * 업종별 건수, 1위 업종, 최근 5건을 반환.
+ */
+export async function getHomeTenderStats(
+  supabase: SupabaseClient,
+  options?: { now?: string }
+): Promise<HomeTenderStats> {
+  const now = options?.now ?? new Date().toISOString();
+  const { start: todayStart, end: todayEnd } = getKstDayRange();
+
+  const { data: industryRows } = await supabase
+    .from("industries")
+    .select("code, name, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  const activeIndustries = (industryRows ?? []) as { code: string; name: string; sort_order: number }[];
+  const activeCodesSet = new Set(activeIndustries.map((i) => i.code));
+
+  if (activeIndustries.length === 0) {
+    return {
+      tenderCount: 0,
+      tenderTodayCount: 0,
+      topIndustry: null,
+      industryBreakdown: [],
+      recentTenders: [],
+    };
+  }
+
+  const { data: openRows } = await supabase
+    .from("tenders")
+    .select("id, bid_ntce_nm, ntce_instt_nm, bid_clse_dt, bsns_dstr_nm, base_amt, bid_ntce_dt, primary_industry_code, raw")
+    .gt("bid_clse_dt", now)
+    .order("bid_clse_dt", { ascending: true })
+    .limit(OPEN_TENDERS_LIMIT);
+
+  const openTenders = (openRows ?? []) as (HomeTenderPreview & { bid_ntce_dt?: string | null; primary_industry_code?: string | null })[];
+  const openIds = openTenders.map((t) => t.id);
+
+  let tiRows: { tender_id: string; industry_code: string }[] = [];
+  if (openIds.length > 0) {
+    const { data } = await supabase
+      .from("tender_industries")
+      .select("tender_id, industry_code")
+      .in("tender_id", openIds)
+      .in("industry_code", [...activeCodesSet]);
+    tiRows = (data ?? []) as { tender_id: string; industry_code: string }[];
+  }
+
+  const tenderToCodes = new Map<string, Set<string>>();
+  for (const t of openTenders) {
+    const codes = new Set<string>();
+    if (t.primary_industry_code && activeCodesSet.has(t.primary_industry_code)) {
+      codes.add(t.primary_industry_code);
+    }
+    tenderToCodes.set(t.id, codes);
+  }
+  for (const row of tiRows) {
+    if (!activeCodesSet.has(row.industry_code)) continue;
+    if (!tenderToCodes.has(row.tender_id)) tenderToCodes.set(row.tender_id, new Set());
+    tenderToCodes.get(row.tender_id)!.add(row.industry_code);
+  }
+
+  const matched = openTenders.filter((t) => (tenderToCodes.get(t.id)?.size ?? 0) > 0);
+
+  const tenderTodayCount = matched.filter((t) => {
+    const dt = t.bid_ntce_dt ?? null;
+    if (!dt) return false;
+    return dt >= todayStart && dt <= todayEnd;
+  }).length;
+
+  const industryCountMap = new Map<string, number>();
+  for (const ind of activeIndustries) {
+    industryCountMap.set(ind.code, 0);
+  }
+  for (const t of matched) {
+    const codes = tenderToCodes.get(t.id);
+    if (!codes) continue;
+    for (const code of codes) {
+      industryCountMap.set(code, (industryCountMap.get(code) ?? 0) + 1);
+    }
+  }
+
+  const industryBreakdown: HomeIndustryBreakdownItem[] = activeIndustries.map((ind) => ({
+    industry_code: ind.code,
+    industry_name: ind.name,
+    count: industryCountMap.get(ind.code) ?? 0,
+  }));
+
+  const withCount = industryBreakdown.filter((i) => i.count > 0).sort((a, b) => b.count - a.count);
+  const topIndustry: HomeTopIndustry = withCount.length
+    ? { code: withCount[0].industry_code, name: withCount[0].industry_name, count: withCount[0].count }
+    : null;
+
+  const recentTenders: HomeTenderPreview[] = matched.slice(0, 5).map((t) => ({
+    id: t.id,
+    bid_ntce_nm: t.bid_ntce_nm,
+    ntce_instt_nm: t.ntce_instt_nm,
+    bid_clse_dt: t.bid_clse_dt,
+    bsns_dstr_nm: t.bsns_dstr_nm ?? null,
+    base_amt: t.base_amt != null ? Number(t.base_amt) : null,
+    raw: t.raw,
+  }));
+
+  return {
+    tenderCount: matched.length,
+    tenderTodayCount,
+    topIndustry,
+    industryBreakdown,
+    recentTenders,
+  };
+}
