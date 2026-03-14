@@ -20,6 +20,7 @@ import {
   Clock,
   Lightbulb,
   Info,
+  BarChart2,
 } from "lucide-react";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatters";
@@ -50,11 +51,16 @@ export default function DailyTenderReportDashboard({
   insightSentence,
   excerpt,
 }: Props) {
-  const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders } = payload;
+  const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
 
+  const isIndustryPayload = Boolean(industry_breakdown?.length);
   const topRegionShare =
     count_total > 0 && region_breakdown[0]
       ? Math.round((region_breakdown[0].count / count_total) * 1000) / 10
+      : 0;
+  const topIndustryShare =
+    count_total > 0 && top_industry && top_industry.count > 0
+      ? Math.round((top_industry.count / count_total) * 1000) / 10
       : 0;
 
   const regionChartData = region_breakdown.slice(0, 12).map((r) => ({
@@ -85,7 +91,7 @@ export default function DailyTenderReportDashboard({
                 {title}
               </h1>
               <p className="mt-1 text-xs text-blue-100 sm:text-lg">
-                {excerpt ?? "청소·소독·방역 입찰 요약"}
+                {excerpt ?? (isIndustryPayload ? "등록 업종 기준 입찰 요약" : "청소·소독·방역 입찰 요약")}
               </p>
               <p className="mt-2 text-base font-medium text-blue-100 sm:text-xl">{dateLabel}</p>
             </div>
@@ -93,11 +99,13 @@ export default function DailyTenderReportDashboard({
         </div>
       </header>
 
-      {/* 2. 핵심 지표 카드 2개 (총 공고, 1위 지역 비중) */}
+      {/* 2. 핵심 지표 카드 2개 (총 공고, 1위 업종 또는 1위 지역) */}
       <section className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
         <div className="rounded-xl border-0 bg-white p-4 shadow-lg transition-shadow duration-300 hover:shadow-xl sm:p-6">
           <div className="mb-3 flex items-center justify-between space-y-0 sm:mb-4">
-            <span className="text-xs text-slate-500 sm:text-sm">총 공고</span>
+            <span className="text-xs text-slate-500 sm:text-sm">
+              {isIndustryPayload ? "등록 업종 기준 총 공고" : "총 공고"}
+            </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 sm:h-10 sm:w-10">
               <FileText className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
             </div>
@@ -105,21 +113,95 @@ export default function DailyTenderReportDashboard({
           <p className="text-2xl font-bold text-blue-600 sm:text-4xl">
             {count_total.toLocaleString()}건
           </p>
-          <p className="mt-1.5 text-xs text-slate-500 sm:mt-2">청소·소독·방역 분류 공고</p>
-        </div>
-        <div className="rounded-xl border-0 bg-white p-4 shadow-lg transition-shadow duration-300 hover:shadow-xl sm:p-6">
-          <div className="mb-3 flex items-center justify-between space-y-0 sm:mb-4">
-            <span className="text-xs text-slate-500 sm:text-sm">1위 지역 비중</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 sm:h-10 sm:w-10">
-              <MapPin className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-purple-600 sm:text-4xl">{topRegionShare}%</p>
           <p className="mt-1.5 text-xs text-slate-500 sm:mt-2">
-            {region_breakdown[0]?.name ?? "—"} ({region_breakdown[0]?.count ?? 0}건)
+            {isIndustryPayload ? "등록된 업종에 해당하는 공고" : "청소·소독·방역 분류 공고"}
           </p>
         </div>
+        {isIndustryPayload && top_industry ? (
+          <div className="rounded-xl border-0 bg-white p-4 shadow-lg transition-shadow duration-300 hover:shadow-xl sm:p-6">
+            <div className="mb-3 flex items-center justify-between space-y-0 sm:mb-4">
+              <span className="text-xs text-slate-500 sm:text-sm">1위 업종</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 sm:h-10 sm:w-10">
+                <BarChart2 className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-purple-600 sm:text-4xl">{top_industry.name}</p>
+            <p className="mt-1.5 text-xs text-slate-500 sm:mt-2">
+              {top_industry.count}건{topIndustryShare > 0 ? ` (${topIndustryShare}%)` : ""}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border-0 bg-white p-4 shadow-lg transition-shadow duration-300 hover:shadow-xl sm:p-6">
+            <div className="mb-3 flex items-center justify-between space-y-0 sm:mb-4">
+              <span className="text-xs text-slate-500 sm:text-sm">1위 지역 비중</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 sm:h-10 sm:w-10">
+                <MapPin className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-purple-600 sm:text-4xl">{topRegionShare}%</p>
+            <p className="mt-1.5 text-xs text-slate-500 sm:mt-2">
+              {region_breakdown[0]?.name ?? "—"} ({region_breakdown[0]?.count ?? 0}건)
+            </p>
+          </div>
+        )}
       </section>
+
+      {/* 2-1. 업종별 공고 (등록 업종 기준 payload일 때만) */}
+      {isIndustryPayload && industry_breakdown && industry_breakdown.length > 0 && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 sm:h-12 sm:w-12">
+              <BarChart2 className="h-5 w-5 text-emerald-600 sm:h-6 sm:w-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">업종별 공고</h2>
+              <p className="mt-0.5 text-xs text-slate-500 sm:text-sm leading-snug">
+                등록된 업종(업종관리) 기준 당일 공고 건수입니다.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2.5 sm:space-y-3">
+            {industry_breakdown.map((r, i) => {
+              const pct = count_total > 0 ? (r.count / count_total) * 100 : 0;
+              return (
+                <div key={r.industry_code} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <Link
+                      href={`/tenders?industry=${encodeURIComponent(r.industry_code)}`}
+                      className="flex min-w-0 items-center gap-2 truncate text-slate-800 hover:text-blue-600 hover:underline"
+                    >
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
+                        style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className="truncate">{r.industry_name}</span>
+                    </Link>
+                    <span className="shrink-0 text-slate-600">
+                      {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs text-slate-500 sm:mt-4">
+            업종명을 클릭하면 해당 업종 필터가 적용된{" "}
+            <Link href="/tenders" className="text-blue-600 hover:underline">
+              입찰 공고
+            </Link>
+            로 이동합니다.
+          </p>
+        </section>
+      )}
 
       {/* 3. 지역별 분포 */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
@@ -195,14 +277,24 @@ export default function DailyTenderReportDashboard({
 
       {/* 4. 예산 상위 공고 */}
       <section className="space-y-3 sm:space-y-4">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:gap-3 sm:text-2xl">
-          <DollarSign className="h-6 w-6 text-emerald-600 sm:h-8 sm:w-8" />
-          예산 상위 공고
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:gap-3 sm:text-2xl">
+            <DollarSign className="h-6 w-6 text-emerald-600 sm:h-8 sm:w-8" />
+            예산 상위 공고
+          </h2>
+          <Link
+            href="/tenders?sort=amount-high"
+            className="text-sm font-medium text-blue-600 hover:underline sm:text-base"
+          >
+            전체 보기
+          </Link>
+        </div>
         <div className="space-y-3 sm:space-y-4">
           {top_budget_tenders.length === 0 ? (
             <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500 sm:p-6">
-              등록된 공고가 없습니다.
+              {count_total === 0 && isIndustryPayload
+                ? "해당 일자에는 등록된 업종에 해당하는 공고가 없었습니다."
+                : "등록된 공고가 없습니다."}
             </p>
           ) : (
             top_budget_tenders.map((t, i) => (
@@ -240,14 +332,24 @@ export default function DailyTenderReportDashboard({
 
       {/* 5. 마감 임박 공고 */}
       <section className="space-y-3 sm:space-y-4">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:gap-3 sm:text-2xl">
-          <Clock className="h-6 w-6 text-amber-600 sm:h-8 sm:w-8" />
-          마감 임박 공고
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:gap-3 sm:text-2xl">
+            <Clock className="h-6 w-6 text-amber-600 sm:h-8 sm:w-8" />
+            마감 임박 공고
+          </h2>
+          <Link
+            href="/tenders?sort=deadline"
+            className="text-sm font-medium text-blue-600 hover:underline sm:text-base"
+          >
+            전체 보기
+          </Link>
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {deadline_soon_tenders.length === 0 ? (
             <p className="col-span-full rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500 sm:p-6">
-              해당 일자 기준 마감 임박 공고가 없습니다.
+              {count_total === 0 && isIndustryPayload
+                ? "해당 일자에는 등록된 업종에 해당하는 공고가 없었습니다."
+                : "해당 일자 기준 마감 임박 공고가 없습니다."}
             </p>
           ) : (
             deadline_soon_tenders.map((t, i) => (
@@ -291,12 +393,19 @@ export default function DailyTenderReportDashboard({
           <div className="min-w-0 flex-1">
             <h3 className="text-base font-bold text-white sm:text-lg">클린아이덱스</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-blue-100 sm:mt-2 sm:text-base">
-              클린아이덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다.{" "}
+              {isIndustryPayload
+                ? "클린아이덱스는 업종관리에 등록된 업종 기준으로 입찰 공고를 매일 업데이트하고 있습니다. "
+                : "클린아이덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다. "}
               <Link href="/tenders" className="underline hover:text-white">
                 입찰 공고
               </Link>
-              에서 지역·분야별 필터로 자세히 확인할 수 있습니다.
+              에서 지역·업종별 필터로 자세히 확인할 수 있습니다.
             </p>
+            {isIndustryPayload && (
+              <p className="mt-1 text-xs text-blue-200/90 sm:text-sm">
+                집계 기준: 해당 일자 00:00~24:00 (KST). 출처: 나라장터 G2B.
+              </p>
+            )}
           </div>
         </div>
       </footer>

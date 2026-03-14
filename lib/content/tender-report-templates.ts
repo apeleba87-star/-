@@ -17,17 +17,20 @@ export function buildDailySlug(sourceRef: string): string {
 }
 
 export function buildDailyTitle(payload: DailyTenderPayload): string {
-  return `${payload.dateLabel} 청소·소독·방역 입찰 ${payload.count_total}건 정리`;
+  const label = payload.industry_breakdown ? "등록 업종 기준 입찰" : "청소·소독·방역 입찰";
+  return `${payload.dateLabel} ${label} ${payload.count_total}건 정리`;
 }
 
 /** 뉴스레터/카드용 summary 1문장 (정형화 규칙) */
 export function getDailySummaryText(payload: DailyTenderPayload): string {
-  return `오늘 등록된 청소·소독·방역 입찰 ${payload.count_total}건과 예산 상위 공고를 정리했습니다.`;
+  const prefix = payload.industry_breakdown ? "등록 업종 기준 " : "";
+  return `오늘 ${prefix}입찰 ${payload.count_total}건과 예산 상위 공고를 정리했습니다.`;
 }
 
 export function buildSummarySection(payload: DailyTenderPayload): string {
-  const { dateLabel, count_total, budget_total, budget_label, has_budget_unknown } = payload;
-  let body = `${dateLabel} 기준, 클린아이덱스가 분류한 청소·소독·방역 관련 공고는 총 **${count_total}건**입니다.`;
+  const { dateLabel, count_total, budget_total, budget_label, has_budget_unknown, industry_breakdown } = payload;
+  const criterion = industry_breakdown?.length ? "등록된 업종에 해당하는 공고는" : "클린아이덱스가 분류한 청소·소독·방역 관련 공고는";
+  let body = `${dateLabel} 기준, ${criterion} 총 **${count_total}건**입니다.`;
   if (budget_total > 0) {
     body += `\n총 추정 예산 규모는 **${budget_label}**입니다.`;
     if (has_budget_unknown) body += "\n\n(일부 공고는 예산 미공개입니다.)";
@@ -71,15 +74,25 @@ export function buildInsightSection(payload: DailyTenderPayload): string {
   return `## 한줄 해석\n\n${insight}`;
 }
 
+export function buildIndustrySection(payload: DailyTenderPayload): string {
+  const breakdown = payload.industry_breakdown;
+  if (!breakdown?.length) return "";
+  const header = "| 업종 | 건수 |\n| --- | --- |";
+  const rows = breakdown.map((r) => `| ${r.industry_name} | ${r.count}건 |`).join("\n");
+  return `## 업종별 공고\n\n${header}\n${rows}`;
+}
+
 export function buildDailyBody(payload: DailyTenderPayload): string {
+  const industrySection = buildIndustrySection(payload);
   const sections = [
-    "## 오늘의 청소 입찰 요약",
+    payload.industry_breakdown?.length ? "## 오늘의 입찰 요약 (등록 업종 기준)" : "## 오늘의 청소 입찰 요약",
     buildSummarySection(payload),
+    ...(industrySection ? [industrySection] : []),
     buildRegionSection(payload),
     buildTopBudgetSection(payload),
     buildDeadlineSection(payload),
     buildInsightSection(payload),
-    "\n---\n\n클린아이덱스는 청소·소독·방역 관련 공고를 별도로 분류해 매일 업데이트하고 있습니다.",
+    "\n---\n\n클린아이덱스는 등록 업종 기준 입찰 공고를 매일 업데이트하고 있습니다.",
   ];
   return sections.join("\n\n");
 }

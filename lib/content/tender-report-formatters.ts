@@ -16,10 +16,15 @@ export function buildRegionSummarySentence(regionBreakdown: { name: string; coun
 }
 
 export function buildInsightSentence(payload: DailyTenderPayload): string {
-  const { count_total, budget_total, region_breakdown, top_budget_tenders } = payload;
-  if (count_total === 0) return "해당 일자에는 신규 분류 공고가 없었습니다.";
+  const { count_total, budget_total, region_breakdown, top_budget_tenders, top_industry } = payload;
+  if (count_total === 0) return "해당 일자에는 등록된 업종에 해당하는 공고가 없었습니다.";
 
   const lines: string[] = [];
+
+  if (top_industry && top_industry.count > 0 && count_total > 0) {
+    const pct = Math.round((top_industry.count / count_total) * 1000) / 10;
+    lines.push(`1위 업종인 ${top_industry.name}이 ${pct}%를 차지했습니다.`);
+  }
 
   const topRegion = region_breakdown[0];
   const topRegionShare = topRegion ? (topRegion.count / count_total) * 100 : 0;
@@ -40,5 +45,5 @@ export function buildInsightSentence(payload: DailyTenderPayload): string {
     lines.push("대형 공고 1건이 전체 예산 규모를 크게 끌어올렸습니다.");
   }
 
-  return lines.length ? lines.join(" ") : "청소·소독·방역 관련 입찰이 안정적으로 등록되고 있습니다.";
+  return lines.length ? lines.join(" ") : "등록 업종 기준 입찰이 안정적으로 등록되고 있습니다.";
 }
