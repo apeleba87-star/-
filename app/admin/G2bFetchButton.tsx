@@ -123,7 +123,7 @@ export default function G2bFetchButton() {
           const t = line.trim();
           if (!t) continue;
           try {
-            const data = JSON.parse(t) as { type?: string; phase?: string; total?: number; done?: number; message?: string; ok?: boolean; tenders?: number; inserted?: number; updated?: number; licenseReflected?: number; listApiMatchedCount?: number; ppssrchMatchedCount?: number; licenseRawCount?: number; licenseError?: string; licenseKeys?: string[]; matchedLicenseKeys?: string[]; error?: string };
+            const data = JSON.parse(t) as { type?: string; phase?: string; total?: number; done?: number; message?: string; ok?: boolean; tenders?: number; inserted?: number; updated?: number; licenseReflected?: number; listApiMatchedCount?: number; ppssrchMatchedCount?: number; licenseRawCount?: number; licenseError?: string; licenseKeys?: string[]; matchedLicenseKeys?: string[]; listKeys?: string[]; error?: string };
             if (data.type === "progress") {
               setProgress({
                 phase: data.phase ?? "upsert",
