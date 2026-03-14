@@ -10,6 +10,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  PieChart,
+  Pie,
 } from "recharts";
 import {
   Sparkles,
@@ -160,38 +162,94 @@ export default function DailyTenderReportDashboard({
               </p>
             </div>
           </div>
-          <div className="space-y-2.5 sm:space-y-3">
-            {industry_breakdown.map((r, i) => {
-              const pct = count_total > 0 ? (r.count / count_total) * 100 : 0;
-              return (
-                <div key={r.industry_code} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <Link
-                      href={`/tenders?industry=${encodeURIComponent(r.industry_code)}`}
-                      className="flex min-w-0 items-center gap-2 truncate text-slate-800 hover:text-blue-600 hover:underline"
-                    >
-                      <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
-                        style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+            <div className="h-64 w-full min-w-0 sm:h-80">
+              {(() => {
+                const industryChartData = industry_breakdown
+                  .map((r, i) => ({ name: r.industry_name, value: r.count, index: i, count: r.count }))
+                  .filter((d) => d.value > 0);
+                if (industryChartData.length === 0) {
+                  return (
+                    <div className="flex h-full min-h-[12rem] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
+                      해당 일자 공고가 없습니다.
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "white",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 8,
+                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                          fontSize: 12,
+                        }}
+                        formatter={(value: number, name: string, props: { payload?: { count?: number } }) => {
+                          const pct =
+                            count_total > 0 && props.payload?.count != null
+                              ? ((props.payload.count / count_total) * 100).toFixed(1)
+                              : "0";
+                          return [`${value}건 (${pct}%)`, name];
+                        }}
                       />
-                      <span className="truncate">{r.industry_name}</span>
-                    </Link>
-                    <span className="shrink-0 text-slate-600">
-                      {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
-                    </span>
+                      <Pie
+                        data={industryChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="55%"
+                        outerRadius="80%"
+                        paddingAngle={1}
+                        stroke="none"
+                      >
+                        {industryChartData.map((entry) => (
+                          <Cell
+                            key={entry.name}
+                            fill={CHART_COLORS[entry.index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+            <div className="space-y-2.5 sm:space-y-3">
+              {industry_breakdown.map((r, i) => {
+                const pct = count_total > 0 ? (r.count / count_total) * 100 : 0;
+                return (
+                  <div key={r.industry_code} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
+                      <Link
+                        href={`/tenders?industry=${encodeURIComponent(r.industry_code)}`}
+                        className="flex min-w-0 items-center gap-2 truncate text-slate-800 hover:text-blue-600 hover:underline"
+                      >
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
+                          style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                        />
+                        <span className="truncate">{r.industry_name}</span>
+                      </Link>
+                      <span className="shrink-0 text-slate-600">
+                        {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
           <p className="mt-3 text-xs text-slate-500 sm:mt-4">
             업종명을 클릭하면 해당 업종 필터가 적용된{" "}
