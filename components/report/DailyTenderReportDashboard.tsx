@@ -245,37 +245,41 @@ export default function DailyTenderReportDashboard({
               })()}
             </div>
             <div className="space-y-2.5 sm:space-y-3">
-              {industry_breakdown.map((r, i) => {
-                const pct = count_total > 0 ? (r.count / count_total) * 100 : 0;
-                return (
-                  <div key={r.industry_code} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs sm:text-sm">
-                      <Link
-                        href={`/tenders?industry=${encodeURIComponent(r.industry_code)}`}
-                        className="flex min-w-0 items-center gap-2 truncate text-slate-800 hover:text-blue-600 hover:underline"
-                      >
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
-                          style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+              {[...industry_breakdown]
+                .map((r, i) => ({ ...r, originalIndex: i }))
+                .sort((a, b) => b.count - a.count)
+                .map((r) => {
+                  const pct = count_total > 0 ? (r.count / count_total) * 100 : 0;
+                  const colorIndex = (r as { originalIndex: number }).originalIndex % CHART_COLORS.length;
+                  return (
+                    <div key={r.industry_code} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs sm:text-sm">
+                        <Link
+                          href={`/tenders?industry=${encodeURIComponent(r.industry_code)}`}
+                          className="flex min-w-0 items-center gap-2 truncate text-slate-800 hover:text-blue-600 hover:underline"
+                        >
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
+                            style={{ backgroundColor: CHART_COLORS[colorIndex] }}
+                          />
+                          <span className="truncate">{r.industry_name}</span>
+                        </Link>
+                        <span className="shrink-0 text-slate-600">
+                          {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: CHART_COLORS[colorIndex],
+                          }}
                         />
-                        <span className="truncate">{r.industry_name}</span>
-                      </Link>
-                      <span className="shrink-0 text-slate-600">
-                        {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
-                      </span>
+                      </div>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{
-                          width: `${pct}%`,
-                          backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-500 sm:mt-4">
