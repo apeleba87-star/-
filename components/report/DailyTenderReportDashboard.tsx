@@ -186,12 +186,14 @@ export default function DailyTenderReportDashboard({
                           boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                           fontSize: 12,
                         }}
-                        formatter={(value: number, name: string, props: { payload?: { count?: number } }) => {
+                        formatter={(value, name, item) => {
+                          const val = typeof value === "number" ? value : 0;
+                          const payload = item?.payload as { count?: number } | undefined;
                           const pct =
-                            count_total > 0 && props.payload?.count != null
-                              ? ((props.payload.count / count_total) * 100).toFixed(1)
+                            count_total > 0 && payload?.count != null
+                              ? ((payload.count / count_total) * 100).toFixed(1)
                               : "0";
-                          return [`${value}건 (${pct}%)`, name];
+                          return [`${val}건 (${pct}%)`, String(name ?? "")];
                         }}
                       />
                       <Pie
