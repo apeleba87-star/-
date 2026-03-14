@@ -153,6 +153,70 @@ export async function getBidPblancListInfoServc(
   return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
+/** 나라장터검색조건에 의한 입찰공고 용역조회. 업종코드(indstrytyCd)·업종명(indstrytyNm)으로 필터 가능. */
+export type G2BServcPPSSrchParams = G2BListParams & {
+  indstrytyCd?: string;  // 업종코드 (예: 1162 건물위생관리업)
+  indstrytyNm?: string;  // 업종명
+  bidNtceNm?: string;
+  ntceInsttCd?: string;
+  ntceInsttNm?: string;
+  dminsttCd?: string;
+  dminsttNm?: string;
+  refNo?: string;
+  prtcptLmtRgnCd?: string;
+  prtcptLmtRgnNm?: string;
+  presmptPrceBgn?: number;
+  presmptPrceEnd?: number;
+  prcrmntReqNo?: string;
+  bidClseExcpYn?: string;
+  intrntnlDivCd?: string;
+  dtilPrdctClsfcNo?: string;
+};
+
+export async function getBidPblancListInfoServcPPSSrch(
+  params: G2BServcPPSSrchParams
+): Promise<G2BListResponse<Record<string, unknown>>> {
+  const url = buildUrl("getBidPblancListInfoServcPPSSrch", {
+    pageNo: params.pageNo ?? 1,
+    numOfRows: params.numOfRows ?? 100,
+    inqryDiv: params.inqryDiv ?? "1",
+    inqryBgnDt: params.inqryBgnDt,
+    inqryEndDt: params.inqryEndDt,
+    type: "json",
+    indstrytyCd: params.indstrytyCd,
+    indstrytyNm: params.indstrytyNm,
+    bidNtceNm: params.bidNtceNm,
+    ntceInsttCd: params.ntceInsttCd,
+    ntceInsttNm: params.ntceInsttNm,
+    dminsttCd: params.dminsttCd,
+    dminsttNm: params.dminsttNm,
+    refNo: params.refNo,
+    prtcptLmtRgnCd: params.prtcptLmtRgnCd,
+    prtcptLmtRgnNm: params.prtcptLmtRgnNm,
+    presmptPrceBgn: params.presmptPrceBgn,
+    presmptPrceEnd: params.presmptPrceEnd,
+    prcrmntReqNo: params.prcrmntReqNo,
+    bidClseExcpYn: params.bidClseExcpYn,
+    intrntnlDivCd: params.intrntnlDivCd,
+    dtilPrdctClsfcNo: params.dtilPrdctClsfcNo,
+  });
+  const res = await safeFetch(url, { ...G2B_FETCH_OPTIONS, timeoutMs: 20000 });
+  const text = await res.text();
+  if (!res.ok) {
+    let errMsg = `G2B API error: ${res.status}`;
+    try {
+      const parsed = parseResponse(text);
+      const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
+      const msg = header?.resultMsg ?? header?.resultCode;
+      if (msg) errMsg += ` - ${msg}`;
+    } catch {
+      if (text.length < 200) errMsg += ` - ${text}`;
+    }
+    throw new Error(errMsg);
+  }
+  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+}
+
 /** 공사 입찰 목록 */
 export async function getBidPblancListInfoCnstwk(
   params: G2BListParams
@@ -315,7 +379,8 @@ export async function getBidPblancListInfoPrtcptPsblRgn(
   return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
-/** 면허제한정보 (공고번호·차수 기준). 문서 기준 필수: inqryDiv, bidNtceOrd. */
+/** 면허제한정보 (공고번호·차수 기준). 문서 기준 필수: inqryDiv, bidNtceOrd, inqryBgnDt, inqryEndDt.
+ * 주의: 조회 기간은 7일 이내로 해야 07 입력범위초과가 나지 않음. 응답은 기간 내 전체 목록(첫 페이지)이라 bidNtceNo로 필터되지 않음. */
 export async function getBidPblancListInfoLicenseLimit(
   params: G2BAtchFileParams
 ): Promise<G2BListResponse<Record<string, unknown>>> {
@@ -323,7 +388,7 @@ export async function getBidPblancListInfoLicenseLimit(
   const pad = (n: number) => String(n).padStart(2, "0");
   const end = new Date();
   const start = new Date();
-  start.setDate(start.getDate() - 365);
+  start.setDate(start.getDate() - 7);
   const inqryBgnDt = `${start.getFullYear()}${pad(start.getMonth() + 1)}${pad(start.getDate())}0000`;
   const inqryEndDt = `${end.getFullYear()}${pad(end.getMonth() + 1)}${pad(end.getDate())}2359`;
   const url = buildUrl("getBidPblancListInfoLicenseLimit", {
@@ -355,7 +420,11 @@ export async function getBidPblancListInfoLicenseLimit(
   return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
-/** 면허제한정보 (등록일시범위만). 기간으로 한 번에 조회해 수집 속도·비용 절감. */
+/** 면허제한정보 (등록일시범위만). 기간으로 한 번에 조회해 수집 속도·비용 절감.
+ *  1000건/페이지 응답이 크므로 타임아웃을 20초로 늘림.
+ *  G2B API는 HTTP 200으로 한도초과/에러를 반환할 수 있으나 resultCode 포맷이 불일치("0"/"00"/숫자)
+ *  하므로 body 결과코드는 로깅만 하고, 실질적 에러는 resultMsg로 판단한다.
+ */
 export async function getBidPblancListInfoLicenseLimitByRange(
   params: G2BListParams & { pageNo?: number; numOfRows?: number }
 ): Promise<G2BListResponse<Record<string, unknown>>> {
@@ -366,7 +435,8 @@ export async function getBidPblancListInfoLicenseLimitByRange(
     inqryBgnDt: params.inqryBgnDt,
     inqryEndDt: params.inqryEndDt,
   });
-  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
+  // 1000건 페이지는 응답이 느릴 수 있으므로 20초 타임아웃 사용
+  const res = await safeFetch(url, { ...G2B_FETCH_OPTIONS, timeoutMs: 20000 });
   const text = await res.text();
   if (!res.ok) {
     if (res.status === 429) {
@@ -383,7 +453,15 @@ export async function getBidPblancListInfoLicenseLimitByRange(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  const parsed = parseResponse(text);
+  // G2B는 HTTP 200 이면서 body에 에러를 담는 경우 있음
+  // resultCode는 "00"/"0"/0 등 포맷 불일치가 있어 resultMsg로만 rate-limit 감지
+  const header = parsed.response?.header as { resultCode?: string; resultMsg?: string } | undefined;
+  const rm = String(header?.resultMsg ?? "").toUpperCase();
+  if (rm.includes("LIMIT") || rm.includes("EXCEED") || rm.includes("한도")) {
+    throw new Error(`G2B 면허제한 API 요청 한도 초과: ${header?.resultMsg}`);
+  }
+  return parsed;
 }
 
 /** 용역 입찰공고 상세정보 (입찰제한·업종제한 등). 공고번호·차수 기준 1건 조회. 404 시 대체 base URL·3자리 차수 재시도. (※ 25개 오퍼레이션에 없음, 면허제한 API 사용 권장) */
@@ -425,11 +503,31 @@ export async function getBidPblancListInfoServcDtlInfo(
   throw lastError ?? new Error("상세 API 조회 실패(404/500). 오퍼레이션 미지원이거나 일시 장애일 수 있음.");
 }
 
-/** 응답에서 item 배열 추출 (단일 객체면 배열로) */
-export function extractItems<T>(data: G2BListResponse<T>): T[] {
-  const body = data.response?.body;
-  if (!body) return [];
-  const items = body.items?.item ?? body.item;
-  if (!items) return [];
+/** 배열로 정규화 (단일 객체면 1개 배열로) */
+function toItemArray<T>(items: T | T[] | null | undefined): T[] {
+  if (items == null) return [];
   return Array.isArray(items) ? items : [items];
+}
+
+/** 응답에서 item 배열 추출. G2B 오퍼레이션별로 body 구조가 다를 수 있어 여러 경로 시도. */
+export function extractItems<T>(data: G2BListResponse<T>): T[] {
+  const body = data.response?.body as Record<string, unknown> | undefined;
+  if (!body) return [];
+
+  const itemsBag = body.items as Record<string, unknown> | unknown[] | undefined;
+  const candidates: unknown[] = [
+    itemsBag && typeof itemsBag === "object" && !Array.isArray(itemsBag)
+      ? (itemsBag as Record<string, unknown>).item ?? (itemsBag as Record<string, unknown>).Item
+      : itemsBag,
+    body.item,
+    body.Item,
+    body.list,
+    body.data,
+  ].filter(Boolean);
+
+  for (const raw of candidates) {
+    const arr = toItemArray(raw);
+    if (arr.length > 0) return arr as T[];
+  }
+  return [];
 }

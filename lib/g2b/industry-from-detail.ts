@@ -117,10 +117,16 @@ function collectFromObj(obj: Record<string, unknown>, keys: string[]): string[] 
   return [...new Set(out)];
 }
 
-/** 괄호 안 코드 추출. "건물위생관리업(1162)", "건물위생관리업(1162) 업종을 등록한 업체" 모두 처리 */
+/** 코드 추출. "건물위생관리업(1162)", "건물위생관리업/1162", "건물위생관리업(1162) 업종을 등록한 업체" 처리 */
 function parseIndustryLabel(text: string): { name: string; code: string } | null {
   const s = normalize(text);
   if (!s) return null;
+  const slash = s.match(/(.+?)\/(\d+)/);
+  if (slash) {
+    const name = slash[1].trim();
+    const code = slash[2].trim();
+    if (name.length >= 2 && code.length >= 2) return { name, code };
+  }
   const atEnd = s.match(/\s*([^(]+?)\s*\(\s*(\d+)\s*\)\s*$/);
   if (atEnd) {
     const name = atEnd[1].trim();

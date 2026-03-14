@@ -1,17 +1,13 @@
 /**
- * 나라장터 입찰 목록 수집 → tenders 테이블 upsert + tender_industries 매핑
- * 업종: raw에서 추출해 industries와 매칭. categories는 fallback 유지.
+ * 나라장터 입찰 목록 수집 → tenders upsert + tender_industries(업종) 매핑.
+ * - 수집 구간: 지금 시각 기준 최근 24시간만.
+ * - 용역(Servc)만 수집. 공사/물품 미수집.
+ * - 업종: (1) 목록 API 텍스트 매칭 (2) 면허제한 API 14일치 → 공고번호로 DB 매칭
+ *   (3) ServcPPSSrch(업종코드별)로 건물위생관리업(1162) 등 정확 반영.
  */
 
 import { createClient } from "@/lib/supabase-server";
-import {
-  getBidPblancListInfoServc,
-  getBidPblancListInfoCnstwk,
-  getBidPblancListInfoThng,
-  getBidPblancListInfoLicenseLimit,
-  getBidPblancListInfoLicenseLimitByRange,
-  extractItems,
-} from "./client";
+import { getBidPblancListInfoServc, getBidPblancListInfoLicenseLimitByRange, getBidPblancListInfoServcPPSSrch, extractItems } from "./client";
 import { parseIndustryRestrictionsFromDetailResponse } from "./industry-from-detail";
 import { mapItemToTender, matchKeywords } from "./mapper";
 import { computeCategoryScores } from "./clean-score";
@@ -33,15 +29,26 @@ const DEFAULT_KEYWORDS = [
   "청소", "미화", "위생", "시설관리", "환경미화", "건물청소", "소독", "방역", "용역청소",
 ];
 
-function getDateRange(daysBack = 1): { inqryBgnDt: string; inqryEndDt: string } {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const toYmdHm = (d: Date) =>
-    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
-  const start = new Date();
-  start.setDate(start.getDate() - daysBack);
-  start.setHours(0, 0, 0, 0);
+const pad = (n: number) => String(n).padStart(2, "0");
+const toYmdHm = (d: Date) =>
+  `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+
+/** 지금 시각 기준 최근 24시간 구간 (입찰 목록 수집용) */
+function getDateRangeLast12Hours(): { inqryBgnDt: string; inqryEndDt: string } {
   const end = new Date();
-  end.setHours(23, 59, 59, 999);
+  const start = new Date();
+  start.setHours(start.getHours() - 24);
+  return {
+    inqryBgnDt: toYmdHm(start),
+    inqryEndDt: toYmdHm(end),
+  };
+}
+
+/** 조회 당일 00:00 ~ 23:59 (면허제한 API용) */
+function getDateRangeToday(): { inqryBgnDt: string; inqryEndDt: string } {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   return {
     inqryBgnDt: toYmdHm(start),
     inqryEndDt: toYmdHm(end),
@@ -58,33 +65,24 @@ export type FetchProgress = {
   message?: string;
 };
 
-const OPERATION_LABEL: Record<string, string> = { Servc: "용역", Cnstwk: "공사", Thng: "물품" };
-
 const EMPTY_KEYWORD_OPTIONS: CategoryKeywordOptions = {
   cleaning: { includeKeywords: [], excludeKeywords: [] },
   disinfection: { includeKeywords: [], excludeKeywords: [] },
   globalExclude: [],
 };
 
+/** 용역(Servc)만 수집. 공사/물품은 수집하지 않음. */
 async function fetchOperation(
-  operation: "Servc" | "Cnstwk" | "Thng",
   range: { inqryBgnDt: string; inqryEndDt: string },
   allIncludeKeywords: string[],
   optionsByCategory: { cleaning: { includeKeywords: string[]; excludeKeywords: string[] }; disinfection: { includeKeywords: string[]; excludeKeywords: string[] }; globalExclude: string[] },
   industries: IndustryRow[],
   onProgress?: (p: FetchProgress) => void
 ): Promise<{ payloads: Record<string, unknown>[]; industryMatchesList: IndustryMatchResult[] }> {
-  const fetcher =
-    operation === "Servc"
-      ? getBidPblancListInfoServc
-      : operation === "Cnstwk"
-        ? getBidPblancListInfoCnstwk
-        : getBidPblancListInfoThng;
-  const label = OPERATION_LABEL[operation] ?? operation;
   const allItems: Record<string, unknown>[] = [];
   let pageNo = 1;
   for (;;) {
-    const data = await fetcher({
+    const data = await getBidPblancListInfoServc({
       ...range,
       pageNo,
       numOfRows: NUM_OF_ROWS,
@@ -92,7 +90,7 @@ async function fetchOperation(
     const items = extractItems(data);
     const list = Array.isArray(items) ? items : [items];
     allItems.push(...(list as Record<string, unknown>[]));
-    onProgress?.({ phase: "fetch", done: allItems.length, message: `${label} API 수집 중… ${allItems.length}건` });
+    onProgress?.({ phase: "fetch", done: allItems.length, message: `용역 API 수집 중… ${allItems.length}건` });
     if (list.length < NUM_OF_ROWS) break;
     pageNo += 1;
     if (pageNo > 50) break;
@@ -100,8 +98,19 @@ async function fetchOperation(
 
   const payloads: Record<string, unknown>[] = [];
   const industryMatchesList: IndustryMatchResult[] = [];
+  let firstItemLogged = false;
   for (const item of allItems) {
     const raw = item as Record<string, unknown>;
+    // 첫 번째 아이템의 raw 필드 목록 로그 (목록 API가 어떤 업종 필드를 반환하는지 확인용)
+    if (!firstItemLogged && process.env.NODE_ENV !== "production") {
+      const keys = Object.keys(raw);
+      const industryKeys = keys.filter(k =>
+        /indstry|lcns|업종|면허|srvce|srvc|divNm|clsfc/i.test(k)
+      );
+      console.log("[G2B 목록] 첫 번째 아이템 전체 필드:", keys.join(", "));
+      console.log("[G2B 목록] 업종 관련 필드:", industryKeys.length ? industryKeys.map(k => `${k}=${JSON.stringify(raw[k])}`).join(", ") : "(없음)");
+      firstItemLogged = true;
+    }
     const mapped = mapItemToTender(raw);
     const title = String(mapped.bid_ntce_nm ?? "");
     const matched = matchKeywords(title, allIncludeKeywords);
@@ -116,13 +125,20 @@ async function fetchOperation(
     (mapped as Record<string, unknown>).manual_override = false;
     (mapped as Record<string, unknown>).manual_tag = null;
 
-    const matchResult = extractIndustryMatchesFromRaw(raw, industries);
-    industryMatchesList.push(matchResult);
-    const codes = matchResult.matches.map((m) => m.code);
-    (mapped as Record<string, unknown>).primary_industry_code = pickPrimaryIndustryCode(codes, industries) ?? null;
-    (mapped as Record<string, unknown>).industry_match_status = matchResult.match_status;
-    (mapped as Record<string, unknown>).industry_name_raw =
-      matchResult.raw_values.length > 0 ? matchResult.raw_values.slice(0, 3).join(" / ") : null;
+    const industryResult = extractIndustryMatchesFromRaw(raw, industries);
+    industryMatchesList.push(industryResult);
+
+    if (industryResult.matches.length > 0) {
+      const primary = pickPrimaryIndustryCode(industryResult.matches.map((m) => m.code), industries);
+      (mapped as Record<string, unknown>).primary_industry_code = primary ?? null;
+      (mapped as Record<string, unknown>).industry_match_status = industryResult.match_status;
+      (mapped as Record<string, unknown>).industry_name_raw =
+        industryResult.raw_values.slice(0, 3).join(" / ") || null;
+    } else {
+      (mapped as Record<string, unknown>).primary_industry_code = null;
+      (mapped as Record<string, unknown>).industry_match_status = null;
+      (mapped as Record<string, unknown>).industry_name_raw = null;
+    }
     const regionText = [raw.bsnsDstrNm, raw.bsns_dstr_nm, raw.ntceInsttNm, raw.ntce_instt_nm].filter(Boolean).join(" ");
     (mapped as Record<string, unknown>).region_sido_list = parseRegionSidoList(regionText || undefined);
 
@@ -142,9 +158,23 @@ export async function runTenderFetch(options?: {
   inserted: number;
   updated: number;
   licenseReflected?: number;
+  /** 목록 API extractIndustryMatchesFromRaw 업종 반영 공고 수 */
+  listApiMatchedCount?: number;
+  /** 면허제한 API에서 수집된 원본 공고 수 (grouping 전 raw 건수) */
+  licenseRawCount?: number;
+  /** 면허제한 API 호출 중 에러가 발생한 경우 메시지 */
+  licenseError?: string;
   error?: string;
+  /** 개발용: 면허제한 API에서 데이터를 받은 공고 키 목록 (공고번호|차수) */
+  licenseKeys?: string[];
+  /** 개발용: 위 키 중 목록 API와 매칭되어 DB에 반영된 키 목록 */
+  matchedLicenseKeys?: string[];
+  /** 개발용: 목록 수집으로 만든 키 (fullIdByKey) - licenseKeys와 형식 비교용 */
+  listKeys?: string[];
+  /** ServcPPSSrch(업종코드별)로 반영한 공고 수 */
+  ppssrchMatchedCount?: number;
 }> {
-  const range = getDateRange(options?.daysBack ?? 1);
+  const range = getDateRangeLast12Hours();
   const supabase = getSupabase();
   const keywordsEnabled = await getTenderKeywordsEnabled(supabase);
   const byCategory = keywordsEnabled ? await getTenderKeywordOptionsByCategory() : EMPTY_KEYWORD_OPTIONS;
@@ -167,13 +197,8 @@ export async function runTenderFetch(options?: {
   try {
     onProgress?.({ phase: "fetch", message: "API 수집 중 (용역)…" });
 
-    const results = await Promise.all(
-      (["Servc"] as const).map((op) =>
-        fetchOperation(op, range, includeForMatch, byCategory, industries, onProgress)
-      )
-    );
-    const allPayloads = results.flatMap((r) => r.payloads);
-    const allIndustryMatches = results.flatMap((r) => r.industryMatchesList);
+    const result = await fetchOperation(range, includeForMatch, byCategory, industries, onProgress);
+    const allPayloads = result.payloads;
     const total = allPayloads.length;
 
     onProgress?.({ phase: "upsert", total, done: 0, message: `저장 중 (총 ${total}건)…` });
@@ -194,160 +219,302 @@ export async function runTenderFetch(options?: {
 
       const idByKey = new Map<string, string>();
       const batchIds: string[] = [];
-      const normOrd = (v: unknown) => String(v ?? "00").replace(/\D/g, "").padStart(2, "0");
+      const normNo = (v: unknown) =>
+        String(v ?? "").trim().replace(/\s/g, "").replace(/-000$/i, "");
+      const normOrd = (v: unknown) => {
+        const s = String(v ?? "00").replace(/\D/g, "");
+        const num = parseInt(s, 10) || 0;
+        if (num <= 1) return "00";
+        return String(num).padStart(2, "0").slice(-2);
+      };
       for (const row of upserted ?? []) {
-        const k = `${row.bid_ntce_no}|${normOrd(row.bid_ntce_ord)}`;
+        const k = `${normNo(row.bid_ntce_no)}|${normOrd(row.bid_ntce_ord)}`;
         idByKey.set(k, row.id);
         fullIdByKey.set(k, row.id);
         batchIds.push(row.id);
-      }
-
-      if (batchIds.length > 0) {
-        const { data: existingRows } = await supabase
-          .from("tender_industries")
-          .select("tender_id, industry_code")
-          .in("tender_id", batchIds);
-        const existingByTender = new Map<string, Set<string>>();
-        for (const r of existingRows ?? []) {
-          let set = existingByTender.get(r.tender_id);
-          if (!set) {
-            set = new Set();
-            existingByTender.set(r.tender_id, set);
-          }
-          set.add(r.industry_code);
-        }
-
-        for (let j = 0; j < batch.length; j++) {
-          const row = batch[j] as { bid_ntce_no?: string; bid_ntce_ord?: string };
-          const key = `${row.bid_ntce_no}|${normOrd(row.bid_ntce_ord)}`;
-          const tenderId = idByKey.get(key);
-          if (!tenderId) continue;
-          const matchResult = allIndustryMatches[i + j];
-          const newMatches = matchResult?.matches ?? [];
-          const newCodeSet = new Set(newMatches.map((m) => m.code));
-          const existing = existingByTender.get(tenderId) ?? new Set<string>();
-          const toDelete = [...existing].filter((c) => !newCodeSet.has(c));
-          const toAdd = newMatches.filter((m) => !existing.has(m.code));
-          if (toDelete.length > 0) {
-            await supabase
-              .from("tender_industries")
-              .delete()
-              .eq("tender_id", tenderId)
-              .in("industry_code", toDelete);
-          }
-          if (toAdd.length > 0) {
-            await supabase.from("tender_industries").insert(
-              toAdd.map((m) => ({
-                tender_id: tenderId,
-                industry_code: m.code,
-                match_source: m.match_source,
-                raw_value: m.raw_value,
-              }))
-            );
-          }
-        }
       }
 
       processed += batch.length;
       onProgress?.({ phase: "upsert", total, done: processed, message: `저장 완료 (${processed}/${total}건)…` });
     }
 
-    onProgress?.({ phase: "license", total: processed, done: 0, message: "면허제한 API 기간 조회 중…" });
+    // ─── [Phase 1] 목록 API 업종 매칭 → tender_industries 저장 ─────────────────────────
+    // extractIndustryMatchesFromRaw가 이미 각 payload에 primary_industry_code 등을 세팅했음.
+    // 여기서는 tender_industries 행도 삽입.
+    const normNo = (v: unknown) => String(v ?? "").trim().replace(/\s/g, "").replace(/-000$/i, "");
+    const normOrdFn = (v: unknown) => {
+      const s = String(v ?? "00").replace(/\D/g, "");
+      const num = parseInt(s, 10) || 0;
+      if (num <= 1) return "00";
+      return String(num).padStart(2, "0").slice(-2);
+    };
+    const listApiMatchedIds = new Set<string>();
+    {
+      const industryMatchesList = result.industryMatchesList;
+      // allPayloads와 industryMatchesList는 동일 순서로 대응
+      for (let i = 0; i < allPayloads.length; i++) {
+        const iResult = industryMatchesList[i];
+        if (!iResult || iResult.matches.length === 0) continue;
+        const p = allPayloads[i];
+        const key = `${normNo(p.bid_ntce_no)}|${normOrdFn(p.bid_ntce_ord)}`;
+        const tenderId = fullIdByKey.get(key);
+        if (!tenderId) continue;
+        listApiMatchedIds.add(tenderId);
+        await supabase.from("tender_industries").delete().eq("tender_id", tenderId);
+        const rows = iResult.matches.map((m) => ({
+          tender_id: tenderId,
+          industry_code: m.code,
+          match_source: m.match_source,
+          raw_value: m.raw_value,
+        }));
+        await supabase.from("tender_industries").insert(rows);
+      }
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[G2B 목록API 업종] 매칭된 공고:", listApiMatchedIds.size, "건");
+    }
+    onProgress?.({ phase: "upsert", total: processed, done: processed, message: `목록 API 업종 반영: ${listApiMatchedIds.size}건` });
+
+    // ─── [Phase 2] 면허제한 API 14일치 전체 수집 → 공고번호로 DB 직접 조회 매칭 ─────────
+    // 이유: 면허 등록일(inqryBgnDt) ≠ 공고 발표일이라 날짜 축이 다름.
+    //       14일치를 수집한 뒤, 해당 공고번호로 DB에서 직접 tender_id 조회 → 이전 수집 건도 매칭.
+
+    onProgress?.({ phase: "license", total: 0, done: 0, message: "면허제한 API 수집 시작 전 대기 (3s)…" });
+    // 리스트 API 호출 직후 바로 면허 API 호출 시 429 방지용 선딜레이
+    await new Promise((r) => setTimeout(r, 3000));
+
+    onProgress?.({ phase: "license", total: 0, done: 0, message: "면허제한 API 14일치 수집 중…" });
     const allLicenseItems: Record<string, unknown>[] = [];
+    let licenseApiError: string | undefined;
     try {
-      let licensePageNo = 1;
-      const licenseNumOfRows = 1000;
-      for (;;) {
-        const licenseRes = await getBidPblancListInfoLicenseLimitByRange({
-          inqryBgnDt: range.inqryBgnDt,
-          inqryEndDt: range.inqryEndDt,
-          pageNo: licensePageNo,
-          numOfRows: licenseNumOfRows,
-        });
-        const items = extractItems(licenseRes);
-        const list = Array.isArray(items) ? items : [items];
-        const rows = (list as Record<string, unknown>[]).filter((r) => r && (r.bidNtceNo != null || r.bid_ntce_no != null));
-        allLicenseItems.push(...rows);
-        if (rows.length < licenseNumOfRows) break;
-        licensePageNo += 1;
-        if (licensePageNo > 50) break;
-      }
-    } catch {
-      // 기간 조회 실패 시 raw 기반 업종 유지
-    }
-
-    const licenseByKey = new Map<string, Record<string, unknown>[]>();
-    for (const row of allLicenseItems) {
-      const no = String(row.bidNtceNo ?? row.bid_ntce_no ?? "").trim();
-      const ord = String(row.bidNtceOrd ?? row.bid_ntce_ord ?? "00").replace(/\D/g, "").padStart(2, "0");
-      if (!no) continue;
-      const key = `${no}|${ord}`;
-      let arr = licenseByKey.get(key);
-      if (!arr) {
-        arr = [];
-        licenseByKey.set(key, arr);
-      }
-      arr.push(row);
-    }
-
-    // 기간 조회가 0건이면 공고별 면허제한 API 호출(소수 병렬 + 배치 간 대기로 429 방지)
-    const LICENSE_FALLBACK_MAX = 300;
-    const LICENSE_PARALLEL = 5;
-    const LICENSE_BATCH_DELAY_MS = 1200;
-    if (licenseByKey.size === 0 && fullIdByKey.size > 0) {
-      const entries = [...fullIdByKey.entries()].slice(0, LICENSE_FALLBACK_MAX);
-      for (let k = 0; k < entries.length; k += LICENSE_PARALLEL) {
-        if (k > 0) await new Promise((r) => setTimeout(r, LICENSE_BATCH_DELAY_MS));
-        const batch = entries.slice(k, k + LICENSE_PARALLEL);
-        onProgress?.({ phase: "license", total: entries.length, done: k, message: `면허제한 API 공고별 조회 (${k + 1}~${Math.min(k + LICENSE_PARALLEL, entries.length)}/${entries.length})…` });
-        const results = await Promise.allSettled(
-          batch.map(async ([key, _tenderId]) => {
-            const [no, ord] = key.split("|");
-            const res = await getBidPblancListInfoLicenseLimit({ bidNtceNo: no, bidNtceOrd: ord ?? "00" });
-            const items = extractItems(res);
-            const list = Array.isArray(items) ? items : [items];
-            const rows = (list as Record<string, unknown>[]).filter((r) => r && typeof r === "object");
-            return { key, items: rows };
-          })
-        );
-        for (const r of results) {
-          if (r.status === "fulfilled" && r.value.items.length > 0) licenseByKey.set(r.value.key, r.value.items);
+      const pad7 = (n: number) => String(n).padStart(2, "0");
+      const licEnd = new Date();
+      const licStart = new Date();
+      licStart.setDate(licStart.getDate() - 14);
+      const licBgnDt = `${licStart.getFullYear()}${pad7(licStart.getMonth() + 1)}${pad7(licStart.getDate())}0000`;
+      const licEndDt = `${licEnd.getFullYear()}${pad7(licEnd.getMonth() + 1)}${pad7(licEnd.getDate())}2359`;
+      // 429 시 최대 2회 재시도 (1s / 3s backoff)
+      const fetchLicensePage = async (pageNo: number): Promise<Record<string, unknown>[]> => {
+        const delays = [0, 1000, 3000];
+        for (let attempt = 0; attempt < delays.length; attempt++) {
+          if (delays[attempt] > 0) await new Promise((r) => setTimeout(r, delays[attempt]));
+          try {
+            const licRes = await getBidPblancListInfoLicenseLimitByRange({
+              inqryBgnDt: licBgnDt,
+              inqryEndDt: licEndDt,
+              pageNo,
+              numOfRows: 1000,
+            });
+            const items = extractItems(licRes);
+            if (process.env.NODE_ENV !== "production" && pageNo === 1) {
+              const hdr = licRes.response?.header as { resultCode?: string; resultMsg?: string } | undefined;
+              console.log("[G2B 면허] page1 resultCode:", hdr?.resultCode, hdr?.resultMsg, "items:", items.length);
+            }
+            return (items as Record<string, unknown>[]).filter(
+              (r) => r && (r.bidNtceNo != null || r.bid_ntce_no != null)
+            );
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[G2B 면허] fetchLicensePage 오류:", msg);
+            if (msg.includes("429") && attempt < delays.length - 1) continue;
+            throw err;
+          }
         }
+        return [];
+      };
+      const LICENSE_PAGE_DELAY_MS = 500;
+      for (let licPage = 1; licPage <= 100; licPage++) {
+        if (licPage > 1) await new Promise((r) => setTimeout(r, LICENSE_PAGE_DELAY_MS));
+        const rows = await fetchLicensePage(licPage);
+        allLicenseItems.push(...rows);
+        onProgress?.({ phase: "license", done: allLicenseItems.length, message: `면허제한 API 14일치 ${allLicenseItems.length}건 수집 중…` });
+        if (rows.length < 1000) break;
+      }
+    } catch (e) {
+      licenseApiError = e instanceof Error ? e.message : String(e);
+      onProgress?.({ phase: "license", message: `면허제한 API 수집 실패: ${licenseApiError}` });
+      console.error("[G2B 면허] 수집 실패:", licenseApiError);
+    }
+
+    // 공고번호(bidNtceNo) 기준으로 면허 데이터 그룹핑 (차수 무시 → 포맷 불일치 해소)
+    const licenseByNo = new Map<string, Record<string, unknown>[]>();
+    for (const row of allLicenseItems) {
+      const no = normNo(row.bidNtceNo ?? row.bid_ntce_no);
+      if (!no) continue;
+      const arr = licenseByNo.get(no) ?? [];
+      arr.push(row);
+      licenseByNo.set(no, arr);
+    }
+
+    // 공고번호 → tender_id 맵
+    // 1) 이번 수집 결과 (fullIdByKey)
+    const idByNo = new Map<string, string>();
+    for (const [key, tenderId] of fullIdByKey) {
+      const no = key.split("|")[0];
+      if (no) idByNo.set(no, tenderId);
+    }
+    // 2) 면허 API 반환 공고번호로 DB 직접 조회 (이전 수집 건 + 공고번호 포맷 불일치 보완)
+    if (allLicenseItems.length > 0) {
+      const rawNos = [...new Set(
+        allLicenseItems.map(r => String(r.bidNtceNo ?? r.bid_ntce_no ?? "").trim()).filter(Boolean)
+      )];
+      // DB bid_ntce_no 포맷 변형도 함께 검색 (-000 붙은 버전 / 없는 버전)
+      const queryNos = [...new Set([
+        ...rawNos,
+        ...rawNos.map(n => n.replace(/-000$/i, "")),
+        ...rawNos.filter(n => !/-000$/i.test(n)).map(n => n + "-000"),
+      ])].filter(Boolean);
+      const { data: dbRows } = await supabase
+        .from("tenders")
+        .select("id, bid_ntce_no")
+        .in("bid_ntce_no", queryNos);
+      for (const row of dbRows ?? []) {
+        const no = normNo(row.bid_ntce_no);
+        if (no && !idByNo.has(no)) idByNo.set(no, row.id);
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[G2B 면허] DB 조회:", queryNos.length, "개 변형 → 매칭 후보", (dbRows ?? []).length, "건");
       }
     }
 
-    for (const [key, items] of licenseByKey) {
-      const tenderId = fullIdByKey.get(key);
+    const matchedTenderIds = new Set<string>();
+    const matchedLicenseKeys: string[] = [];
+
+    for (const [no, items] of licenseByNo) {
+      const tenderId = idByNo.get(no);
       if (!tenderId) continue;
-      const fakeResponse = { response: { body: { items: { item: items } } } } as Record<string, unknown>;
-      const licenseMatches = parseIndustryRestrictionsFromDetailResponse(fakeResponse, industries);
-      if (licenseMatches.length > 0) {
+      const fakeRes = { response: { body: { items: { item: items } } } } as Record<string, unknown>;
+      const matches = parseIndustryRestrictionsFromDetailResponse(fakeRes, industries);
+      if (matches.length > 0) {
+        matchedTenderIds.add(tenderId);
+        matchedLicenseKeys.push(no);
         await supabase.from("tender_industries").delete().eq("tender_id", tenderId);
         await supabase.from("tender_industries").insert(
-          licenseMatches.map((m) => ({
+          matches.map((m) => ({
             tender_id: tenderId,
             industry_code: m.code,
             match_source: m.match_source,
             raw_value: m.raw_value,
           }))
         );
-        const primary = pickPrimaryIndustryCode(licenseMatches.map((x) => x.code), industries);
+        const primary = pickPrimaryIndustryCode(matches.map((x) => x.code), industries);
         await supabase
           .from("tenders")
           .update({
             primary_industry_code: primary ?? null,
             industry_match_status: "matched",
-            industry_name_raw: licenseMatches.slice(0, 3).map((m) => m.raw_value).join(" / "),
+            industry_name_raw: matches.slice(0, 3).map((m) => m.raw_value).join(" / "),
             updated_at: now,
           })
           .eq("id", tenderId);
       }
-      const toSaveRaw = { response: { body: { items: { item: items } } } };
-      await supabase
-        .from("tender_details")
-        .upsert({ tender_id: tenderId, raw: toSaveRaw, updated_at: now }, { onConflict: "tender_id" });
     }
-    onProgress?.({ phase: "upsert", total: processed, done: processed, message: `수집 완료 (면허제한 ${licenseByKey.size}건 반영)` });
+
+    // ─── [Phase 3] 나라장터검색조건 용역조회(ServcPPSSrch) → 업종관리(DB)의 활성 업종별 매칭 ───
+    // industries 테이블 is_active=true 인 업종 전체에 대해 API 호출 → tender_industries에 추가(기존 행 유지)
+    const ppssrchMatchedIds = new Set<string>();
+    onProgress?.({ phase: "license", message: "업종별 PPSSrch API 조회 중…" });
+    for (const { code, name } of industries) {
+      try {
+        const ppItems: Record<string, unknown>[] = [];
+        let ppPage = 1;
+        for (;;) {
+          const ppRes = await getBidPblancListInfoServcPPSSrch({
+            inqryDiv: "1",
+            inqryBgnDt: range.inqryBgnDt,
+            inqryEndDt: range.inqryEndDt,
+            pageNo: ppPage,
+            numOfRows: NUM_OF_ROWS,
+            indstrytyCd: code,
+            indstrytyNm: name,
+          });
+          const items = extractItems(ppRes);
+          const list = Array.isArray(items) ? items : [items];
+          const typed = list.filter((x): x is Record<string, unknown> => x != null && typeof x === "object") as Record<string, unknown>[];
+          ppItems.push(...typed);
+          const body = ppRes.response?.body as { totalCount?: number } | undefined;
+          const total = typeof body?.totalCount === "number" ? body.totalCount : parseInt(String(body?.totalCount ?? "0"), 10) || 0;
+          if (typed.length < NUM_OF_ROWS || ppItems.length >= total) break;
+          ppPage += 1;
+          if (ppPage > 50) break;
+          await new Promise((r) => setTimeout(r, 300));
+        }
+        const ppNos = [...new Set(ppItems.map((r) => normNo(r.bidNtceNo ?? r.bid_ntce_no)).filter(Boolean))];
+        if (ppNos.length > 0) {
+          const missing = ppNos.filter((no) => !idByNo.has(no));
+          if (missing.length > 0) {
+            const queryNos = [...new Set([
+              ...missing,
+              ...missing.map((n) => n.replace(/-000$/i, "")),
+              ...missing.filter((n) => !/-000$/i.test(n)).map((n) => n + "-000"),
+            ])].filter(Boolean);
+            const { data: dbRows } = await supabase.from("tenders").select("id, bid_ntce_no").in("bid_ntce_no", queryNos);
+            for (const row of dbRows ?? []) {
+              const no = normNo(row.bid_ntce_no);
+              if (no && !idByNo.has(no)) idByNo.set(no, row.id);
+            }
+          }
+          const seenTenderIds = new Set<string>();
+          const toUpsert: { tender_id: string; industry_code: string; match_source: string; raw_value: string }[] = [];
+          for (const item of ppItems) {
+            const no = normNo(item.bidNtceNo ?? item.bid_ntce_no);
+            const tenderId = idByNo.get(no);
+            if (!tenderId || seenTenderIds.has(tenderId)) continue;
+            seenTenderIds.add(tenderId);
+            ppssrchMatchedIds.add(tenderId);
+            toUpsert.push({
+              tender_id: tenderId,
+              industry_code: code,
+              match_source: "servc_ppssrch",
+              raw_value: name,
+            });
+          }
+          if (toUpsert.length > 0) {
+            await supabase.from("tender_industries").upsert(toUpsert, {
+              onConflict: "tender_id,industry_code",
+              ignoreDuplicates: false,
+            });
+            const tenderIds = [...seenTenderIds];
+            await supabase.from("tenders").update({
+              industry_match_status: "matched",
+              industry_name_raw: name,
+              updated_at: now,
+            }).in("id", tenderIds);
+            await supabase.from("tenders").update({
+              primary_industry_code: code,
+              updated_at: now,
+            }).in("id", tenderIds).is("primary_industry_code", null);
+          }
+        }
+      } catch (e) {
+        console.error("[G2B PPSSrch]", code, name, e);
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    const allCollectedIds = [...fullIdByKey.values()];
+    // listApiMatchedIds, ppssrchMatchedIds: 업종 확인된 건 → cleanup에서 제외 (데이터 보존)
+    const unmatchedIds = allCollectedIds.filter(
+      (id) => !matchedTenderIds.has(id) && !listApiMatchedIds.has(id) && !ppssrchMatchedIds.has(id)
+    );
+    if (unmatchedIds.length > 0) {
+      const UNMATCHED_BATCH = 100;
+      for (let u = 0; u < unmatchedIds.length; u += UNMATCHED_BATCH) {
+        const batch = unmatchedIds.slice(u, u + UNMATCHED_BATCH);
+        await supabase.from("tender_industries").delete().in("tender_id", batch);
+        await supabase
+          .from("tenders")
+          .update({
+            primary_industry_code: null,
+            industry_match_status: null,
+            industry_name_raw: null,
+            updated_at: now,
+          })
+          .in("id", batch);
+      }
+    }
+    const matchedCount = matchedTenderIds.size;
+    onProgress?.({ phase: "upsert", total: processed, done: processed, message: `수집 완료 (면허제한 매칭 ${matchedCount}건 업종 반영)` });
 
     const bgnDate = `${range.inqryBgnDt.slice(0, 4)}-${range.inqryBgnDt.slice(4, 6)}-${range.inqryBgnDt.slice(6, 8)}`;
     const endDate = `${range.inqryEndDt.slice(0, 4)}-${range.inqryEndDt.slice(4, 6)}-${range.inqryEndDt.slice(6, 8)}`;
@@ -355,7 +522,30 @@ export async function runTenderFetch(options?: {
       { operation: "tender_list", inqry_bgn_dt: bgnDate, inqry_end_dt: endDate, last_fetched_at: new Date().toISOString() },
       { onConflict: "operation,inqry_bgn_dt,inqry_end_dt" }
     );
-    return { ok: true, tenders: processed, inserted: processed, updated: 0, licenseReflected: licenseByKey.size };
+    const licenseKeys = [...licenseByNo.keys()];
+    const listKeys = [...idByNo.keys()];
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[G2B 면허] 14일치 원본", allLicenseItems.length, "건, 고유 공고번호", licenseKeys.length, "건, 매칭 반영", matchedLicenseKeys.length, "건");
+      const inList = new Set(listKeys);
+      const onlyLicense = licenseKeys.filter((k) => !inList.has(k)).slice(0, 3);
+      const onlyList = listKeys.filter((k) => !new Set(licenseKeys).has(k)).slice(0, 3);
+      if (onlyLicense.length) console.log("[G2B] 면허에만 있는 공고번호 샘플:", onlyLicense);
+      if (onlyList.length) console.log("[G2B] 목록에만 있는 공고번호 샘플:", onlyList);
+    }
+    return {
+      ok: true,
+      tenders: processed,
+      inserted: processed,
+      updated: 0,
+      licenseReflected: matchedTenderIds.size,
+      listApiMatchedCount: listApiMatchedIds.size,
+      ppssrchMatchedCount: ppssrchMatchedIds.size,
+      licenseRawCount: allLicenseItems.length,
+      licenseError: licenseApiError,
+      licenseKeys,
+      matchedLicenseKeys,
+      listKeys,
+    };
   } catch (
     e: unknown
   ) {
@@ -368,6 +558,6 @@ export async function runTenderFetch(options?: {
       message = String(e);
     }
     if (!message.trim()) message = "알 수 없는 오류";
-    return { ok: false, tenders: 0, inserted: 0, updated: 0, licenseReflected: 0, error: message };
+    return { ok: false, tenders: 0, inserted: 0, updated: 0, licenseReflected: 0, licenseRawCount: 0, ppssrchMatchedCount: 0, error: message, licenseKeys: undefined, matchedLicenseKeys: undefined, listKeys: undefined };
   }
 }

@@ -65,6 +65,13 @@ export async function POST(req: NextRequest) {
             inserted: result.inserted,
             updated: result.updated,
             licenseReflected: result.licenseReflected,
+            listApiMatchedCount: result.listApiMatchedCount,
+            ppssrchMatchedCount: result.ppssrchMatchedCount,
+            licenseRawCount: result.licenseRawCount,
+            licenseError: result.licenseError,
+            licenseKeys: result.licenseKeys,
+            matchedLicenseKeys: result.matchedLicenseKeys,
+            listKeys: result.listKeys,
             error: errStr,
           });
         } catch (e) {
@@ -114,6 +121,13 @@ export async function POST(req: NextRequest) {
       inserted: result.inserted,
       updated: result.updated,
       licenseReflected: result.licenseReflected,
+      listApiMatchedCount: result.listApiMatchedCount,
+      ppssrchMatchedCount: result.ppssrchMatchedCount,
+      licenseRawCount: result.licenseRawCount,
+      licenseError: result.licenseError,
+      licenseKeys: result.licenseKeys,
+      matchedLicenseKeys: result.matchedLicenseKeys,
+      listKeys: result.listKeys,
       error: errorMsg,
     });
   } catch (e) {
