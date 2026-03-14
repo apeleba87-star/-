@@ -206,6 +206,31 @@ export default function DailyTenderReportDashboard({
                         outerRadius="80%"
                         paddingAngle={1}
                         stroke="none"
+                        label={({ cx, cy, midAngle, outerRadius, name, value }) => {
+                          const RADIAN = Math.PI / 180;
+                          const radius = Number(outerRadius) + 24;
+                          const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                          const pct =
+                            count_total > 0
+                              ? ((value / count_total) * 100).toFixed(1)
+                              : "0";
+                          const pctNum = parseFloat(pct);
+                          const labelText =
+                            pctNum >= 8 ? `${name} ${pct}%` : `${pct}%`;
+                          return (
+                            <text
+                              x={x}
+                              y={y}
+                              fill="#334155"
+                              textAnchor={x >= Number(cx) ? "start" : "end"}
+                              dominantBaseline="central"
+                              className="text-[10px] sm:text-xs font-medium"
+                            >
+                              {labelText}
+                            </text>
+                          );
+                        }}
                       >
                         {industryChartData.map((entry) => (
                           <Cell
