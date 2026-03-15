@@ -57,7 +57,8 @@ export default async function TendersPage({ searchParams }: PageProps) {
     if (region) q = q.contains("region_sido_list", [region]);
     const orderKey = sort === "posted" ? "bid_ntce_dt" : sort === "deadline" ? "bid_clse_dt" : "base_amt";
     const orderAsc = sort === "amount-low";
-    tendersRes = await q.order(orderKey, { ascending: orderAsc, nullsFirst: false }).limit(500);
+    const TENDERS_LIST_LIMIT = 50;
+    tendersRes = await q.order(orderKey, { ascending: orderAsc, nullsFirst: false }).limit(TENDERS_LIST_LIMIT);
   }
 
   const industries = industriesRes.data ?? [];
