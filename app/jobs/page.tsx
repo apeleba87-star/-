@@ -11,6 +11,8 @@ import {
   type JobsListSearchParams,
 } from "@/lib/jobs/job-list-options";
 import { getKstTodayString, getKstTomorrowString, addDaysToDateString } from "@/lib/jobs/kst-date";
+import { getActiveJobsAds } from "@/lib/ads";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 
 export const revalidate = 60;
 
@@ -193,6 +195,7 @@ export default async function JobsListPage({
       : null;
 
   const hasPosts = (jobPosts?.length ?? 0) > 0;
+  const jobsAds = await getActiveJobsAds();
 
   if (!hasPosts) {
     const isAppliedGuest = filter === "applied" && !user;
@@ -450,6 +453,12 @@ export default async function JobsListPage({
           구인하기
         </AuthRequiredCta>
       </div>
+
+      {(jobsAds.jobs_top?.enabled && (jobsAds.jobs_top.campaign || jobsAds.jobs_top.script_content)) ? (
+        <div className="mb-6">
+          <AdSlotRenderer slot={jobsAds.jobs_top} variant="card" />
+        </div>
+      ) : null}
 
       {user && (
         <nav

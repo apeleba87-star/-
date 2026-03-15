@@ -22,15 +22,19 @@ export default async function AdminLayout({
       redirect("/login?next=/admin");
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
+    if (profileError) {
+      console.error("[admin layout] profile fetch error:", profileError.message);
+      redirect("/login?next=/admin&reason=profile_error");
+    }
     const isAdmin = profile?.role === "admin" || profile?.role === "editor";
     if (!isAdmin) {
-      redirect("/");
+      redirect("/?admin_required=1");
     }
 
     return (
@@ -65,6 +69,9 @@ export default async function AdminLayout({
         </Link>
         <Link href="/admin/industries" className="font-medium text-slate-700 hover:text-slate-900">
           업종 관리
+        </Link>
+        <Link href="/admin/users" className="font-medium text-slate-700 hover:text-slate-900">
+          사용자
         </Link>
         <Link href="/admin/estimate-config" className="font-medium text-slate-700 hover:text-slate-900">
           견적 단가

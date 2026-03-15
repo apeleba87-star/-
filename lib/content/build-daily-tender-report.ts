@@ -75,6 +75,7 @@ export async function buildDailyTenderReport(
     published_at: publishedAt,
     source_type: SOURCE_TYPE_DAILY,
     source_ref: runKey,
+    report_snapshot: payload as unknown as Record<string, unknown>,
     updated_at: new Date().toISOString(),
   };
 

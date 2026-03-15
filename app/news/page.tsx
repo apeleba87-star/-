@@ -93,11 +93,12 @@ export default async function NewsPage({
     );
   }
 
+  // 입찰 리포트: source_type 기준 + slug 패턴(과거/수동 생성 건) 포함
   const { data: posts } = await supabase
     .from("posts")
     .select("id, title, excerpt, published_at, slug, source_type, source_ref")
     .not("published_at", "is", null)
-    .eq("source_type", "auto_tender_daily")
+    .or("source_type.eq.auto_tender_daily,slug.ilike.%daily-tender-digest")
     .order("published_at", { ascending: false })
     .limit(50);
 

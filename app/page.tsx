@@ -1,12 +1,11 @@
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActiveHomeAds } from "@/lib/ads";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
 import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
 import HomeDashboard from "@/components/home/HomeDashboard";
-import AdPremiumBanner from "@/components/home/AdPremiumBanner";
 import TenderSection from "@/components/home/TenderSection";
 import NewsSection from "@/components/home/NewsSection";
-import AdNativeCard from "@/components/home/AdNativeCard";
 import DataInsightSection from "@/components/home/DataInsightSection";
 
 export const revalidate = 60;
@@ -188,8 +187,8 @@ export default async function HomePage() {
       />
 
       <div className="mx-auto w-full max-w-2xl px-4 pt-2 pb-10 sm:px-6 sm:pb-12">
-        {ads.premium_banner?.enabled && ads.premium_banner.campaign ? (
-          <AdPremiumBanner campaign={ads.premium_banner.campaign} />
+        {(ads.premium_banner?.enabled && (ads.premium_banner.campaign || ads.premium_banner.script_content)) ? (
+          <AdSlotRenderer slot={ads.premium_banner} variant="banner" />
         ) : null}
 
         <TenderSection
@@ -200,8 +199,14 @@ export default async function HomePage() {
         />
         <NewsSection posts={news} />
 
-        {ads.native_card?.enabled && ads.native_card.campaign ? (
-          <AdNativeCard campaign={ads.native_card.campaign} />
+        {(ads.native_card?.enabled && (ads.native_card.campaign || ads.native_card.script_content)) ? (
+          <AdSlotRenderer slot={ads.native_card} variant="card" />
+        ) : null}
+
+        {(ads.home_bottom?.enabled && (ads.home_bottom.campaign || ads.home_bottom.script_content)) ? (
+          <div className="mt-8">
+            <AdSlotRenderer slot={ads.home_bottom} variant="card" />
+          </div>
         ) : null}
 
         <DataInsightSection />

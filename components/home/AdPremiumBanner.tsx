@@ -1,18 +1,46 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { ExternalLink, Sparkles } from "lucide-react";
 import type { HomeAdCampaign } from "@/lib/ads";
+import { trackAdEvent } from "@/lib/ads-tracking";
 
-type Props = { campaign: HomeAdCampaign };
+type Props = { campaign: HomeAdCampaign; slotKey?: string };
 
-export default function AdPremiumBanner({ campaign }: Props) {
+export default function AdPremiumBanner({ campaign, slotKey }: Props) {
+  const pathname = usePathname();
+  const impressionSent = useRef(false);
   const href = campaign.cta_url || "#";
   const title = campaign.title || "청소업 전용 관리 솔루션";
   const description = campaign.description || "입찰부터 현장관리까지 한 번에! 지금 가입하면 첫 달 무료 ✨";
   const ctaText = campaign.cta_text || "자세히 보기";
+
+  useEffect(() => {
+    if (!slotKey || impressionSent.current) return;
+    impressionSent.current = true;
+    trackAdEvent({
+      event_type: "impression",
+      campaign_id: campaign.id,
+      slot_key: slotKey,
+      page_path: pathname ?? undefined,
+    });
+  }, [slotKey, campaign.id, pathname]);
+
+  const handleClick = () => {
+    if (slotKey) {
+      trackAdEvent({
+        event_type: "click",
+        campaign_id: campaign.id,
+        slot_key: slotKey,
+        page_path: pathname ?? undefined,
+        meta: { target_type: "landing_page" },
+      });
+    }
+  };
 
   return (
     <motion.section
@@ -22,7 +50,7 @@ export default function AdPremiumBanner({ campaign }: Props) {
       className="mb-10"
       aria-label="광고"
     >
-      <Link href={href} className="block touch-manipulation" target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noopener noreferrer" : undefined}>
+      <Link href={href} className="block touch-manipulation" target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noopener noreferrer" : undefined} onClick={handleClick}>
         <motion.div
           className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 shadow-xl"
           whileHover={{

@@ -3,6 +3,8 @@ import ListingCard from "@/components/listings/ListingCard";
 import Link from "next/link";
 import AuthRequiredCta from "@/components/AuthRequiredCta";
 import type { PayUnit } from "@/lib/listings/types";
+import { getActiveListingsAds } from "@/lib/ads";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 
 export const revalidate = 60;
 
@@ -77,6 +79,8 @@ export default async function ListingsPage() {
     };
   });
 
+  const listingsAds = await getActiveListingsAds();
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -95,6 +99,12 @@ export default async function ListingsPage() {
           글 쓰기
         </AuthRequiredCta>
       </div>
+
+      {(listingsAds.listings_top?.enabled && (listingsAds.listings_top.campaign || listingsAds.listings_top.script_content)) ? (
+        <div className="mb-8">
+          <AdSlotRenderer slot={listingsAds.listings_top} variant="card" />
+        </div>
+      ) : null}
 
       {listingsWithMeta.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">

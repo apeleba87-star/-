@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase-server";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import TendersListWithFilters from "./TendersListWithFilters";
+import { getActiveTendersAds } from "@/lib/ads";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 
 export const revalidate = 60;
 
@@ -69,6 +71,8 @@ export default async function TendersPage({ searchParams }: PageProps) {
     return { ...rest, tender_industries: tender_industries ?? [] } as TenderBidCardT;
   });
 
+  const tendersAds = await getActiveTendersAds();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
       <div className="mx-auto max-w-5xl px-4 py-12">
@@ -79,12 +83,19 @@ export default async function TendersPage({ searchParams }: PageProps) {
           </p>
         </header>
 
+        {(tendersAds.tenders_top?.enabled && (tendersAds.tenders_top.campaign || tendersAds.tenders_top.script_content)) ? (
+          <div className="mb-8">
+            <AdSlotRenderer slot={tendersAds.tenders_top} variant="card" />
+          </div>
+        ) : null}
+
         <TendersListWithFilters
           tenders={tenders}
           industries={industries}
           initialIndustryCodes={industryCodes}
           initialRegion={region ?? "전체 지역"}
           initialSort={sort}
+          adSlotMid={tendersAds.tenders_mid?.enabled && (tendersAds.tenders_mid.campaign || tendersAds.tenders_mid.script_content) ? tendersAds.tenders_mid : null}
         />
       </div>
     </div>

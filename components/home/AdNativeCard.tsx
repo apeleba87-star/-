@@ -1,19 +1,47 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { TrendingUp, ExternalLink } from "lucide-react";
 import type { HomeAdCampaign } from "@/lib/ads";
+import { trackAdEvent } from "@/lib/ads-tracking";
 
 const glass = "bg-white/60 backdrop-blur-xl border border-white/30 shadow-lg";
 
-type Props = { campaign: HomeAdCampaign };
+type Props = { campaign: HomeAdCampaign; slotKey?: string };
 
-export default function AdNativeCard({ campaign }: Props) {
+export default function AdNativeCard({ campaign, slotKey }: Props) {
+  const pathname = usePathname();
+  const impressionSent = useRef(false);
   const href = campaign.cta_url || "#";
   const title = campaign.title || "청소 현장 매칭 플랫폼";
   const description = campaign.description || "검증된 청소업체와 바로 연결 · 수수료 0원";
+
+  useEffect(() => {
+    if (!slotKey || impressionSent.current) return;
+    impressionSent.current = true;
+    trackAdEvent({
+      event_type: "impression",
+      campaign_id: campaign.id,
+      slot_key: slotKey,
+      page_path: pathname ?? undefined,
+    });
+  }, [slotKey, campaign.id, pathname]);
+
+  const handleClick = () => {
+    if (slotKey) {
+      trackAdEvent({
+        event_type: "click",
+        campaign_id: campaign.id,
+        slot_key: slotKey,
+        page_path: pathname ?? undefined,
+        meta: { target_type: "landing_page" },
+      });
+    }
+  };
 
   return (
     <motion.section
@@ -24,7 +52,7 @@ export default function AdNativeCard({ campaign }: Props) {
       className="mb-10"
       aria-label="광고"
     >
-      <Link href={href} className="block touch-manipulation" target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noopener noreferrer" : undefined}>
+      <Link href={href} className="block touch-manipulation" target={href.startsWith("http") ? "_blank" : undefined} rel={href.startsWith("http") ? "noopener noreferrer" : undefined} onClick={handleClick}>
         <motion.div
           className={`${glass} flex min-h-[88px] items-center gap-4 rounded-2xl p-4 transition-colors hover:border-emerald-300/80 hover:shadow-xl`}
           whileHover={{

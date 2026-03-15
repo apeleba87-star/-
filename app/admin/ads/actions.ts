@@ -14,6 +14,32 @@ export async function toggleSlotEnabled(slotId: string, enabled: boolean) {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/ads");
   revalidatePath("/");
+  revalidatePath("/tenders");
+  revalidatePath("/listings");
+  revalidatePath("/jobs");
+  return { ok: true };
+}
+
+export type SlotType = "direct" | "google" | "coupang";
+
+export async function updateSlotTypeAndScript(
+  slotId: string,
+  slot_type: SlotType,
+  script_content: string | null
+) {
+  const supabase = await createServerSupabase();
+  const payload: { slot_type: SlotType; script_content: string | null; updated_at: string } = {
+    slot_type,
+    script_content: slot_type === "direct" ? null : script_content ?? null,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("home_ad_slots").update(payload).eq("id", slotId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/ads");
+  revalidatePath("/");
+  revalidatePath("/tenders");
+  revalidatePath("/listings");
+  revalidatePath("/jobs");
   return { ok: true };
 }
 
@@ -42,6 +68,9 @@ export async function createCampaign(input: CampaignInput) {
   if (error) return { ok: false, error: error.message, id: null };
   revalidatePath("/admin/ads");
   revalidatePath("/");
+  revalidatePath("/tenders");
+  revalidatePath("/listings");
+  revalidatePath("/jobs");
   return { ok: true, id: data.id };
 }
 
@@ -54,6 +83,9 @@ export async function updateCampaign(id: string, input: Partial<CampaignInput>) 
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/ads");
   revalidatePath("/");
+  revalidatePath("/tenders");
+  revalidatePath("/listings");
+  revalidatePath("/jobs");
   return { ok: true };
 }
 
@@ -63,6 +95,9 @@ export async function deleteCampaign(id: string) {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/ads");
   revalidatePath("/");
+  revalidatePath("/tenders");
+  revalidatePath("/listings");
+  revalidatePath("/jobs");
   return { ok: true };
 }
 

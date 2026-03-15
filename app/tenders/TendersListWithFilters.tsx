@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { FileText, ChevronDown } from "lucide-react";
 import TenderBidCard from "@/components/tender/TenderBidCard";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
+import type { HomeAdSlotWithCampaign } from "@/lib/ads";
 import { parseRegionSido } from "@/lib/tender-utils";
 import { getBaseAmtFromRaw } from "@/lib/tender-utils";
 import { ddayNumber } from "@/lib/tender-utils";
@@ -68,6 +70,7 @@ type Props = {
   initialIndustryCodes?: string[];
   initialRegion?: string;
   initialSort?: SortId;
+  adSlotMid?: HomeAdSlotWithCampaign | null;
 };
 
 function buildTendersUrl(params: { industry: string[]; region: string; sort: string }): string {
@@ -85,6 +88,7 @@ export default function TendersListWithFilters({
   initialIndustryCodes = [],
   initialRegion = "전체 지역",
   initialSort = "posted",
+  adSlotMid = null,
 }: Props) {
   const router = useRouter();
   const selectedIndustryCodes = initialIndustryCodes;
@@ -279,6 +283,12 @@ export default function TendersListWithFilters({
                 ))}
               </ul>
             </section>
+          )}
+
+          {adSlotMid && (
+            <div className="mb-10">
+              <AdSlotRenderer slot={adSlotMid} variant="card" />
+            </div>
           )}
 
           {/* 마감된 공고 (참고용) */}

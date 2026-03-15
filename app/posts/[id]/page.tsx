@@ -4,7 +4,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActivePostDetailAds } from "@/lib/ads";
-import AdNativeCard from "@/components/home/AdNativeCard";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
+import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { aggregateDailyTenders } from "@/lib/content/tender-report-queries";
 import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
 import { getKstDateString } from "@/lib/content/kst-utils";
@@ -37,17 +38,22 @@ export default async function PostPage({
       .single(),
   ]);
 
-  let reportData: { payload: Awaited<ReturnType<typeof aggregateDailyTenders>>; insightSentence: string } | null = null;
+  let reportData: { payload: DailyTenderPayload; insightSentence: string } | null = null;
   const resolvedPost = (error || !post ? null : post) ?? null;
 
   if (resolvedPost && isReportPost(resolvedPost)) {
-    const reportDate = getReportDate(resolvedPost);
-    if (reportDate) {
-      try {
-        const payload = await aggregateDailyTenders(supabase, new Date(`${reportDate}T12:00:00Z`));
-        reportData = { payload, insightSentence: buildInsightSentence(payload) };
-      } catch {
-        reportData = null;
+    const snapshot = (resolvedPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
+    if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
+      reportData = { payload: snapshot as DailyTenderPayload, insightSentence: buildInsightSentence(snapshot as DailyTenderPayload) };
+    } else {
+      const reportDate = getReportDate(resolvedPost);
+      if (reportDate) {
+        try {
+          const payload = await aggregateDailyTenders(supabase, new Date(`${reportDate}T12:00:00Z`));
+          reportData = { payload, insightSentence: buildInsightSentence(payload) };
+        } catch {
+          reportData = null;
+        }
       }
     }
   }
@@ -62,13 +68,18 @@ export default async function PostPage({
     if (bySlug.error || !bySlug.data) notFound();
     const slugPost = bySlug.data;
     if (isReportPost(slugPost) && !reportData) {
-      const reportDate = getReportDate(slugPost);
-      if (reportDate) {
-        try {
-          const payload = await aggregateDailyTenders(supabase, new Date(`${reportDate}T12:00:00Z`));
-          reportData = { payload, insightSentence: buildInsightSentence(payload) };
-        } catch {
-          // keep null
+      const snapshot = (slugPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
+      if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
+        reportData = { payload: snapshot as DailyTenderPayload, insightSentence: buildInsightSentence(snapshot as DailyTenderPayload) };
+      } else {
+        const reportDate = getReportDate(slugPost);
+        if (reportDate) {
+          try {
+            const payload = await aggregateDailyTenders(supabase, new Date(`${reportDate}T12:00:00Z`));
+            reportData = { payload, insightSentence: buildInsightSentence(payload) };
+          } catch {
+            // keep null
+          }
         }
       }
     }
@@ -135,7 +146,7 @@ type PostForRender = {
 };
 
 type PostDetailAds = Awaited<ReturnType<typeof getActivePostDetailAds>>;
-type ReportData = { payload: Awaited<ReturnType<typeof aggregateDailyTenders>>; insightSentence: string };
+type ReportData = { payload: DailyTenderPayload; insightSentence: string };
 
 /** 자동 생성 입찰 리포트 여부: source_type 있거나 slug가 일간 디제스트 패턴이면 리포트 */
 function isReportPost(post: PostForRender): boolean {
@@ -151,8 +162,8 @@ function renderPost(
   reportLocked: boolean
 ) {
   const isReport = isReportPost(post);
-  const showTopAd = ads.post_top?.enabled && ads.post_top.campaign;
-  const showBottomAd = ads.post_bottom?.enabled && ads.post_bottom.campaign;
+  const showTopAd = ads.post_top?.enabled && (ads.post_top.campaign || ads.post_top.script_content);
+  const showBottomAd = ads.post_bottom?.enabled && (ads.post_bottom.campaign || ads.post_bottom.script_content);
   const useDashboard = isReport && reportData;
   const showLock = useDashboard && reportLocked;
 
@@ -172,9 +183,9 @@ function renderPost(
         />
       ) : useDashboard ? (
         <>
-          {showTopAd && ads.post_top?.campaign && (
+          {showTopAd && ads.post_top && (
             <div className="mb-6">
-              <AdNativeCard campaign={ads.post_top.campaign} />
+              <AdSlotRenderer slot={ads.post_top} variant="card" />
             </div>
           )}
           <DailyTenderReportDashboard
@@ -184,9 +195,9 @@ function renderPost(
             insightSentence={reportData!.insightSentence}
             excerpt={post.excerpt}
           />
-          {showBottomAd && ads.post_bottom?.campaign && (
+          {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
-              <AdNativeCard campaign={ads.post_bottom.campaign} />
+              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
             </div>
           )}
         </>
@@ -203,9 +214,9 @@ function renderPost(
           </time>
           {post.excerpt && <p className="mt-4 text-slate-600">{post.excerpt}</p>}
 
-          {showTopAd && ads.post_top?.campaign && (
+          {showTopAd && ads.post_top && (
             <div className="mt-6">
-              <AdNativeCard campaign={ads.post_top.campaign} />
+              <AdSlotRenderer slot={ads.post_top} variant="card" />
             </div>
           )}
 
@@ -220,9 +231,9 @@ function renderPost(
               </div>
             ))}
 
-          {showBottomAd && ads.post_bottom?.campaign && (
+          {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
-              <AdNativeCard campaign={ads.post_bottom.campaign} />
+              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
             </div>
           )}
         </article>

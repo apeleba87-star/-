@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User } from "lucide-react";
+import { Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { motion } from "framer-motion";
@@ -12,24 +12,14 @@ type Props = {
   onClick?: () => void;
 };
 
+/** 로그인한 사용자에게만 표시. 접근 권한은 /admin 레이아웃에서 검사 */
 export default function HeaderAdminLink({ variant, onClick }: Props) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        setShow(false);
-        return;
-      }
-      supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          setShow(data?.role === "admin" || data?.role === "editor");
-        });
+      setShow(!!user);
     });
   }, []);
 
@@ -51,7 +41,7 @@ export default function HeaderAdminLink({ variant, onClick }: Props) {
         whileHover={isPc ? { scale: 1.05 } : {}}
         whileTap={isPc ? { scale: 0.98 } : {}}
       >
-        <User className={`shrink-0 text-slate-500 ${isPc ? "h-4 w-4" : "h-5 w-5"}`} />
+        <Shield className={`shrink-0 text-slate-500 ${isPc ? "h-4 w-4" : "h-5 w-5"}`} />
         <span className={isPc ? "text-sm font-medium" : "font-medium"}>관리자 모드</span>
       </motion.span>
     </Link>

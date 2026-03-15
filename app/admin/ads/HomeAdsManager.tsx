@@ -1,20 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, ImageUp, Calendar, ArrowUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, ImageUp, Calendar, ArrowUpDown, Code } from "lucide-react";
 import {
   toggleSlotEnabled,
+  updateSlotTypeAndScript,
   createCampaign,
   updateCampaign,
   deleteCampaign,
   uploadAdImage,
   type CampaignInput,
+  type SlotType,
 } from "./actions";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-type Slot = { id: string; key: string; name: string; enabled: boolean };
+type Slot = {
+  id: string;
+  key: string;
+  name: string;
+  enabled: boolean;
+  slot_type: SlotType | null;
+  script_content: string | null;
+};
 type Campaign = {
   id: string;
   home_ad_slot_id: string;
@@ -47,10 +57,13 @@ export default function HomeAdsManager({
   slots: Slot[];
   campaigns: Campaign[];
 }) {
+  const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingSlotId, setAddingSlotId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [scriptDrafts, setScriptDrafts] = useState<Record<string, string>>({});
+  const [savingScriptSlotId, setSavingScriptSlotId] = useState<string | null>(null);
 
   const defaultForm: CampaignInput = {
     home_ad_slot_id: "",
@@ -97,6 +110,27 @@ export default function HomeAdsManager({
   async function handleToggle(slotId: string, enabled: boolean) {
     const res = await toggleSlotEnabled(slotId, enabled);
     setMessage(res.ok ? { ok: true, text: "저장되었습니다." } : { ok: false, text: res.error ?? "실패" });
+  }
+
+  async function handleSlotTypeChange(slotId: string, slot_type: SlotType) {
+    const res = await updateSlotTypeAndScript(slotId, slot_type, null);
+    setMessage(res.ok ? { ok: true, text: "광고 유형이 저장되었습니다." } : { ok: false, text: res.error ?? "실패" });
+    if (res.ok) {
+      setScriptDrafts((d) => ({ ...d, [slotId]: "" }));
+      router.refresh();
+    }
+  }
+
+  async function handleSaveScript(slotId: string, slot_type: SlotType, script_content: string) {
+    setSavingScriptSlotId(slotId);
+    setMessage(null);
+    const res = await updateSlotTypeAndScript(slotId, slot_type, script_content.trim() || null);
+    setSavingScriptSlotId(null);
+    setMessage(res.ok ? { ok: true, text: "스크립트가 저장되었습니다." } : { ok: false, text: res.error ?? "실패" });
+    if (res.ok) {
+      setScriptDrafts((d) => ({ ...d, [slotId]: "" }));
+      router.refresh();
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -175,12 +209,71 @@ export default function HomeAdsManager({
               </label>
             </div>
 
-            <p className="mb-4 text-xs text-slate-500">
-              {slot.enabled ? "슬롯이 켜져 있습니다. 기간이 겹치는 경우 대기순서(숫자 작을수록 우선)로 1건만 노출됩니다." : "슬롯이 꺼져 있으면 해당 자리는 빈칸으로 표시됩니다."}
-            </p>
+            <div className="mb-4">
+              <span className="mb-2 block text-sm font-medium text-slate-700">광고 유형</span>
+              <div className="flex flex-wrap gap-2">
+                {(["direct", "google", "coupang"] as const).map((t) => {
+                  const isActive = (slot.slot_type ?? "direct") === t;
+                  const labels = { direct: "직접 수주", google: "구글", coupang: "쿠팡" };
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleSlotTypeChange(slot.id, t)}
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                        isActive
+                          ? "border-slate-800 bg-slate-800 text-white"
+                          : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {labels[t]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-            <ul className="mb-4 space-y-2">
-              {slotCampaigns.length === 0 ? (
+            {(slot.slot_type ?? "direct") === "google" || (slot.slot_type ?? "direct") === "coupang" ? (
+              <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                <label className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700">
+                  <Code className="h-4 w-4" />
+                  {(slot.slot_type ?? "direct") === "google" ? "구글" : "쿠팡"} 광고 스크립트
+                </label>
+                <p className="mb-2 text-xs text-slate-500">
+                  광고 플랫폼에서 발급한 HTML/스크립트 코드를 그대로 붙여넣으세요. 저장 후 해당 슬롯 위치에 노출됩니다.
+                </p>
+                <textarea
+                  value={scriptDrafts[slot.id] ?? slot.script_content ?? ""}
+                  onChange={(e) => setScriptDrafts((d) => ({ ...d, [slot.id]: e.target.value }))}
+                  placeholder='<script>...</script> 또는 <ins>...</ins> 등'
+                  rows={6}
+                  className="mb-2 w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  disabled={savingScriptSlotId === slot.id}
+                  onClick={() =>
+                    handleSaveScript(
+                      slot.id,
+                      (slot.slot_type ?? "direct") as SlotType,
+                      scriptDrafts[slot.id] ?? slot.script_content ?? ""
+                    )
+                  }
+                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {savingScriptSlotId === slot.id ? "저장 중…" : "스크립트 저장"}
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="mb-4 text-xs text-slate-500">
+                  {slot.enabled
+                    ? "슬롯이 켜져 있습니다. 기간이 겹치는 경우 대기순서(숫자 작을수록 우선)로 1건만 노출됩니다."
+                    : "슬롯이 꺼져 있으면 해당 자리는 빈칸으로 표시됩니다."}
+                </p>
+
+                <ul className="mb-4 space-y-2">
+                  {slotCampaigns.length === 0 ? (
                 <li className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 py-4 text-center text-sm text-slate-500">
                   등록된 광고 없음
                 </li>
@@ -229,18 +322,18 @@ export default function HomeAdsManager({
               )}
             </ul>
 
-            {!isFormOpen && (
-              <button
-                type="button"
-                onClick={() => startAdd(slot.id)}
-                className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <Plus className="h-4 w-4" />
-                광고 추가
-              </button>
-            )}
+                {!isFormOpen && (
+                  <button
+                    type="button"
+                    onClick={() => startAdd(slot.id)}
+                    className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    광고 추가
+                  </button>
+                )}
 
-            {isFormOpen && (
+                {isFormOpen && (
               <form onSubmit={handleSubmit} className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
                 <input type="hidden" name="home_ad_slot_id" value={form.home_ad_slot_id} />
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -352,6 +445,8 @@ export default function HomeAdsManager({
                   </button>
                 </div>
               </form>
+                )}
+              </>
             )}
           </motion.section>
         );
