@@ -49,7 +49,8 @@ type PageProps = {
 
 export default async function ListingsPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const sort = SORT_VALUES.includes(params.sort as (typeof SORT_VALUES)[number]) ? params.sort : "newest";
+  const sort =
+    (SORT_VALUES.includes(params.sort as (typeof SORT_VALUES)[number]) ? params.sort : "newest") ?? "newest";
   const typeParam = params.type;
   const listingTypeFilter = typeParam && LISTING_TYPES.includes(typeParam as (typeof LISTING_TYPES)[number]) ? typeParam : null;
   const statusParam = params.status;
