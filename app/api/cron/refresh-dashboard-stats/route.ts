@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
+import { getKstTodayString } from "@/lib/jobs/kst-date";
 
 export const dynamic = "force-dynamic";
 
 /**
  * 조회용 집계 테이블 갱신 (job_post_stats, listing_stats, home_tender_stats)
+ * - 일정(work_date)이 지난 구인글은 자동 마감 처리 후 집계
  * - 크론에서 주기 호출 (예: 5~15분)
- * - 캐시 무효화: 새 구인글/현장거래/공고 수집 완료 시 이 경로 호출하면 홈 숫자 갱신
  */
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
@@ -17,6 +18,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabase = createServiceSupabase();
+    const todayKst = getKstTodayString();
+
+    const { data: toClose } = await supabase
+      .from("job_posts")
+      .select("id")
+      .eq("status", "open")
+      .not("work_date", "is", null)
+      .lt("work_date", todayKst);
+    const ids = (toClose ?? []).map((r) => r.id);
+    if (ids.length > 0) {
+      await supabase
+        .from("job_posts")
+        .update({ status: "closed", updated_at: new Date().toISOString() })
+        .in("id", ids);
+    }
 
     const [jobRes, listingRes, tenderStats] = await Promise.all([
       supabase.rpc("refresh_job_post_stats"),
@@ -62,6 +78,7 @@ export async function POST(req: NextRequest) {
       job_post_stats: "ok",
       listing_stats: "ok",
       home_tender_stats: "ok",
+      job_posts_closed: ids.length,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

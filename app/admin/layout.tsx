@@ -73,6 +73,15 @@ export default async function AdminLayout({
         <Link href="/admin/users" className="font-medium text-slate-700 hover:text-slate-900">
           사용자
         </Link>
+        <Link href="/admin/listings/external" className="font-medium text-slate-700 hover:text-slate-900">
+          현장거래 등록(외부)
+        </Link>
+        <Link href="/admin/listings/deal-completions" className="font-medium text-slate-700 hover:text-slate-900">
+          거래 완료 신고 확인
+        </Link>
+        <Link href="/admin/jobs/external" className="font-medium text-slate-700 hover:text-slate-900">
+          인력구인 등록(외부)
+        </Link>
         <Link href="/admin/estimate-config" className="font-medium text-slate-700 hover:text-slate-900">
           견적 단가
         </Link>

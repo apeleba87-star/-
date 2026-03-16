@@ -4,13 +4,9 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { createListing, getListingBenchmarks, type ListingBenchmarkRow } from "./actions";
+import { createListing, updateListing, getListingBenchmarks, type ListingBenchmarkRow } from "./actions";
 import { REGION_SIDO_LIST, REGION_GUGUN, formatRegionForDb } from "@/lib/listings/regions";
-import {
-  LISTING_CATEGORY_GROUPS,
-  LISTING_CATEGORY_OTHER,
-  type ListingCategoryGroupId,
-} from "@/lib/listings/listing-category-presets";
+import type { ListingCategoryGroupId } from "@/lib/listings/listing-category-presets";
 
 /** 접기/펼치기 가능한 Step 블록. 기본은 접힘. */
 function CollapsibleStepSection({
@@ -93,9 +89,56 @@ const PAY_UNITS = [
   { value: "hour", label: "시급" },
 ] as const;
 
+/** 수정 모드일 때 폼에 넣을 초기값 (edit 페이지에서 DB row → 이 타입으로 변환) */
+export type EditInitialData = {
+  transactionType: TransactionType;
+  title: string;
+  workDate: string;
+  body: string;
+  regionSido: (typeof REGION_SIDO_LIST)[number];
+  regionGugun: string;
+  categoryGroup: ListingCategoryGroupId;
+  /** DB 유형(대분류) id */
+  categoryMainId: string;
+  /** DB 업무 종류(소분류) id, 없거나 기타면 null */
+  categorySubId: string | null;
+  categoryCustomText: string;
+  payAmount: string;
+  payUnit: string;
+  monthlyAmount: string;
+  dealAmount: string;
+  saleMultiplier: string;
+  expectedAmount: string;
+  amountUndecided: boolean;
+  feeRatePercent: string;
+  areaPyeong: string;
+  areaUnknown: boolean;
+  areaUnit: "pyeong" | "sqm";
+  visitsPerWeek: string;
+  difficulty: "easy" | "normal" | "hard" | "";
+  estimateCheckRequired: boolean;
+  stairsFloors: string;
+  stairsRestroomCount: number;
+  stairsHasRecycle: boolean;
+  stairsHasCorridor: boolean;
+  stairsElevator: boolean;
+  stairsParking: boolean;
+  stairsWindow: boolean;
+  contactPhone: string;
+};
+
+type CategoryMain = { id: string; name: string };
+type CategorySub = { id: string; name: string; parent_id: string; slug?: string | null };
+
 type Props = {
-  mainCategories: { id: string }[];
-  subCategories?: unknown[];
+  mainCategories: CategoryMain[];
+  subCategories: CategorySub[];
+  /** 업무 종류별 노출 거래 유형. category_id -> listing_type[]. 비어있거나 없으면 해당 카테고리는 모든 유형에 노출 */
+  categoryListingTypes?: Record<string, string[]>;
+  /** 수정 모드: 기존 글 데이터로 폼 초기화 */
+  initialData?: EditInitialData | null;
+  /** 수정 모드: 이 값이 있으면 제출 시 updateListing 호출 */
+  listingId?: string | null;
 };
 
 /** transactionType + categoryGroup → DB에 저장되는 listing_type */
@@ -108,51 +151,81 @@ function deriveListingType(
   return categoryGroup === "regular" ? "sale_regular" : "sale_one_time";
 }
 
-export default function NewListingForm({ mainCategories }: Props) {
+export default function NewListingForm({ mainCategories, subCategories, categoryListingTypes, initialData, listingId }: Props) {
   const router = useRouter();
+  const isEdit = Boolean(listingId && initialData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transactionType, setTransactionType] = useState<TransactionType>("referral");
-  const [title, setTitle] = useState("");
-  const [workDate, setWorkDate] = useState("");
-  const [body, setBody] = useState("");
-  const [regionSido, setRegionSido] = useState<(typeof REGION_SIDO_LIST)[number]>("서울");
+  const [transactionType, setTransactionType] = useState<TransactionType>(initialData?.transactionType ?? "referral");
+  const [title, setTitle] = useState(initialData?.title ?? "");
+  const [workDate, setWorkDate] = useState(initialData?.workDate ?? "");
+  const [body, setBody] = useState(initialData?.body ?? "");
+  const [regionSido, setRegionSido] = useState<(typeof REGION_SIDO_LIST)[number]>(initialData?.regionSido ?? "서울");
   const gugunOptions = useMemo(() => REGION_GUGUN[regionSido] ?? [], [regionSido]);
-  const [regionGugun, setRegionGugun] = useState("");
+  const [regionGugun, setRegionGugun] = useState(initialData?.regionGugun ?? "");
   const effectiveGugun =
     regionGugun && gugunOptions.includes(regionGugun) ? regionGugun : (gugunOptions[0] ?? "");
-  const [categoryGroup, setCategoryGroup] = useState<ListingCategoryGroupId>("regular");
-  const currentGroup = LISTING_CATEGORY_GROUPS.find((g) => g.id === categoryGroup);
-  const [categoryPresetKey, setCategoryPresetKey] = useState<string>(
-    currentGroup?.options.find((o) => o.key !== LISTING_CATEGORY_OTHER)?.key ?? "office"
-  );
-  const [categoryCustomText, setCategoryCustomText] = useState("");
+  const [categoryGroup, setCategoryGroup] = useState<ListingCategoryGroupId>(initialData?.categoryGroup ?? "regular");
+  const [categoryMainId, setCategoryMainId] = useState<string>(initialData?.categoryMainId ?? mainCategories[0]?.id ?? "");
+  const [categorySubId, setCategorySubId] = useState<string | null>(initialData?.categorySubId ?? null);
+  const [categoryCustomText, setCategoryCustomText] = useState(initialData?.categoryCustomText ?? "");
+  const [useOtherCategory, setUseOtherCategory] = useState(Boolean(initialData?.categoryCustomText?.trim()));
 
   const listingType = deriveListingType(transactionType, categoryGroup);
   const isSubcontractOnly = transactionType === "subcontract";
   const isSaleOnly = transactionType === "sale";
   const regularOnly = isSubcontractOnly || isSaleOnly;
-  const [payAmount, setPayAmount] = useState("");
-  const [payUnit, setPayUnit] = useState("day");
-  const [monthlyAmount, setMonthlyAmount] = useState("");
-  const [dealAmount, setDealAmount] = useState("");
-  const [saleMultiplier, setSaleMultiplier] = useState("");
-  const [expectedAmount, setExpectedAmount] = useState("");
-  const [amountUndecided, setAmountUndecided] = useState(false);
-  const [feeRatePercent, setFeeRatePercent] = useState("");
-  const [areaPyeong, setAreaPyeong] = useState("");
-  const [areaUnit, setAreaUnit] = useState<"pyeong" | "sqm">("pyeong");
-  const [visitsPerWeek, setVisitsPerWeek] = useState("");
-  const [difficulty, setDifficulty] = useState<"easy" | "normal" | "hard" | "">("");
-  const [estimateCheckRequired, setEstimateCheckRequired] = useState(false);
-  const [stairsFloors, setStairsFloors] = useState("");
-  const [stairsRestroomCount, setStairsRestroomCount] = useState(0);
-  const [stairsHasRecycle, setStairsHasRecycle] = useState(false);
-  const [stairsHasCorridor, setStairsHasCorridor] = useState(false);
-  const [stairsElevator, setStairsElevator] = useState(false);
-  const [stairsParking, setStairsParking] = useState(false);
-  const [stairsWindow, setStairsWindow] = useState(false);
-  const [contactPhone, setContactPhone] = useState("");
+
+  const visibleMainCategories = useMemo(() => {
+    if (!categoryListingTypes || Object.keys(categoryListingTypes).length === 0) return mainCategories;
+    return mainCategories.filter((m) => {
+      const types = categoryListingTypes[m.id];
+      return !types || types.length === 0 || types.includes(listingType);
+    });
+  }, [mainCategories, categoryListingTypes, listingType]);
+
+  useEffect(() => {
+    if (!useOtherCategory && categoryMainId && visibleMainCategories.length > 0) {
+      const isVisible = visibleMainCategories.some((m) => m.id === categoryMainId);
+      if (!isVisible) {
+        setCategoryMainId(visibleMainCategories[0].id);
+        setCategorySubId(null);
+      }
+    }
+  }, [listingType, visibleMainCategories, useOtherCategory, categoryMainId]);
+
+  const subsForMain = useMemo(
+    () => subCategories.filter((s) => s.parent_id === categoryMainId),
+    [subCategories, categoryMainId]
+  );
+  const selectedSub = categorySubId ? subCategories.find((s) => s.id === categorySubId) : null;
+  const selectedMain = mainCategories.find((m) => m.id === categoryMainId);
+  const isStairs = Boolean(
+    selectedSub && ((selectedSub.slug === "stairs") || (selectedSub.name && selectedSub.name.includes("계단")))
+  );
+  const isOtherCategory = useOtherCategory;
+  const [payAmount, setPayAmount] = useState(initialData?.payAmount ?? "");
+  const [payUnit, setPayUnit] = useState(initialData?.payUnit ?? "day");
+  const [monthlyAmount, setMonthlyAmount] = useState(initialData?.monthlyAmount ?? "");
+  const [dealAmount, setDealAmount] = useState(initialData?.dealAmount ?? "");
+  const [saleMultiplier, setSaleMultiplier] = useState(initialData?.saleMultiplier ?? "");
+  const [expectedAmount, setExpectedAmount] = useState(initialData?.expectedAmount ?? "");
+  const [amountUndecided, setAmountUndecided] = useState(initialData?.amountUndecided ?? false);
+  const [feeRatePercent, setFeeRatePercent] = useState(initialData?.feeRatePercent ?? "");
+  const [areaPyeong, setAreaPyeong] = useState(initialData?.areaPyeong ?? "");
+  const [areaUnknown, setAreaUnknown] = useState(initialData?.areaUnknown ?? false);
+  const [areaUnit, setAreaUnit] = useState<"pyeong" | "sqm">(initialData?.areaUnit ?? "pyeong");
+  const [visitsPerWeek, setVisitsPerWeek] = useState(initialData?.visitsPerWeek ?? "");
+  const [difficulty, setDifficulty] = useState<"easy" | "normal" | "hard" | "">(initialData?.difficulty ?? "");
+  const [estimateCheckRequired, setEstimateCheckRequired] = useState(initialData?.estimateCheckRequired ?? false);
+  const [stairsFloors, setStairsFloors] = useState(initialData?.stairsFloors ?? "");
+  const [stairsRestroomCount, setStairsRestroomCount] = useState(initialData?.stairsRestroomCount ?? 0);
+  const [stairsHasRecycle, setStairsHasRecycle] = useState(initialData?.stairsHasRecycle ?? false);
+  const [stairsHasCorridor, setStairsHasCorridor] = useState(initialData?.stairsHasCorridor ?? false);
+  const [stairsElevator, setStairsElevator] = useState(initialData?.stairsElevator ?? false);
+  const [stairsParking, setStairsParking] = useState(initialData?.stairsParking ?? false);
+  const [stairsWindow, setStairsWindow] = useState(initialData?.stairsWindow ?? false);
+  const [contactPhone, setContactPhone] = useState(initialData?.contactPhone ?? "");
   const [benchmarks, setBenchmarks] = useState<ListingBenchmarkRow[]>([]);
   const [showSummary, setShowSummary] = useState(false);
 
@@ -168,7 +241,6 @@ export default function NewListingForm({ mainCategories }: Props) {
   const isSaleRegular = listingType === "sale_regular";
   const isSaleOneTime = listingType === "sale_one_time";
   const isSubcontract = listingType === "subcontract";
-  const isStairs = categoryPresetKey === "stairs";
 
   const expectedNum = expectedAmount.trim() ? parseFloat(parseAmountInput(expectedAmount)) : null;
   const feeRateNum = feeRatePercent.trim() ? parseFloat(feeRatePercent.replace(/[^\d.]/g, "")) : null;
@@ -180,18 +252,24 @@ export default function NewListingForm({ mainCategories }: Props) {
   useEffect(() => {
     const regionValue = formatRegionForDb(regionSido, effectiveGugun);
     if (!regionValue || !listingType) return;
-    getListingBenchmarks(regionValue, listingType, categoryGroup, categoryPresetKey).then(
+    getListingBenchmarks(regionValue, listingType, categoryMainId, categorySubId).then(
       setBenchmarks
     );
-  }, [regionSido, effectiveGugun, listingType, categoryGroup, categoryPresetKey]);
-  const isOtherCategory = categoryPresetKey === LISTING_CATEGORY_OTHER;
-  const options = currentGroup?.options ?? [];
-
-  const categoryLabel =
-    currentGroup && categoryPresetKey !== LISTING_CATEGORY_OTHER
-      ? (options.find((o) => o.key === categoryPresetKey)?.label ?? (categoryCustomText || "소개"))
-      : (categoryCustomText || "현장");
+  }, [regionSido, effectiveGugun, listingType, categoryMainId, categorySubId]);
+  const categoryLabel = selectedMain
+    ? [selectedMain.name, selectedSub?.name ?? (categoryCustomText?.trim() || "")].filter(Boolean).join(" / ") || selectedMain.name
+    : "";
   const typeLabel = TRANSACTION_TYPES.find((t) => t.value === transactionType)?.label ?? "소개";
+  const listingTypeLabel =
+    transactionType === "subcontract"
+      ? "도급"
+      : transactionType === "sale"
+        ? categoryGroup === "regular"
+          ? "정기 매매"
+          : "일회 매매"
+        : categoryGroup === "regular"
+          ? "정기 소개"
+          : "일회 소개";
 
   const suggestedTitle = useMemo(() => {
     const parts: string[] = [];
@@ -307,11 +385,13 @@ export default function NewListingForm({ mainCategories }: Props) {
         }
       }
     } else if (!isReferral) {
-      const areaVal = areaPyeong.trim() ? parseFloat(areaPyeong.replace(/\D/g, "")) : null;
-      if (areaVal == null || Number.isNaN(areaVal) || areaVal <= 0) {
-        setError("현장 규모(평수 또는 제곱미터)를 입력하세요.");
-        setLoading(false);
-        return;
+      if (!areaUnknown) {
+        const areaVal = areaPyeong.trim() ? parseFloat(areaPyeong.replace(/\D/g, "")) : null;
+        if (areaVal == null || Number.isNaN(areaVal) || areaVal <= 0) {
+          setError("현장 규모(평수 또는 제곱미터)를 입력하거나 '모름'을 선택하세요.");
+          setLoading(false);
+          return;
+        }
       }
       const visits = visitsPerWeek.trim() ? parseInt(visitsPerWeek, 10) : null;
       if (visits == null || visits < 1 || visits > 7) {
@@ -332,15 +412,15 @@ export default function NewListingForm({ mainCategories }: Props) {
             ? Math.round(mult * 10) / 10
             : undefined
         : undefined;
-    const result = await createListing({
+    const payload = {
       listing_type: listingType,
       title: title.trim(),
       work_date: workDate.trim() || null,
       body: body.trim() || null,
       region: regionValue.trim(),
-      category_group: categoryGroup,
-      category_preset_key: categoryPresetKey,
-      category_custom_text: isOtherCategory ? categoryCustomText.trim() || null : null,
+      category_main_id: categoryMainId,
+      category_sub_id: categorySubId ?? null,
+      custom_subcategory_text: isOtherCategory ? categoryCustomText.trim() || null : null,
       pay_amount: isSubcontract
         ? (monthly ?? 0)
         : isSaleOneTime
@@ -357,7 +437,7 @@ export default function NewListingForm({ mainCategories }: Props) {
       sale_multiplier: saleRegularMult,
       expected_amount: isReferral && !amountUndecided && !estimateCheckRequired ? (expectedNum ?? undefined) : undefined,
       fee_rate_percent: isReferral ? (feeRateNum ?? undefined) : undefined,
-      area_pyeong: !isStairs && area != null && !Number.isNaN(area) && area > 0 ? area : undefined,
+      area_pyeong: !isStairs && !areaUnknown && area != null && !Number.isNaN(area) && area > 0 ? area : undefined,
       visits_per_week:
         visits != null && !Number.isNaN(visits) && visits >= 1 && visits <= 7 ? visits : undefined,
       difficulty:
@@ -372,22 +452,34 @@ export default function NewListingForm({ mainCategories }: Props) {
       stairs_elevator: isStairs ? stairsElevator : undefined,
       stairs_parking: isStairs ? stairsParking : undefined,
       stairs_window: isStairs ? stairsWindow : undefined,
-    });
+    };
+    const result = isEdit && listingId
+      ? await updateListing(listingId, payload)
+      : await createListing(payload);
     setLoading(false);
     if (!result.ok) {
       setError(result.error ?? "저장 실패");
       return;
     }
-    router.push("/listings");
+    if (isEdit && listingId) {
+      router.push(`/listings/${listingId}`);
+    } else {
+      router.push("/listings");
+    }
     router.refresh();
   }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/listings" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
-        ← 현장 거래 목록
+      <Link
+        href={isEdit && listingId ? `/listings/${listingId}` : "/listings"}
+        className="mb-6 inline-block text-sm text-blue-600 hover:underline"
+      >
+        {isEdit ? "← 글 보기" : "← 현장 거래 목록"}
       </Link>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">현장 거래</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">
+        {isEdit ? "글 수정" : "현장 거래"}
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -400,20 +492,20 @@ export default function NewListingForm({ mainCategories }: Props) {
           title="어떤 현장인가?"
           open={openStep1}
           onToggle={() => setOpenStep1((o) => !o)}
-          summary={openStep1 ? null : [typeLabel, categoryGroup === "regular" ? "정기 청소" : categoryGroup === "one_time" ? "일회성 청소" : "", currentGroup ? (options.find((o) => o.key === categoryPresetKey)?.label ?? "") : ""].filter(Boolean).join(" · ") || undefined}
+          summary={openStep1 ? null : [typeLabel, categoryGroup === "regular" ? "정기" : categoryGroup === "one_time" ? "일회" : "", selectedMain?.name, selectedSub?.name ?? (categoryCustomText?.trim() || "")].filter(Boolean).join(" · ") || undefined}
         >
-          <p className="mb-3 text-sm text-slate-600">현장 거래 유형을 선택한 뒤, 업무 종류를 선택하세요.</p>
+          <p className="mb-3 text-sm text-slate-600">거래 유형과 정기/일회를 선택한 뒤, 유형·업무 종류(관리자 카테고리)를 선택하세요.</p>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-700">현장 거래 유형</label>
+            <label className="block text-sm font-medium text-slate-700">거래 유형</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {TRANSACTION_TYPES.map((t) => (
                 <button
                   key={t.value}
                   type="button"
-                onClick={() => {
-                  setTransactionType(t.value);
-                  if (t.value === "subcontract" || t.value === "sale") setCategoryGroup("regular");
-                }}
+                  onClick={() => {
+                    setTransactionType(t.value);
+                    if (t.value === "subcontract" || t.value === "sale") setCategoryGroup("regular");
+                  }}
                   className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                     transactionType === t.value
                       ? "bg-blue-600 text-white"
@@ -425,82 +517,109 @@ export default function NewListingForm({ mainCategories }: Props) {
               ))}
             </div>
           </div>
-          {transactionType && (
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <label className="block text-sm font-medium text-slate-700">업무 종류 *</label>
-            <p className="mt-0.5 text-xs text-slate-500">
-              정기 청소 / 일회성 청소 중 하나를 고른 뒤, 해당 업무(사무실청소, 계단청소 등)를 선택하세요.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCategoryGroup("regular");
-                  const g = LISTING_CATEGORY_GROUPS.find((x) => x.id === "regular");
-                  const first = g?.options.find((o) => o.key !== LISTING_CATEGORY_OTHER);
-                  setCategoryPresetKey(first?.key ?? LISTING_CATEGORY_OTHER);
-                  setCategoryCustomText("");
-                  setOpenStep2(true);
-                }}
-                className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
-                  categoryGroup === "regular"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                정기 청소
-              </button>
-              <button
-                type="button"
-                disabled={regularOnly}
-                title={regularOnly ? (isSaleOnly ? "매매는 정기 청소만 선택 가능합니다" : "도급은 정기 청소만 선택 가능합니다") : undefined}
-                onClick={() => {
-                  if (regularOnly) return;
-                  setCategoryGroup("one_time");
-                  const g = LISTING_CATEGORY_GROUPS.find((x) => x.id === "one_time");
-                  const first = g?.options.find((o) => o.key !== LISTING_CATEGORY_OTHER);
-                  setCategoryPresetKey(first?.key ?? LISTING_CATEGORY_OTHER);
-                  setCategoryCustomText("");
-                  setOpenStep2(true);
-                }}
-                className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
-                  categoryGroup === "one_time"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-                } ${regularOnly ? "cursor-not-allowed opacity-50" : ""}`}
-              >
-                일회성 청소
-              </button>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {options.map((opt) => (
+          {(transactionType === "referral" || transactionType === "sale") && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700">정기 / 일회</label>
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
-                  key={opt.key}
                   type="button"
-                  onClick={() => {
-                  setCategoryPresetKey(opt.key);
-                  setOpenStep2(true);
-                }}
+                  onClick={() => { setCategoryGroup("regular"); setOpenStep2(true); }}
                   className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
-                    categoryPresetKey === opt.key
-                      ? "bg-slate-700 text-white"
-                      : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+                    categoryGroup === "regular" ? "bg-blue-600 text-white" : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
                   }`}
                 >
-                  {opt.label}
+                  정기
                 </button>
-              ))}
+                <button
+                  type="button"
+                  disabled={regularOnly}
+                  title={regularOnly ? (isSaleOnly ? "매매는 정기만 선택 가능" : "도급은 정기만 선택 가능") : undefined}
+                  onClick={() => { if (!regularOnly) { setCategoryGroup("one_time"); setOpenStep2(true); } }}
+                  className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
+                    categoryGroup === "one_time" ? "bg-blue-600 text-white" : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+                  } ${regularOnly ? "cursor-not-allowed opacity-50" : ""}`}
+                >
+                  일회
+                </button>
+              </div>
             </div>
-            {isOtherCategory && (
-              <input
-                type="text"
-                value={categoryCustomText}
-                onChange={(e) => setCategoryCustomText(e.target.value)}
-                className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                placeholder="예: 간판청소, 태양광청소"
-              />
-            )}
-          </div>
+          )}
+          {transactionType && (
+            <div className="mt-6 border-t border-slate-100 pt-4">
+              <label className="block text-sm font-medium text-slate-700">업무 종류 *</label>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {categoryListingTypes && Object.keys(categoryListingTypes).length > 0
+                  ? `선택한 유형(${listingTypeLabel})에서 선택 가능한 업무 종류입니다.`
+                  : "관리자 카테고리에서 등록한 업무 종류(병원 청소, 사무실 청소 등)를 선택하세요."}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {visibleMainCategories.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setCategoryMainId(m.id);
+                      setCategorySubId(null);
+                      setCategoryCustomText("");
+                      setUseOtherCategory(false);
+                      setOpenStep2(true);
+                    }}
+                    className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
+                      categoryMainId === m.id && !isOtherCategory ? "bg-slate-700 text-white" : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {m.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategorySubId(null);
+                    setCategoryMainId(visibleMainCategories[0]?.id ?? mainCategories[0]?.id ?? "");
+                    setCategoryCustomText("");
+                    setUseOtherCategory(true);
+                    setOpenStep2(true);
+                  }}
+                  className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
+                    isOtherCategory ? "bg-slate-700 text-white" : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  기타
+                </button>
+              </div>
+              {isOtherCategory && (
+                <input
+                  type="text"
+                  value={categoryCustomText}
+                  onChange={(e) => setCategoryCustomText(e.target.value)}
+                  className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                  placeholder="예: 간판청소, 태양광청소"
+                />
+              )}
+              {subsForMain.length > 0 && categoryMainId && !isOtherCategory && (
+                <>
+                  <label className="mt-4 block text-sm font-medium text-slate-700">업무 종류(세부)</label>
+                  <p className="mt-0.5 text-xs text-slate-500">선택한 업무 종류 아래 세부 항목이 있으면 선택할 수 있습니다.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {subsForMain.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          setCategorySubId(s.id);
+                          setOpenStep2(true);
+                        }}
+                        className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
+                          categorySubId === s.id ? "bg-slate-700 text-white" : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </CollapsibleStepSection>
 
@@ -729,28 +848,54 @@ export default function NewListingForm({ mainCategories }: Props) {
             </>
           ) : (
             <>
-              <p className="mb-3 text-sm text-slate-600">매매/도급은 평수 또는 제곱미터, 주 횟수를 필수로 입력합니다.</p>
+              <p className="mb-3 text-sm text-slate-600">
+                매매/도급은 평수 또는 제곱미터, 주 횟수를 필수로 입력합니다. 평수를 모르면 &quot;모름&quot;을 선택할 수 있습니다.
+              </p>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-slate-700">평수 / 제곱미터 *</label>
-                  <div className="mt-1 flex gap-2">
-                    <select
-                      value={areaUnit}
-                      onChange={(e) => setAreaUnit(e.target.value as "pyeong" | "sqm")}
-                      className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <div className="flex flex-1 min-w-0 gap-2">
+                      <select
+                        value={areaUnit}
+                        onChange={(e) => setAreaUnit(e.target.value as "pyeong" | "sqm")}
+                        disabled={areaUnknown}
+                        className="w-28 shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+                      >
+                        <option value="pyeong">평수</option>
+                        <option value="sqm">제곱미터(㎡)</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={areaPyeong}
+                        onChange={(e) => {
+                          setAreaPyeong(parseAmountInput(e.target.value));
+                          if (areaUnknown) setAreaUnknown(false);
+                        }}
+                        disabled={areaUnknown}
+                        className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
+                        placeholder={areaUnit === "pyeong" ? "예: 50" : "예: 165"}
+                        required={!areaUnknown}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAreaUnknown((prev) => !prev);
+                        if (!areaUnknown) setAreaPyeong("");
+                      }}
+                      className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        areaUnknown
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
                     >
-                      <option value="pyeong">평수</option>
-                      <option value="sqm">제곱미터(㎡)</option>
-                    </select>
-                    <input
-                      type="text"
-                      value={areaPyeong}
-                      onChange={(e) => setAreaPyeong(parseAmountInput(e.target.value))}
-                      className="flex-1 rounded-lg border border-slate-200 px-3 py-2"
-                      placeholder={areaUnit === "pyeong" ? "예: 50" : "예: 165"}
-                      required
-                    />
+                      모름
+                    </button>
                   </div>
+                  {areaUnknown && (
+                    <p className="mt-1 text-xs text-slate-500">평수·제곱미터를 모르는 경우 선택했습니다. 평균 집계에는 월수금·매매가·주회수 등만 반영됩니다.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700">주 횟수 *</label>
@@ -1101,8 +1246,9 @@ export default function NewListingForm({ mainCategories }: Props) {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
             <p className="font-medium text-slate-700">입력 내용 요약</p>
             <p className="mt-1 text-slate-600">
-              {TRANSACTION_TYPES.find((t) => t.value === transactionType)?.label} · {categoryGroup === "regular" ? "정기 청소" : "일회성 청소"}
-              {currentGroup && ` · ${options.find((o) => o.key === categoryPresetKey)?.label ?? "기타"}`}
+              {TRANSACTION_TYPES.find((t) => t.value === transactionType)?.label}
+              {categoryGroup && ` · ${categoryGroup === "regular" ? "정기" : "일회"}`}
+              {categoryLabel && ` · ${categoryLabel}`}
             </p>
             <p className="mt-1 text-slate-600">
               {regionSido} {effectiveGugun} · {title || "(제목 없음)"}
@@ -1146,7 +1292,7 @@ export default function NewListingForm({ mainCategories }: Props) {
             disabled={loading}
             className="flex-1 rounded-xl bg-slate-900 py-3 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {loading ? "등록 중…" : "등록하기"}
+            {loading ? (isEdit ? "수정 중…" : "등록 중…") : isEdit ? "수정 완료" : "등록하기"}
           </button>
         </div>
       </form>

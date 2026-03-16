@@ -10,6 +10,7 @@ export default async function NewJobPostPage() {
     .from("categories")
     .select("id, name, parent_id, slug, sort_order, is_active, created_at, updated_at")
     .eq("is_active", true)
+    .in("usage", ["job", "default"])
     .order("sort_order", { ascending: true });
 
   const list = categories ?? [];

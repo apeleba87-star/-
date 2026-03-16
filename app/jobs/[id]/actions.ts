@@ -312,7 +312,7 @@ export async function updateJobPost(
     );
   }
 
-  const { data: mainCategories } = await supabase.from("categories").select("id").is("parent_id", null).eq("is_active", true).limit(1);
+  const { data: mainCategories } = await supabase.from("categories").select("id").is("parent_id", null).eq("is_active", true).in("usage", ["job", "default"]).limit(1);
   const fallbackMainId = mainCategories?.[0]?.id;
   if (!fallbackMainId) return { ok: false, error: "카테고리가 없습니다." };
 

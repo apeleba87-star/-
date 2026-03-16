@@ -3,7 +3,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getKstDayRange } from "./kst-utils";
+import { getKstDayRange, getKstDateString } from "./kst-utils";
 import { parseRegionSido } from "@/lib/tender-utils";
 
 export type TenderRow = {
@@ -57,7 +57,7 @@ export async function aggregateDailyTenders(
   date?: Date
 ): Promise<DailyTenderPayload> {
   const { start, end } = getKstDayRange(date);
-  const runKey = start.slice(0, 10);
+  const runKey = getKstDateString(date);
 
   const { data: industryRows } = await supabase
     .from("industries")

@@ -100,3 +100,16 @@ export function parseGugunFromRegion(region: string): string {
   const firstSpace = region.indexOf(" ");
   return firstSpace > 0 ? region.slice(firstSpace + 1) : "";
 }
+
+/** 필터용: 시/도 + 시/군/구 조합 전체 ("서울 강남구", "경기 수원시" 등) */
+export function getAllRegionOptions(): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = [];
+  for (const sido of REGION_SIDO_LIST) {
+    const guguns = REGION_GUGUN[sido] ?? [];
+    for (const gugun of guguns) {
+      const v = formatRegionForDb(sido, gugun);
+      out.push({ value: v, label: v });
+    }
+  }
+  return out;
+}

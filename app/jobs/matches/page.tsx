@@ -58,7 +58,7 @@ export default async function JobsMatchesPage() {
     .select("id, title, work_date, start_time, end_time, region, district, address")
     .in("id", postIds);
 
-  const { data: categories } = await supabase.from("categories").select("id, name");
+  const { data: categories } = await supabase.from("categories").select("id, name").in("usage", ["job", "default"]);
   const categoryMap = new Map((categories ?? []).map((c) => [c.id, c.name]));
 
   const postById = new Map((posts ?? []).map((p) => [p.id, p]));

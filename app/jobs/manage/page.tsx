@@ -87,7 +87,7 @@ export default async function JobsManagePage() {
     .in("job_post_id", postIds)
     .order("sort_order", { ascending: true });
 
-  const { data: categories } = await supabase.from("categories").select("id, name, parent_id");
+  const { data: categories } = await supabase.from("categories").select("id, name, parent_id").in("usage", ["job", "default"]);
   const categoryMap = new Map<string, string>();
   for (const c of categories ?? []) {
     categoryMap.set(c.id, c.name);

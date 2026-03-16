@@ -5,7 +5,26 @@ import {
   addMainCategory,
   addSubCategory,
   updateCategory,
+  setCategoryListingTypes,
+  deleteCategory,
+  type CategoryUsage,
+  type ListingTypeKey,
 } from "./actions";
+
+const LISTING_TYPE_LABELS: Record<ListingTypeKey, string> = {
+  sale_regular: "정기 매매",
+  sale_one_time: "일회 매매",
+  referral_regular: "정기 소개",
+  referral_one_time: "일회 소개",
+  subcontract: "도급",
+};
+const LISTING_TYPE_KEYS: ListingTypeKey[] = [
+  "sale_regular",
+  "sale_one_time",
+  "referral_regular",
+  "referral_one_time",
+  "subcontract",
+];
 
 type CategoryRow = {
   id: string;
@@ -14,16 +33,27 @@ type CategoryRow = {
   slug: string;
   sort_order: number;
   is_active: boolean;
+  usage: CategoryUsage;
   created_at: string;
   updated_at: string;
 };
 
+const USAGE_TABS: { value: CategoryUsage; label: string }[] = [
+  { value: "listing", label: "현장거래 카테고리" },
+  { value: "job", label: "인력구인 카테고리" },
+  { value: "default", label: "기본 카테고리" },
+];
+
 export default function CategoriesManager({
   initialCategories,
+  initialCategoryListingTypes = {},
 }: {
   initialCategories: CategoryRow[];
+  initialCategoryListingTypes?: Record<string, string[]>;
 }) {
   const [categories, setCategories] = useState(initialCategories);
+  const [categoryListingTypes, setCategoryListingTypesState] = useState<Record<string, string[]>>(initialCategoryListingTypes);
+  const [selectedUsage, setSelectedUsage] = useState<CategoryUsage>("listing");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [newMainName, setNewMainName] = useState("");
@@ -34,9 +64,37 @@ export default function CategoriesManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editSort, setEditSort] = useState(0);
+  const [editingListingTypesId, setEditingListingTypesId] = useState<string | null>(null);
+  const [draftListingTypes, setDraftListingTypes] = useState<string[]>([]);
+  /** 현장거래 탭에서 필터: 선택한 유형에 해당하는 업무 종류만 목록에 표시. null = 전체 */
+  const [selectedListingTypeFilter, setSelectedListingTypeFilter] = useState<string | null>(null);
 
-  const mainCategories = categories.filter((c) => c.parent_id == null);
-  const subCategories = categories.filter((c) => c.parent_id != null);
+  const filtered = categories.filter((c) => (c.usage ?? "default") === selectedUsage);
+  const mainCategories = filtered.filter((c) => c.parent_id == null);
+  const mainIds = new Set(mainCategories.map((m) => m.id));
+  const subCategories = filtered.filter(
+    (c) => c.parent_id != null && mainIds.has(c.parent_id)
+  );
+  // 현장거래 탭: 유형 = 거래 유형(정기 매매 등, 고정), 업무 종류 = 카테고리(병원 청소, 사무실 청소 등)
+  const isListingTab = selectedUsage === "listing";
+  const mainLabel = isListingTab ? "업무 종류" : "대분류";
+  const subLabel = isListingTab ? "업무 종류(세부)" : "소분류";
+
+  /** 현장거래 탭에서 보여줄 업무 종류 목록: 유형 필터 선택 시 해당 유형에 연결된 것만, 이름 중복 제거(첫 번째만) */
+  const visibleMainCategoriesForListing = (() => {
+    if (!isListingTab) return mainCategories;
+    const filtered = mainCategories.filter((m) => {
+      if (!selectedListingTypeFilter) return true;
+      const types = categoryListingTypes[m.id];
+      return !types || types.length === 0 || types.includes(selectedListingTypeFilter);
+    });
+    const byName = new Map<string, CategoryRow>();
+    for (const m of filtered) {
+      const name = (m.name || "").trim() || "(이름 없음)";
+      if (!byName.has(name)) byName.set(name, m);
+    }
+    return Array.from(byName.values()).sort((a, b) => a.sort_order - b.sort_order || (a.name || "").localeCompare(b.name || ""));
+  })();
 
   async function handleAddMain(e: React.FormEvent) {
     e.preventDefault();
@@ -44,13 +102,13 @@ export default function CategoriesManager({
     if (!name) return;
     setLoading(true);
     setMessage(null);
-    const res = await addMainCategory(name, newMainSort);
+    const res = await addMainCategory(name, newMainSort, selectedUsage);
     setLoading(false);
     if (res.ok && res.row) {
       setCategories((prev) => [...prev, res.row!].sort((a, b) => a.sort_order - b.sort_order));
       setNewMainName("");
       setNewMainSort(mainCategories.length);
-      setMessage({ ok: true, text: "대분류가 추가되었습니다." });
+      setMessage({ ok: true, text: `${mainLabel}이(가) 추가되었습니다.` });
     } else {
       setMessage({ ok: false, text: res.error ?? "추가 실패" });
     }
@@ -62,13 +120,13 @@ export default function CategoriesManager({
     if (!name || !newSubParentId) return;
     setLoading(true);
     setMessage(null);
-    const res = await addSubCategory(newSubParentId, name, newSubSort);
+    const res = await addSubCategory(newSubParentId, name, newSubSort, selectedUsage);
     setLoading(false);
     if (res.ok && res.row) {
       setCategories((prev) => [...prev, res.row!].sort((a, b) => a.sort_order - b.sort_order));
       setNewSubName("");
       setNewSubSort(subCategories.filter((c) => c.parent_id === newSubParentId).length);
-      setMessage({ ok: true, text: "소분류가 추가되었습니다." });
+      setMessage({ ok: true, text: `${subLabel}이(가) 추가되었습니다.` });
     } else {
       setMessage({ ok: false, text: res.error ?? "추가 실패" });
     }
@@ -114,8 +172,112 @@ export default function CategoriesManager({
     }
   }
 
+  function startEditListingTypes(m: CategoryRow) {
+    setEditingListingTypesId(m.id);
+    setDraftListingTypes(categoryListingTypes[m.id] ?? []);
+  }
+
+  async function saveListingTypes(categoryId: string) {
+    setLoading(true);
+    setMessage(null);
+    const res = await setCategoryListingTypes(categoryId, draftListingTypes);
+    setLoading(false);
+    if (res.ok) {
+      setCategoryListingTypesState((prev) => ({ ...prev, [categoryId]: draftListingTypes }));
+      setEditingListingTypesId(null);
+      setMessage({ ok: true, text: "적용 유형이 저장되었습니다." });
+    } else {
+      setMessage({ ok: false, text: res.error ?? "저장 실패" });
+    }
+  }
+
+  const listingTypesSummary = (catId: string) => {
+    const arr = categoryListingTypes[catId];
+    if (!arr || arr.length === 0) return "전체 유형";
+    if (arr.length >= LISTING_TYPE_KEYS.length) return "전체 유형";
+    return arr.map((t) => LISTING_TYPE_LABELS[t as ListingTypeKey]).join(", ");
+  };
+
+  /** 유형이 선택된 상태에서: 이 업무 종류를 현재 유형에서만 제거(연결 해제). 카테고리 자체는 유지. */
+  async function handleRemoveFromType(c: CategoryRow) {
+    if (!selectedListingTypeFilter) return;
+    const typeLabel = LISTING_TYPE_LABELS[selectedListingTypeFilter as ListingTypeKey];
+    if (!confirm(`「${c.name}」을(를) ${typeLabel}에서만 제거할까요? 업무 종류는 삭제되지 않고, 다른 유형에서는 그대로 보입니다.`)) return;
+    setLoading(true);
+    setMessage(null);
+    const current = categoryListingTypes[c.id] ?? [];
+    let nextTypes: string[];
+    if (current.length === 0) {
+      nextTypes = LISTING_TYPE_KEYS.filter((t) => t !== selectedListingTypeFilter);
+    } else {
+      nextTypes = current.filter((t) => t !== selectedListingTypeFilter);
+      if (nextTypes.length === 0) {
+        nextTypes = LISTING_TYPE_KEYS.filter((t) => t !== selectedListingTypeFilter);
+      }
+    }
+    const res = await setCategoryListingTypes(c.id, nextTypes);
+    setLoading(false);
+    if (res.ok) {
+      setCategoryListingTypesState((prev) => ({ ...prev, [c.id]: nextTypes }));
+      setMessage({ ok: true, text: `${typeLabel}에서 제거되었습니다.` });
+      if (editingListingTypesId === c.id) setEditingListingTypesId(null);
+    } else {
+      setMessage({ ok: false, text: res.error ?? "제거 실패" });
+    }
+  }
+
+  /** 카테고리 자체를 DB에서 삭제. (전체 보기이거나 현장거래가 아닐 때만 사용) */
+  async function handleDelete(c: CategoryRow) {
+    if (!confirm(`「${c.name}」을(를) 완전히 삭제할까요? 삭제하면 복구할 수 없습니다.`)) return;
+    setLoading(true);
+    setMessage(null);
+    const res = await deleteCategory(c.id);
+    setLoading(false);
+    if (res.ok) {
+      setCategories((prev) => prev.filter((x) => x.id !== c.id));
+      setCategoryListingTypesState((prev) => {
+        const next = { ...prev };
+        delete next[c.id];
+        return next;
+      });
+      setMessage({ ok: true, text: "삭제되었습니다." });
+      if (editingId === c.id) setEditingId(null);
+      if (editingListingTypesId === c.id) setEditingListingTypesId(null);
+    } else {
+      setMessage({ ok: false, text: res.error ?? "삭제 실패" });
+    }
+  }
+
   return (
     <div className="space-y-8">
+      <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-4 text-lg font-semibold text-slate-800">용도별 카테고리</h2>
+        <p className="mb-4 text-sm text-slate-500">
+          현장거래·인력구인·기본을 구분해 관리합니다. 현장거래: 유형(정기 매매 등)은 글쓰기에서 선택하고, 여기서는 업무 종류(병원 청소, 사무실 청소 등)만 관리합니다.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {USAGE_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => {
+                setSelectedUsage(tab.value);
+                setNewSubParentId("");
+                setEditingId(null);
+                if (tab.value !== "listing") setSelectedListingTypeFilter(null);
+              }}
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                selectedUsage === tab.value
+                  ? "bg-slate-800 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {message && (
         <p
           className={
@@ -128,8 +290,43 @@ export default function CategoriesManager({
         </p>
       )}
 
+      {isListingTab && (
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-2 text-lg font-semibold text-slate-800">유형 (거래 유형)</h2>
+          <p className="mb-4 text-sm text-slate-600">
+            정기 매매·일회 매매·정기 소개·일회 소개·도급 각 유형을 선택하면, 해당 유형에서만 선택 가능한 업무 종류만 아래 목록에 표시됩니다. 「이 유형에서 제거」는 선택한 유형과의 연결만 해제하며, 수정·비활성화는 해당 업무 종류에 동일하게 적용됩니다.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedListingTypeFilter(null)}
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                selectedListingTypeFilter == null
+                  ? "bg-slate-800 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              전체
+            </button>
+            {LISTING_TYPE_KEYS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSelectedListingTypeFilter(key)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  selectedListingTypeFilter === key
+                    ? "bg-slate-800 text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                {LISTING_TYPE_LABELS[key]}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-4 text-lg font-semibold text-slate-800">대분류 추가</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-800">{mainLabel} 추가</h2>
         <form onSubmit={handleAddMain} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs text-slate-500">이름</span>
@@ -137,7 +334,7 @@ export default function CategoriesManager({
               type="text"
               value={newMainName}
               onChange={(e) => setNewMainName(e.target.value)}
-              placeholder="예: 일반청소"
+              placeholder={isListingTab ? "예: 병원 청소, 사무실 청소" : "예: 일반청소"}
               className="w-40 rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
@@ -155,16 +352,17 @@ export default function CategoriesManager({
             disabled={loading || !newMainName.trim()}
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
           >
-            대분류 추가
+            {mainLabel} 추가
           </button>
         </form>
       </section>
 
+      {!isListingTab && (
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-4 text-lg font-semibold text-slate-800">소분류 추가</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-800">{subLabel} 추가</h2>
         <form onSubmit={handleAddSub} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-slate-500">대분류</span>
+            <span className="text-xs text-slate-500">{mainLabel}</span>
             <select
               value={newSubParentId}
               onChange={(e) => setNewSubParentId(e.target.value)}
@@ -202,15 +400,26 @@ export default function CategoriesManager({
             disabled={loading || !newSubName.trim() || !newSubParentId}
             className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
           >
-            소분류 추가
+            {subLabel} 추가
           </button>
         </form>
       </section>
+      )}
 
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-4 text-lg font-semibold text-slate-800">대분류 목록</h2>
+        <h2 className="mb-2 text-lg font-semibold text-slate-800">{mainLabel} 목록</h2>
+        {isListingTab && selectedListingTypeFilter && (
+          <p className="mb-4 text-sm text-slate-500">
+            「{LISTING_TYPE_LABELS[selectedListingTypeFilter as ListingTypeKey]}」에서 선택 가능한 업무 종류입니다.
+          </p>
+        )}
+        {isListingTab && selectedListingTypeFilter && visibleMainCategoriesForListing.length === 0 && (
+          <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+            이 유형에 연결된 업무 종류가 없습니다. 아래에서 업무 종류를 추가한 뒤 「적용 유형 설정」으로 이 유형을 지정하거나, 전체 목록에서 기존 항목의 적용 유형을 수정하세요.
+          </p>
+        )}
         <ul className="space-y-2">
-          {mainCategories.map((m) => (
+          {(isListingTab ? visibleMainCategoriesForListing : mainCategories).map((m) => (
             <li
               key={m.id}
               className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3"
@@ -253,6 +462,55 @@ export default function CategoriesManager({
                       비활성
                     </span>
                   )}
+                  {isListingTab && (
+                    <>
+                      <span className="text-xs text-slate-500">
+                        적용 유형: {editingListingTypesId === m.id ? "" : listingTypesSummary(m.id)}
+                      </span>
+                      {editingListingTypesId === m.id ? (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {LISTING_TYPE_KEYS.map((key) => (
+                              <label key={key} className="flex items-center gap-1 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={draftListingTypes.includes(key)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setDraftListingTypes((prev) => [...prev, key]);
+                                    else setDraftListingTypes((prev) => prev.filter((t) => t !== key));
+                                  }}
+                                />
+                                {LISTING_TYPE_LABELS[key]}
+                              </label>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => saveListingTypes(m.id)}
+                            disabled={loading}
+                            className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+                          >
+                            적용 유형 저장
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingListingTypesId(null)}
+                            className="text-sm text-slate-500 hover:underline"
+                          >
+                            취소
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startEditListingTypes(m)}
+                          className="text-sm text-slate-600 hover:underline"
+                        >
+                          적용 유형 설정
+                        </button>
+                      )}
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => startEdit(m)}
@@ -267,6 +525,18 @@ export default function CategoriesManager({
                   >
                     {m.is_active ? "비활성화" : "활성화"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      isListingTab && selectedListingTypeFilter
+                        ? handleRemoveFromType(m)
+                        : handleDelete(m)
+                    }
+                    disabled={loading}
+                    className="text-sm text-red-600 hover:underline disabled:opacity-50"
+                  >
+                    {isListingTab && selectedListingTypeFilter ? "이 유형에서 제거" : "삭제"}
+                  </button>
                 </>
               )}
             </li>
@@ -274,8 +544,9 @@ export default function CategoriesManager({
         </ul>
       </section>
 
+      {!isListingTab && (
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-4 text-lg font-semibold text-slate-800">소분류 목록</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-800">{subLabel} 목록</h2>
         <ul className="space-y-2">
           {subCategories.map((s) => {
             const parent = mainCategories.find((m) => m.id === s.parent_id);
@@ -337,6 +608,14 @@ export default function CategoriesManager({
                     >
                       {s.is_active ? "비활성화" : "활성화"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(s)}
+                      disabled={loading}
+                      className="text-sm text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      삭제
+                    </button>
                   </>
                 )}
               </li>
@@ -344,6 +623,7 @@ export default function CategoriesManager({
           })}
         </ul>
       </section>
+      )}
     </div>
   );
 }

@@ -25,7 +25,7 @@ export async function resolveListingCategory(
   const text = (customText ?? "").trim() || null;
   const group = groupId ? getGroupById(groupId) : null;
   const mainId = group
-    ? (await supabase.from("categories").select("id").eq("slug", group.mainSlug).is("parent_id", null).eq("is_active", true).limit(1).single()).data?.id ?? fallbackMainCategoryId
+    ? (await supabase.from("categories").select("id").eq("slug", group.mainSlug).is("parent_id", null).eq("is_active", true).in("usage", ["listing", "default"]).limit(1).single()).data?.id ?? fallbackMainCategoryId
     : fallbackMainCategoryId;
 
   if (!presetKey || presetKey === LISTING_CATEGORY_OTHER) {
@@ -52,6 +52,7 @@ export async function resolveListingCategory(
       .eq("slug", option.subSlug)
       .eq("parent_id", mainId)
       .eq("is_active", true)
+      .in("usage", ["listing", "default"])
       .limit(1)
       .single();
     if (subCat?.id) {

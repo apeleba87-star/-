@@ -40,6 +40,7 @@ export default async function JobPostEditPage({
     .from("categories")
     .select("id, name, parent_id, slug, sort_order, is_active")
     .eq("is_active", true)
+    .in("usage", ["job", "default"])
     .order("sort_order", { ascending: true });
 
   const list = categories ?? [];

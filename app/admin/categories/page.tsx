@@ -1,8 +1,11 @@
-import { getCategories } from "./actions";
+import { getCategories, getCategoryListingTypesMap } from "./actions";
 import CategoriesManager from "./CategoriesManager";
 
 export default async function AdminCategoriesPage() {
-  const { data: categories, error } = await getCategories();
+  const [{ data: categories, error }, { data: listingTypesMap, error: ltError }] = await Promise.all([
+    getCategories(),
+    getCategoryListingTypesMap(),
+  ]);
 
   if (error) {
     return (
@@ -19,7 +22,10 @@ export default async function AdminCategoriesPage() {
       <p className="mb-6 text-sm text-slate-500">
         대분류·소분류를 추가·수정·비활성화할 수 있습니다. 비활성화한 카테고리는 글쓰기 선택 목록에 나오지 않으며, 기존 게시글 데이터는 유지됩니다.
       </p>
-      <CategoriesManager initialCategories={categories} />
+      <CategoriesManager
+        initialCategories={categories}
+        initialCategoryListingTypes={ltError ? {} : (listingTypesMap ?? {})}
+      />
     </div>
   );
 }

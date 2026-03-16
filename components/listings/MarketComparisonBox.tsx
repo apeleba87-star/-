@@ -14,6 +14,7 @@ type Props = {
   averagePay: number | null;
   sampleCount: number;
   payUnitLabel: string;
+  variant?: "default" | "listingDetail";
 };
 
 export default function MarketComparisonBox({
@@ -21,14 +22,22 @@ export default function MarketComparisonBox({
   averagePay,
   sampleCount,
   payUnitLabel,
+  variant = "default",
 }: Props) {
   const gapPercent = wageGapPercent(currentPay, averagePay);
   const grade: GradeLetter | null = percentToGrade(gapPercent);
   const dataPoor = sampleCount < 3;
   const lowTrust = sampleCount >= 3 && sampleCount < 5;
+  const isDetail = variant === "listingDetail";
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-blue-50/40 p-5">
+    <section
+      className={
+        isDetail
+          ? "rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-5 shadow-xl shadow-blue-200/30"
+          : "rounded-2xl border border-slate-200/80 bg-blue-50/40 p-5"
+      }
+    >
       <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">시장 평균 비교</h3>
       {dataPoor ? (
         <p className="mt-2 text-sm text-slate-600">표본 수가 부족해 평균을 산출하지 않습니다. (기준: 3건 이상)</p>

@@ -1,24 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { MapPin, Tag, Calendar, ArrowRight } from "lucide-react";
 import { formatMoney } from "@/lib/tender-utils";
 import { getGradeLabel, percentToGrade, wageGapPercent } from "@/lib/listings/grade";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PayUnit } from "@/lib/listings/types";
+
+const LISTING_TYPE_LABELS: Record<string, string> = {
+  sale_regular: "정기 매매",
+  referral_regular: "정기 소개",
+  referral_one_time: "일회 소개",
+  subcontract: "도급",
+};
+
+function formatShortWon(n: number): string {
+  if (n >= 10000) return `${(n / 10000).toFixed(0)}만`;
+  return n.toLocaleString();
+}
 
 type Props = {
   id: string;
   title: string;
   status: string;
   region: string;
+  listingType?: string;
   categoryMain: string;
   categorySub: string | null;
   payAmount: number;
   payUnit: PayUnit;
+  monthlyAmount?: number | null;
+  dealAmount?: number | null;
+  saleMultiplier?: number | null;
+  visitsPerWeek?: number | null;
   normalizedDailyWage: number | null;
   averageNormalizedDailyWage: number | null;
   sampleCount: number;
   sellerGrade: string | null;
+  /** 등록일 (카드에 표시) */
+  createdAt?: string | null;
 };
 
 export default function ListingCard({
@@ -26,45 +46,148 @@ export default function ListingCard({
   title,
   status,
   region,
+  listingType,
   categoryMain,
   categorySub,
   payAmount,
   payUnit,
+  monthlyAmount,
+  dealAmount,
+  saleMultiplier,
+  visitsPerWeek,
   normalizedDailyWage,
   averageNormalizedDailyWage,
   sampleCount,
   sellerGrade,
+  createdAt,
 }: Props) {
-  const displayTitle = status === "closed" ? `(마감) ${title}` : title;
+  const isClosed = status === "closed";
+  const typeLabel = listingType ? LISTING_TYPE_LABELS[listingType] ?? listingType : null;
   const gapPercent = wageGapPercent(
     normalizedDailyWage ?? null,
     averageNormalizedDailyWage ?? null
   );
   const grade = sampleCount >= 3 ? percentToGrade(gapPercent) : null;
-  const payUnitLabel = PAY_UNIT_LABELS[payUnit];
+  const payUnitLabel = PAY_UNIT_LABELS[payUnit as PayUnit];
+
+  const isMonthlyPayUnit = (payUnit as string) === "monthly";
+  const isSaleRegularOrSub =
+    listingType === "sale_regular" || listingType === "subcontract";
+  const useMonthlyDisplay = isMonthlyPayUnit || isSaleRegularOrSub;
+  const monthlyVal =
+    monthlyAmount ?? (useMonthlyDisplay ? payAmount : null);
+  const hasDeal = dealAmount != null && dealAmount > 0;
+  const mult = saleMultiplier != null && saleMultiplier > 0 && saleMultiplier <= 100 ? saleMultiplier : null;
+  const estimatedDeal = monthlyVal != null && monthlyVal > 0 && mult != null ? Math.round(monthlyVal * mult) : null;
+
+  const categoryLine = [region, categoryMain].filter(Boolean).join(" · ") + (categorySub ? ` / ${categorySub}` : "");
+  const registeredAt =
+    createdAt
+      ? new Date(createdAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })
+      : null;
 
   return (
-    <article className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-      <Link href={`/listings/${id}`} className="flex flex-1 flex-col p-4 sm:p-5">
-        <h2 className="line-clamp-2 font-semibold text-slate-900">{displayTitle}</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {region} · {categoryMain}
-          {categorySub ? ` / ${categorySub}` : ""}
-        </p>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-slate-100 pt-4">
-          <div>
-            <p className="text-xs text-slate-500">현재 {payUnitLabel}</p>
-            <p className="font-semibold text-slate-800">{formatMoney(payAmount)}</p>
-          </div>
-          {sampleCount >= 3 && averageNormalizedDailyWage != null && (
-            <div className="text-right">
-              <p className="text-xs text-slate-500">평균 대비</p>
-              <p className={gapPercent != null && gapPercent >= 0 ? "font-semibold text-emerald-600" : "font-semibold text-slate-700"}>
-                {gapPercent != null ? (gapPercent >= 0 ? "+" : "") + gapPercent + "%" : "—"}
-              </p>
+    <article className="group flex flex-col rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg transition-all duration-200 hover:-translate-y-2 hover:border-blue-300 hover:shadow-xl">
+      <Link href={`/listings/${id}`} className="flex flex-1 flex-col">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h2 className="line-clamp-2 text-xl font-bold text-slate-900 transition-colors group-hover:text-blue-600">
+            {title}
+          </h2>
+          {isClosed && (
+            <span className="shrink-0 rounded bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+              마감
+            </span>
+          )}
+        </div>
+
+        <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
+          <li className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 shrink-0 text-blue-500" />
+            <span>{categoryLine}</span>
+          </li>
+          {typeLabel && (
+            <li className="flex items-center gap-2">
+              <Tag className="h-4 w-4 shrink-0 text-violet-500" />
+              <span>{typeLabel}</span>
+            </li>
+          )}
+          {visitsPerWeek != null && visitsPerWeek >= 1 && visitsPerWeek <= 7 && (
+            <li className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 shrink-0 text-emerald-500" />
+              <span>주 {visitsPerWeek}회</span>
+            </li>
+          )}
+          {registeredAt && (
+            <li className="flex items-center gap-2 text-slate-500">
+              <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+              <span>등록 {registeredAt}</span>
+            </li>
+          )}
+        </ul>
+
+        <div className="mt-4 border-t border-slate-200 pt-4">
+          {useMonthlyDisplay && monthlyVal != null && monthlyVal > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-slate-500">월 수금</span>
+                <span className="text-2xl font-bold tabular-nums bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  월 {formatShortWon(monthlyVal)}원
+                </span>
+              </div>
+              {(() => {
+                const dealEqEstimated =
+                  hasDeal &&
+                  estimatedDeal != null &&
+                  Number(dealAmount) === estimatedDeal;
+                if (dealEqEstimated) {
+                  return (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-slate-500">매매가 · 예상 매매가</span>
+                      <span className="font-semibold text-slate-800 tabular-nums">{formatShortWon(Number(dealAmount))}원</span>
+                    </div>
+                  );
+                }
+                return (
+                  <>
+                    {estimatedDeal != null && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500">예상 매매가</span>
+                        <span className="font-semibold text-slate-800 tabular-nums">{formatShortWon(estimatedDeal)}원</span>
+                      </div>
+                    )}
+                    {hasDeal && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500">매매가</span>
+                        <span className="font-semibold text-slate-800 tabular-nums">{formatShortWon(dealAmount!)}원</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-slate-500">현재 {payUnitLabel}</span>
+                <span className="text-xl font-semibold text-slate-800 tabular-nums">{formatMoney(payAmount)}</span>
+              </div>
+              {!useMonthlyDisplay && sampleCount >= 3 && averageNormalizedDailyWage != null && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">평균 대비</span>
+                  <span className={gapPercent != null && gapPercent >= 0 ? "font-semibold text-emerald-600" : "font-semibold text-slate-700"}>
+                    {gapPercent != null ? (gapPercent >= 0 ? "+" : "") + gapPercent + "%" : "—"}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        <p className="mt-4 flex items-center gap-1 text-sm font-medium text-blue-600 opacity-0 transition-all duration-200 group-hover:opacity-100">
+          <span className="-translate-x-2 transition-transform duration-200 group-hover:translate-x-0">자세히 보기</span>
+          <ArrowRight className="h-4 w-4 -translate-x-2 transition-transform duration-200 group-hover:translate-x-0" />
+        </p>
+
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {grade && (
             <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-sm font-medium text-slate-800">

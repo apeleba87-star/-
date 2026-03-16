@@ -49,10 +49,12 @@ export default async function HomePage() {
     supabase
       .from("listings")
       .select("id", { count: "exact", head: true })
+      .eq("status", "open")
       .in("listing_type", LISTING_DEAL_TYPES),
     supabase
       .from("listings")
       .select("id, title")
+      .eq("status", "open")
       .in("listing_type", LISTING_DEAL_TYPES)
       .order("created_at", { ascending: false })
       .limit(5),
@@ -77,7 +79,9 @@ export default async function HomePage() {
   const jobPostStats = jobPostStatsRow.data;
   const homeTenderStats = homeTenderStatsRow.data;
 
-  const listingsCount = listingStats?.total_count ?? listingsCountRes.count ?? 0;
+  const statsCount = listingStats?.total_count ?? 0;
+  const directListingsCount = listingsCountRes.count ?? 0;
+  const listingsCount = Math.max(statsCount, directListingsCount);
   const recentListings = recentListingsRes.data ?? [];
   const latestNewsletter = latestNewsletterRes.data;
   const jobsOpenCount = jobPostStats?.open_count ?? jobsOpenCountRes.count ?? 0;
@@ -137,6 +141,7 @@ export default async function HomePage() {
     const [
       jobPostsClosedRes,
       jobPostsOpenRes,
+      jobPostsPastWorkDateRes,
       applications30dRes,
       matchesCompleted30dRes,
     ] = await Promise.all([
@@ -150,7 +155,14 @@ export default async function HomePage() {
         .from("job_posts")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .eq("status", "open"),
+        .eq("status", "open")
+        .or(`work_date.gte.${todayKst},work_date.is.null`),
+      authSupabase
+        .from("job_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "open")
+        .lt("work_date", todayKst),
       authSupabase
         .from("job_applications")
         .select("id", { count: "exact", head: true })
@@ -163,8 +175,10 @@ export default async function HomePage() {
         .eq("status", "accepted")
         .gte("updated_at", thirtyDaysAgo),
     ]);
+    const closed30d = jobPostsClosedRes.count ?? 0;
+    const openPastWorkDate = jobPostsPastWorkDateRes.count ?? 0;
     userStats = {
-      jobPostsClosed30d: jobPostsClosedRes.count ?? 0,
+      jobPostsClosed30d: closed30d + openPastWorkDate,
       jobPostsOpen: jobPostsOpenRes.count ?? 0,
       applications30d: applications30dRes.count ?? 0,
       matchesCompleted30d: matchesCompleted30dRes.count ?? 0,

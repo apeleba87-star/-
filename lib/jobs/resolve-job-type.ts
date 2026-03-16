@@ -44,6 +44,7 @@ export async function resolveJobType(
     .select("id, parent_id")
     .eq("slug", preset.subSlug)
     .eq("is_active", true)
+    .in("usage", ["job", "default"])
     .limit(1)
     .single();
   if (!subCat?.parent_id) {

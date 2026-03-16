@@ -163,7 +163,7 @@ export default async function JobPostDetailPage({
     .select("full_address, contact_phone, access_instructions, parking_info, notes")
     .eq("job_post_id", id)
     .maybeSingle();
-  const { data: categories } = await supabase.from("categories").select("id, name");
+  const { data: categories } = await supabase.from("categories").select("id, name").in("usage", ["job", "default"]);
   const categoryMap = new Map((categories ?? []).map((c) => [c.id, c.name]));
 
   const regionFull = [post.region, post.district].filter(Boolean).join(" ").trim() || post.region;
@@ -278,6 +278,12 @@ export default async function JobPostDetailPage({
             </div>
           )}
         </header>
+
+        {(post as { is_external?: boolean }).is_external && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
+            이 글은 외부 커뮤니티에서 가져온 정보입니다. 참여 전 반드시 <strong>직접 연락하여</strong> 내용을 확인하세요.
+          </div>
+        )}
 
         {isOwner && (
           <JobPostOwnerActions jobPostId={id} isClosed={post.status === "closed"} />
