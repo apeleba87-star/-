@@ -54,7 +54,8 @@ export default async function ListingsPage({ searchParams }: PageProps) {
   const typeParam = params.type;
   const listingTypeFilter = typeParam && LISTING_TYPES.includes(typeParam as (typeof LISTING_TYPES)[number]) ? typeParam : null;
   const statusParam = params.status;
-  const statusFilter = STATUS_VALUES.includes(statusParam as (typeof STATUS_VALUES)[number]) ? statusParam : "open";
+  const statusFilter =
+    (STATUS_VALUES.includes(statusParam as (typeof STATUS_VALUES)[number]) ? statusParam : "open") ?? "open";
   const regionFilter = (() => {
     const r = params.region?.trim();
     if (!r) return null;
