@@ -95,6 +95,8 @@ type Props = {
   recentListings: { id: string; title: string | null }[];
   jobsOpenCount: number;
   latestNewsletter: { id: string; subject: string; sent_at: string } | null;
+  /** 개인화 영역: Suspense로 스트리밍할 때 사용. 있으면 userStats 대신 이 슬롯 렌더 */
+  userStatsSlot?: React.ReactNode;
   userStats?: {
     jobPostsClosed30d: number;
     jobPostsOpen: number;
@@ -111,6 +113,7 @@ export default function HomeDashboard({
   recentListings,
   jobsOpenCount,
   latestNewsletter,
+  userStatsSlot,
   userStats,
 }: Props) {
   return (
@@ -210,8 +213,8 @@ export default function HomeDashboard({
           </DashboardCard>
         </section>
 
-        {/* 3행: 로그인 시 내 구인 · 내 지원·매칭 */}
-        {userStats && (
+        {/* 3행: 로그인 시 내 구인 · 내 지원·매칭 (userStatsSlot이면 스트리밍, 없으면 userStats) */}
+        {userStatsSlot ?? (userStats && (
           <section className="mb-8 grid gap-4 sm:grid-cols-2">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -281,7 +284,7 @@ export default function HomeDashboard({
               </Link>
             </motion.div>
           </section>
-        )}
+        ))}
       </div>
     </div>
   );

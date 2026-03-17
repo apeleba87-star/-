@@ -8,11 +8,9 @@ import { runBackfillCleanScore } from "@/lib/g2b/backfill-clean-score";
 
 export async function POST(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const header = req.headers.get("x-cron-secret");
-    if (header !== secret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const header = req.headers.get("x-cron-secret");
+  if (!secret || header !== secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const result = await runBackfillCleanScore();

@@ -45,7 +45,7 @@
 
 | 공격 목표 | 시나리오 | 현재 동작 | 위험도 |
 |-----------|----------|-----------|--------|
-| **Cron API 무단 호출** | `/api/cron/fetch-g2b`, `close-expired-job-posts` 등 POST로 마감·수집 트리거 | `CRON_SECRET`이 설정된 경우 `x-cron-secret` 헤더 검사. **단**, `CRON_SECRET`이 비어 있으면 검사 생략되어 누구나 호출 가능. | **중간** (운영 시 반드시 설정) |
+| **Cron API 무단 호출** | `/api/cron/fetch-g2b`, `close-expired-job-posts` 등 POST로 마감·수집 트리거 | **수정함**: `CRON_SECRET`이 비어 있으면 무조건 401. 설정된 경우에만 `x-cron-secret`(또는 Bearer) 일치 시 실행. | **해결** |
 | **서버 액션 DoS/스크래핑** | `getListingBenchmarks` 등 무한 호출로 DB·CPU 부하 | 인증 불필요. 목록/글쓰기 페이지에 노출된 액션을 반복 호출 가능. | **중간** (속도 제한·디바운스 권장) |
 | **구인/리스팅 스팸** | 다량 글 등록으로 서비스 방해 | 구인: 1분 3건·10분 10건 제한. 리스팅은 별도 제한 없음. | **중간** (리스팅도 제한 검토) |
 | **구독 유료 전환 무단** | `/api/subscribe/register`에 receipt 없이 호출해 subscription_plan=paid 획득 | billing_key 필수. receipt_id는 선택 검증. 실제 과금은 Bootpay 빌링키로 이후 차감되므로, 빌링키 유효성 검증·실패 시 paid 롤백 정책 권장. | **중간** (결제 검증 강화 권장) |
@@ -82,6 +82,12 @@
    - `lib/safe-fetch.ts`: `allowedHosts` 화이트리스트 검사, `AbortSignal.timeout(5000)`.  
    - G2B: `lib/g2b/client.ts`, `app/api/test-g2b/route.ts`에서 `safeFetch` + `G2B_ALLOWED_HOSTS` 사용.  
    - Bootpay: `lib/bootpay-server.ts`에서 SDK 호출을 `Promise.race`로 5초 타임아웃 적용.
+
+6. **Cron API CRON_SECRET 필수**  
+   - 모든 `/api/cron/*` 라우트: `CRON_SECRET`이 설정되지 않았거나 헤더 값이 일치하지 않으면 401. 비어 있을 때 검사 생략 제거.
+
+7. **로그인/회원가입 경로 rate limit**  
+   - `middleware.ts`: `/login`, `/signup`에 대해 IP당 1분에 30회 제한. 초과 시 429 + Retry-After. 실제 로그인 시도(signInWithPassword)는 Supabase로 직접 가므로, 페이지 접근·폼 로드 반복을 제한해 브루트포스·스캔 완화. 로그인 시도 횟수까지 제한하려면 Supabase Dashboard 설정 또는 로그인 프록시 API 검토.
 
 ---
 

@@ -21,6 +21,17 @@ export function getKstTomorrowString(): string {
 }
 
 /**
+ * KST 기준 "오늘" 00:00 ~ 23:59:59.999를 UTC ISO 문자열 [start, end]로 반환.
+ * 업계 소식 "오늘 발행" 건수 등 KST 기준 당일 필터용.
+ */
+export function getKstTodayUtcRange(): [string, string] {
+  const todayKst = getKstTodayString();
+  const start = new Date(todayKst + "T00:00:00+09:00").toISOString();
+  const end = new Date(todayKst + "T23:59:59.999+09:00").toISOString();
+  return [start, end];
+}
+
+/**
  * YYYY-MM-DD 문자열에 일 수를 더한 날짜 문자열 반환.
  * 마감 후 1일 판단 등에 사용.
  */

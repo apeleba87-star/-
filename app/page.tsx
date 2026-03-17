@@ -1,24 +1,28 @@
+import { Suspense } from "react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActiveHomeAds } from "@/lib/ads";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
-import { getKstTodayString } from "@/lib/jobs/kst-date";
-import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
+import { getKstTodayString, getKstTodayUtcRange } from "@/lib/jobs/kst-date";
 import HomeDashboard from "@/components/home/HomeDashboard";
 import TenderSection from "@/components/home/TenderSection";
 import NewsSection from "@/components/home/NewsSection";
 import DataInsightSection from "@/components/home/DataInsightSection";
+import HomeUserStatsSection from "@/components/home/HomeUserStatsSection";
+import HomeUserStatsSkeleton from "@/components/home/HomeUserStatsSkeleton";
 
 export const revalidate = 60;
 
 const LISTING_DEAL_TYPES = ["referral_regular", "referral_one_time", "sale_regular", "subcontract"];
 
+/**
+ * 홈 첫 렌더: 집계 테이블 + 얕은 최신 목록만. 개인화(userStats)는 Suspense로 후속 스트리밍.
+ * getHomeTenderStats() 호출 제거 — 홈은 home_tender_stats만 읽고, 갱신은 크론이 담당.
+ */
 export default async function HomePage() {
   const supabase = createClient();
   const authSupabase = await createServerSupabase();
-  const now = new Date().toISOString();
   const todayKst = getKstTodayString();
-  const today = new Date().toISOString().slice(0, 10);
-  const todayEnd = today + "T23:59:59.999Z";
+  const [newsTodayStart, newsTodayEnd] = getKstTodayUtcRange();
 
   const [
     jobPostStatsRow,
@@ -26,10 +30,8 @@ export default async function HomePage() {
     homeTenderStatsRow,
     newsCountRes,
     newsPostsRes,
-    listingsCountRes,
     recentListingsRes,
     latestNewsletterRes,
-    jobsOpenCountRes,
     userRes,
   ] = await Promise.all([
     supabase.from("job_post_stats").select("open_count").maybeSingle(),
@@ -38,19 +40,14 @@ export default async function HomePage() {
     supabase
       .from("posts")
       .select("*", { count: "exact", head: true })
-      .gte("published_at", today)
-      .lt("published_at", todayEnd),
+      .gte("published_at", newsTodayStart)
+      .lte("published_at", newsTodayEnd),
     supabase
       .from("posts")
       .select("id, title, published_at")
       .not("published_at", "is", null)
       .order("published_at", { ascending: false })
       .limit(5),
-    supabase
-      .from("listings")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "open")
-      .in("listing_type", LISTING_DEAL_TYPES),
     supabase
       .from("listings")
       .select("id, title")
@@ -65,11 +62,6 @@ export default async function HomePage() {
       .order("sent_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase
-      .from("job_posts")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "open")
-      .or(`work_date.gte.${todayKst},work_date.is.null`),
     authSupabase.auth.getUser(),
   ]);
 
@@ -79,113 +71,51 @@ export default async function HomePage() {
   const jobPostStats = jobPostStatsRow.data;
   const homeTenderStats = homeTenderStatsRow.data;
 
-  const statsCount = listingStats?.total_count ?? 0;
-  const directListingsCount = listingsCountRes.count ?? 0;
-  const listingsCount = Math.max(statsCount, directListingsCount);
+  const listingsCount = listingStats?.total_count ?? 0;
+  const jobsOpenCount = jobPostStats?.open_count ?? 0;
   const recentListings = recentListingsRes.data ?? [];
   const latestNewsletter = latestNewsletterRes.data;
-  const jobsOpenCount = jobPostStats?.open_count ?? jobsOpenCountRes.count ?? 0;
   const user = userRes.data.user;
 
-  const HOME_TENDER_STATS_STALE_MS = 15 * 60 * 1000;
-  const homeTenderStatsFresh =
-    homeTenderStats?.updated_at &&
-    Date.now() - new Date(homeTenderStats.updated_at).getTime() < HOME_TENDER_STATS_STALE_MS;
+  const industryBreakdown = (Array.isArray(homeTenderStats?.industry_breakdown)
+    ? homeTenderStats.industry_breakdown
+    : []) as { industry_code: string; industry_name: string; count: number }[];
 
-  let tenderStats: Awaited<ReturnType<typeof getHomeTenderStats>>;
-  if (homeTenderStatsFresh && homeTenderStats && Array.isArray(homeTenderStats.recent_tender_ids) && homeTenderStats.recent_tender_ids.length > 0) {
+  let recentTenders: { id: string; bid_ntce_nm: string | null; ntce_instt_nm: string | null; bid_clse_dt: string | null; bsns_dstr_nm: string | null; base_amt: number | null; raw?: unknown }[] = [];
+  if (homeTenderStats?.recent_tender_ids && Array.isArray(homeTenderStats.recent_tender_ids) && homeTenderStats.recent_tender_ids.length > 0) {
     const recentIds = homeTenderStats.recent_tender_ids.slice(0, 5);
     const { data: recentRows } = await supabase
       .from("tenders")
       .select("id, bid_ntce_nm, ntce_instt_nm, bid_clse_dt, bsns_dstr_nm, base_amt, raw")
       .in("id", recentIds);
     const order = recentIds.map((id) => (recentRows ?? []).find((r) => r.id === id)).filter(Boolean) as { id: string; bid_ntce_nm: string | null; ntce_instt_nm: string | null; bid_clse_dt: string | null; bsns_dstr_nm: string | null; base_amt: number | null; raw?: unknown }[];
-    const industryBreakdown = (Array.isArray(homeTenderStats.industry_breakdown) ? homeTenderStats.industry_breakdown : []) as { industry_code: string; industry_name: string; count: number }[];
-    tenderStats = {
-      tenderCount: homeTenderStats.open_count ?? 0,
-      tenderTodayCount: homeTenderStats.today_count ?? 0,
-      topIndustry: null,
-      industryBreakdown,
-      recentTenders: order.map((t) => ({
-        id: t.id,
-        bid_ntce_nm: t.bid_ntce_nm,
-        ntce_instt_nm: t.ntce_instt_nm,
-        bid_clse_dt: t.bid_clse_dt,
-        bsns_dstr_nm: t.bsns_dstr_nm ?? null,
-        base_amt: t.base_amt != null ? Number(t.base_amt) : null,
-        raw: t.raw,
-      })),
-    };
-  } else if (homeTenderStatsFresh && homeTenderStats) {
-    tenderStats = {
-      tenderCount: homeTenderStats.open_count ?? 0,
-      tenderTodayCount: homeTenderStats.today_count ?? 0,
-      topIndustry: null,
-      industryBreakdown: (Array.isArray(homeTenderStats.industry_breakdown) ? homeTenderStats.industry_breakdown : []) as { industry_code: string; industry_name: string; count: number }[],
-      recentTenders: [],
-    };
-  } else {
-    tenderStats = await getHomeTenderStats(supabase, { now });
+    recentTenders = order.map((t) => ({
+      id: t.id,
+      bid_ntce_nm: t.bid_ntce_nm,
+      ntce_instt_nm: t.ntce_instt_nm,
+      bid_clse_dt: t.bid_clse_dt,
+      bsns_dstr_nm: t.bsns_dstr_nm ?? null,
+      base_amt: t.base_amt != null ? Number(t.base_amt) : null,
+      raw: t.raw,
+    }));
   }
 
-  let userStats:
-    | {
-        jobPostsClosed30d: number;
-        jobPostsOpen: number;
-        applications30d: number;
-        matchesCompleted30d: number;
-      }
-    | undefined;
-  if (user) {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const [
-      jobPostsClosedRes,
-      jobPostsOpenRes,
-      jobPostsPastWorkDateRes,
-      applications30dRes,
-      matchesCompleted30dRes,
-    ] = await Promise.all([
-      authSupabase
-        .from("job_posts")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "closed")
-        .gte("updated_at", thirtyDaysAgo),
-      authSupabase
-        .from("job_posts")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "open")
-        .or(`work_date.gte.${todayKst},work_date.is.null`),
-      authSupabase
-        .from("job_posts")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "open")
-        .lt("work_date", todayKst),
-      authSupabase
-        .from("job_applications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .gte("created_at", thirtyDaysAgo),
-      authSupabase
-        .from("job_applications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "accepted")
-        .gte("updated_at", thirtyDaysAgo),
-    ]);
-    const closed30d = jobPostsClosedRes.count ?? 0;
-    const openPastWorkDate = jobPostsPastWorkDateRes.count ?? 0;
-    userStats = {
-      jobPostsClosed30d: closed30d + openPastWorkDate,
-      jobPostsOpen: jobPostsOpenRes.count ?? 0,
-      applications30d: applications30dRes.count ?? 0,
-      matchesCompleted30d: matchesCompleted30dRes.count ?? 0,
-    };
-  }
+  const tenderStats = {
+    tenderCount: homeTenderStats?.open_count ?? 0,
+    tenderTodayCount: homeTenderStats?.today_count ?? 0,
+    topIndustry: null as { code: string; name: string; count: number } | null,
+    industryBreakdown,
+    recentTenders,
+  };
 
   const ads = await getActiveHomeAds();
+
+  const userStatsSlot =
+    user != null ? (
+      <Suspense fallback={<HomeUserStatsSkeleton />}>
+        <HomeUserStatsSection userId={user.id} todayKst={todayKst} />
+      </Suspense>
+    ) : undefined;
 
   return (
     <>
@@ -197,7 +127,7 @@ export default async function HomePage() {
         recentListings={recentListings}
         jobsOpenCount={jobsOpenCount}
         latestNewsletter={latestNewsletter}
-        userStats={userStats}
+        userStatsSlot={userStatsSlot}
       />
 
       <div className="mx-auto w-full max-w-2xl px-4 pt-2 pb-10 sm:px-6 sm:pb-12">
