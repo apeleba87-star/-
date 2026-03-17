@@ -95,6 +95,8 @@ type Props = {
   recentListings: { id: string; title: string | null }[];
   jobsOpenCount: number;
   latestNewsletter: { id: string; subject: string; sent_at: string } | null;
+  /** 비로그인 시 카드 클릭 시 로그인 페이지( next=목적지 )로 이동해 상세는 로그인 후 확인 */
+  isLoggedIn?: boolean;
   /** 개인화 영역: Suspense로 스트리밍할 때 사용. 있으면 userStats 대신 이 슬롯 렌더 */
   userStatsSlot?: React.ReactNode;
   userStats?: {
@@ -113,9 +115,12 @@ export default function HomeDashboard({
   recentListings,
   jobsOpenCount,
   latestNewsletter,
+  isLoggedIn = true,
   userStatsSlot,
   userStats,
 }: Props) {
+  /** 비로그인 시 카드 클릭 시 로그인 후 상세 확인 유도 */
+  const loginNext = (path: string) => (isLoggedIn ? path : `/login?next=${encodeURIComponent(path)}`);
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
@@ -135,7 +140,7 @@ export default function HomeDashboard({
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <DashboardCard
             title="청소·방역 입찰"
-            href="/tenders"
+            href={loginNext("/tenders")}
             icon={<TrendingUp className="h-5 w-5" />}
             iconBg="bg-blue-500"
             delay={0.05}
@@ -146,7 +151,7 @@ export default function HomeDashboard({
 
           <DashboardCard
             title="인력 구인"
-            href="/jobs"
+            href={loginNext("/jobs")}
             icon={<UserPlus className="h-5 w-5" />}
             iconBg="bg-emerald-500"
             delay={0.1}
@@ -157,7 +162,7 @@ export default function HomeDashboard({
 
           <DashboardCard
             title="업계 소식"
-            href="/news"
+            href={loginNext("/news")}
             icon={<Newspaper className="h-5 w-5" />}
             iconBg="bg-violet-500"
             delay={0.15}
@@ -171,7 +176,7 @@ export default function HomeDashboard({
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <DashboardCard
             title="현장 거래"
-            href="/listings"
+            href={loginNext("/listings")}
             icon={<Briefcase className="h-5 w-5" />}
             iconBg="bg-amber-500"
             delay={0.2}
@@ -192,7 +197,7 @@ export default function HomeDashboard({
 
           <DashboardCard
             title="견적 계산기"
-            href="/estimate"
+            href={loginNext("/estimate")}
             icon={<Calculator className="h-5 w-5" />}
             iconBg="bg-teal-500"
             delay={0.25}

@@ -45,6 +45,8 @@ type Props = {
   relatedCount: number;
   todayCount: number;
   industryBreakdown?: IndustryBreakdownItem[];
+  /** 비로그인 시 건수·목록 블라인드 */
+  isLoggedIn?: boolean;
 };
 
 export default function TenderSection({
@@ -52,8 +54,10 @@ export default function TenderSection({
   relatedCount,
   todayCount,
   industryBreakdown = [],
+  isLoggedIn = true,
 }: Props) {
-  const industryLineItems = industryBreakdown.filter((i) => i.count > 0);
+  const blind = !isLoggedIn;
+  const industryLineItems = blind ? [] : industryBreakdown.filter((i) => i.count > 0);
 
   return (
     <motion.section
@@ -67,7 +71,7 @@ export default function TenderSection({
       </div>
       <h2 className="text-xl font-bold text-slate-900">청소·방역·소독 입찰</h2>
       <p className="mt-0.5 text-xs text-slate-500">
-        등록 업종 기준 {relatedCount}건 · 오늘 공고 {todayCount}건
+        {blind ? "등록 업종 기준 —건 · 오늘 공고 —건" : `등록 업종 기준 ${relatedCount}건 · 오늘 공고 ${todayCount}건`}
       </p>
 
       {industryLineItems.length > 0 && (
@@ -87,7 +91,18 @@ export default function TenderSection({
         </div>
       )}
 
-      {tenders.length === 0 ? (
+      {blind ? (
+        <div className={`${homeCardClass} mt-4 flex flex-col items-center justify-center p-8`}>
+          <FileText className="h-12 w-12 text-slate-300" />
+          <p className="mt-3 text-sm text-slate-500">로그인 후 접수 중인 입찰 공고를 확인하세요.</p>
+          <Link
+            href="/login?next=/tenders"
+            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-600"
+          >
+            로그인하기
+          </Link>
+        </div>
+      ) : tenders.length === 0 ? (
         <div className={`${homeCardClass} mt-4 flex flex-col items-center justify-center p-8`}>
           <FileText className="h-12 w-12 text-slate-300" />
           <p className="mt-3 text-sm text-slate-500">현재 접수 중인 청소·방역·소독 입찰 공고가 없습니다.</p>

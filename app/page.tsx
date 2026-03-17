@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActiveHomeAds } from "@/lib/ads";
+import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import { getKstTodayString, getKstTodayUtcRange } from "@/lib/jobs/kst-date";
 import HomeDashboard from "@/components/home/HomeDashboard";
@@ -71,18 +72,67 @@ export default async function HomePage() {
   const jobPostStats = jobPostStatsRow.data;
   const homeTenderStats = homeTenderStatsRow.data;
 
-  const listingsCount = listingStats?.total_count ?? 0;
+  let listingsCount = listingStats?.total_count ?? 0;
   const jobsOpenCount = jobPostStats?.open_count ?? 0;
   const recentListings = recentListingsRes.data ?? [];
   const latestNewsletter = latestNewsletterRes.data;
   const user = userRes.data.user;
 
-  const industryBreakdown = (Array.isArray(homeTenderStats?.industry_breakdown)
+  // 등록 업종(업종관리 사용 ON) 기준 건수만 사용. fallback 시에도 getHomeTenderStats로 동일 기준 적용.
+  let industryBreakdown = (Array.isArray(homeTenderStats?.industry_breakdown)
     ? homeTenderStats.industry_breakdown
     : []) as { industry_code: string; industry_name: string; count: number }[];
 
+  const needTenderFallback = homeTenderStats == null || homeTenderStats.open_count === 0;
+  const needListingFallback = listingStats == null || listingStats.total_count === 0;
+  const fallbackPromises: Promise<unknown>[] = [];
+
+  if (needTenderFallback) {
+    fallbackPromises.push(getHomeTenderStats(supabase).then((stats) => ({ stats })));
+  } else {
+    fallbackPromises.push(Promise.resolve(null));
+  }
+  if (needListingFallback) {
+    fallbackPromises.push(
+      supabase
+        .from("listings")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "open")
+        .in("listing_type", LISTING_DEAL_TYPES)
+        .then((res) => ({ listingCount: res.count ?? 0 }))
+    );
+  } else {
+    fallbackPromises.push(Promise.resolve(null));
+  }
+
+  const fallbackResults = await Promise.all(fallbackPromises);
+  let tenderCount = homeTenderStats?.open_count ?? 0;
+  let tenderTodayCount = homeTenderStats?.today_count ?? 0;
+  let fallbackTenders: { id: string; bid_ntce_nm: string | null; ntce_instt_nm: string | null; bid_clse_dt: string | null; bsns_dstr_nm: string | null; base_amt: number | null; raw?: unknown }[] = [];
+  if (needTenderFallback && fallbackResults[0] != null && typeof fallbackResults[0] === "object" && "stats" in fallbackResults[0]) {
+    const r = fallbackResults[0] as { stats: Awaited<ReturnType<typeof getHomeTenderStats>> };
+    tenderCount = r.stats.tenderCount;
+    tenderTodayCount = r.stats.tenderTodayCount;
+    industryBreakdown = r.stats.industryBreakdown;
+    fallbackTenders = r.stats.recentTenders.map((t) => ({
+      id: t.id,
+      bid_ntce_nm: t.bid_ntce_nm,
+      ntce_instt_nm: t.ntce_instt_nm,
+      bid_clse_dt: t.bid_clse_dt,
+      bsns_dstr_nm: t.bsns_dstr_nm ?? null,
+      base_amt: t.base_amt ?? null,
+      raw: t.raw,
+    }));
+  }
+  if (needListingFallback && fallbackResults[1] != null && typeof fallbackResults[1] === "object" && "listingCount" in fallbackResults[1]) {
+    const r = fallbackResults[1] as { listingCount: number };
+    listingsCount = r.listingCount;
+  }
+
   let recentTenders: { id: string; bid_ntce_nm: string | null; ntce_instt_nm: string | null; bid_clse_dt: string | null; bsns_dstr_nm: string | null; base_amt: number | null; raw?: unknown }[] = [];
-  if (homeTenderStats?.recent_tender_ids && Array.isArray(homeTenderStats.recent_tender_ids) && homeTenderStats.recent_tender_ids.length > 0) {
+  if (fallbackTenders.length > 0) {
+    recentTenders = fallbackTenders;
+  } else if (homeTenderStats?.recent_tender_ids && Array.isArray(homeTenderStats.recent_tender_ids) && homeTenderStats.recent_tender_ids.length > 0) {
     const recentIds = homeTenderStats.recent_tender_ids.slice(0, 5);
     const { data: recentRows } = await supabase
       .from("tenders")
@@ -101,8 +151,8 @@ export default async function HomePage() {
   }
 
   const tenderStats = {
-    tenderCount: homeTenderStats?.open_count ?? 0,
-    tenderTodayCount: homeTenderStats?.today_count ?? 0,
+    tenderCount,
+    tenderTodayCount,
     topIndustry: null as { code: string; name: string; count: number } | null,
     industryBreakdown,
     recentTenders,
@@ -127,6 +177,7 @@ export default async function HomePage() {
         recentListings={recentListings}
         jobsOpenCount={jobsOpenCount}
         latestNewsletter={latestNewsletter}
+        isLoggedIn={!!user}
         userStatsSlot={userStatsSlot}
       />
 
@@ -140,8 +191,9 @@ export default async function HomePage() {
           relatedCount={tenderStats.tenderCount}
           todayCount={tenderStats.tenderTodayCount}
           industryBreakdown={tenderStats.industryBreakdown}
+          isLoggedIn={!!user}
         />
-        <NewsSection posts={news} />
+        <NewsSection posts={news} isLoggedIn={!!user} />
 
         {(ads.native_card?.enabled && (ads.native_card.campaign || ads.native_card.script_content)) ? (
           <AdSlotRenderer slot={ads.native_card} variant="card" />

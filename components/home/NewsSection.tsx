@@ -16,7 +16,11 @@ type Post = {
   published_at: string | null;
 };
 
-export default function NewsSection({ posts }: { posts: Post[] }) {
+type Props = { posts: Post[]; isLoggedIn?: boolean };
+
+export default function NewsSection({ posts, isLoggedIn = true }: Props) {
+  const blind = !isLoggedIn;
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 16 }}
@@ -30,7 +34,17 @@ export default function NewsSection({ posts }: { posts: Post[] }) {
       <h2 className="text-xl font-bold text-slate-900">업계 소식</h2>
       <p className="mt-0.5 text-xs text-slate-500">청소업 관련 뉴스·이슈 요약</p>
 
-      {posts.length === 0 ? (
+      {blind ? (
+        <div className={`${homeCardClass} mt-4 rounded-2xl p-6 text-center`}>
+          <p className="text-sm text-slate-500">로그인 후 업계 소식을 확인하세요.</p>
+          <Link
+            href="/login?next=/news"
+            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-violet-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-600"
+          >
+            로그인하기
+          </Link>
+        </div>
+      ) : posts.length === 0 ? (
         <div className={`${homeCardClass} mt-4 rounded-2xl p-6 text-center`}>
           <p className="text-sm text-slate-500">등록된 업계 소식이 없습니다.</p>
         </div>
@@ -53,8 +67,8 @@ export default function NewsSection({ posts }: { posts: Post[] }) {
         </ul>
       )}
 
-      <Link href="/categories/industry" className={`${homeFooterBtnClass} block`}>
-        전체 보기
+      <Link href={blind ? "/login?next=/news" : "/categories/industry"} className={`${homeFooterBtnClass} block`}>
+        {blind ? "로그인 후 전체 보기" : "전체 보기"}
       </Link>
     </motion.section>
   );
