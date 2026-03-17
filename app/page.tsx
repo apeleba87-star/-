@@ -10,6 +10,7 @@ import NewsSection from "@/components/home/NewsSection";
 import DataInsightSection from "@/components/home/DataInsightSection";
 import HomeUserStatsSection from "@/components/home/HomeUserStatsSection";
 import HomeUserStatsSkeleton from "@/components/home/HomeUserStatsSkeleton";
+import HomeUserStatsGuestPlaceholder from "@/components/home/HomeUserStatsGuestPlaceholder";
 
 export const revalidate = 60;
 
@@ -167,7 +168,9 @@ export default async function HomePage() {
       <Suspense fallback={<HomeUserStatsSkeleton />}>
         <HomeUserStatsSection userId={user.id} todayKst={todayKst} />
       </Suspense>
-    ) : undefined;
+    ) : (
+      <HomeUserStatsGuestPlaceholder />
+    );
 
   return (
     <>

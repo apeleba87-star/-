@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { FileText, ChevronRight } from "lucide-react";
+import { FileText, ChevronRight, Lock } from "lucide-react";
 import { formatMoneyMan, getBaseAmtFromRaw, ddayNumber } from "@/lib/tender-utils";
 import {
   homeCardClass,
@@ -91,21 +91,20 @@ export default function TenderSection({
         </div>
       )}
 
-      {blind ? (
+      {tenders.length === 0 ? (
         <div className={`${homeCardClass} mt-4 flex flex-col items-center justify-center p-8`}>
           <FileText className="h-12 w-12 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-500">로그인 후 접수 중인 입찰 공고를 확인하세요.</p>
-          <Link
-            href="/login?next=/tenders"
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-600"
-          >
-            로그인하기
-          </Link>
-        </div>
-      ) : tenders.length === 0 ? (
-        <div className={`${homeCardClass} mt-4 flex flex-col items-center justify-center p-8`}>
-          <FileText className="h-12 w-12 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-500">현재 접수 중인 청소·방역·소독 입찰 공고가 없습니다.</p>
+          <p className="mt-3 text-sm text-slate-500">
+            {blind ? "로그인 후 접수 중인 입찰 공고를 확인하세요." : "현재 접수 중인 청소·방역·소독 입찰 공고가 없습니다."}
+          </p>
+          {blind && (
+            <Link
+              href="/login?next=/tenders"
+              className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-600"
+            >
+              로그인하기
+            </Link>
+          )}
         </div>
       ) : (
         <ul className="mt-4 space-y-3">
@@ -115,7 +114,7 @@ export default function TenderSection({
             return (
               <li key={t.id}>
                 <Link
-                  href={`/tenders/${t.id}`}
+                  href={blind ? `/login?next=${encodeURIComponent(`/tenders/${t.id}`)}` : `/tenders/${t.id}`}
                   className="group block rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:border-blue-200 hover:shadow-md"
                 >
                   <div className="flex flex-col gap-3">
@@ -137,9 +136,16 @@ export default function TenderSection({
                       <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-500">
                         기초금액
                       </span>
-                      <span className="text-sm font-semibold text-slate-800">
-                        {baseAmt != null ? formatMoneyMan(baseAmt) : "—"}
-                      </span>
+                      {blind ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200/60 transition-colors group-hover:bg-slate-200/80 group-hover:ring-slate-300/70">
+                          <Lock className="h-3.5 w-3.5 shrink-0 text-slate-500" strokeWidth={2} />
+                          로그인 후 확인
+                        </span>
+                      ) : (
+                        <span className="text-sm font-semibold text-slate-800">
+                          {baseAmt != null ? formatMoneyMan(baseAmt) : "—"}
+                        </span>
+                      )}
                       <span className="ml-auto flex items-center gap-0.5 text-xs font-medium text-slate-400 group-hover:text-blue-500">
                         상세보기
                         <ChevronRight className="h-4 w-4" />

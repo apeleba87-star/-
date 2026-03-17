@@ -34,17 +34,7 @@ export default function NewsSection({ posts, isLoggedIn = true }: Props) {
       <h2 className="text-xl font-bold text-slate-900">업계 소식</h2>
       <p className="mt-0.5 text-xs text-slate-500">청소업 관련 뉴스·이슈 요약</p>
 
-      {blind ? (
-        <div className={`${homeCardClass} mt-4 rounded-2xl p-6 text-center`}>
-          <p className="text-sm text-slate-500">로그인 후 업계 소식을 확인하세요.</p>
-          <Link
-            href="/login?next=/news"
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-violet-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-600"
-          >
-            로그인하기
-          </Link>
-        </div>
-      ) : posts.length === 0 ? (
+      {posts.length === 0 ? (
         <div className={`${homeCardClass} mt-4 rounded-2xl p-6 text-center`}>
           <p className="text-sm text-slate-500">등록된 업계 소식이 없습니다.</p>
         </div>
@@ -52,7 +42,10 @@ export default function NewsSection({ posts, isLoggedIn = true }: Props) {
         <ul className="mt-4 space-y-3">
           {posts.map((p) => (
             <li key={p.id}>
-              <Link href={`/posts/${p.id}`} className="block">
+              <Link
+                href={blind ? `/login?next=${encodeURIComponent(`/posts/${p.id}`)}` : `/posts/${p.id}`}
+                className="block"
+              >
                 <div className={`${homeCardClass} flex min-h-[52px] items-center justify-between gap-2`}>
                   <span className="min-w-0 flex-1 font-medium text-slate-800 line-clamp-2">{p.title}</span>
                   {p.published_at && (
@@ -67,8 +60,8 @@ export default function NewsSection({ posts, isLoggedIn = true }: Props) {
         </ul>
       )}
 
-      <Link href={blind ? "/login?next=/news" : "/categories/industry"} className={`${homeFooterBtnClass} block`}>
-        {blind ? "로그인 후 전체 보기" : "전체 보기"}
+      <Link href={blind ? "/news" : "/categories/industry"} className={`${homeFooterBtnClass} block`}>
+        전체 보기
       </Link>
     </motion.section>
   );

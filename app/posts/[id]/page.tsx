@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
@@ -27,6 +27,12 @@ export default async function PostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const authSupabase = await createServerSupabase();
+  const { data: { user } } = await authSupabase.auth.getUser();
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(`/posts/${id}`)}`);
+  }
+
   const supabase = createClient();
   const [adsResult, { data: post, error }] = await Promise.all([
     getActivePostDetailAds(),
