@@ -94,12 +94,14 @@ export default async function HomePage() {
   }
   if (needListingFallback) {
     fallbackPromises.push(
-      supabase
-        .from("listings")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "open")
-        .in("listing_type", LISTING_DEAL_TYPES)
-        .then((res) => ({ listingCount: res.count ?? 0 }))
+      (async () => {
+        const res = await supabase
+          .from("listings")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "open")
+          .in("listing_type", LISTING_DEAL_TYPES);
+        return { listingCount: res.count ?? 0 };
+      })()
     );
   } else {
     fallbackPromises.push(Promise.resolve(null));
