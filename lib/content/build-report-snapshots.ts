@@ -18,6 +18,8 @@ import {
   buildLargeTenderTopSnapshot,
   buildOpeningScheduledSnapshot,
 } from "./build-other-report-snapshots";
+import { aggregateListingMarketIntel } from "./listing-report-queries";
+import { buildListingMarketIntelSnapshot } from "./build-listing-market-intel";
 
 export type BuildReportSnapshotsResult = {
   ok: true;
@@ -113,6 +115,17 @@ export async function buildReportSnapshots(
       created.push(`${openingSnapshot.report_type}:${openingSnapshot.period_key}`);
     } else {
       skipped.push("opening_scheduled: no data");
+    }
+
+    // 6. 현장거래 시장 인텔리전스
+    const listingPayload = await aggregateListingMarketIntel(supabase, runDate);
+    const listingSnapshot = buildListingMarketIntelSnapshot(listingPayload);
+    if (listingSnapshot) {
+      const { error } = await upsertSnapshot(supabase, runId, listingSnapshot);
+      if (error) return { ok: false, error: `report_snapshots upsert failed: ${error}` };
+      created.push(`${listingSnapshot.report_type}:${listingSnapshot.period_key}`);
+    } else {
+      skipped.push("listing_market_intel: no data");
     }
 
     return { ok: true, created, skipped };
