@@ -14,6 +14,7 @@ export type TenderRow = {
   base_amt: number | null;
   bid_clse_dt: string | null;
   bid_ntce_dt: string | null;
+  openg_dt?: string | null;
   primary_industry_code: string | null;
 };
 
@@ -386,5 +387,335 @@ export async function aggregateWeeklyTenders(
     has_budget_unknown,
     industry_breakdown,
     top_industry,
+  };
+}
+
+/** 공통: TopTenderItem 리스트 생성 */
+function toTopTenderItems(rows: TenderRow[], limit = 10): TopTenderItem[] {
+  return rows.slice(0, limit).map((r) => ({
+    title: (r.bid_ntce_nm ?? "").trim() || "제목 없음",
+    agency: (r.ntce_instt_nm ?? "").trim() || "—",
+    budget: r.base_amt ?? 0,
+    budgetLabel: r.base_amt != null ? formatBudget(r.base_amt) : "—",
+    deadline: r.bid_clse_dt ?? "",
+    deadlineLabel: formatDeadline(r.bid_clse_dt),
+  }));
+}
+
+/** 마감 임박(D-7 이내) + 등록 업종 기준 */
+export type DeadlineSoonPayload = {
+  period_key: string;
+  period_label: string;
+  count_total: number;
+  over_100m_count: number;
+  region_breakdown: RegionBreakdownItem[];
+  top_tenders: TopTenderItem[];
+};
+
+export async function aggregateDeadlineSoonTenders(
+  supabase: SupabaseClient,
+  date?: Date
+): Promise<DeadlineSoonPayload> {
+  const periodKey = getKstWeekKey(date);
+  const now = new Date();
+  const nowPlus7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const nowIso = now.toISOString();
+  const endIso = nowPlus7.toISOString();
+
+  const { data: industryRows } = await supabase
+    .from("industries")
+    .select("code, name, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  const activeIndustries = (industryRows ?? []) as { code: string; name: string; sort_order: number }[];
+  const activeCodesSet = new Set(activeIndustries.map((i) => i.code));
+
+  if (activeIndustries.length === 0) {
+    return { period_key: periodKey, period_label: formatWeekLabel(periodKey), count_total: 0, over_100m_count: 0, region_breakdown: [], top_tenders: [] };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("tenders")
+    .select("id, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_clse_dt, bid_ntce_dt, primary_industry_code")
+    .gt("bid_clse_dt", nowIso)
+    .lt("bid_clse_dt", endIso)
+    .order("base_amt", { ascending: false, nullsFirst: false });
+
+  if (error) throw new Error(`tenders 마감임박 조회 실패: ${error.message}`);
+  const rawList = (rows ?? []) as TenderRow[];
+  const tenderIds = rawList.map((t) => t.id);
+  const tenderIdsSet = new Set(tenderIds);
+
+  let tiRows: { tender_id: string; industry_code: string }[] | null = null;
+  if (tenderIds.length > 0) {
+    const { data } = await supabase
+      .from("tender_industries")
+      .select("tender_id, industry_code")
+      .in("tender_id", tenderIds)
+      .in("industry_code", [...activeCodesSet]);
+    tiRows = data as { tender_id: string; industry_code: string }[] | null;
+  }
+  const tenderToCodes = new Map<string, Set<string>>();
+  for (const t of rawList) {
+    const codes = new Set<string>();
+    if (t.primary_industry_code && activeCodesSet.has(t.primary_industry_code)) codes.add(t.primary_industry_code);
+    tenderToCodes.set(t.id, codes);
+  }
+  for (const row of tiRows ?? []) {
+    if (!tenderIdsSet.has(row.tender_id) || !activeCodesSet.has(row.industry_code)) continue;
+    tenderToCodes.get(row.tender_id)?.add(row.industry_code);
+  }
+  const list = rawList.filter((t) => (tenderToCodes.get(t.id)?.size ?? 0) > 0);
+  const over_100m_count = list.filter((r) => (r.base_amt ?? 0) >= 100_000_000).length;
+  const regionMap = new Map<string, number>();
+  for (const r of list) {
+    const sido = getSido(r);
+    regionMap.set(sido, (regionMap.get(sido) ?? 0) + 1);
+  }
+  const region_breakdown: RegionBreakdownItem[] = Array.from(regionMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    period_key: periodKey,
+    period_label: formatWeekLabel(periodKey),
+    count_total: list.length,
+    over_100m_count,
+    region_breakdown,
+    top_tenders: toTopTenderItems(list, 5),
+  };
+}
+
+/** 준비기간 5일 이하 공고 (이번 주 공고 중) */
+export type PrepShortPayload = {
+  period_key: string;
+  period_label: string;
+  count_total: number;
+  top_tenders: (TopTenderItem & { prep_days?: number })[];
+};
+
+export async function aggregatePrepShortTenders(
+  supabase: SupabaseClient,
+  date?: Date
+): Promise<PrepShortPayload> {
+  const { start, end } = getKstWeekRange(date);
+  const periodKey = getKstWeekKey(date);
+
+  const { data: industryRows } = await supabase
+    .from("industries")
+    .select("code, name, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  const activeIndustries = (industryRows ?? []) as { code: string; name: string; sort_order: number }[];
+  const activeCodesSet = new Set(activeIndustries.map((i) => i.code));
+
+  if (activeIndustries.length === 0) {
+    return { period_key: periodKey, period_label: formatWeekLabel(periodKey), count_total: 0, top_tenders: [] };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("tenders")
+    .select("id, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_clse_dt, bid_ntce_dt, primary_industry_code")
+    .gte("bid_ntce_dt", start)
+    .lte("bid_ntce_dt", end)
+    .order("base_amt", { ascending: false, nullsFirst: false });
+
+  if (error) throw new Error(`tenders 준비기간 조회 실패: ${error.message}`);
+  const rawList = (rows ?? []) as TenderRow[];
+  const tenderIds = rawList.map((t) => t.id);
+  const tenderIdsSet = new Set(tenderIds);
+
+  let tiRows: { tender_id: string; industry_code: string }[] | null = null;
+  if (tenderIds.length > 0) {
+    const { data } = await supabase
+      .from("tender_industries")
+      .select("tender_id, industry_code")
+      .in("tender_id", tenderIds)
+      .in("industry_code", [...activeCodesSet]);
+    tiRows = data as { tender_id: string; industry_code: string }[] | null;
+  }
+  const tenderToCodes = new Map<string, Set<string>>();
+  for (const t of rawList) {
+    const codes = new Set<string>();
+    if (t.primary_industry_code && activeCodesSet.has(t.primary_industry_code)) codes.add(t.primary_industry_code);
+    tenderToCodes.set(t.id, codes);
+  }
+  for (const row of tiRows ?? []) {
+    if (!tenderIdsSet.has(row.tender_id) || !activeCodesSet.has(row.industry_code)) continue;
+    tenderToCodes.get(row.tender_id)?.add(row.industry_code);
+  }
+  const list = rawList.filter((t) => (tenderToCodes.get(t.id)?.size ?? 0) > 0);
+  const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+  const prepShort = list.filter((t) => {
+    if (!t.bid_clse_dt || !t.bid_ntce_dt) return false;
+    const diff = new Date(t.bid_clse_dt).getTime() - new Date(t.bid_ntce_dt).getTime();
+    return diff >= 0 && diff <= FIVE_DAYS_MS;
+  });
+  const top_tenders: (TopTenderItem & { prep_days?: number })[] = prepShort.slice(0, 5).map((r) => {
+    const prepDays = r.bid_clse_dt && r.bid_ntce_dt
+      ? Math.round((new Date(r.bid_clse_dt).getTime() - new Date(r.bid_ntce_dt).getTime()) / (24 * 60 * 60 * 1000))
+      : undefined;
+    return {
+      title: (r.bid_ntce_nm ?? "").trim() || "제목 없음",
+      agency: (r.ntce_instt_nm ?? "").trim() || "—",
+      budget: r.base_amt ?? 0,
+      budgetLabel: r.base_amt != null ? formatBudget(r.base_amt) : "—",
+      deadline: r.bid_clse_dt ?? "",
+      deadlineLabel: formatDeadline(r.bid_clse_dt),
+      prep_days: prepDays,
+    };
+  });
+
+  return {
+    period_key: periodKey,
+    period_label: formatWeekLabel(periodKey),
+    count_total: prepShort.length,
+    top_tenders,
+  };
+}
+
+/** 대형 공고(기초금액 1억 이상) TOP 10, 이번 주 */
+export type LargeTenderTopPayload = {
+  period_key: string;
+  period_label: string;
+  count_total: number;
+  budget_sum: number;
+  budget_label: string;
+  top_tenders: TopTenderItem[];
+};
+
+const ONE_HUNDRED_MILLION = 100_000_000;
+
+export async function aggregateLargeTenderTop(
+  supabase: SupabaseClient,
+  date?: Date
+): Promise<LargeTenderTopPayload> {
+  const { start, end } = getKstWeekRange(date);
+  const periodKey = getKstWeekKey(date);
+
+  const { data: industryRows } = await supabase
+    .from("industries")
+    .select("code, name, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  const activeIndustries = (industryRows ?? []) as { code: string; name: string; sort_order: number }[];
+  const activeCodesSet = new Set(activeIndustries.map((i) => i.code));
+
+  if (activeIndustries.length === 0) {
+    return { period_key: periodKey, period_label: formatWeekLabel(periodKey), count_total: 0, budget_sum: 0, budget_label: formatBudget(0), top_tenders: [] };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("tenders")
+    .select("id, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_clse_dt, bid_ntce_dt, primary_industry_code")
+    .gte("bid_ntce_dt", start)
+    .lte("bid_ntce_dt", end)
+    .gte("base_amt", ONE_HUNDRED_MILLION)
+    .order("base_amt", { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(`tenders 대형공고 조회 실패: ${error.message}`);
+  const rawList = (rows ?? []) as TenderRow[];
+  const tenderIds = rawList.map((t) => t.id);
+  const tenderIdsSet = new Set(tenderIds);
+
+  let tiRows: { tender_id: string; industry_code: string }[] | null = null;
+  if (tenderIds.length > 0) {
+    const { data } = await supabase
+      .from("tender_industries")
+      .select("tender_id, industry_code")
+      .in("tender_id", tenderIds)
+      .in("industry_code", [...activeCodesSet]);
+    tiRows = data as { tender_id: string; industry_code: string }[] | null;
+  }
+  const tenderToCodes = new Map<string, Set<string>>();
+  for (const t of rawList) {
+    const codes = new Set<string>();
+    if (t.primary_industry_code && activeCodesSet.has(t.primary_industry_code)) codes.add(t.primary_industry_code);
+    tenderToCodes.set(t.id, codes);
+  }
+  for (const row of tiRows ?? []) {
+    if (!tenderIdsSet.has(row.tender_id) || !activeCodesSet.has(row.industry_code)) continue;
+    tenderToCodes.get(row.tender_id)?.add(row.industry_code);
+  }
+  const list = rawList.filter((t) => (tenderToCodes.get(t.id)?.size ?? 0) > 0);
+  const budget_sum = list.reduce((s, r) => s + (r.base_amt ?? 0), 0);
+
+  return {
+    period_key: periodKey,
+    period_label: formatWeekLabel(periodKey),
+    count_total: list.length,
+    budget_sum,
+    budget_label: formatBudget(budget_sum),
+    top_tenders: toTopTenderItems(list, 10),
+  };
+}
+
+/** 개찰 예정(이번 주 openg_dt) 공고 */
+export type OpeningScheduledPayload = {
+  period_key: string;
+  period_label: string;
+  count_total: number;
+  top_tenders: TopTenderItem[];
+};
+
+export async function aggregateOpeningScheduledTenders(
+  supabase: SupabaseClient,
+  date?: Date
+): Promise<OpeningScheduledPayload> {
+  const { start, end } = getKstWeekRange(date);
+  const periodKey = getKstWeekKey(date);
+
+  const { data: industryRows } = await supabase
+    .from("industries")
+    .select("code, name, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  const activeIndustries = (industryRows ?? []) as { code: string; name: string; sort_order: number }[];
+  const activeCodesSet = new Set(activeIndustries.map((i) => i.code));
+
+  if (activeIndustries.length === 0) {
+    return { period_key: periodKey, period_label: formatWeekLabel(periodKey), count_total: 0, top_tenders: [] };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("tenders")
+    .select("id, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_clse_dt, bid_ntce_dt, openg_dt, primary_industry_code")
+    .not("openg_dt", "is", null)
+    .gte("openg_dt", start)
+    .lte("openg_dt", end)
+    .order("base_amt", { ascending: false, nullsFirst: false });
+
+  if (error) throw new Error(`tenders 개찰예정 조회 실패: ${error.message}`);
+  const rawList = (rows ?? []) as TenderRow[];
+  const tenderIds = rawList.map((t) => t.id);
+  const tenderIdsSet = new Set(tenderIds);
+
+  let tiRows: { tender_id: string; industry_code: string }[] | null = null;
+  if (tenderIds.length > 0) {
+    const { data } = await supabase
+      .from("tender_industries")
+      .select("tender_id, industry_code")
+      .in("tender_id", tenderIds)
+      .in("industry_code", [...activeCodesSet]);
+    tiRows = data as { tender_id: string; industry_code: string }[] | null;
+  }
+  const tenderToCodes = new Map<string, Set<string>>();
+  for (const t of rawList) {
+    const codes = new Set<string>();
+    if (t.primary_industry_code && activeCodesSet.has(t.primary_industry_code)) codes.add(t.primary_industry_code);
+    tenderToCodes.set(t.id, codes);
+  }
+  for (const row of tiRows ?? []) {
+    if (!tenderIdsSet.has(row.tender_id) || !activeCodesSet.has(row.industry_code)) continue;
+    tenderToCodes.get(row.tender_id)?.add(row.industry_code);
+  }
+  const list = rawList.filter((t) => (tenderToCodes.get(t.id)?.size ?? 0) > 0);
+
+  return {
+    period_key: periodKey,
+    period_label: formatWeekLabel(periodKey),
+    count_total: list.length,
+    top_tenders: toTopTenderItems(list, 5),
   };
 }

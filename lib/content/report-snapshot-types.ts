@@ -5,7 +5,10 @@
 
 export const REPORT_TYPE_WEEKLY_MARKET_SUMMARY = "weekly_market_summary";
 export const REPORT_TYPE_DEADLINE_SOON = "deadline_soon";
+export const REPORT_TYPE_OPENING_SCHEDULED = "opening_scheduled";
+export const REPORT_TYPE_LARGE_TENDER_TOP = "large_tender_top";
 export const REPORT_TYPE_PREP_SHORT = "prep_short";
+export const REPORT_TYPE_REGION_MARKET = "region_market";
 export const REPORT_TYPE_REBID_INSTITUTIONS = "rebid_institutions";
 export const REPORT_TYPE_CONTRACT_METHOD = "contract_method";
 export const REPORT_TYPE_LICENSE_LIMIT = "license_limit";
@@ -16,7 +19,10 @@ export const REPORT_TYPE_REGION_INSTITUTION = "region_institution";
 export type ReportType =
   | typeof REPORT_TYPE_WEEKLY_MARKET_SUMMARY
   | typeof REPORT_TYPE_DEADLINE_SOON
+  | typeof REPORT_TYPE_OPENING_SCHEDULED
+  | typeof REPORT_TYPE_LARGE_TENDER_TOP
   | typeof REPORT_TYPE_PREP_SHORT
+  | typeof REPORT_TYPE_REGION_MARKET
   | typeof REPORT_TYPE_REBID_INSTITUTIONS
   | typeof REPORT_TYPE_CONTRACT_METHOD
   | typeof REPORT_TYPE_LICENSE_LIMIT
@@ -28,7 +34,10 @@ export type ReportType =
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   [REPORT_TYPE_WEEKLY_MARKET_SUMMARY]: "주간시장요약 리포트",
   [REPORT_TYPE_DEADLINE_SOON]: "마감 임박 리포트",
+  [REPORT_TYPE_OPENING_SCHEDULED]: "개찰 예정 리포트",
+  [REPORT_TYPE_LARGE_TENDER_TOP]: "대형 공고 TOP 리포트",
   [REPORT_TYPE_PREP_SHORT]: "준비기간 짧은 공고 리포트",
+  [REPORT_TYPE_REGION_MARKET]: "지역 시장 리포트",
   [REPORT_TYPE_REBID_INSTITUTIONS]: "재공고 많은 기관 리포트",
   [REPORT_TYPE_CONTRACT_METHOD]: "계약방법별 리포트",
   [REPORT_TYPE_LICENSE_LIMIT]: "면허·업종 제한 리포트",
