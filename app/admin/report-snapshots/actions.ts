@@ -13,7 +13,13 @@ export type PublishSnapshotResult =
  * 리포트 스냅샷을 글로 발행. post 생성 또는 기존 post 업데이트 후 published_post_id 연결.
  */
 export async function publishReportSnapshot(snapshotId: string): Promise<PublishSnapshotResult> {
-  const supabase = createServiceSupabase();
+  let supabase;
+  try {
+    supabase = createServiceSupabase();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `서버 설정 오류: ${msg}. (SUPABASE_SERVICE_ROLE_KEY 확인)` };
+  }
 
   const { data: snapshot, error: fetchErr } = await supabase
     .from("report_snapshots")
@@ -90,4 +96,14 @@ export async function publishReportSnapshot(snapshotId: string): Promise<Publish
     postId: post.id,
     message: `${getReportTypeLabel(snapshot.report_type as string)} 글이 생성되었습니다. 글 관리에서 확인·발행하세요.`,
   };
+}
+
+// 래퍼: 예외 시 클라이언트에 오류 전달
+export async function publishReportSnapshotSafe(snapshotId: string): Promise<PublishSnapshotResult> {
+  try {
+    return await publishReportSnapshot(snapshotId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `글 발행 중 오류: ${msg}` };
+  }
 }

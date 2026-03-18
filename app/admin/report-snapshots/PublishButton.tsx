@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { publishReportSnapshot } from "./actions";
+import { publishReportSnapshotSafe } from "./actions";
 
 type Props = { snapshotId: string; publishedPostId: string | null };
 
@@ -14,7 +14,7 @@ export default function PublishButton({ snapshotId, publishedPostId }: Props) {
   async function handlePublish() {
     setLoading(true);
     setMessage(null);
-    const result = await publishReportSnapshot(snapshotId);
+    const result = await publishReportSnapshotSafe(snapshotId);
     setLoading(false);
     if (result.ok) {
       setMessage({ ok: true, text: result.message });
@@ -43,7 +43,10 @@ export default function PublishButton({ snapshotId, publishedPostId }: Props) {
         {hasPublishedPost ? "글 내용 갱신" : "글 발행"}
       </button>
       {message && (
-        <span className={`text-xs ${message.ok ? "text-green-600" : "text-red-600"}`}>
+        <span
+          className={`block max-w-[200px] text-xs ${message.ok ? "text-green-700" : "text-red-700 font-medium"}`}
+          role="alert"
+        >
           {message.text}
         </span>
       )}

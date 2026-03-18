@@ -25,8 +25,8 @@ export function reportContentToMarkdown(content: ReportContentBlock & { region_t
   }
 
   if (content.top3?.length) {
-    const rows = (content.top3 as { title?: string; agency?: string; budget?: string; deadline?: string }[]).map(
-      (t, i) => `| ${i + 1} | ${cell(t.title ?? "")} | ${cell(t.agency ?? "")} | ${cell(t.budget ?? "")} | ${cell(t.deadline ?? "")} |`
+    const rows = (content.top3 as { title?: string; agency?: string; budget?: number; budgetLabel?: string; deadline?: string; deadlineLabel?: string }[]).map(
+      (t, i) => `| ${i + 1} | ${cell(t.title ?? "")} | ${cell(t.agency ?? "")} | ${cell(t.budgetLabel ?? (t.budget != null ? String(t.budget) : ""))} | ${cell(t.deadlineLabel ?? t.deadline ?? "")} |`
     );
     sections.push("## 예산 상위 공고 TOP 3\n\n| 순위 | 공고명 | 발주기관 | 예산 | 마감 |\n| --- | --- | --- | --- | --- |\n" + rows.join("\n"));
   }
