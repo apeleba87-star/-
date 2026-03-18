@@ -94,14 +94,27 @@ export async function POST(req: NextRequest) {
       console.warn("[admin/generate-content] report_snapshots:", snapshots.error);
     }
 
+    const snapshotError = !snapshots.ok ? snapshots.error : undefined;
+    const baseMessage = result.skipped
+      ? result.reason === "no_tenders"
+        ? "오늘 등록된 입찰이 없어 건너뛰었습니다."
+        : result.reason
+      : "일간 입찰 리포트가 생성되었습니다. 글 관리에서 확인·발행할 수 있습니다.";
+    const messageWithSnapshot = snapshotError
+      ? `${baseMessage} (리포트 스냅샷 실패: ${snapshotError})`
+      : snapshots.ok && snapshots.created.length > 0
+        ? `${baseMessage} 리포트 스냅샷도 갱신되었습니다.`
+        : baseMessage;
+
     if (result.skipped) {
       return NextResponse.json({
         ok: true,
         skipped: true,
         reason: result.reason,
         run_key: runKey,
-        message: result.reason === "no_tenders" ? "오늘 등록된 입찰이 없어 건너뛰었습니다." : result.reason,
+        message: messageWithSnapshot,
         snapshots: snapshots.ok ? { created: snapshots.created, skipped: snapshots.skipped } : undefined,
+        snapshot_error: snapshotError,
       });
     }
 
@@ -111,8 +124,9 @@ export async function POST(req: NextRequest) {
       post_id: result.postId,
       run_id: result.runId,
       run_key: runKey,
-      message: "일간 입찰 리포트가 생성되었습니다. 글 관리에서 확인·발행할 수 있습니다. 리포트 스냅샷도 갱신되었습니다.",
+      message: messageWithSnapshot,
       snapshots: snapshots.ok ? { created: snapshots.created, skipped: snapshots.skipped } : undefined,
+      snapshot_error: snapshotError,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -18,7 +18,12 @@ export default function GenerateContentButton() {
       const res = await fetch(url, { method: "POST" });
       const data = await res.json();
       if (data.ok) {
-        setResult({ ok: true, message: data.message ?? "생성 완료" });
+        const msg = data.message ?? "생성 완료";
+        const snapErr = data.snapshot_error;
+        setResult({
+          ok: true,
+          message: snapErr ? `${msg} 스냅샷 오류: ${snapErr}` : msg,
+        });
         router.refresh();
       } else {
         setResult({ ok: false, error: data.error ?? "실패" });

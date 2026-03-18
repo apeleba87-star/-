@@ -31,7 +31,10 @@ export default async function AdminReportSnapshotsPage() {
       {!snapshots?.length ? (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-600">
           <p>아직 스냅샷이 없습니다.</p>
-          <p className="mt-1 text-sm">자동 생성 로그에서 &quot;수동 생성&quot;을 실행하면 주간 시장 요약 등이 여기에 생성됩니다.</p>
+          <p className="mt-1 text-sm">자동 생성 로그에서 &quot;지금 일간 리포트 생성&quot;을 실행하면 주간 시장 요약 등이 여기에 생성됩니다.</p>
+          <p className="mt-3 text-xs text-slate-500">
+            생성 후에도 비어 있다면 Supabase에 마이그레이션 <code className="rounded bg-slate-200 px-1">070_report_snapshots.sql</code> 적용 여부를 확인하세요. 적용 후 다시 리포트 생성을 실행하면 스냅샷이 쌓입니다.
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
