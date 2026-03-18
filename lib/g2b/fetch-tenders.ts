@@ -7,7 +7,7 @@
  */
 
 import { createClient } from "@/lib/supabase-server";
-import { getBidPblancListInfoServc, getBidPblancListInfoLicenseLimitByRange, getBidPblancListInfoServcPPSSrch, extractItems } from "./client";
+import { getBidPblancListInfoServc, getBidPblancListInfoLicenseLimitByRange, getBidPblancListInfoServcPPSSrch, getBidPblancListInfoServcBsisAmount, extractItems } from "./client";
 import { parseIndustryRestrictionsFromDetailResponse } from "./industry-from-detail";
 import { mapItemToTender, matchKeywords } from "./mapper";
 import { computeCategoryScores } from "./clean-score";
@@ -19,7 +19,7 @@ import {
   type IndustryMatchResult,
 } from "./industry-from-raw";
 import { getTenderKeywordsEnabled } from "@/lib/app-settings";
-import { parseRegionSidoList } from "@/lib/tender-utils";
+import { parseRegionSidoList, getBaseAmtFromRaw } from "@/lib/tender-utils";
 
 function getSupabase() {
   return createClient();
@@ -182,6 +182,8 @@ export async function runTenderFetch(options?: {
   listKeys?: string[];
   /** ServcPPSSrch(업종코드별)로 반영한 공고 수 */
   ppssrchMatchedCount?: number;
+  /** 기초금액 상세 API로 채운 base_amt 건수 */
+  baseAmtFilled?: number;
 }> {
   const range = getDateRangeLast24HoursKst();
   const supabase = getSupabase();
@@ -283,6 +285,54 @@ export async function runTenderFetch(options?: {
       console.log("[G2B 목록API 업종] 매칭된 공고:", listApiMatchedIds.size, "건");
     }
     onProgress?.({ phase: "upsert", total: processed, done: processed, message: `목록 API 업종 반영: ${listApiMatchedIds.size}건` });
+
+    // ─── [Phase 1.5] 기초금액 상세 API로 base_amt 미입력 건 보강 (예산란 채우기) ─────────
+    let baseAmtFilled = 0;
+    if (process.env.DATA_GO_KR_SERVICE_KEY?.trim()) {
+      const needBaseAmt: { payload: Record<string, unknown>; tenderId: string }[] = [];
+      for (let i = 0; i < allPayloads.length; i++) {
+        const p = allPayloads[i];
+        const hasAmt = p.base_amt != null && Number(p.base_amt) > 0;
+        if (hasAmt) continue;
+        const key = `${normNo(p.bid_ntce_no)}|${normOrdFn(p.bid_ntce_ord)}`;
+        const tenderId = fullIdByKey.get(key);
+        if (!tenderId) continue;
+        needBaseAmt.push({ payload: p, tenderId });
+      }
+      if (needBaseAmt.length > 0) {
+        onProgress?.({ phase: "upsert", total: needBaseAmt.length, done: 0, message: `기초금액 상세 조회 중 (${needBaseAmt.length}건)…` });
+        const BSIS_DELAY_MS = 350;
+        for (let idx = 0; idx < needBaseAmt.length; idx++) {
+          const { payload, tenderId } = needBaseAmt[idx];
+          if (idx > 0) await new Promise((r) => setTimeout(r, BSIS_DELAY_MS));
+          try {
+            const bidNo = String(payload.bid_ntce_no ?? "").trim();
+            const bidOrd = normOrdFn(payload.bid_ntce_ord);
+            if (!bidNo) continue;
+            const bsisRes = await getBidPblancListInfoServcBsisAmount({
+              bidNtceNo: bidNo,
+              bidNtceOrd: bidOrd,
+              pageNo: 1,
+              numOfRows: 10,
+            });
+            const items = extractItems(bsisRes);
+            const first = Array.isArray(items) ? items[0] : items;
+            const amt = first != null ? getBaseAmtFromRaw(first) : null;
+            if (amt != null && amt > 0) {
+              const { error: updErr } = await supabase
+                .from("tenders")
+                .update({ base_amt: amt, updated_at: new Date().toISOString() })
+                .eq("id", tenderId);
+              if (!updErr) baseAmtFilled += 1;
+            }
+          } catch {
+            // 단건 실패 시 스킵 (429/타임아웃 등)
+          }
+          onProgress?.({ phase: "upsert", total: needBaseAmt.length, done: idx + 1, message: `기초금액 상세 ${idx + 1}/${needBaseAmt.length}건…` });
+        }
+        onProgress?.({ phase: "upsert", total: processed, done: processed, message: `기초금액 보강 완료: ${baseAmtFilled}건 반영` });
+      }
+    }
 
     // ─── [Phase 2] 면허제한 API 14일치 전체 수집 → 공고번호로 DB 직접 조회 매칭 ─────────
     // 이유: 면허 등록일(inqryBgnDt) ≠ 공고 발표일이라 날짜 축이 다름.
@@ -554,6 +604,7 @@ export async function runTenderFetch(options?: {
       licenseKeys,
       matchedLicenseKeys,
       listKeys,
+      baseAmtFilled,
     };
   } catch (
     e: unknown
@@ -567,6 +618,6 @@ export async function runTenderFetch(options?: {
       message = String(e);
     }
     if (!message.trim()) message = "알 수 없는 오류";
-    return { ok: false, tenders: 0, inserted: 0, updated: 0, licenseReflected: 0, licenseRawCount: 0, ppssrchMatchedCount: 0, error: message, licenseKeys: undefined, matchedLicenseKeys: undefined, listKeys: undefined };
+    return { ok: false, tenders: 0, inserted: 0, updated: 0, licenseReflected: 0, licenseRawCount: 0, ppssrchMatchedCount: 0, error: message, licenseKeys: undefined, matchedLicenseKeys: undefined, listKeys: undefined, baseAmtFilled: undefined };
   }
 }
