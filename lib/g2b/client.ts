@@ -352,6 +352,34 @@ export async function getBidPblancListInfoServcBsisAmount(
   return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
+/** 용역 기초금액 조회 (기간+페이지). 문서상 inqryBgnDt·inqryEndDt로 기초금액 등록일시 구간 조회 가능. */
+export async function getBidPblancListInfoServcBsisAmountByRange(
+  params: G2BListParams
+): Promise<G2BListResponse<Record<string, unknown>>> {
+  const url = buildUrl("getBidPblancListInfoServcBsisAmount", {
+    pageNo: params.pageNo ?? 1,
+    numOfRows: params.numOfRows ?? 100,
+    inqryDiv: params.inqryDiv ?? "1",
+    inqryBgnDt: params.inqryBgnDt,
+    inqryEndDt: params.inqryEndDt,
+  });
+  const res = await safeFetch(url, G2B_FETCH_OPTIONS);
+  const text = await res.text();
+  if (!res.ok) {
+    let errMsg = `G2B API error: ${res.status}`;
+    try {
+      const parsed = parseResponse(text);
+      const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
+      const msg = header?.resultMsg ?? header?.resultCode;
+      if (msg) errMsg += ` - ${msg}`;
+    } catch {
+      if (text.length < 200) errMsg += ` - ${text}`;
+    }
+    throw new Error(errMsg);
+  }
+  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+}
+
 /** 참가가능지역 (공고번호·차수 기준) */
 export async function getBidPblancListInfoPrtcptPsblRgn(
   params: G2BAtchFileParams

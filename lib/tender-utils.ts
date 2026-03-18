@@ -83,7 +83,7 @@ export function calcStrategyPrices(lowerPrice: number | null | undefined): {
 
 /** raw 객체에서 기초금액 추출 (공공데이터 API 필드명) - 목록/상세 공통 */
 const BASE_AMT_KEYS = [
-  "bsisAmt", "BsisAmt", "base_amt", "기초금액", "추정가격", "예정가격", "estmtAmt", "estmt_amt",
+  "bssamt", "bsisAmt", "BsisAmt", "base_amt", "기초금액", "추정가격", "예정가격", "estmtAmt", "estmt_amt",
   "asignBdgtAmt", "bdgtAmt", "배정예산금액", "예산금액", "presmtPrce", "presmt_prce",
 ];
 

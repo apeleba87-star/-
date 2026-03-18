@@ -7,7 +7,7 @@
  */
 
 import { createClient } from "@/lib/supabase-server";
-import { getBidPblancListInfoServc, getBidPblancListInfoLicenseLimitByRange, getBidPblancListInfoServcPPSSrch, getBidPblancListInfoServcBsisAmount, extractItems } from "./client";
+import { getBidPblancListInfoServc, getBidPblancListInfoLicenseLimitByRange, getBidPblancListInfoServcPPSSrch, getBidPblancListInfoServcBsisAmountByRange, extractItems } from "./client";
 import { parseIndustryRestrictionsFromDetailResponse } from "./industry-from-detail";
 import { mapItemToTender, matchKeywords } from "./mapper";
 import { computeCategoryScores } from "./clean-score";
@@ -286,52 +286,59 @@ export async function runTenderFetch(options?: {
     }
     onProgress?.({ phase: "upsert", total: processed, done: processed, message: `목록 API 업종 반영: ${listApiMatchedIds.size}건` });
 
-    // ─── [Phase 1.5] 기초금액 상세 API로 base_amt 미입력 건 보강 (예산란 채우기) ─────────
+    // ─── [Phase 1.5] 기초금액 API 기간+페이지 조회 → 이번 수집 건에 반영 (면허제한과 동일 방식) ─────────
     let baseAmtFilled = 0;
     if (process.env.DATA_GO_KR_SERVICE_KEY?.trim()) {
-      const needBaseAmt: { payload: Record<string, unknown>; tenderId: string }[] = [];
-      for (let i = 0; i < allPayloads.length; i++) {
-        const p = allPayloads[i];
-        const hasAmt = p.base_amt != null && Number(p.base_amt) > 0;
-        if (hasAmt) continue;
-        const key = `${normNo(p.bid_ntce_no)}|${normOrdFn(p.bid_ntce_ord)}`;
+      const allBsisItems: Record<string, unknown>[] = [];
+      const BSIS_PAGE_SIZE = 100;
+      const BSIS_PAGE_DELAY_MS = 500;
+      const maxBsisPages = 50;
+      onProgress?.({ phase: "upsert", total: 0, done: 0, message: "기초금액 기간+페이지 조회 중…" });
+      for (let pageNo = 1; pageNo <= maxBsisPages; pageNo++) {
+        if (pageNo > 1) await new Promise((r) => setTimeout(r, BSIS_PAGE_DELAY_MS));
+        try {
+          const bsisRes = await getBidPblancListInfoServcBsisAmountByRange({
+            inqryBgnDt: range.inqryBgnDt,
+            inqryEndDt: range.inqryEndDt,
+            pageNo,
+            numOfRows: BSIS_PAGE_SIZE,
+            inqryDiv: "1",
+          });
+          const items = extractItems(bsisRes) as Record<string, unknown>[];
+          allBsisItems.push(...items);
+          onProgress?.({ phase: "upsert", total: allBsisItems.length, done: allBsisItems.length, message: `기초금액 API ${allBsisItems.length}건 수집…` });
+          if (items.length < BSIS_PAGE_SIZE) break;
+        } catch (e) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[G2B 기초금액] 페이지 조회 실패:", e instanceof Error ? e.message : e);
+          }
+          break;
+        }
+      }
+      const now = new Date().toISOString();
+      const toUpdate: { tenderId: string; base_amt: number }[] = [];
+      for (const item of allBsisItems) {
+        const no = normNo(item.bidNtceNo ?? item.bid_ntce_no);
+        if (!no) continue;
+        const ord = normOrdFn(item.bidNtceOrd ?? item.bid_ntce_ord);
+        const key = `${no}|${ord}`;
         const tenderId = fullIdByKey.get(key);
         if (!tenderId) continue;
-        needBaseAmt.push({ payload: p, tenderId });
+        const amt = getBaseAmtFromRaw(item);
+        if (amt == null || amt <= 0) continue;
+        toUpdate.push({ tenderId, base_amt: amt });
       }
-      if (needBaseAmt.length > 0) {
-        onProgress?.({ phase: "upsert", total: needBaseAmt.length, done: 0, message: `기초금액 상세 조회 중 (${needBaseAmt.length}건)…` });
-        const BSIS_DELAY_MS = 350;
-        for (let idx = 0; idx < needBaseAmt.length; idx++) {
-          const { payload, tenderId } = needBaseAmt[idx];
-          if (idx > 0) await new Promise((r) => setTimeout(r, BSIS_DELAY_MS));
-          try {
-            const bidNo = String(payload.bid_ntce_no ?? "").trim();
-            const bidOrd = normOrdFn(payload.bid_ntce_ord);
-            if (!bidNo) continue;
-            const bsisRes = await getBidPblancListInfoServcBsisAmount({
-              bidNtceNo: bidNo,
-              bidNtceOrd: bidOrd,
-              pageNo: 1,
-              numOfRows: 10,
-            });
-            const items = extractItems(bsisRes);
-            const first = Array.isArray(items) ? items[0] : items;
-            const amt = first != null ? getBaseAmtFromRaw(first) : null;
-            if (amt != null && amt > 0) {
-              const { error: updErr } = await supabase
-                .from("tenders")
-                .update({ base_amt: amt, updated_at: new Date().toISOString() })
-                .eq("id", tenderId);
-              if (!updErr) baseAmtFilled += 1;
-            }
-          } catch {
-            // 단건 실패 시 스킵 (429/타임아웃 등)
-          }
-          onProgress?.({ phase: "upsert", total: needBaseAmt.length, done: idx + 1, message: `기초금액 상세 ${idx + 1}/${needBaseAmt.length}건…` });
-        }
-        onProgress?.({ phase: "upsert", total: processed, done: processed, message: `기초금액 보강 완료: ${baseAmtFilled}건 반영` });
+      const BATCH_SIZE = 20;
+      for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
+        const batch = toUpdate.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(({ tenderId, base_amt }) =>
+            supabase.from("tenders").update({ base_amt, updated_at: now }).eq("id", tenderId)
+          )
+        );
+        baseAmtFilled += batch.length;
       }
+      onProgress?.({ phase: "upsert", total: processed, done: processed, message: `기초금액 보강 완료: ${baseAmtFilled}건 반영` });
     }
 
     // ─── [Phase 2] 면허제한 API 14일치 전체 수집 → 공고번호로 DB 직접 조회 매칭 ─────────
