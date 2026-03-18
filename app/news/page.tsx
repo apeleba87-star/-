@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { getKstDateString } from "@/lib/content/kst-utils";
+import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard, { type NewsCardBadge } from "@/components/news/NewsCard";
 
@@ -93,12 +94,12 @@ export default async function NewsPage({
     );
   }
 
-  // 입찰 리포트: source_type 기준 + slug 패턴(과거/수동 생성 건) 포함
+  // 입찰·리포트: source_type 있거나 slug가 일간/리포트 패턴인 발행 글
   const { data: posts } = await supabase
     .from("posts")
     .select("id, title, excerpt, published_at, slug, source_type, source_ref")
     .not("published_at", "is", null)
-    .or("source_type.eq.auto_tender_daily,slug.ilike.%daily-tender-digest")
+    .or("source_type.not.is.null,slug.ilike.*daily-tender-digest*,slug.ilike.*report-*")
     .order("published_at", { ascending: false })
     .limit(50);
 
@@ -120,13 +121,17 @@ export default async function NewsPage({
         ) : (
           <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post, index) => {
-              const sourceRef = (post as { source_ref?: string | null })
-                .source_ref ?? null;
-              const isToday = sourceRef === todayKst;
+              const sourceType = (post as { source_type?: string | null }).source_type ?? null;
+              const sourceRef = (post as { source_ref?: string | null }).source_ref ?? null;
+              const isDaily = sourceType === "auto_tender_daily" || (post.slug ?? "").includes("daily-tender-digest");
+              const isToday = isDaily && sourceRef === todayKst;
               const isFree = isToday || index === 0;
-              const listTitle = isToday
-                ? "오늘 청소 입찰 리포트"
-                : formatReportDateLabel(sourceRef);
+              const listTitle = isDaily
+                ? isToday
+                  ? "오늘 청소 입찰 리포트"
+                  : formatReportDateLabel(sourceRef)
+                : post.title;
+              const categoryTag = isDaily ? "입찰 리포트" : getReportTypeLabel(sourceType ?? "");
               const badge: NewsCardBadge = isFree ? "free" : "premium";
               return (
                 <li key={post.id}>
@@ -144,7 +149,7 @@ export default async function NewsPage({
                         : ""
                     }
                     badge={badge}
-                    categoryTag="입찰 리포트"
+                    categoryTag={categoryTag}
                   />
                 </li>
               );

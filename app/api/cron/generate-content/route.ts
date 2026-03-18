@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { getRunKey, getRunTypeFromApi, GENERATOR_VERSION } from "@/lib/content/content-generation-runs";
 import { buildDailyTenderReport } from "@/lib/content/build-daily-tender-report";
+import { buildReportSnapshots } from "@/lib/content/build-report-snapshots";
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +80,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const snapshots = await buildReportSnapshots(supabase, { date: new Date() });
+    if (!snapshots.ok) {
+      console.warn("[generate-content] report_snapshots:", snapshots.error);
+    }
+
     if (result.skipped) {
       return NextResponse.json({
         ok: true,
         skipped: true,
         reason: result.reason,
         run_key: runKey,
+        snapshots: snapshots.ok ? { created: snapshots.created, skipped: snapshots.skipped } : undefined,
       });
     }
 
@@ -94,6 +101,7 @@ export async function POST(req: NextRequest) {
       post_id: result.postId,
       run_id: result.runId,
       run_key: runKey,
+      snapshots: snapshots.ok ? { created: snapshots.created, skipped: snapshots.skipped } : undefined,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

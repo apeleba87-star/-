@@ -139,14 +139,17 @@ export default function HomeDashboard({
         {/* 1행: 입찰 · 인력 구인 · 업계 소식 */}
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <DashboardCard
-            title="청소·방역 입찰"
+            title="청소·방역 입찰 공고"
             href={loginNext("/tenders")}
             icon={<TrendingUp className="h-5 w-5" />}
             iconBg="bg-blue-500"
             delay={0.05}
           >
-            <p className="font-semibold text-slate-800">등록 업종 기준 {tenderCount}건 접수 중</p>
-            <p className="mt-0.5 text-slate-500">오늘 공고 {tenderTodayCount}건</p>
+            <p className="text-sm text-slate-900">등록 업종 기준</p>
+            <p className="mt-0.5">
+              <span className="text-xl font-bold text-slate-900">{tenderCount}건</span>
+              <span className="ml-1 text-slate-900">접수 중</span>
+            </p>
           </DashboardCard>
 
           <DashboardCard

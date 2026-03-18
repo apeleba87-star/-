@@ -69,9 +69,16 @@ export default function TenderSection({
       <div className={`${homeSectionIconBox} bg-blue-500`}>
         <FileText className="h-5 w-5" />
       </div>
-      <h2 className="text-xl font-bold text-slate-900">청소·방역·소독 입찰</h2>
-      <p className="mt-0.5 text-xs text-slate-500">
-        {blind ? "등록 업종 기준 —건 · 오늘 공고 —건" : `등록 업종 기준 ${relatedCount}건 · 오늘 공고 ${todayCount}건`}
+      <h2 className="text-xl font-bold text-slate-900">청소·방역·소독 입찰 공고</h2>
+      <p className="mt-0.5 text-xs text-slate-900">
+        등록 업종 기준{" "}
+        {blind ? (
+          "—건"
+        ) : (
+          <>
+            <span className="font-bold text-slate-900">{relatedCount}건</span> 접수 중
+          </>
+        )}
       </p>
 
       {industryLineItems.length > 0 && (

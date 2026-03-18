@@ -7,6 +7,7 @@ import { createServerSupabase } from "@/lib/supabase-server";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { getRunKey, getRunTypeFromApi, GENERATOR_VERSION } from "@/lib/content/content-generation-runs";
 import { buildDailyTenderReport } from "@/lib/content/build-daily-tender-report";
+import { buildReportSnapshots } from "@/lib/content/build-report-snapshots";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const snapshots = await buildReportSnapshots(supabase, { date: new Date() });
+    if (!snapshots.ok) {
+      console.warn("[admin/generate-content] report_snapshots:", snapshots.error);
+    }
+
     if (result.skipped) {
       return NextResponse.json({
         ok: true,
@@ -95,6 +101,7 @@ export async function POST(req: NextRequest) {
         reason: result.reason,
         run_key: runKey,
         message: result.reason === "no_tenders" ? "오늘 등록된 입찰이 없어 건너뛰었습니다." : result.reason,
+        snapshots: snapshots.ok ? { created: snapshots.created, skipped: snapshots.skipped } : undefined,
       });
     }
 
@@ -104,7 +111,8 @@ export async function POST(req: NextRequest) {
       post_id: result.postId,
       run_id: result.runId,
       run_key: runKey,
-      message: "일간 입찰 리포트가 생성되었습니다. 글 관리에서 확인·발행할 수 있습니다.",
+      message: "일간 입찰 리포트가 생성되었습니다. 글 관리에서 확인·발행할 수 있습니다. 리포트 스냅샷도 갱신되었습니다.",
+      snapshots: snapshots.ok ? { created: snapshots.created, skipped: snapshots.skipped } : undefined,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

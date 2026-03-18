@@ -33,14 +33,23 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const toYmdHm = (d: Date) =>
   `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
 
-/** 지금 시각 기준 최근 24시간 구간 (입찰 목록 수집용) */
-function getDateRangeLast12Hours(): { inqryBgnDt: string; inqryEndDt: string } {
-  const end = new Date();
-  const start = new Date();
-  start.setHours(start.getHours() - 24);
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** Date를 KST 시각으로 해석한 뒤 YYYYMMDDHHmm (API는 게시일자 기준 KST 사용) */
+function toYmdHmKst(utcDate: Date): string {
+  const kst = new Date(utcDate.getTime() + KST_OFFSET_MS);
+  return `${kst.getUTCFullYear()}${pad(kst.getUTCMonth() + 1)}${pad(kst.getUTCDate())}${pad(kst.getUTCHours())}${pad(kst.getUTCMinutes())}`;
+}
+
+/** 지금 시각 기준 최근 24시간 구간 — KST 기준 (API 게시일자가 KST이므로 서버가 UTC여도 오늘 18일 전체 포함) */
+function getDateRangeLast24HoursKst(): { inqryBgnDt: string; inqryEndDt: string } {
+  const now = new Date();
+  const endKst = toYmdHmKst(now);
+  const startUtc = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const startKst = toYmdHmKst(startUtc);
   return {
-    inqryBgnDt: toYmdHm(start),
-    inqryEndDt: toYmdHm(end),
+    inqryBgnDt: startKst,
+    inqryEndDt: endKst,
   };
 }
 
@@ -174,7 +183,7 @@ export async function runTenderFetch(options?: {
   /** ServcPPSSrch(업종코드별)로 반영한 공고 수 */
   ppssrchMatchedCount?: number;
 }> {
-  const range = getDateRangeLast12Hours();
+  const range = getDateRangeLast24HoursKst();
   const supabase = getSupabase();
   const keywordsEnabled = await getTenderKeywordsEnabled(supabase);
   const byCategory = keywordsEnabled ? await getTenderKeywordOptionsByCategory() : EMPTY_KEYWORD_OPTIONS;

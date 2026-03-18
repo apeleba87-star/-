@@ -79,6 +79,7 @@ export default async function AdminContentRunsPage() {
                   <td className="p-3 text-slate-600">
                     {run.started_at
                       ? new Date(run.started_at).toLocaleString("ko-KR", {
+                          timeZone: "Asia/Seoul",
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",

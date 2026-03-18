@@ -52,6 +52,9 @@ export default async function AdminLayout({
         <Link href="/admin/content-runs" className="font-medium text-slate-700 hover:text-slate-900">
           자동 생성 로그
         </Link>
+        <Link href="/admin/report-snapshots" className="font-medium text-slate-700 hover:text-slate-900">
+          리포트 스냅샷
+        </Link>
         <Link href="/admin/ugc" className="font-medium text-slate-700 hover:text-slate-900">
           UGC 검수
         </Link>

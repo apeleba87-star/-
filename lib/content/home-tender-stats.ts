@@ -27,6 +27,28 @@ export type HomeTenderStats = {
 
 const OPEN_TENDERS_LIMIT = 2000;
 
+/** 공고일 문자열 추출: bid_ntce_dt 우선, 없으면 raw에서 공고일시 파싱 (오늘 공고 집계용) */
+function getNoticeDateStr(
+  t: { bid_ntce_dt?: string | null; raw?: unknown }
+): string | null {
+  if (t.bid_ntce_dt != null && String(t.bid_ntce_dt).trim()) return t.bid_ntce_dt;
+  const raw = t.raw as Record<string, unknown> | undefined;
+  if (!raw) return null;
+  const v = raw["bidNtceDt"] ?? raw["bid_ntce_dt"] ?? raw["공고일시"];
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  const num = s.replace(/\D/g, "");
+  if (num.length >= 8) {
+    const y = num.slice(0, 4);
+    const m = num.slice(4, 6);
+    const d = num.slice(6, 8);
+    const rest = num.length >= 14 ? `T${num.slice(8, 10)}:${num.slice(10, 12)}:${num.slice(12, 14)}` : "";
+    return `${y}-${m}-${d}${rest ? rest + "Z" : ""}`;
+  }
+  return null;
+}
+
 /**
  * 등록 업종(is_active) 기준으로 접수 중(bid_clse_dt > now) 입찰을 집계하고,
  * 업종별 건수, 1위 업종, 최근 5건을 반환.
@@ -94,7 +116,7 @@ export async function getHomeTenderStats(
   const matched = openTenders.filter((t) => (tenderToCodes.get(t.id)?.size ?? 0) > 0);
 
   const tenderTodayCount = matched.filter((t) => {
-    const dt = t.bid_ntce_dt ?? null;
+    const dt = getNoticeDateStr(t);
     if (!dt) return false;
     return dt >= todayStart && dt <= todayEnd;
   }).length;
