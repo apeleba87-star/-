@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { Metadata } from "next";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActivePostDetailAds } from "@/lib/ads";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
@@ -15,6 +16,19 @@ import ReportSnapshotView from "@/components/report/ReportSnapshotView";
 
 export const revalidate = 60;
 
+type PostPageParams = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: PostPageParams): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = createClient();
+  const byId = await supabase.from("posts").select("title, excerpt").eq("id", id).not("published_at", "is", null).single();
+  const post = byId.data ?? (await supabase.from("posts").select("title, excerpt").eq("slug", id).not("published_at", "is", null).single()).data;
+  if (!post) return {};
+  const title = (post.title ?? "").trim() || "글";
+  const description = (post.excerpt ?? "").trim().slice(0, 160) || undefined;
+  return { title, description };
+}
+
 function getReportDate(post: { source_ref?: string | null; slug?: string | null }): string | null {
   if (post.source_ref && /^\d{4}-\d{2}-\d{2}$/.test(post.source_ref)) return post.source_ref;
   const slug = typeof post.slug === "string" ? post.slug : "";
@@ -22,11 +36,7 @@ function getReportDate(post: { source_ref?: string | null; slug?: string | null 
   return m ? m[1] : null;
 }
 
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function PostPage({ params }: PostPageParams) {
   const { id } = await params;
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();

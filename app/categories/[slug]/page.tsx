@@ -1,14 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
+import type { Metadata } from "next";
 
 export const revalidate = 60;
 
-export default async function CategorySlugPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = createClient();
+  const { data: category } = await supabase
+    .from("content_categories")
+    .select("name")
+    .eq("slug", slug)
+    .single();
+  if (!category) return {};
+  return {
+    title: category.name,
+    description: `클린아이덱스 ${category.name} 카테고리 — 청소·방역 업계 정보와 리포트`,
+  };
+}
+
+export default async function CategorySlugPage({ params }: Props) {
   const { slug } = await params;
   const supabase = createClient();
   const { data: category } = await supabase

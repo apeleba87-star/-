@@ -2,10 +2,36 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "청소업 정보 뉴스레터 - 클린아이덱스",
-  description: "청소업 정보 뉴스레터 클린아이덱스 — 입찰·구인·현장 데이터와 커뮤니티",
+  metadataBase: new URL(getBaseUrl()),
+  title: {
+    default: defaultTitle,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: defaultDescription,
+  keywords: ["청소업", "입찰", "방역", "청소 입찰", "나라장터", "견적", "현장거래", "클린아이덱스"],
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    siteName: SITE_NAME,
+    title: defaultTitle,
+    description: defaultDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultTitle,
+    description: defaultDescription,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  verification: {
+    google: "UO9z3IKVF-hrc9UgeQdQLQpywP2-Wdirz9JSt8YIlKY",
+  },
 };
 
 export const viewport: Viewport = {

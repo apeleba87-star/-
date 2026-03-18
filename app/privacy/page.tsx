@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "개인정보 처리방침 | 클린아이덱스",
+  title: "개인정보 처리방침",
   description: "클린아이덱스 개인정보 처리방침",
 };
 

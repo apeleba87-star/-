@@ -3,8 +3,14 @@ import { getKstDateString } from "@/lib/content/kst-utils";
 import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard, { type NewsCardBadge } from "@/components/news/NewsCard";
+import type { Metadata } from "next";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "뉴스·리포트",
+  description: "청소·방역 입찰 리포트와 업계 뉴스. 클린아이덱스에서 입찰 요약, 마감 임박, 개찰 예정 공고와 업계 정보를 확인하세요.",
+};
 
 const CATEGORY_REPORT = "report";
 const CONTENT_CATEGORY_SLUGS = ["chemical", "equipment", "labor", "industry"] as const;
