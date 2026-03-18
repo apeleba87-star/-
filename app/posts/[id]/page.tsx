@@ -11,6 +11,7 @@ import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import DailyTenderReportDashboard from "@/components/report/DailyTenderReportDashboard";
 import ReportPaywallLock from "@/components/report/ReportPaywallLock";
+import ReportSnapshotView from "@/components/report/ReportSnapshotView";
 
 export const revalidate = 60;
 
@@ -149,6 +150,7 @@ type PostForRender = {
   source_ref?: string | null;
   slug?: string | null;
   category?: { slug: string; name: string } | null;
+  report_snapshot?: unknown;
 };
 
 type PostDetailAds = Awaited<ReturnType<typeof getActivePostDetailAds>>;
@@ -159,6 +161,15 @@ function isReportPost(post: PostForRender): boolean {
   if (post.source_type) return true;
   const slug = typeof post.slug === "string" ? post.slug : "";
   return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
+}
+
+/** 스냅샷 리포트(주간 시장 요약, 마감 임박 등) 여부: report_snapshot 구조화 콘텐츠 있음 */
+function isSnapshotReport(post: PostForRender): boolean {
+  if (!post.source_type || post.source_type === "auto_tender_daily") return false;
+  const snap = post.report_snapshot;
+  if (!snap || typeof snap !== "object") return false;
+  const o = snap as Record<string, unknown>;
+  return Array.isArray(o.key_metrics) || typeof o.headline === "string";
 }
 
 function renderPost(
@@ -200,6 +211,25 @@ function renderPost(
             dateLabel={reportData!.payload.dateLabel}
             insightSentence={reportData!.insightSentence}
             excerpt={post.excerpt}
+          />
+          {showBottomAd && ads.post_bottom && (
+            <div className="mt-8">
+              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+            </div>
+          )}
+        </>
+      ) : isReport && isSnapshotReport(post) && post.report_snapshot && typeof post.report_snapshot === "object" ? (
+        <>
+          {showTopAd && ads.post_top && (
+            <div className="mb-6">
+              <AdSlotRenderer slot={ads.post_top} variant="card" />
+            </div>
+          )}
+          <ReportSnapshotView
+            title={post.title}
+            excerpt={post.excerpt}
+            sourceType={post.source_type ?? ""}
+            content={post.report_snapshot as Parameters<typeof ReportSnapshotView>[0]["content"]}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
