@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { requestBillingPayment, isBootpayConfigured } from "@/lib/bootpay-server";
+import { getSubscriptionPromoAmountCents } from "@/lib/app-settings";
 import { sendEmail, subscriptionPaymentFailedEmailBody } from "@/lib/email";
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
 
   const { data: due, error: fetchError } = await supabase
     .from("subscriptions")
-    .select("id, user_id, billing_key, amount_cents, next_billing_at")
+    .select("id, user_id, billing_key, amount_cents, next_billing_at, promo_remaining_months")
     .eq("status", "active")
     .lte("next_billing_at", today);
 
@@ -30,19 +31,28 @@ export async function GET(req: Request) {
   }
 
   const results: { id: string; ok: boolean; error?: string }[] = [];
+  const promoAmount = await getSubscriptionPromoAmountCents(supabase);
 
   for (const sub of due ?? []) {
+    const usePromo =
+      sub.promo_remaining_months != null && sub.promo_remaining_months > 0 && promoAmount > 0;
+    const price = usePromo ? promoAmount : sub.amount_cents;
+
     const orderId = `order_${sub.id}_${Date.now()}`;
     const payment = await requestBillingPayment({
       billing_key: sub.billing_key,
       order_id: orderId,
       order_name: "클린아이덱스 프리미엄 월 구독",
-      price: sub.amount_cents,
+      price,
     });
 
     if (payment.success && payment.receipt_id) {
       const next = new Date();
       next.setMonth(next.getMonth() + 1);
+      const newPromoRemaining =
+        usePromo && sub.promo_remaining_months != null
+          ? Math.max(0, sub.promo_remaining_months - 1)
+          : sub.promo_remaining_months;
       await supabase
         .from("subscriptions")
         .update({
@@ -50,6 +60,7 @@ export async function GET(req: Request) {
           last_receipt_id: payment.receipt_id,
           last_billed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          ...(newPromoRemaining !== undefined && { promo_remaining_months: newPromoRemaining }),
         })
         .eq("id", sub.id);
       results.push({ id: sub.id, ok: true });

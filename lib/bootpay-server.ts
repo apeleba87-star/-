@@ -123,20 +123,38 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
     };
   }
 
+  // lookupSubscribeBillingKey는 빌링키 발급용 영수증만 지원. 결제완료(100원) 영수증이 넘어오면 실패함.
+  // receiptPayment로 조회 시 결제/빌링키 영수증 모두 billing_key를 내려주는 경우가 있으므로 폴백으로 사용.
   try {
     const receipt = await withTimeout(
       Promise.resolve(Bootpay.receiptPayment(receiptId)),
       BOOTPAY_TIMEOUT_MS
     ) as unknown as { status?: number; billing_key?: string };
-    if (receipt?.status === 11 && receipt?.billing_key) {
+    const okStatus = receipt?.status === 1 || receipt?.status === 11 || receipt?.status === 42; // 1: 결제완료, 11/42: 빌링키 발급 완료/성공
+    if (okStatus && receipt?.billing_key) {
       return { billing_key: receipt.billing_key };
     }
   } catch {
     // ignore
   }
 
+  // PG 반영 지연: 5초 후 한 번 더 빌링키 조회 시도 (0원/100원 동시 결제 시 링크 지연 대비)
+  await new Promise((r) => setTimeout(r, 5000));
+  try {
+    const res = await withTimeout(
+      Promise.resolve(Bootpay.lookupSubscribeBillingKey(receiptId)),
+      BOOTPAY_TIMEOUT_MS
+    );
+    const d = res as unknown as { billing_key?: string };
+    if (d?.billing_key) return { billing_key: d.billing_key };
+  } catch {
+    // ignore
+  }
+
   return {
-    error: lastError || "빌링키를 조회할 수 없습니다. 결제를 다시 시도해 주세요.",
+    error:
+      lastError ||
+      "결제는 완료되었으나 구독 등록에 필요한 빌링키를 가져오지 못했습니다. 잠시 후 구독 페이지를 새로고침해 다시 시도해 주세요. 계속 실패하면 고객센터에 결제 완료 사실을 알려 주시면 등록을 도와 드리겠습니다.",
   };
 }
 

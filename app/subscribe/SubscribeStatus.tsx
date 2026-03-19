@@ -6,11 +6,23 @@ import Link from "next/link";
 
 type Props = {
   nextBillingAt: string | null;
+  /** 다음 결제 금액(원). 구독자가 결제 내용을 정확히 알 수 있도록 표시 */
+  nextBillingAmountCents?: number;
+  /** 프로모 잔여 개월(0 이상이면 이번 결제는 프로모 금액) */
+  promoRemainingMonths?: number | null;
+  /** 정상가(원). 프로모 종료 후 적용되는 금액 */
+  normalAmountCents?: number;
   /** false면 취소 예정 상태(버튼 숨김) */
   showCancelButton?: boolean;
 };
 
-export default function SubscribeStatus({ nextBillingAt, showCancelButton = true }: Props) {
+export default function SubscribeStatus({
+  nextBillingAt,
+  nextBillingAmountCents,
+  promoRemainingMonths,
+  normalAmountCents = 9900,
+  showCancelButton = true,
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -46,6 +58,13 @@ export default function SubscribeStatus({ nextBillingAt, showCancelButton = true
       }
     })();
 
+  const amountFormatted =
+    nextBillingAmountCents != null
+      ? nextBillingAmountCents.toLocaleString("ko-KR")
+      : null;
+  const normalFormatted = normalAmountCents.toLocaleString("ko-KR");
+  const isPromo = promoRemainingMonths != null && promoRemainingMonths > 0;
+
   return (
     <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
       <p className="font-medium text-emerald-800">
@@ -54,6 +73,18 @@ export default function SubscribeStatus({ nextBillingAt, showCancelButton = true
       {nextDate && (
         <p className="mt-1 text-sm text-emerald-700">
           {showCancelButton ? `다음 결제일: ${nextDate}` : `이용 가능 기간: ~${nextDate}`}
+        </p>
+      )}
+      {showCancelButton && amountFormatted != null && (
+        <p className="mt-1 text-sm text-emerald-700">
+          다음 결제 금액: {amountFormatted}원
+          {isPromo && (
+            <span className="ml-1 text-emerald-600">
+              {promoRemainingMonths === 1
+                ? `(이번 결제 후 정상가 ${normalFormatted}원 적용)`
+                : `(프로모 적용 중 · 이번 포함 특가 ${promoRemainingMonths}회)`}
+            </span>
+          )}
         </p>
       )}
       {message && <p className="mt-3 text-sm text-emerald-700">{message}</p>}

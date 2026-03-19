@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { verifyReceipt, isBootpayConfigured } from "@/lib/bootpay-server";
-
-const SUBSCRIPTION_AMOUNT_CENTS = 9900; // 월 9,900원
+import {
+  getSubscriptionAmountCents,
+  getSubscriptionFirstChargeAmount,
+  getSubscriptionPromoConfig,
+} from "@/lib/app-settings";
 
 export async function POST(req: Request) {
   if (!isBootpayConfigured()) {
@@ -14,6 +17,15 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
+
+  const normalAmount = await getSubscriptionAmountCents(supabase);
+  const firstChargeAmount = await getSubscriptionFirstChargeAmount(supabase);
+  const promo = await getSubscriptionPromoConfig(supabase);
+  const appliedPromo =
+    promo.enabled &&
+    firstChargeAmount === promo.amount_cents &&
+    promo.months >= 1;
+  const promoRemaining = appliedPromo ? Math.max(0, promo.months - 1) : null;
 
   let body: { billing_key: string; receipt_id?: string };
   try {
@@ -43,11 +55,12 @@ export async function POST(req: Request) {
       user_id: user.id,
       billing_key,
       plan: "monthly",
-      amount_cents: SUBSCRIPTION_AMOUNT_CENTS,
+      amount_cents: normalAmount,
       status: "active",
       next_billing_at: nextBilling.toISOString().slice(0, 10),
       last_receipt_id: receipt_id ?? null,
       updated_at: new Date().toISOString(),
+      ...(promoRemaining !== null && { promo_remaining_months: promoRemaining }),
     },
     { onConflict: "user_id" }
   );
