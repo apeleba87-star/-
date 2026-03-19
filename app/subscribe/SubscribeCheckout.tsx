@@ -69,8 +69,9 @@ export default function SubscribeCheckout({
   // 스크립트 onLoad가 클라이언트 네비게이션 시 안 불릴 수 있음 → 이미 로드됐거나 나중에 로드되면 감지
   useEffect(() => {
     const ready = () => {
-      const Bootpay = typeof window !== "undefined" && (window.Bootpay ?? (window as unknown as { bootpay?: typeof window.Bootpay }).bootpay);
-      if (Bootpay?.requestSubscription) {
+      if (typeof window === "undefined") return false;
+      const Bootpay = window.Bootpay ?? (window as unknown as { bootpay?: typeof window.Bootpay }).bootpay;
+      if (Bootpay && typeof Bootpay === "object" && "requestSubscription" in Bootpay) {
         setBootpayReady(true);
         return true;
       }
