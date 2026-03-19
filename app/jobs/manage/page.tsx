@@ -126,14 +126,27 @@ export default async function JobsManagePage() {
       : { data: [] };
 
   const applicantUserIds = [...new Set((allApplications ?? []).map((a) => a.user_id))];
+  const acceptedUserIds = [...new Set((allApplications ?? []).filter((a) => a.status === "accepted").map((a) => a.user_id))];
   const { data: workerProfiles } =
     applicantUserIds.length > 0
       ? await supabase
           .from("worker_profiles")
-          .select("user_id, nickname, birth_date, gender, bio")
+          .select("user_id, nickname, birth_date, gender, bio, contact_phone")
           .in("user_id", applicantUserIds)
       : { data: [] };
   const profileByUser = new Map((workerProfiles ?? []).map((p) => [p.user_id, p]));
+
+  // 확정된 지원자 연락처(전화만, 이메일 제외): 구인자만 조회 가능
+  let acceptedPhoneByUser = new Map<string, string | null>();
+  if (acceptedUserIds.length > 0) {
+    const { data: acceptedProfiles } = await authSupabase
+      .from("profiles")
+      .select("id, phone")
+      .in("id", acceptedUserIds);
+    acceptedPhoneByUser = new Map(
+      (acceptedProfiles ?? []).map((p) => [p.id, (p.phone ?? "").trim() || null])
+    );
+  }
 
   const since = new Date();
   since.setDate(since.getDate() - REPORT_PERIOD_DAYS);
@@ -185,6 +198,11 @@ export default async function JobsManagePage() {
         ? birthYearToAgeRangeLabel(birthYear)
         : "—";
 
+    const contactPhone =
+      app.status === "accepted"
+        ? acceptedPhoneByUser.get(app.user_id) ?? (profile?.contact_phone?.trim() || null)
+        : null;
+
     return {
       applicationId: app.id,
       jobPostId: pos?.job_post_id ?? "",
@@ -205,6 +223,7 @@ export default async function JobsManagePage() {
       status: app.status as ManageApplicantRow["status"],
       noShowCountInPeriod: noShowCountByUser.get(app.user_id) ?? 0,
       createdAt: app.created_at,
+      contactPhone: contactPhone || null,
     };
   });
 

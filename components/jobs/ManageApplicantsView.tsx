@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { confirmApplication } from "@/app/jobs/[id]/actions";
@@ -29,6 +29,8 @@ export type ManageApplicantRow = {
   status: ApplicationStatus;
   noShowCountInPeriod: number;
   createdAt: string;
+  /** 확정된 지원자 연락처(전화만, 이메일 제외) */
+  contactPhone?: string | null;
 };
 
 const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
@@ -53,9 +55,10 @@ export default function ManageApplicantsView({ applicants, jobPostsForFilter }: 
   const [filterWorkDateTo, setFilterWorkDateTo] = useState<string>("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [localApplicants, setLocalApplicants] = useState<ManageApplicantRow[]>(applicants);
 
   const filtered = useMemo(() => {
-    let list = [...applicants];
+    let list = [...localApplicants];
     if (filterStatus === "pending") {
       list = list.filter((a) => a.status === "applied" || a.status === "reviewing");
     } else if (filterStatus === "accepted") {
@@ -73,9 +76,13 @@ export default function ManageApplicantsView({ applicants, jobPostsForFilter }: 
       list = list.filter((a) => a.workDate != null && a.workDate <= filterWorkDateTo);
     }
     return list;
-  }, [applicants, filterStatus, filterJobPostId, filterWorkDateFrom, filterWorkDateTo]);
+  }, [localApplicants, filterStatus, filterJobPostId, filterWorkDateFrom, filterWorkDateTo]);
 
-  const pendingCount = applicants.filter((a) => a.status === "applied" || a.status === "reviewing").length;
+  const pendingCount = localApplicants.filter((a) => a.status === "applied" || a.status === "reviewing").length;
+
+  useEffect(() => {
+    setLocalApplicants(applicants);
+  }, [applicants]);
 
   async function handleConfirm(applicationId: string, jobPostId: string) {
     setLoadingId(applicationId);
@@ -86,6 +93,13 @@ export default function ManageApplicantsView({ applicants, jobPostsForFilter }: 
       setError(result.error ?? "확정 실패");
       return;
     }
+    setLocalApplicants((prev) =>
+      prev.map((a) =>
+        a.applicationId === applicationId
+          ? { ...a, status: "accepted" as const, contactPhone: result.contactPhone ?? a.contactPhone }
+          : a
+      )
+    );
     router.refresh();
   }
 
@@ -207,6 +221,14 @@ export default function ManageApplicantsView({ applicants, jobPostsForFilter }: 
                       </div>
                       {row.bio && (
                         <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{row.bio}</p>
+                      )}
+                      {row.status === "accepted" && row.contactPhone && (
+                        <p className="mt-1.5 text-xs text-slate-700">
+                          연락처:{" "}
+                          <a href={`tel:${row.contactPhone}`} className="font-medium text-blue-600 hover:underline">
+                            {row.contactPhone}
+                          </a>
+                        </p>
                       )}
                     </td>
                     <td className="py-3 pr-2">

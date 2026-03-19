@@ -1,10 +1,17 @@
-import { createClient } from "@/lib/supabase-server";
+import { redirect } from "next/navigation";
+import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import JobPostForm from "./JobPostForm";
+import type { InitialCompany } from "@/components/jobs/CompanyProfileModal";
 
 export const revalidate = 60;
 
 export default async function NewJobPostPage() {
   const supabase = createClient();
+  const authSupabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await authSupabase.auth.getUser();
+  if (!user) redirect("/login?next=/jobs/new");
 
   const { data: categories } = await supabase
     .from("categories")
@@ -30,10 +37,35 @@ export default async function NewJobPostPage() {
     );
   }
 
+  const { data: company } = await authSupabase
+    .from("company_profiles")
+    .select("company_name, representative_name, business_number, contact_phone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const companyName = (company?.company_name ?? "").trim();
+  const representativeName = (company?.representative_name ?? "").trim();
+  const businessNumber = (company?.business_number ?? "").replace(/\D/g, "");
+  const contactPhone = (company?.contact_phone ?? "").trim();
+  const companyProfileComplete =
+    companyName !== "" &&
+    representativeName !== "" &&
+    businessNumber.length === 10 &&
+    contactPhone.replace(/-/g, "").length >= 10;
+
+  const initialCompany: InitialCompany = {
+    company_name: company?.company_name ?? "",
+    representative_name: company?.representative_name ?? "",
+    business_number: company?.business_number ?? "",
+    contact_phone: company?.contact_phone ?? "",
+  };
+
   return (
     <JobPostForm
       mainCategories={mainCategories}
       subCategories={subCategories}
+      companyProfileComplete={companyProfileComplete}
+      initialCompany={initialCompany}
     />
   );
 }

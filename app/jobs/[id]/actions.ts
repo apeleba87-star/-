@@ -80,7 +80,7 @@ function isValidBirthDate(value: string | null): boolean {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
-/** 프로필 입력 후 지원 (이름·생년월일·성별·휴대폰 한 번만 입력하면 마이페이지에 저장되고 지원 완료) */
+/** 프로필 입력 후 지원 (이름·생년월일·성별·휴대폰 한 번만 입력하면 마이페이지에 저장되고 지원 완료). 지원 시 구직 지원 권한 없으면 이번 제출로 부여. */
 export async function applyWithProfile(
   positionId: string,
   jobPostId: string,
@@ -92,8 +92,31 @@ export async function applyWithProfile(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
 
-  const { data: cap } = await supabase.from("member_capabilities").select("can_apply_jobs").eq("user_id", user.id).single();
-  if (!cap?.can_apply_jobs) return { ok: false, error: "구직 지원 권한이 없습니다. 마이페이지에서 활동을 추가해 주세요." };
+  // 구직 지원 권한이 없으면 지원하기 제출 시 여기서 부여 (마이페이지 사전 설정 불필요)
+  const { data: existingCap } = await supabase
+    .from("member_capabilities")
+    .select("can_apply_jobs, can_post_jobs, can_post_contracts, can_post_promotions")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const caps = existingCap ?? {
+    can_apply_jobs: false,
+    can_post_jobs: false,
+    can_post_contracts: false,
+    can_post_promotions: false,
+  };
+  await supabase
+    .from("member_capabilities")
+    .upsert(
+      {
+        user_id: user.id,
+        can_apply_jobs: true,
+        can_post_jobs: caps.can_post_jobs ?? false,
+        can_post_contracts: caps.can_post_contracts ?? false,
+        can_post_promotions: caps.can_post_promotions ?? false,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    );
 
   const nick = (profile.nickname ?? "").trim();
   const birthDate = (profile.birth_date ?? "").trim();
@@ -181,9 +204,33 @@ export async function confirmApplication(applicationId: string, jobPostId: strin
   const out = result as { ok?: boolean; error?: string } | null;
   if (!out?.ok) return { ok: false, error: out?.error ?? "확정 처리에 실패했습니다." };
 
+  // 확정 직후 구인자에게 연락처(전화만) 바로 노출용으로 반환 (이메일 제외)
+  let contactPhone: string | null = null;
+  const { data: appRow } = await supabase
+    .from("job_applications")
+    .select("user_id")
+    .eq("id", applicationId)
+    .single();
+  if (appRow?.user_id) {
+    const { data: worker } = await supabase
+      .from("worker_profiles")
+      .select("contact_phone")
+      .eq("user_id", appRow.user_id)
+      .maybeSingle();
+    contactPhone = (worker?.contact_phone ?? "").trim() || null;
+    if (!contactPhone) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("phone")
+        .eq("id", appRow.user_id)
+        .maybeSingle();
+      contactPhone = (profile?.phone ?? "").trim() || null;
+    }
+  }
+
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
-  return { ok: true };
+  return { ok: true, contactPhone };
 }
 
 /** 확정 취소 (구인자) → 포지션 재오픈. 현장일이 지나면 불가(노쇼·신고는 별도 처리). */

@@ -6,6 +6,61 @@ import type { PositionInput } from "@/lib/jobs/types";
 import { resolveJobType } from "@/lib/jobs/resolve-job-type";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
 
+/** 구인글 작성 전 업체 정보 저장 (업체명·구인자 이름·사업자번호·연락처). 개인정보 동의 후 호출. */
+export async function saveCompanyProfile(input: {
+  company_name: string;
+  representative_name: string;
+  business_number: string;
+  contact_phone: string;
+}) {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const companyName = (input.company_name ?? "").trim();
+  const representativeName = (input.representative_name ?? "").trim();
+  const businessNumberRaw = (input.business_number ?? "").replace(/\D/g, "");
+  const contactPhone = (input.contact_phone ?? "").trim().replace(/-/g, "").trim();
+
+  if (!companyName) return { ok: false, error: "업체명을 입력해 주세요." };
+  if (!representativeName) return { ok: false, error: "구인자 이름을 입력해 주세요." };
+  if (businessNumberRaw.length !== 10) return { ok: false, error: "사업자번호 10자리를 입력해 주세요." };
+  if (!contactPhone || contactPhone.length < 10) return { ok: false, error: "연락처를 입력해 주세요." };
+
+  const { data: existing } = await supabase
+    .from("company_profiles")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const payload = {
+    user_id: user.id,
+    company_name: companyName,
+    representative_name: representativeName,
+    business_number: businessNumberRaw,
+    contact_phone: contactPhone,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existing) {
+    const { error } = await supabase.from("company_profiles").update(payload).eq("user_id", user.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await supabase.from("company_profiles").insert({
+      ...payload,
+      description: null,
+      created_at: new Date().toISOString(),
+    });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/jobs/new");
+  revalidatePath("/mypage");
+  return { ok: true };
+}
+
 type PrivateDetailsInput = {
   full_address?: string | null;
   contact_phone?: string | null;
@@ -37,6 +92,24 @@ export async function createJobPost(input: CreateJobPostInput) {
 
   const { data: cap } = await supabase.from("member_capabilities").select("can_post_jobs").eq("user_id", user.id).single();
   if (!cap?.can_post_jobs) return { ok: false, error: "구인글 작성 권한이 없습니다. 마이페이지에서 활동을 추가해 주세요." };
+
+  const { data: company } = await supabase
+    .from("company_profiles")
+    .select("company_name, representative_name, business_number, contact_phone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const hasCompany =
+    (company?.company_name ?? "").trim() !== "" &&
+    (company?.representative_name ?? "").trim() !== "" &&
+    (company?.business_number ?? "").replace(/\D/g, "").length === 10 &&
+    (company?.contact_phone ?? "").trim().replace(/-/g, "").length >= 10;
+  if (!hasCompany) {
+    return {
+      ok: false,
+      error: "구인글을 올리려면 업체 정보(업체명·구인자 이름·사업자번호·연락처)를 먼저 입력해 주세요.",
+      needCompanyProfile: true,
+    };
+  }
 
   if (!input.title?.trim()) return { ok: false, error: "제목을 입력하세요." };
   if (!input.region?.trim()) return { ok: false, error: "지역을 선택하세요." };

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Plus, Trash2, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { createJobPost } from "./actions";
 import { updateJobPost } from "@/app/jobs/[id]/actions";
+import CompanyProfileModal, { type InitialCompany } from "@/components/jobs/CompanyProfileModal";
 import { REGION_SIDO_LIST, REGION_GUGUN } from "@/lib/listings/regions";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PositionInput, PayUnit } from "@/lib/jobs/types";
@@ -80,6 +81,8 @@ type Props = {
   subCategories: unknown[];
   initialData?: EditInitialData;
   jobPostId?: string;
+  companyProfileComplete?: boolean;
+  initialCompany?: InitialCompany;
 };
 
 const defaultPosition: PositionInput = {
@@ -96,9 +99,22 @@ const defaultPosition: PositionInput = {
   end_time: null,
 };
 
-export default function JobPostForm({ mainCategories, subCategories, initialData, jobPostId }: Props) {
+export default function JobPostForm({
+  mainCategories,
+  subCategories,
+  initialData,
+  jobPostId,
+  companyProfileComplete = true,
+  initialCompany = {
+    company_name: "",
+    representative_name: "",
+    business_number: "",
+    contact_phone: "",
+  },
+}: Props) {
   const router = useRouter();
   const isEdit = Boolean(jobPostId && initialData);
+  const [companyModalOpen, setCompanyModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -264,7 +280,9 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
     const result = await createJobPost(payload);
     setLoading(false);
     if (!result.ok) {
+      const needProfile = (result as { needCompanyProfile?: boolean }).needCompanyProfile;
       setError(result.error ?? "저장 실패");
+      if (needProfile) setCompanyModalOpen(true);
       return;
     }
     router.push(result.id ? `/jobs/${result.id}` : "/jobs");
@@ -286,6 +304,33 @@ export default function JobPostForm({ mainCategories, subCategories, initialData
       <p className="mt-0.5 text-sm text-slate-600">
         {isEdit ? "변경 후 저장하면 수정 내용이 반영됩니다." : "지역과 일시를 먼저 입력한 뒤, 포지션별로 직종·인원·급여를 정하세요."}
       </p>
+
+      {!isEdit && !companyProfileComplete && (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <p className="font-medium text-amber-900">업체 정보를 먼저 입력해 주세요</p>
+          <p className="mt-1 text-sm text-amber-800">
+            구인글을 올리려면 업체명·구인자 이름·사업자번호·연락처가 필요합니다. 한 번 입력하면 저장됩니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => setCompanyModalOpen(true)}
+            className="mt-4 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700"
+          >
+            업체 정보 입력하기
+          </button>
+        </div>
+      )}
+
+      {companyModalOpen && (
+        <CompanyProfileModal
+          initialCompany={initialCompany}
+          onSuccess={() => {
+            setCompanyModalOpen(false);
+            router.refresh();
+          }}
+          onCancel={() => setCompanyModalOpen(false)}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {error && (

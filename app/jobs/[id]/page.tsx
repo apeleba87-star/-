@@ -61,18 +61,15 @@ export default async function JobPostDetailPage({
 
   const profileByUser = new Map((workerProfiles ?? []).map((p) => [p.user_id, p]));
 
-  // 확정된 지원자의 연락처·이메일: 구인자만 조회 가능(RLS). authSupabase로 요청해야 함.
-  let applicantContactByUser = new Map<string, { email: string | null; phone: string | null }>();
+  // 확정된 지원자 연락처(전화만, 이메일 제외): 구인자만 조회 가능(RLS).
+  let applicantContactByUser = new Map<string, { phone: string | null }>();
   if (isOwner && applicantUserIds.length > 0) {
     const { data: applicantProfiles } = await authSupabase
       .from("profiles")
-      .select("id, email, phone")
+      .select("id, phone")
       .in("id", applicantUserIds);
     applicantContactByUser = new Map(
-      (applicantProfiles ?? []).map((p) => [
-        p.id,
-        { email: p.email ?? null, phone: p.phone ?? null },
-      ])
+      (applicantProfiles ?? []).map((p) => [p.id, { phone: (p.phone ?? "").trim() || null }])
     );
   }
 
@@ -223,9 +220,9 @@ export default async function JobPostDetailPage({
       bio: profile?.bio ?? null,
       reportCountInPeriod: reportCountByUser.get(a.user_id) ?? 0,
       noShowCountInPeriod: noShowCountByUser.get(a.user_id) ?? 0,
-      // 확정된 지원자만 구인자에게 노출(RLS로 accepted만 조회됨)
+      // 확정된 지원자만 구인자에게 연락처(전화만) 노출
       contactPhone: contact?.phone ?? profile?.contact_phone ?? null,
-      contactEmail: contact?.email ?? null,
+      contactEmail: null,
     };
   }
 

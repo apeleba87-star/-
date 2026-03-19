@@ -161,30 +161,16 @@ export default function ApplicationList({
               {a.bio && (
                 <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{a.bio}</p>
               )}
-              {a.status === "accepted" && (a.contactPhone || a.contactEmail) && (
+              {a.status === "accepted" && a.contactPhone && (
                 <dl className="mt-3 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-sm">
-                  <span className="font-medium text-slate-600">연락처 및 상세 정보</span>
-                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-                    {a.contactPhone && (
-                      <div>
-                        <dt className="sr-only">연락처</dt>
-                        <dd>
-                          <a href={`tel:${a.contactPhone}`} className="text-blue-600 hover:underline">
-                            {a.contactPhone}
-                          </a>
-                        </dd>
-                      </div>
-                    )}
-                    {a.contactEmail && (
-                      <div>
-                        <dt className="sr-only">이메일</dt>
-                        <dd>
-                          <a href={`mailto:${a.contactEmail}`} className="text-blue-600 hover:underline">
-                            {a.contactEmail}
-                          </a>
-                        </dd>
-                      </div>
-                    )}
+                  <span className="font-medium text-slate-600">연락처</span>
+                  <div className="mt-1.5">
+                    <dt className="sr-only">연락처</dt>
+                    <dd>
+                      <a href={`tel:${a.contactPhone}`} className="text-blue-600 hover:underline">
+                        {a.contactPhone}
+                      </a>
+                    </dd>
                   </div>
                 </dl>
               )}
