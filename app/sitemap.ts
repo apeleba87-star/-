@@ -46,6 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from("posts")
     .select("id, updated_at")
     .not("published_at", "is", null)
+    .eq("is_private", false)
     .order("published_at", { ascending: false })
     .limit(2000);
   if (posts?.length) {

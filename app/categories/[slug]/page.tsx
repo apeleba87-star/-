@@ -38,6 +38,7 @@ export default async function CategorySlugPage({ params }: Props) {
     .select("id, title, excerpt, published_at, slug")
     .eq("category_id", category.id)
     .not("published_at", "is", null)
+    .eq("is_private", false)
     .order("published_at", { ascending: false });
 
   return (

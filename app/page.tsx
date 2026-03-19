@@ -43,11 +43,13 @@ export default async function HomePage() {
       .from("posts")
       .select("*", { count: "exact", head: true })
       .gte("published_at", newsTodayStart)
-      .lte("published_at", newsTodayEnd),
+      .lte("published_at", newsTodayEnd)
+      .eq("is_private", false),
     supabase
       .from("posts")
       .select("id, title, published_at")
       .not("published_at", "is", null)
+      .eq("is_private", false)
       .order("published_at", { ascending: false })
       .limit(5),
     supabase

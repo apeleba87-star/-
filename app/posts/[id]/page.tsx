@@ -21,9 +21,10 @@ type PostPageParams = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: PostPageParams): Promise<Metadata> {
   const { id } = await params;
   const supabase = createClient();
-  const byId = await supabase.from("posts").select("title, excerpt").eq("id", id).not("published_at", "is", null).single();
-  const post = byId.data ?? (await supabase.from("posts").select("title, excerpt").eq("slug", id).not("published_at", "is", null).single()).data;
+  const byId = await supabase.from("posts").select("title, excerpt, is_private").eq("id", id).not("published_at", "is", null).single();
+  const post = byId.data ?? (await supabase.from("posts").select("title, excerpt, is_private").eq("slug", id).not("published_at", "is", null).single()).data;
   if (!post) return {};
+  if ((post as { is_private?: boolean }).is_private) return { title: "비공개", robots: { index: false, follow: false } };
   const title = (post.title ?? "").trim() || "글";
   const description = (post.excerpt ?? "").trim().slice(0, 160) || undefined;
   return { title, description };
@@ -34,6 +35,18 @@ function getReportDate(post: { source_ref?: string | null; slug?: string | null 
   const slug = typeof post.slug === "string" ? post.slug : "";
   const m = /-(\d{4}-\d{2}-\d{2})-daily-tender-digest$/.exec(slug);
   return m ? m[1] : null;
+}
+
+/** 비공개 글은 관리자·에디터만 접근. 아니면 notFound */
+async function ensurePrivateAccess(
+  post: { is_private?: boolean },
+  authSupabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  userId: string
+): Promise<void> {
+  if (!(post as { is_private?: boolean }).is_private) return;
+  const { data: profile } = await authSupabase.from("profiles").select("role").eq("id", userId).single();
+  const role = (profile as { role?: string } | null)?.role;
+  if (role !== "admin" && role !== "editor") notFound();
 }
 
 export default async function PostPage({ params }: PostPageParams) {
@@ -84,6 +97,7 @@ export default async function PostPage({ params }: PostPageParams) {
       .single();
     if (bySlug.error || !bySlug.data) notFound();
     const slugPost = bySlug.data;
+    await ensurePrivateAccess(slugPost, authSupabase, user.id);
     if (isReportPost(slugPost) && !reportData) {
       const snapshot = (slugPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
       if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
@@ -103,6 +117,7 @@ export default async function PostPage({ params }: PostPageParams) {
     const reportLocked = await getReportLocked(slugPost, reportData);
     return renderPost(slugPost, adsResult, reportData, reportLocked);
   }
+  await ensurePrivateAccess(post, authSupabase, user.id);
   const reportLocked = await getReportLocked(post!, reportData);
   return renderPost(post!, adsResult, reportData, reportLocked);
 }

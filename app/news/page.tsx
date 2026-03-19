@@ -50,6 +50,7 @@ export default async function NewsPage({
         .select("id, title, excerpt, published_at, slug")
         .not("published_at", "is", null)
         .eq("category_id", contentCat.id)
+        .eq("is_private", false)
         .order("published_at", { ascending: false })
         .limit(50);
       posts = data ?? [];
@@ -100,11 +101,12 @@ export default async function NewsPage({
     );
   }
 
-  // 입찰·리포트: source_type 있거나 slug가 일간/리포트 패턴인 발행 글
+  // 입찰·리포트: source_type 있거나 slug가 일간/리포트 패턴인 발행 글 (비공개 제외)
   const { data: posts } = await supabase
     .from("posts")
     .select("id, title, excerpt, published_at, slug, source_type, source_ref")
     .not("published_at", "is", null)
+    .eq("is_private", false)
     .or("source_type.not.is.null,slug.ilike.*daily-tender-digest*,slug.ilike.*report-*")
     .order("published_at", { ascending: false })
     .limit(50);

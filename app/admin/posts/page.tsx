@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 import Button from "@/components/Button";
+import PostRowActions from "./PostRowActions";
 
 type Filter = "all" | "drafts" | "auto_drafts";
 
@@ -16,7 +17,7 @@ export default async function AdminPostsPage({
 
   let query = supabase
     .from("posts")
-    .select("id, title, newsletter_include, published_at, created_at, source_type, source_ref")
+    .select("id, title, newsletter_include, published_at, created_at, source_type, source_ref, is_private")
     .order("created_at", { ascending: false });
 
   if (filter === "drafts") {
@@ -71,6 +72,11 @@ export default async function AdminPostsPage({
                 <span className="font-medium text-slate-800">{post.title}</span>
                 <span className="ml-2 text-sm text-slate-500">
                   {post.published_at ? "발행됨" : "미발행"}
+                  {post.is_private && (
+                    <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
+                      비공개
+                    </span>
+                  )}
                   {post.newsletter_include && " · 뉴스레터 포함"}
                   {post.source_type && (
                     <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">
@@ -79,9 +85,12 @@ export default async function AdminPostsPage({
                   )}
                 </span>
               </div>
-              <Link href={`/admin/posts/${post.id}/edit`} className="text-sm text-blue-600 hover:underline">
-                수정
-              </Link>
+              <div className="flex items-center gap-3">
+                <PostRowActions postId={post.id} isPrivate={!!post.is_private} />
+                <Link href={`/admin/posts/${post.id}/edit`} className="text-sm text-blue-600 hover:underline">
+                  수정
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
