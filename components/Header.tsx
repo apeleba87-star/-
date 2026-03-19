@@ -23,7 +23,7 @@ import HeaderAdminLink from "./HeaderAdminLink";
 
 const navItems: { href: string; label: string; Icon: typeof Home; adminOnly?: boolean; showWhenLoggedIn?: boolean }[] = [
   { href: "/", label: "홈", Icon: Home },
-  { href: "/admin", label: "관리자 모드", Icon: Shield, showWhenLoggedIn: true },
+  { href: "/admin", label: "관리자 모드", Icon: Shield, adminOnly: true },
   { href: "/archive", label: "뉴스레터 아카이브", Icon: FileText, adminOnly: true },
   { href: "/news", label: "업계 소식", Icon: Newspaper },
   { href: "/tenders", label: "입찰 공고", Icon: Gavel },
@@ -48,6 +48,11 @@ export default function Header() {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  // 모바일: 경로가 바뀌면 드로어 닫기 (로그인 등 HeaderAuth 링크 클릭 시에도 메뉴가 사라지도록)
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   const fetchProfileRole = () => {
     const supabase = createClient();

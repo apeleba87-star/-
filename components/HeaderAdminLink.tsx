@@ -19,7 +19,18 @@ export default function HeaderAdminLink({ variant, onClick }: Props) {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setShow(!!user);
+      if (!user) {
+        setShow(false);
+        return;
+      }
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          setShow(data?.role === "admin" || data?.role === "editor");
+        });
     });
   }, []);
 
