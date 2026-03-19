@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import TendersListWithFilters from "./TendersListWithFilters";
 import { getActiveTendersAds } from "@/lib/ads";
@@ -73,6 +73,9 @@ export default async function TendersPage({ searchParams }: PageProps) {
 
   const tendersAds = await getActiveTendersAds();
 
+  const authSupabase = await createServerSupabase();
+  const { data: { user } } = await authSupabase.auth.getUser();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
       <div className="mx-auto max-w-5xl px-4 py-12">
@@ -96,6 +99,7 @@ export default async function TendersPage({ searchParams }: PageProps) {
           initialRegion={region ?? "전체 지역"}
           initialSort={sort}
           adSlotMid={tendersAds.tenders_mid?.enabled && (tendersAds.tenders_mid.campaign || tendersAds.tenders_mid.script_content) ? tendersAds.tenders_mid : null}
+          isLoggedIn={!!user}
         />
       </div>
     </div>

@@ -53,9 +53,12 @@ function getDaysText(days: number): string {
 export default function TenderBidCard({
   tender,
   industryNames,
+  hideSensitive = false,
 }: {
   tender: TenderBidCardT;
   industryNames?: Record<string, string>;
+  /** 비로그인 시 true. 기초금액·낙찰하한율을 블러+자물쇠로 표시 */
+  hideSensitive?: boolean;
 }) {
   const basePrice =
     tender.base_amt != null ? Number(tender.base_amt) : getBaseAmtFromRaw(tender.raw);
@@ -101,15 +104,37 @@ export default function TenderBidCard({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs text-slate-500">기초금액</p>
-            <p className="mt-0.5 font-semibold text-slate-800">
-              {basePrice != null ? formatMoneyMan(basePrice) : "—"}
-            </p>
+            <div className="mt-0.5 flex items-center gap-2">
+              {hideSensitive ? (
+                <>
+                  <Lock className="size-4 shrink-0 text-slate-500" aria-hidden />
+                  <span className="font-semibold text-slate-800 blur-sm select-none">
+                    {basePrice != null ? formatMoneyMan(basePrice) : "—"}
+                  </span>
+                </>
+              ) : (
+                <p className="font-semibold text-slate-800">
+                  {basePrice != null ? formatMoneyMan(basePrice) : "—"}
+                </p>
+              )}
+            </div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs text-slate-500">낙찰하한율</p>
-            <p className="mt-0.5 font-semibold text-slate-800">
-              {lowerRate != null ? `${lowerRate}%` : "—"}
-            </p>
+            <div className="mt-0.5 flex items-center gap-2">
+              {hideSensitive ? (
+                <>
+                  <Lock className="size-4 shrink-0 text-slate-500" aria-hidden />
+                  <span className="font-semibold text-slate-800 blur-sm select-none">
+                    {lowerRate != null ? `${lowerRate}%` : "—"}
+                  </span>
+                </>
+              ) : (
+                <p className="font-semibold text-slate-800">
+                  {lowerRate != null ? `${lowerRate}%` : "—"}
+                </p>
+              )}
+            </div>
           </div>
           <div className="relative overflow-hidden rounded-xl border-2 border-blue-600 bg-gradient-to-br from-blue-500 to-indigo-500 p-3 transition-all group-hover:from-blue-600 group-hover:to-indigo-600">
             <p className="text-xs text-white/90">예상 낙찰 하한가</p>

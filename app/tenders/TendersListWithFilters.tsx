@@ -72,6 +72,8 @@ type Props = {
   initialRegion?: string;
   initialSort?: SortId;
   adSlotMid?: HomeAdSlotWithCampaign | null;
+  /** 로그인 시 기초금액·낙찰하한율 표시, 비로그인 시 블러 처리 */
+  isLoggedIn?: boolean;
 };
 
 function buildTendersUrl(params: { industry: string[]; region: string; sort: string }): string {
@@ -90,6 +92,7 @@ export default function TendersListWithFilters({
   initialRegion = "전체 지역",
   initialSort = "posted",
   adSlotMid = null,
+  isLoggedIn = false,
 }: Props) {
   const router = useRouter();
   const selectedIndustryCodes = initialIndustryCodes;
@@ -321,7 +324,7 @@ export default function TendersListWithFilters({
               <ul className="space-y-4">
                 {openTenders.map((t) => (
                   <li key={t.id}>
-                    <TenderBidCard tender={t} industryNames={industryNames} />
+                    <TenderBidCard tender={t} industryNames={industryNames} hideSensitive={!isLoggedIn} />
                   </li>
                 ))}
               </ul>
@@ -343,7 +346,7 @@ export default function TendersListWithFilters({
               <ul className="space-y-4">
                 {closedTenders.map((t) => (
                   <li key={t.id}>
-                    <TenderBidCard tender={t} industryNames={industryNames} />
+                    <TenderBidCard tender={t} industryNames={industryNames} hideSensitive={!isLoggedIn} />
                   </li>
                 ))}
               </ul>
