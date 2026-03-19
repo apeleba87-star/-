@@ -38,6 +38,16 @@
 1. Supabase **Authentication** → **Providers** → **Google** 활성화
 2. **Client ID**, **Client Secret** 붙여넣기 → **Save**
 
+### Google 로그인 문제 시 체크리스트
+
+| 확인 항목 | 위치 |
+|----------|------|
+| **Authorized redirect URIs**에 **Supabase** 콜백만 등록 | Google Cloud Console → Credentials → OAuth 2.0 클라이언트 ID → Authorized redirect URIs. 반드시 `https://<PROJECT_REF>.supabase.co/auth/v1/callback` (Supabase Dashboard → Providers → Google 에서 복사). **우리 앱의 /auth/callback이 아님** |
+| OAuth 동의 화면에서 앱이 "테스트"가 아닌 "프로덕션" 또는 테스트 사용자 추가 | Google Cloud Console → OAuth consent screen. 테스트 모드면 테스트 사용자로 등록된 이메일만 로그인 가능 |
+| Supabase **Redirect URLs**에 실제 접속 주소 포함 | Supabase Auth → URL Configuration. 예: `https://www.cleanidex.co.kr/auth/callback` |
+| **Site URL**이 운영 도메인 | 로그인 후 리다이렉트될 기준 URL. 로컬이면 운영에서 로그인해도 localhost로 갈 수 있음 |
+| 콜백에서 에러 시 로그인 페이지에 메시지 전달 | 앱에서 `/auth/callback?error=...` 수신 시 `/login?error=...`로 리다이렉트하도록 구현됨. 로그인 화면에 에러 문구 노출 여부 확인 |
+
 ---
 
 ## 3. Kakao 로그인

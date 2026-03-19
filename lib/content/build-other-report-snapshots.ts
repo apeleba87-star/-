@@ -53,8 +53,29 @@ export function buildDeadlineSoonSnapshot(payload: DeadlineSoonPayload): Snapsho
     report_type: REPORT_TYPE_DEADLINE_SOON,
     period_key: payload.period_key,
     title: `이번 주 마감 임박 청소·방역 공고 (D-7 이내)`,
-    content_full: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action, tags: ["마감임박", "등록업종기준"] },
-    content_summary: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action },
+    content_full: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+      tags: ["마감임박", "등록업종기준"],
+    },
+    content_summary: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+    },
     content_social: `이번 주 마감 임박 청소·방역 공고 ${payload.count_total}건 (1억 원 이상 ${payload.over_100m_count}건). 자세한 내용은 리포트에서.`,
   };
 }
@@ -86,8 +107,29 @@ export function buildPrepShortSnapshot(payload: PrepShortPayload): SnapshotOut |
     report_type: REPORT_TYPE_PREP_SHORT,
     period_key: payload.period_key,
     title: `준비기간 5일 이하 청소·방역 공고 (이번 주)`,
-    content_full: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action, tags: ["준비기간짧음", "등록업종기준"] },
-    content_summary: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action },
+    content_full: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+      tags: ["준비기간짧음", "등록업종기준"],
+    },
+    content_summary: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+    },
     content_social: `준비기간 5일 이하 청소·방역 공고 ${payload.count_total}건. 빠른 대응 가능한 업체에 유리. 자세한 내용은 리포트에서.`,
   };
 }
@@ -121,8 +163,29 @@ export function buildLargeTenderTopSnapshot(payload: LargeTenderTopPayload): Sna
     report_type: REPORT_TYPE_LARGE_TENDER_TOP,
     period_key: payload.period_key,
     title: `기초금액 1억 원 이상 대형 공고 TOP 10 (${payload.period_label})`,
-    content_full: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action, tags: ["대형공고", "등록업종기준"] },
-    content_summary: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action },
+    content_full: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+      tags: ["대형공고", "등록업종기준"],
+    },
+    content_summary: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+    },
     content_social: `이번 주 1억 원 이상 청소·방역 공고 ${payload.count_total}건, 합계 ${payload.budget_label}. 자세한 내용은 리포트에서.`,
   };
 }
@@ -149,8 +212,29 @@ export function buildOpeningScheduledSnapshot(payload: OpeningScheduledPayload):
     report_type: REPORT_TYPE_OPENING_SCHEDULED,
     period_key: payload.period_key,
     title: `이번 주 개찰 예정 청소·방역 공고`,
-    content_full: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action, tags: ["개찰예정", "등록업종기준"] },
-    content_summary: { headline, key_metrics, top3: payload.top_tenders, practical_note, next_action },
+    content_full: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+      tags: ["개찰예정", "등록업종기준"],
+    },
+    content_summary: {
+      headline,
+      key_metrics,
+      top3: payload.top_tenders,
+      practical_note,
+      next_action,
+      data_trust: {
+        source: "나라장터 G2B(입찰 데이터 집계)",
+        sample_count: payload.count_total,
+      },
+    },
     content_social: `이번 주 개찰 예정 청소·방역 공고 ${payload.count_total}건. 자세한 내용은 리포트에서.`,
   };
 }

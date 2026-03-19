@@ -171,6 +171,7 @@ type PostForRender = {
   body: string | null;
   excerpt: string | null;
   published_at: string | null;
+  updated_at?: string | null;
   source_type?: string | null;
   source_ref?: string | null;
   slug?: string | null;
@@ -236,6 +237,7 @@ function renderPost(
             dateLabel={reportData!.payload.dateLabel}
             insightSentence={reportData!.insightSentence}
             excerpt={post.excerpt}
+            updatedAt={post.updated_at ?? null}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
@@ -255,6 +257,7 @@ function renderPost(
             excerpt={post.excerpt}
             sourceType={post.source_type ?? ""}
             content={post.report_snapshot as Parameters<typeof ReportSnapshotView>[0]["content"]}
+            updatedAt={post.updated_at ?? null}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">

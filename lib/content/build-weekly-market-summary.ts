@@ -82,6 +82,10 @@ export function buildWeeklyMarketSummary(payload: WeeklyTenderPayload): WeeklySu
     next_action: nextAction,
     proportion: topRegion ? `수도권 비중: ${regionTop3.map((r) => r.name).join(", ")} 순` : undefined,
     beneficiary,
+    data_trust: {
+      source: "나라장터 G2B(입찰 데이터 집계)",
+      sample_count: payload.count_total,
+    },
     tags: ["주간시장요약", "등록업종기준"],
   };
 
@@ -92,6 +96,10 @@ export function buildWeeklyMarketSummary(payload: WeeklyTenderPayload): WeeklySu
     practical_note: content_full.practical_note,
     next_action: nextAction,
     beneficiary,
+    data_trust: {
+      source: "나라장터 G2B(입찰 데이터 집계)",
+      sample_count: payload.count_total,
+    },
   };
 
   const content_social =

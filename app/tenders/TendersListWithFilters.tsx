@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { FileText, ChevronDown } from "lucide-react";
 import TenderBidCard from "@/components/tender/TenderBidCard";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
@@ -263,11 +264,53 @@ export default function TendersListWithFilters({
 
       {/* 진행 중인 공고 */}
       {openTenders.length === 0 && closedTenders.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-          <FileText className="mx-auto mb-3 size-12 text-slate-400" aria-hidden />
-          <p className="font-medium text-slate-600">검색 결과가 없습니다</p>
-          <p className="mt-1 text-sm text-slate-500">다른 필터 조건을 선택해보세요</p>
-        </div>
+        <>
+          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+            <FileText className="mx-auto mb-3 size-12 text-slate-400" aria-hidden />
+            <p className="font-medium text-slate-600">검색 결과가 없습니다</p>
+            <p className="mt-1 text-sm text-slate-500">
+              현재 필터 조건에서는 등록된 공고가 없습니다. 다음 버튼으로 빠르게 범위를 넓혀보세요.
+            </p>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+              >
+                전체 보기
+              </button>
+              <Link
+                href="/tenders?sort=deadline"
+                className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700"
+              >
+                마감일순으로 보기
+              </Link>
+            </div>
+          </div>
+          {/* 뉴스레터 CTA: 빈 결과일 때도 노출 */}
+          <section className="mt-10 rounded-2xl border border-slate-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6 text-center shadow-sm">
+            <p className="text-base font-semibold text-slate-800 sm:text-lg">
+              매주 청소 입찰 시장 요약을 받아보세요
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              입찰 리포트와 업계 소식을 한곳에서 확인할 수 있습니다.
+            </p>
+            <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/news"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
+              >
+                리포트·업계 소식 보기
+              </Link>
+              <Link
+                href="/archive"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                뉴스레터 아카이브
+              </Link>
+            </div>
+          </section>
+        </>
       ) : (
         <>
           {openTenders.length > 0 && (
@@ -312,6 +355,30 @@ export default function TendersListWithFilters({
               💡 예상 낙찰 하한가를 확인하려면 공고를 클릭하세요
             </p>
           )}
+
+          {/* 뉴스레터 CTA: 리스트 하단 */}
+          <section className="mt-10 rounded-2xl border border-slate-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6 text-center shadow-sm">
+            <p className="text-base font-semibold text-slate-800 sm:text-lg">
+              매주 청소 입찰 시장 요약을 받아보세요
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              입찰 리포트와 업계 소식을 한곳에서 확인할 수 있습니다.
+            </p>
+            <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/news"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
+              >
+                리포트·업계 소식 보기
+              </Link>
+              <Link
+                href="/archive"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                뉴스레터 아카이브
+              </Link>
+            </div>
+          </section>
         </>
       )}
     </>

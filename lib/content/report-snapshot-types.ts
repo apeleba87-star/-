@@ -68,5 +68,13 @@ export type ReportContentBlock = {
   comparison?: string;
   proportion?: string;
   beneficiary?: string;
+  /**
+   * 데이터 신뢰(표본/출처 등) 메타.
+   * 문자열 파싱에 의존하지 않기 위해 구조화해서 내려보냅니다.
+   */
+  data_trust?: {
+    source?: string;
+    sample_count?: number;
+  };
   tags?: string[];
 };

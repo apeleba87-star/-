@@ -20,6 +20,7 @@ export default function Footer() {
             <Link href="/jobs" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">인력 구인</Link>
             <Link href="/estimate" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">견적 계산기</Link>
             <Link href="/login" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">로그인</Link>
+            <Link href="/terms" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">이용약관</Link>
             <Link href="/privacy" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">개인정보 처리방침</Link>
           </nav>
         </div>

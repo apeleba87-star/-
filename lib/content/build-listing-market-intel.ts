@@ -84,6 +84,10 @@ export function buildListingMarketIntelSnapshot(
     practical_note,
     next_action: nextAction,
     beneficiary,
+    data_trust: {
+      source: "클린아이덱스 분석(현장거래 집계)",
+      sample_count: payload.total_open_count,
+    },
     tags: ["현장거래", "시장인텔", "평당단가", "매매배수"],
   };
 
@@ -93,6 +97,10 @@ export function buildListingMarketIntelSnapshot(
     practical_note,
     next_action: nextAction,
     beneficiary,
+    data_trust: {
+      source: "클린아이덱스 분석(현장거래 집계)",
+      sample_count: payload.total_open_count,
+    },
   };
 
   const socialParts: string[] = [];

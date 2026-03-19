@@ -22,11 +22,12 @@ export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextUrl = searchParams?.get("next");
+  const errorFromUrl = searchParams?.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<SocialProvider | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(errorFromUrl ? decodeURIComponent(errorFromUrl) : null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +65,12 @@ export default function LoginClient() {
   return (
     <div className="mx-auto max-w-md px-4 py-16">
       <h1 className="mb-8 text-2xl font-bold text-slate-900">로그인</h1>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="mb-6 space-y-2">
         {SOCIAL_PROVIDERS.map(({ provider, label, className }) => (
@@ -109,7 +116,6 @@ export default function LoginClient() {
             required
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "로그인 중…" : "로그인"}
         </Button>

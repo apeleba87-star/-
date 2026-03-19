@@ -22,8 +22,9 @@ import {
   BarChart2,
 } from "lucide-react";
 import type { ReportContentBlock } from "@/lib/content/report-snapshot-types";
-import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
+import { getReportTypeLabel, REPORT_TYPE_LISTING_MARKET_INTEL } from "@/lib/content/report-snapshot-types";
 import { getReportTheme } from "./report-snapshot-theme";
+import DataTrust3Pack from "@/components/DataTrust3Pack";
 
 type Top3Item = {
   title?: string;
@@ -40,12 +41,29 @@ type Props = {
   excerpt?: string | null;
   sourceType: string;
   content: ReportContentBlock & { region_top3?: { name: string; count: number }[] };
+  updatedAt?: string | null;
 };
 
 function cell(s: unknown): string {
   if (s == null) return "—";
   const t = String(s).replace(/\|/g, "·").trim();
   return t || "—";
+}
+
+function parseSampleCountFromKeyMetrics(keyMetrics?: string[]): number | null {
+  if (!Array.isArray(keyMetrics)) return null;
+  for (const k of keyMetrics) {
+    const m = k.match(/([\d,]+)\s*건\b/);
+    if (!m) continue;
+    const n = parseInt(m[1]!.replace(/,/g, ""), 10);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  return null;
+}
+
+function getReportSourceLabel(sourceType: string): string {
+  if (sourceType === REPORT_TYPE_LISTING_MARKET_INTEL) return "클린아이덱스 분석(현장거래 집계)";
+  return "나라장터 G2B(입찰 데이터 집계)";
 }
 
 function splitMetric(text: string): { highlight: string; rest: string } {
@@ -79,6 +97,7 @@ export default function ReportSnapshotView({
   excerpt,
   sourceType,
   content,
+  updatedAt,
 }: Props) {
   const {
     headline,
@@ -89,9 +108,11 @@ export default function ReportSnapshotView({
     next_action,
     beneficiary,
     tags,
+    data_trust,
   } = content;
   const typeLabel = getReportTypeLabel(sourceType);
   const theme = getReportTheme(sourceType);
+  const sampleCount = data_trust?.sample_count ?? parseSampleCountFromKeyMetrics(key_metrics);
   const maxRegionCount = region_top3?.length
     ? Math.max(...region_top3.map((r) => r.count), 1)
     : 1;
@@ -144,6 +165,13 @@ export default function ReportSnapshotView({
           )}
         </div>
       </motion.header>
+
+      {/* 데이터 신뢰 3종 세트 */}
+      <DataTrust3Pack
+        source={data_trust?.source ?? getReportSourceLabel(sourceType)}
+        updatedAt={updatedAt}
+        sampleCount={sampleCount}
+      />
 
       {/* 한 줄 결론: 노란 테두리 + 그라디언트 배경 알림 박스 */}
       {headline && (
@@ -435,7 +463,10 @@ export default function ReportSnapshotView({
       >
         <div className="flex flex-col items-center justify-center gap-4 text-center">
           <p className="text-sm font-medium text-white/90 sm:text-base">
-            입찰 공고를 확인하고 참여할 수 있습니다.
+            매주 청소 입찰 시장 요약을 받아보세요
+          </p>
+          <p className="text-xs text-white/80 sm:text-sm">
+            리포트와 업계 소식을 한곳에서 이메일로 정리해드립니다.
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
             <Link
@@ -446,10 +477,10 @@ export default function ReportSnapshotView({
               입찰 공고 보기
             </Link>
             <Link
-              href="/news"
+              href="/subscribe"
               className="inline-flex items-center gap-2 rounded-xl border-2 border-white/80 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
             >
-              업계 소식·리포트
+              뉴스레터 구독하기
             </Link>
           </div>
         </div>

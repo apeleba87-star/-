@@ -131,9 +131,27 @@ export default function HomeDashboard({
           className="mb-8"
         >
           <h1 className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-            청소업 브리핑
+            청소 입찰·거래·채용 데이터를 한 번에
           </h1>
-          <p className="mt-1 text-sm text-slate-500">오늘의 요약을 한눈에 확인하세요.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            오늘 입찰 <strong className="text-slate-800">{tenderTodayCount}건</strong> · 현장거래{" "}
+            <strong className="text-slate-800">{listingsCount}건</strong> · 업계 소식{" "}
+            <strong className="text-slate-800">{newsCount}건</strong>
+          </p>
+          <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+            <Link
+              href="/tenders?category=both"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700"
+            >
+              입찰 보기
+            </Link>
+            <Link
+              href="/news"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              리포트 보기
+            </Link>
+          </div>
         </motion.header>
 
         {/* 1행: 입찰 · 인력 구인 · 업계 소식 */}
@@ -173,6 +191,40 @@ export default function HomeDashboard({
             <p className="font-semibold text-slate-800">{newsCount}건</p>
             <p className="mt-0.5 text-slate-500">뉴스·이슈 요약</p>
           </DashboardCard>
+        </section>
+
+        {/* 첫 화면 뉴스레터 CTA: 3곳 노출 */}
+        <section className="mb-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 text-center shadow-sm">
+            <p className="text-sm font-semibold text-indigo-800">매주 청소 입찰 시장 요약을 받아보세요</p>
+            <p className="mt-1 text-xs text-slate-600">이메일로 리포트와 업계 소식을 정리해드립니다.</p>
+            <Link
+              href="/subscribe"
+              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
+            >
+              구독하기
+            </Link>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-center shadow-sm">
+            <p className="text-sm font-semibold text-emerald-800">매주 청소 입찰 시장 요약을 받아보세요</p>
+            <p className="mt-1 text-xs text-slate-600">시장 변화를 먼저 보고 더 빠르게 대응하세요.</p>
+            <Link
+              href="/subscribe"
+              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700"
+            >
+              구독하기
+            </Link>
+          </div>
+          <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 text-center shadow-sm">
+            <p className="text-sm font-semibold text-violet-800">매주 청소 입찰 시장 요약을 받아보세요</p>
+            <p className="mt-1 text-xs text-slate-600">업계 소식과 함께 한눈에 정리됩니다.</p>
+            <Link
+              href="/subscribe"
+              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-violet-700"
+            >
+              구독하기
+            </Link>
+          </div>
         </section>
 
         {/* 2행: 현장 거래 · 견적 계산기 · 데이터 인사이트 */}

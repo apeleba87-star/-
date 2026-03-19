@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatters";
+import DataTrust3Pack from "@/components/DataTrust3Pack";
 
 const CHART_COLORS = [
   "#3b82f6",
@@ -44,6 +45,7 @@ type Props = {
   dateLabel: string;
   insightSentence: string;
   excerpt?: string | null;
+  updatedAt?: string | null;
 };
 
 export default function DailyTenderReportDashboard({
@@ -52,6 +54,7 @@ export default function DailyTenderReportDashboard({
   dateLabel,
   insightSentence,
   excerpt,
+  updatedAt,
 }: Props) {
   const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
 
@@ -100,6 +103,13 @@ export default function DailyTenderReportDashboard({
           </div>
         </div>
       </header>
+
+      {/* 데이터 신뢰 3종 세트 */}
+      <DataTrust3Pack
+        source="나라장터 G2B(입찰 데이터 집계)"
+        updatedAt={updatedAt}
+        sampleCount={count_total}
+      />
 
       {/* 2. 핵심 지표 카드 2개 (총 공고, 1위 업종 또는 1위 지역) */}
       <section className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
@@ -477,6 +487,32 @@ export default function DailyTenderReportDashboard({
       </section>
 
       {/* 7. 푸터 안내 */}
+      {/* 뉴스레터 CTA(리포트 하단) */}
+      <section className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 shadow-xl sm:p-8">
+        <div className="flex flex-col items-center justify-center gap-4 text-center text-white">
+          <p className="text-sm font-semibold text-white/95 sm:text-base">
+            매주 청소 입찰 시장 요약을 받아보세요
+          </p>
+          <p className="text-xs text-white/80 sm:text-sm">
+            리포트와 업계 소식을 한곳에서 이메일로 정리해드립니다.
+          </p>
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+            <Link
+              href="/subscribe"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-indigo-700 shadow-lg transition hover:bg-white/90"
+            >
+              뉴스레터 구독하기
+            </Link>
+            <Link
+              href="/news"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-white/60 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+            >
+              업계 소식·리포트
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <footer className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-700 p-4 shadow-lg sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md sm:h-12 sm:w-12">
@@ -495,7 +531,7 @@ export default function DailyTenderReportDashboard({
             </p>
             {isIndustryPayload && (
               <p className="mt-1 text-xs text-blue-200/90 sm:text-sm">
-                집계 기준: 해당 일자 00:00~24:00 (KST). 출처: 나라장터 G2B.
+                집계 기준: 해당 일자 00:00~24:00 (KST).
               </p>
             )}
           </div>
