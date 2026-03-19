@@ -1,6 +1,6 @@
 "use server";
 
-import { createServerSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
 import { resolveJobType } from "@/lib/jobs/resolve-job-type";
@@ -424,8 +424,15 @@ export async function updateJobPost(
     if (posErr) return { ok: false, error: `포지션 수정 실패: ${posErr.message}` };
   }
 
+  try {
+    const service = createServiceSupabase();
+    await service.rpc("refresh_job_post_stats");
+  } catch {
+    // 서비스 키 미설정 시 크론에서 갱신됨
+  }
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
+  revalidatePath("/");
   return { ok: true };
 }
 
@@ -446,8 +453,15 @@ export async function closeJobPost(jobPostId: string) {
     .eq("id", jobPostId);
 
   if (error) return { ok: false, error: error.message };
+  try {
+    const service = createServiceSupabase();
+    await service.rpc("refresh_job_post_stats");
+  } catch {
+    // 서비스 키 미설정 시 크론에서 갱신됨
+  }
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
+  revalidatePath("/");
   return { ok: true };
 }
 

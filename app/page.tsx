@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { createClient, createServerSupabase } from "@/lib/supabase-server";
+import { createClient, createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { getActiveHomeAds } from "@/lib/ads";
 import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
@@ -12,7 +12,7 @@ import HomeUserStatsSection from "@/components/home/HomeUserStatsSection";
 import HomeUserStatsSkeleton from "@/components/home/HomeUserStatsSkeleton";
 import HomeUserStatsGuestPlaceholder from "@/components/home/HomeUserStatsGuestPlaceholder";
 
-export const revalidate = 60;
+export const revalidate = 10;
 
 const LISTING_DEAL_TYPES = ["referral_regular", "referral_one_time", "sale_regular", "subcontract"];
 
@@ -76,7 +76,34 @@ export default async function HomePage() {
   const homeTenderStats = homeTenderStatsRow.data;
 
   let listingsCount = listingStats?.total_count ?? 0;
-  const jobsOpenCount = jobPostStats?.open_count ?? 0;
+  // 인력 구인 건수: service role로 직접 집계해 RLS/캐시와 무관하게 실제 건수 표시 (등록 직후 반영)
+  let jobsOpenCount = jobPostStats?.open_count ?? 0;
+  try {
+    const service = createServiceSupabase();
+    const directJobsRes = await service
+      .from("job_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open")
+      .or(`work_date.is.null,work_date.gte.${todayKst}`);
+    if (!directJobsRes.error && directJobsRes.count != null) {
+      jobsOpenCount = directJobsRes.count;
+    }
+  } catch {
+    const directJobsRes = await supabase
+      .from("job_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open")
+      .or(`work_date.is.null,work_date.gte.${todayKst}`);
+    if (!directJobsRes.error && directJobsRes.count != null) {
+      jobsOpenCount = directJobsRes.count;
+    } else if (jobsOpenCount === 0) {
+      const fallbackRes = await supabase
+        .from("job_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "open");
+      if (!fallbackRes.error && (fallbackRes.count ?? 0) > 0) jobsOpenCount = fallbackRes.count ?? 0;
+    }
+  }
   const recentListings = recentListingsRes.data ?? [];
   const latestNewsletter = latestNewsletterRes.data;
   const user = userRes.data.user;

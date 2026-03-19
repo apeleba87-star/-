@@ -1,6 +1,6 @@
 "use server";
 
-import { createServerSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import type { PositionInput } from "@/lib/jobs/types";
 import { resolveJobType } from "@/lib/jobs/resolve-job-type";
@@ -149,6 +149,13 @@ export async function createJobPost(input: CreateJobPostInput) {
     if (posError) return { ok: false, error: `포지션 저장 실패: ${posError.message}` };
   }
 
+  try {
+    const service = createServiceSupabase();
+    await service.rpc("refresh_job_post_stats");
+  } catch {
+    // 서비스 키 미설정 등으로 실패해도 구인 등록은 완료. 크론에서 갱신됨.
+  }
   revalidatePath("/jobs");
+  revalidatePath("/");
   return { ok: true, id: jobPost.id };
 }
