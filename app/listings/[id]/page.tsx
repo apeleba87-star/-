@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PayUnit } from "@/lib/listings/types";
@@ -30,6 +30,10 @@ export default async function ListingDetailPage({
   const supabase = createClient();
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
+
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(`/listings/${id}`)}`);
+  }
 
   const { data: listing, error } = await supabase
     .from("listings")

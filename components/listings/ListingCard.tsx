@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Tag, Calendar, ArrowRight } from "lucide-react";
+import { MapPin, Tag, Calendar, ArrowRight, Lock } from "lucide-react";
+import AuthRequiredCta from "@/components/AuthRequiredCta";
 import { formatMoney } from "@/lib/tender-utils";
 import { getGradeLabel, percentToGrade, wageGapPercent } from "@/lib/listings/grade";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
@@ -39,6 +40,8 @@ type Props = {
   sellerGrade: string | null;
   /** 등록일 (카드에 표시) */
   createdAt?: string | null;
+  /** 비로그인 시 예상 매매가·매매가 블러 및 상세 링크 로그인 유도 */
+  isLoggedIn?: boolean;
 };
 
 export default function ListingCard({
@@ -60,8 +63,10 @@ export default function ListingCard({
   sampleCount,
   sellerGrade,
   createdAt,
+  isLoggedIn = true,
 }: Props) {
   const isClosed = status === "closed";
+  const hideSensitive = !isLoggedIn;
   const typeLabel = listingType ? LISTING_TYPE_LABELS[listingType] ?? listingType : null;
   const gapPercent = wageGapPercent(
     normalizedDailyWage ?? null,
@@ -86,9 +91,9 @@ export default function ListingCard({
       ? new Date(createdAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })
       : null;
 
-  return (
-    <article className="group flex flex-col rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg transition-all duration-200 hover:-translate-y-2 hover:border-blue-300 hover:shadow-xl">
-      <Link href={`/listings/${id}`} className="flex flex-1 flex-col">
+  const detailHref = `/listings/${id}`;
+  const cardInner = (
+    <>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="line-clamp-2 text-xl font-bold text-slate-900 transition-colors group-hover:text-blue-600">
             {title}
@@ -139,6 +144,20 @@ export default function ListingCard({
                   hasDeal &&
                   estimatedDeal != null &&
                   Number(dealAmount) === estimatedDeal;
+                if (hideSensitive) {
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500">예상 매매가</span>
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-800 tabular-nums">
+                          <Lock className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                          <span className="blur-sm select-none">—</span>
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-500">로그인 후 확인 가능</span>
+                    </div>
+                  );
+                }
                 if (dealEqEstimated) {
                   return (
                     <div className="flex items-center justify-between gap-2">
@@ -200,7 +219,25 @@ export default function ListingCard({
             </span>
           )}
         </div>
-      </Link>
+    </>
+  );
+
+  return (
+    <article className="group flex flex-col rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-lg transition-all duration-200 hover:-translate-y-2 hover:border-blue-300 hover:shadow-xl">
+      {isLoggedIn ? (
+        <Link href={detailHref} className="flex flex-1 flex-col">
+          {cardInner}
+        </Link>
+      ) : (
+        <AuthRequiredCta
+          isLoggedIn={false}
+          href={detailHref}
+          message="현장거래 상세는 로그인 후 확인할 수 있습니다."
+          className="flex flex-1 flex-col"
+        >
+          {cardInner}
+        </AuthRequiredCta>
+      )}
     </article>
   );
 }

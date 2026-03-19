@@ -267,6 +267,7 @@ export default async function ListingsPage({ searchParams }: PageProps) {
           {listingsWithMeta.map((l) => (
             <ListingCard
               key={l.id}
+              isLoggedIn={!!user}
               id={l.id}
               title={l.title}
               status={l.status}

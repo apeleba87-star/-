@@ -15,8 +15,10 @@ declare global {
         method: string;
         order_name: string;
         subscription_id: string;
+        price?: number;
         redirect_url?: string;
         user?: { username?: string; phone?: string; email?: string };
+        extra?: { open_type?: string };
       }) => Promise<{ billing_key?: string; receipt_id?: string; data?: { billing_key?: string; receipt_id?: string } }>;
     };
   }
@@ -84,7 +86,9 @@ export default function SubscribeCheckout({
         method: "card_rebill",
         order_name: "클린아이덱스 프리미엄 월 구독",
         subscription_id: subscriptionId,
+        price: 0,
         redirect_url: redirectUrl,
+        extra: { open_type: "redirect" },
         user: userEmail ? { email: userEmail } : undefined,
       });
 
@@ -137,7 +141,11 @@ export default function SubscribeCheckout({
       <Script
         src="https://js.bootpay.co.kr/bootpay-5.2.0.min.js"
         strategy="afterInteractive"
-        onLoad={() => setBootpayReady(!!window.Bootpay)}
+        onLoad={() => {
+          if (!window.Bootpay) return;
+          // SDK 내부 초기화 완료 대기 후 버튼 활성화 (결제 시작 대기 상태 오류 완화)
+          setTimeout(() => setBootpayReady(true), 400);
+        }}
       />
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <ul className="mb-6 space-y-2 text-sm text-slate-600">
