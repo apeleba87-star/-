@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-export type NewsCategoryKey = "report" | "chemical" | "equipment" | "labor" | "industry";
+export type NewsCategoryKey = "report" | "chemical" | "equipment" | "labor" | "industry" | "private";
 
-const TABS: { key: NewsCategoryKey; label: string; href: string }[] = [
+const TABS: { key: Exclude<NewsCategoryKey, "private">; label: string; href: string }[] = [
   { key: "report", label: "입찰 리포트", href: "/news?category=report" },
   { key: "chemical", label: "약품", href: "/news?category=chemical" },
   { key: "equipment", label: "장비", href: "/news?category=equipment" },
@@ -10,15 +10,19 @@ const TABS: { key: NewsCategoryKey; label: string; href: string }[] = [
   { key: "industry", label: "업계이슈", href: "/news?category=industry" },
 ];
 
-type Props = { current: NewsCategoryKey };
+type Props = { current: NewsCategoryKey; showPrivateTab?: boolean };
 
-export default function NewsCategoryTabs({ current }: Props) {
+export default function NewsCategoryTabs({ current, showPrivateTab }: Props) {
+  const tabs = [
+    ...TABS,
+    ...(showPrivateTab ? [{ key: "private" as const, label: "비공개", href: "/news?category=private" }] : []),
+  ];
   return (
     <nav
       className="flex gap-1.5 overflow-x-auto rounded-xl border border-slate-200/80 bg-white/60 p-1.5 scrollbar-thin"
       aria-label="업계 소식 카테고리"
     >
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <Link
           key={tab.key}
           href={tab.href}

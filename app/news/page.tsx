@@ -1,9 +1,10 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard, { type NewsCardBadge } from "@/components/news/NewsCard";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const revalidate = 60;
 
@@ -13,8 +14,9 @@ export const metadata: Metadata = {
 };
 
 const CATEGORY_REPORT = "report";
+const CATEGORY_PRIVATE = "private";
 const CONTENT_CATEGORY_SLUGS = ["chemical", "equipment", "labor", "industry"] as const;
-export type NewsCategoryKey = typeof CATEGORY_REPORT | (typeof CONTENT_CATEGORY_SLUGS)[number];
+export type NewsCategoryKey = typeof CATEGORY_REPORT | (typeof CONTENT_CATEGORY_SLUGS)[number] | typeof CATEGORY_PRIVATE;
 
 function formatReportDateLabel(sourceRef: string | null): string {
   if (!sourceRef || !/^\d{4}-\d{2}-\d{2}$/.test(sourceRef)) return "입찰 리포트";
@@ -28,13 +30,73 @@ export default async function NewsPage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category: rawCategory } = await searchParams;
-  const category: NewsCategoryKey =
-    rawCategory && CONTENT_CATEGORY_SLUGS.includes(rawCategory as (typeof CONTENT_CATEGORY_SLUGS)[number])
-      ? (rawCategory as NewsCategoryKey)
-      : CATEGORY_REPORT;
+  const authSupabase = await createServerSupabase();
+  const { data: { user } } = await authSupabase.auth.getUser();
+  const { data: profile } = user
+    ? await authSupabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+  const isAdmin = profile?.role === "admin" || profile?.role === "editor";
+
+  let category: NewsCategoryKey;
+  if (rawCategory === CATEGORY_PRIVATE) {
+    if (!isAdmin) redirect("/news");
+    category = CATEGORY_PRIVATE;
+  } else if (rawCategory && CONTENT_CATEGORY_SLUGS.includes(rawCategory as (typeof CONTENT_CATEGORY_SLUGS)[number])) {
+    category = rawCategory as NewsCategoryKey;
+  } else {
+    category = CATEGORY_REPORT;
+  }
 
   const supabase = createClient();
   const todayKst = getKstDateString();
+
+  // 비공개 탭: 관리자만, is_private = true 글만
+  if (category === CATEGORY_PRIVATE) {
+    const { data: privatePosts } = await supabase
+      .from("posts")
+      .select("id, title, excerpt, published_at, slug, source_type, source_ref")
+      .not("published_at", "is", null)
+      .eq("is_private", true)
+      .order("published_at", { ascending: false })
+      .limit(50);
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
+        <div className="mx-auto max-w-6xl px-4 py-10">
+          <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+            업계 소식
+          </h1>
+          <p className="mb-6 text-sm text-slate-600">
+            사용자에게 비공개로 설정된 글입니다. 관리자만 열람할 수 있습니다.
+          </p>
+          <NewsCategoryTabs current={category} showPrivateTab={true} />
+          {!privatePosts?.length ? (
+            <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
+              <p className="text-slate-500">비공개 글이 없습니다.</p>
+            </div>
+          ) : (
+            <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {privatePosts.map((post) => (
+                <li key={post.id}>
+                  <NewsCard
+                    href={post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`}
+                    title={post.title}
+                    excerpt={post.excerpt}
+                    date={
+                      post.published_at
+                        ? new Date(post.published_at).toLocaleDateString("ko-KR")
+                        : ""
+                    }
+                    categoryTag="비공개"
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (category !== CATEGORY_REPORT) {
     const { data: contentCat } = await supabase
@@ -72,7 +134,7 @@ export default async function NewsPage({
           <p className="mb-6 text-sm text-slate-600">
             청소·소독·방역 관련 약품, 장비, 근로, 업계이슈 소식입니다.
           </p>
-          <NewsCategoryTabs current={category} />
+          <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
           {!posts?.length ? (
             <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
               <p className="text-slate-500">아직 올라온 글이 없습니다.</p>
@@ -121,7 +183,7 @@ export default async function NewsPage({
           청소·소독·방역 입찰 일간 리포트와 업계 관련 소식입니다. 오늘 리포트는
           무료, 이전 소식은 구독 후 이용할 수 있습니다.
         </p>
-        <NewsCategoryTabs current={category} />
+        <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
         {!posts?.length ? (
           <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
             <p className="text-slate-500">아직 올라온 소식이 없습니다.</p>
