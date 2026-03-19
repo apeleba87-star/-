@@ -13,9 +13,9 @@ function isValidNext(path: string | null): path is string {
 }
 
 type SocialProvider = "google" | "kakao";
-const SOCIAL_PROVIDERS: { provider: SocialProvider; label: string; className?: string }[] = [
-  { provider: "google", label: "Google로 로그인", className: "border-slate-300 bg-white text-slate-800 hover:bg-slate-50" },
-  { provider: "kakao", label: "카카오로 로그인", className: "border-[#FEE500] bg-[#FEE500] text-[#191919] hover:bg-[#f5d900]" },
+const SOCIAL_PROVIDERS: { provider: SocialProvider; label: string; className?: string; sizeClass?: string }[] = [
+  { provider: "google", label: "Google로 로그인", className: "border-slate-300 bg-white text-slate-800 hover:bg-slate-50", sizeClass: "min-h-[40px] py-2 text-xs" },
+  { provider: "kakao", label: "카카오로 로그인", className: "border-[#FEE500] bg-[#FEE500] text-[#191919] hover:bg-[#f5d900]", sizeClass: "min-h-[52px] py-4 text-base font-semibold" },
 ];
 
 export default function LoginClient() {
@@ -73,13 +73,13 @@ export default function LoginClient() {
       )}
 
       <div className="mb-6 space-y-2">
-        {SOCIAL_PROVIDERS.map(({ provider, label, className }) => (
+        {SOCIAL_PROVIDERS.map(({ provider, label, className, sizeClass }) => (
           <button
             key={provider}
             type="button"
             onClick={() => handleOAuth(provider)}
             disabled={!!oauthLoading}
-            className={`w-full rounded-lg border px-4 py-2.5 text-center text-sm font-medium transition disabled:opacity-50 ${className}`}
+            className={`w-full rounded-lg border px-4 text-center transition disabled:opacity-50 ${className} ${sizeClass ?? "min-h-[44px] py-2.5 text-sm font-medium"}`}
           >
             {oauthLoading === provider ? "연결 중…" : label}
           </button>
