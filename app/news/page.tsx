@@ -180,8 +180,7 @@ export default async function NewsPage({
           업계 소식
         </h1>
         <p className="mb-6 text-sm text-slate-600">
-          청소·소독·방역 입찰 일간 리포트와 업계 관련 소식입니다. 오늘 리포트는
-          무료, 이전 소식은 구독 후 이용할 수 있습니다.
+          청소·소독·방역 입찰 리포트와 업계 소식입니다. 가장 최신 1건은 무료, 나머지는 구독 또는 공유 1회로 열람할 수 있습니다.
         </p>
         <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
         {!posts?.length ? (
@@ -195,7 +194,8 @@ export default async function NewsPage({
               const sourceRef = (post as { source_ref?: string | null }).source_ref ?? null;
               const isDaily = sourceType === "auto_tender_daily" || (post.slug ?? "").includes("daily-tender-digest");
               const isToday = isDaily && sourceRef === todayKst;
-              const isFree = isToday || index === 0;
+              // 가장 최신 1건만 무료(목록은 published_at 내림차순이므로 index === 0)
+              const isFree = index === 0;
               const listTitle = isDaily
                 ? isToday
                   ? "오늘 청소 입찰 리포트"

@@ -10,6 +10,7 @@ import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { aggregateDailyTenders } from "@/lib/content/tender-report-queries";
 import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
 import { getKstDateString } from "@/lib/content/kst-utils";
+import { hasSubscriptionAccess } from "@/lib/subscription-access";
 import DailyTenderReportDashboard from "@/components/report/DailyTenderReportDashboard";
 import ReportPaywallLock from "@/components/report/ReportPaywallLock";
 import ReportSnapshotView from "@/components/report/ReportSnapshotView";
@@ -114,22 +115,34 @@ export default async function PostPage({ params }: PostPageParams) {
         }
       }
     }
-    const reportLocked = await getReportLocked(slugPost, reportData);
+    const reportLocked = await getReportLocked(slugPost, reportData, supabase);
     return renderPost(slugPost, adsResult, reportData, reportLocked);
   }
   await ensurePrivateAccess(post, authSupabase, user.id);
-  const reportLocked = await getReportLocked(post!, reportData);
+  const reportLocked = await getReportLocked(post!, reportData, supabase);
   return renderPost(post!, adsResult, reportData, reportLocked);
+}
+
+/** 리포트 포스트 중 published_at 기준 가장 최신 1건의 id 조회 (무료 열람 대상) */
+async function getLatestReportPostId(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data } = await supabase
+    .from("posts")
+    .select("id")
+    .not("published_at", "is", null)
+    .eq("is_private", false)
+    .or("source_type.not.is.null,slug.ilike.*daily-tender-digest*,slug.ilike.*report-*")
+    .order("published_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
 }
 
 async function getReportLocked(
   post: PostForRender,
-  reportData: ReportData | null
+  reportData: ReportData | null,
+  supabase: ReturnType<typeof createClient>
 ): Promise<boolean> {
   if (!isReportPost(post) || !reportData) return false;
-  const reportDate = getReportDate(post);
-  const todayKst = getKstDateString();
-  if (!reportDate || reportDate >= todayKst) return false;
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
   if (!user) return true;
@@ -140,13 +153,15 @@ async function getReportLocked(
     .single();
   const role = (profile as { role?: string } | null)?.role;
   if (role === "admin" || role === "editor") return false;
+  const latestId = await getLatestReportPostId(supabase);
+  if (latestId === post.id) return false;
+  const todayKst = getKstDateString();
   const { data: sub } = await authSupabase
     .from("subscriptions")
-    .select("id")
+    .select("id, status, next_billing_at")
     .eq("user_id", user.id)
-    .eq("status", "active")
     .maybeSingle();
-  if (sub) return false;
+  if (hasSubscriptionAccess(sub as { status: string; next_billing_at?: string | null } | null, todayKst)) return false;
   const { data: grant } = await authSupabase
     .from("report_share_grants")
     .select("id")

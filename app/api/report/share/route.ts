@@ -23,11 +23,17 @@ export async function POST(req: Request) {
   }
   const { data: post } = await supabase
     .from("posts")
-    .select("id, source_type")
+    .select("id, source_type, slug")
     .eq("id", postId)
     .not("published_at", "is", null)
+    .eq("is_private", false)
     .maybeSingle();
-  if (!post || (post as { source_type?: string }).source_type !== "auto_tender_daily") {
+  const slug = (post as { slug?: string | null })?.slug ?? "";
+  const isReport =
+    (post as { source_type?: string | null })?.source_type != null ||
+    slug.includes("daily-tender-digest") ||
+    /report-/.test(slug);
+  if (!post || !isReport) {
     return NextResponse.json({ ok: false, error: "해당 글이 없거나 공유 대상이 아닙니다." }, { status: 400 });
   }
   const grantDate = getKstDateString();

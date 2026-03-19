@@ -161,7 +161,7 @@ export default function SubscribeCheckout({
           <p className="mt-2 text-center text-xs text-slate-500">결제 창을 불러오는 중…</p>
         )}
         <p className="mt-4 text-center text-xs text-slate-400">
-          결제 수단 등록 후 매월 자동 결제됩니다. 해지는 마이페이지에서 할 수 있습니다.
+          결제 수단 등록 후 매월 자동 결제됩니다. 해지는 구독 페이지에서 취소할 수 있습니다.
         </p>
       </div>
       <p className="mt-6 text-center">
