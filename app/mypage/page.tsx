@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { glassCard } from "@/lib/ui-styles";
 import MyPageForm from "./MyPageForm";
+import MyPageSubscriptionCard from "./MyPageSubscriptionCard";
 
 export default async function MypagePage() {
   const supabase = await createServerSupabase();
@@ -13,17 +14,19 @@ export default async function MypagePage() {
     redirect("/login?next=/mypage");
   }
 
-  const [workerRes, profileRes] = await Promise.all([
+  const [workerRes, profileRes, subRes] = await Promise.all([
     supabase
       .from("worker_profiles")
       .select("nickname, birth_date, gender, bio, contact_phone")
       .eq("user_id", user.id)
       .maybeSingle(),
     supabase.from("profiles").select("role").eq("id", user.id).single(),
+    supabase.from("subscriptions").select("status, next_billing_at").eq("user_id", user.id).maybeSingle(),
   ]);
 
   const worker = workerRes.data;
   const isAdmin = profileRes.data?.role === "admin" || profileRes.data?.role === "editor";
+  const sub = subRes.data as { status?: string; next_billing_at?: string | null } | null;
 
   const initial = {
     nickname: worker?.nickname ?? "",
@@ -46,6 +49,13 @@ export default async function MypagePage() {
         <p className="text-sm text-slate-600">
           로그인 계정: <strong className="text-slate-800">{user.email}</strong>
         </p>
+      </section>
+
+      <section className="mb-6">
+        <MyPageSubscriptionCard
+          status={sub?.status === "active" || sub?.status === "cancelled" || sub?.status === "past_due" ? sub.status : null}
+          nextBillingAt={sub?.next_billing_at ?? null}
+        />
       </section>
 
       <section>
