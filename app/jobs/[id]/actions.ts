@@ -19,18 +19,20 @@ export async function applyToPosition(positionId: string, jobPostId: string) {
 
   const { data: worker } = await supabase
     .from("worker_profiles")
-    .select("birth_date, gender")
+    .select("nickname, birth_date, gender, contact_phone")
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const hasNickname = (worker?.nickname ?? "").trim() !== "";
   const hasBirthDate = worker?.birth_date != null && String(worker.birth_date).trim() !== "";
   const hasGender = worker?.gender === "M" || worker?.gender === "F";
+  const hasContactPhone = (worker?.contact_phone ?? "").trim() !== "";
 
-  if (!hasBirthDate || !hasGender) {
+  if (!hasNickname || !hasBirthDate || !hasGender || !hasContactPhone) {
     return {
       ok: false,
       error:
-        "지원하려면 마이페이지에서 생일과 성별을 먼저 입력해 주세요. 잘못 입력된 정보로 인한 피해는 본인이 책임지셔야 합니다.",
+        "지원하려면 이름·생년월일·성별·휴대폰 번호를 입력해 주세요. 구인글 상세에서 지원하기를 누르면 한 번만 입력하면 됩니다.",
     };
   }
 
@@ -64,6 +66,74 @@ export async function applyToPosition(positionId: string, jobPostId: string) {
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
   return { ok: true };
+}
+
+function isValidBirthDate(value: string | null): boolean {
+  if (!value || typeof value !== "string") return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return false;
+  const y = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const d = parseInt(match[3], 10);
+  if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+}
+
+/** 프로필 입력 후 지원 (이름·생년월일·성별·휴대폰 한 번만 입력하면 마이페이지에 저장되고 지원 완료) */
+export async function applyWithProfile(
+  positionId: string,
+  jobPostId: string,
+  profile: { nickname: string; birth_date: string; gender: "M" | "F"; contact_phone: string }
+) {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const { data: cap } = await supabase.from("member_capabilities").select("can_apply_jobs").eq("user_id", user.id).single();
+  if (!cap?.can_apply_jobs) return { ok: false, error: "구직 지원 권한이 없습니다. 마이페이지에서 활동을 추가해 주세요." };
+
+  const nick = (profile.nickname ?? "").trim();
+  const birthDate = (profile.birth_date ?? "").trim();
+  const gender = profile.gender === "M" || profile.gender === "F" ? profile.gender : null;
+  const phone = (profile.contact_phone ?? "").trim();
+
+  if (!nick) return { ok: false, error: "이름을 입력해 주세요." };
+  if (!birthDate || !isValidBirthDate(birthDate)) return { ok: false, error: "생년월일을 올바르게 입력해 주세요. (예: 1990-01-01)" };
+  if (!gender) return { ok: false, error: "성별을 선택해 주세요." };
+  if (!phone) return { ok: false, error: "휴대폰 번호를 입력해 주세요." };
+
+  const { data: existingWorker } = await supabase
+    .from("worker_profiles")
+    .select("nickname")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const keptNickname = (existingWorker?.nickname != null && String(existingWorker.nickname).trim() !== "")
+    ? existingWorker.nickname
+    : nick;
+
+  const { error: upsertErr } = await supabase
+    .from("worker_profiles")
+    .upsert(
+      {
+        user_id: user.id,
+        nickname: keptNickname,
+        birth_date: birthDate,
+        gender,
+        contact_phone: phone,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    );
+  if (upsertErr) return { ok: false, error: upsertErr.message };
+
+  revalidatePath("/mypage");
+  revalidatePath(`/jobs/${jobPostId}`);
+  revalidatePath("/jobs");
+
+  return applyToPosition(positionId, jobPostId);
 }
 
 /** 지원 취소 (지원자만, 매칭 전에만) */

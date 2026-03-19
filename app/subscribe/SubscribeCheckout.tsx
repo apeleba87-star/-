@@ -27,21 +27,25 @@ export default function SubscribeCheckout({
   userEmail,
   redirectReceiptId,
   redirectEvent,
+  redirectStatus,
 }: {
   applicationId: string;
   userEmail?: string;
   redirectReceiptId?: string | null;
   redirectEvent?: string | null;
+  redirectStatus?: string | null;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bootpayReady, setBootpayReady] = useState(false);
 
-  // redirect 복귀 시: receipt_id로 구독 등록 후 홈으로
+  // redirect 복귀 시: receipt_id로 구독 등록 후 홈으로 (event 또는 status로 성공 여부 판단)
   useEffect(() => {
-    if (!redirectReceiptId || !redirectEvent) return;
-    if (redirectEvent !== "done" && redirectEvent !== "issued" && redirectEvent !== "11") return;
+    if (!redirectReceiptId) return;
+    const eventOk = redirectEvent === "done" || redirectEvent === "issued" || redirectEvent === "11";
+    const statusOk = redirectStatus === "11" || redirectStatus === "42"; // 빌링키 발급 완료/성공
+    if (!eventOk && !statusOk) return;
     setLoading(true);
     setError(null);
     fetch("/api/subscribe/register-with-receipt", {
@@ -60,7 +64,7 @@ export default function SubscribeCheckout({
       })
       .catch(() => setError("구독 등록 중 오류가 발생했습니다."))
       .finally(() => setLoading(false));
-  }, [redirectReceiptId, redirectEvent, router]);
+  }, [redirectReceiptId, redirectEvent, redirectStatus, router]);
 
   const handleSubscribe = useCallback(async () => {
     const Bootpay = window.Bootpay ?? (window as unknown as { bootpay?: typeof window.Bootpay }).bootpay;

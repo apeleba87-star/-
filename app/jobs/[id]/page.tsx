@@ -9,7 +9,7 @@ import MarketComparisonBox from "@/components/listings/MarketComparisonBox";
 import ContactButtons from "@/components/listings/ContactButtons";
 import ApplicationList, { type ApplicantRow } from "@/components/jobs/ApplicationList";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
-import ApplyButton from "@/components/jobs/ApplyButton";
+import ApplySection from "@/components/jobs/ApplySection";
 import JobPostPrivateDetails from "@/components/jobs/JobPostPrivateDetails";
 import JobPostOwnerActions from "@/components/jobs/JobPostOwnerActions";
 import NoShowAppealBlock from "@/components/jobs/NoShowAppealBlock";
@@ -148,15 +148,17 @@ export default async function JobPostDetailPage({
     user && !isOwner
       ? await authSupabase
           .from("worker_profiles")
-          .select("birth_date, gender")
+          .select("nickname, birth_date, gender, contact_phone")
           .eq("user_id", user.id)
           .maybeSingle()
       : { data: null };
   const workerProfileComplete =
+    (myWorker?.nickname ?? "").trim() !== "" &&
     myWorker?.birth_date != null &&
     String(myWorker.birth_date).trim() !== "" &&
-    myWorker.gender != null &&
-    (myWorker.gender === "M" || myWorker.gender === "F");
+    myWorker?.gender != null &&
+    (myWorker.gender === "M" || myWorker.gender === "F") &&
+    (myWorker?.contact_phone ?? "").trim() !== "";
 
   const { data: privateDetails } = await authSupabase
     .from("job_post_private_details")
@@ -409,21 +411,18 @@ export default async function JobPostDetailPage({
                                 appealedAt={appealData.appealedAt}
                               />
                             )}
-                            {!workerProfileComplete && (
-                              <div className="mb-3 rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 text-sm text-amber-900">
-                                <p>
-                                  지원하려면 <Link href="/mypage" className="font-medium underline underline-offset-2">마이페이지</Link>에서 <strong>생일</strong>과 <strong>성별</strong>을 먼저 입력해 주세요.
-                                </p>
-                                <p className="mt-1 text-xs text-amber-800">
-                                  잘못 입력된 정보로 인한 피해는 본인이 책임지셔야 합니다.
-                                </p>
-                              </div>
-                            )}
-                            <ApplyButton
+                            <ApplySection
                               positionId={pos.id}
                               jobPostId={id}
-                              disabled={post.status === "closed" || !workerProfileComplete}
+                              disabled={post.status === "closed"}
                               alreadyApplied={alreadyApplied}
+                              workerProfileComplete={workerProfileComplete}
+                              initialWorker={{
+                                nickname: myWorker?.nickname ?? "",
+                                birth_date: myWorker?.birth_date ?? null,
+                                gender: myWorker?.gender ?? null,
+                                contact_phone: myWorker?.contact_phone ?? null,
+                              }}
                             />
                           </>
                         );

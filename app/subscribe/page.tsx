@@ -8,6 +8,7 @@ import SubscribeStatus from "./SubscribeStatus";
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ receipt_id?: string; event?: string; status?: string }> };
+// Bootpay redirect 시 receipt_id, event(done/issued/11) 또는 status(11/42) 전달
 
 export default async function SubscribePage({ searchParams }: Props) {
   const supabase = await createServerSupabase();
@@ -54,6 +55,7 @@ export default async function SubscribePage({ searchParams }: Props) {
   const params = await searchParams;
   const receiptId = params?.receipt_id ?? null;
   const event = params?.event ?? null;
+  const status = params?.status ?? null;
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
@@ -70,6 +72,7 @@ export default async function SubscribePage({ searchParams }: Props) {
         userEmail={user.email ?? undefined}
         redirectReceiptId={receiptId}
         redirectEvent={event}
+        redirectStatus={status}
       />
     </div>
   );

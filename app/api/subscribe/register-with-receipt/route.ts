@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
-import { lookupBillingKeyByReceipt, isBootpayConfigured } from "@/lib/bootpay-server";
+import { lookupBillingKeyByReceiptWithRetry, isBootpayConfigured } from "@/lib/bootpay-server";
 
 const SUBSCRIPTION_AMOUNT_CENTS = 9900;
 
-/** redirect 복귀 시 receipt_id만으로 구독 등록 (빌링키 조회 후 저장) */
+/** redirect 복귀 시 receipt_id만으로 구독 등록 (빌링키 조회 후 저장). "결제대기 상태가 아닙니다" 시 재시도·폴백 적용 */
 export async function POST(req: Request) {
   if (!isBootpayConfigured()) {
     return NextResponse.json({ error: "결제가 설정되지 않았습니다." }, { status: 503 });
@@ -28,10 +28,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "receipt_id가 필요합니다." }, { status: 400 });
   }
 
-  const result = await lookupBillingKeyByReceipt(receipt_id);
-  if (!result?.billing_key) {
-    return NextResponse.json({ error: "빌링키를 조회할 수 없습니다. 결제를 다시 시도해 주세요." }, { status: 400 });
+  const result = await lookupBillingKeyByReceiptWithRetry(receipt_id);
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
+  const billing_key = result.billing_key;
 
   const nextBilling = new Date();
   nextBilling.setMonth(nextBilling.getMonth() + 1);
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   const { error: upsertError } = await supabase.from("subscriptions").upsert(
     {
       user_id: user.id,
-      billing_key: result.billing_key,
+      billing_key,
       plan: "monthly",
       amount_cents: SUBSCRIPTION_AMOUNT_CENTS,
       status: "active",
