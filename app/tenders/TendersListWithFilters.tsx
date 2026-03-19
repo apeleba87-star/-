@@ -324,7 +324,7 @@ export default function TendersListWithFilters({
               <ul className="space-y-4">
                 {openTenders.map((t) => (
                   <li key={t.id}>
-                    <TenderBidCard tender={t} industryNames={industryNames} hideSensitive={!isLoggedIn} />
+                    <TenderBidCard tender={t} industryNames={industryNames} isLoggedIn={isLoggedIn} />
                   </li>
                 ))}
               </ul>
@@ -346,7 +346,7 @@ export default function TendersListWithFilters({
               <ul className="space-y-4">
                 {closedTenders.map((t) => (
                   <li key={t.id}>
-                    <TenderBidCard tender={t} industryNames={industryNames} hideSensitive={!isLoggedIn} />
+                    <TenderBidCard tender={t} industryNames={industryNames} isLoggedIn={isLoggedIn} />
                   </li>
                 ))}
               </ul>

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, FileText, Download } from "lucide-react";
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import {
   extractItems,
   getBidPblancListInfoEorderAtchFileInfo,
@@ -114,6 +114,15 @@ function extractAttachList(attachFiles: unknown, raw: unknown): { fileSeq: strin
 
 export default async function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  const authSupabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await authSupabase.auth.getUser();
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(`/tenders/${id}`)}`);
+  }
+
   const supabase = createClient();
   const { data: tender, error } = await supabase.from("tenders").select("*").eq("id", id).single();
   if (error || !tender) notFound();

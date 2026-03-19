@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FileText, Lock, ArrowRight } from "lucide-react";
+import AuthRequiredCta from "@/components/AuthRequiredCta";
 import {
   formatMoneyMan,
   ddayNumber,
@@ -53,13 +54,15 @@ function getDaysText(days: number): string {
 export default function TenderBidCard({
   tender,
   industryNames,
-  hideSensitive = false,
+  isLoggedIn = true,
 }: {
   tender: TenderBidCardT;
   industryNames?: Record<string, string>;
-  /** 비로그인 시 true. 기초금액·낙찰하한율을 블러+자물쇠로 표시 */
-  hideSensitive?: boolean;
+  /** 비로그인 시 카드 클릭·상세보기는 로그인 유도, 금액·하한율 블러 */
+  isLoggedIn?: boolean;
 }) {
+  const hideSensitive = !isLoggedIn;
+  const detailHref = `/tenders/${tender.id}`;
   const basePrice =
     tender.base_amt != null ? Number(tender.base_amt) : getBaseAmtFromRaw(tender.raw);
   const lowerRate = getLowerRateFromRaw(tender.raw);
@@ -70,9 +73,8 @@ export default function TenderBidCard({
       ? tender.tender_industries.map((ti) => industryNames[ti.industry_code] ?? ti.industry_code).join(", ")
       : "—";
 
-  return (
-    <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-lg">
-      <Link href={`/tenders/${tender.id}`} className="block">
+  const cardInner = (
+    <>
         <div className="mb-4 flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-1 items-start gap-4">
             <div className="shrink-0 rounded-xl bg-blue-50 p-3 transition-colors group-hover:bg-blue-100">
@@ -104,13 +106,14 @@ export default function TenderBidCard({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs text-slate-500">기초금액</p>
-            <div className="mt-0.5 flex items-center gap-2">
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
               {hideSensitive ? (
                 <>
                   <Lock className="size-4 shrink-0 text-slate-500" aria-hidden />
                   <span className="font-semibold text-slate-800 blur-sm select-none">
                     {basePrice != null ? formatMoneyMan(basePrice) : "—"}
                   </span>
+                  <span className="text-[11px] font-medium text-slate-500">로그인 후 확인 가능</span>
                 </>
               ) : (
                 <p className="font-semibold text-slate-800">
@@ -121,13 +124,14 @@ export default function TenderBidCard({
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs text-slate-500">낙찰하한율</p>
-            <div className="mt-0.5 flex items-center gap-2">
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
               {hideSensitive ? (
                 <>
                   <Lock className="size-4 shrink-0 text-slate-500" aria-hidden />
                   <span className="font-semibold text-slate-800 blur-sm select-none">
                     {lowerRate != null ? `${lowerRate}%` : "—"}
                   </span>
+                  <span className="text-[11px] font-medium text-slate-500">로그인 후 확인 가능</span>
                 </>
               ) : (
                 <p className="font-semibold text-slate-800">
@@ -152,11 +156,30 @@ export default function TenderBidCard({
             </div>
           </div>
         </div>
-      </Link>
+    </>
+  );
+
+  return (
+    <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-lg">
+      {isLoggedIn ? (
+        <Link href={detailHref} className="block">
+          {cardInner}
+        </Link>
+      ) : (
+        <AuthRequiredCta
+          isLoggedIn={false}
+          href={detailHref}
+          message="입찰 공고 상세는 로그인 후 확인할 수 있습니다."
+          className="block w-full cursor-pointer text-left"
+        >
+          {cardInner}
+        </AuthRequiredCta>
+      )}
       <div className="mt-4 border-t border-slate-100 pt-4">
         <TenderCardActions
           tenderId={tender.id}
           tenderNumber={tenderNumber(tender.bid_ntce_no, tender.bid_ntce_ord)}
+          isLoggedIn={isLoggedIn}
         />
       </div>
     </article>
