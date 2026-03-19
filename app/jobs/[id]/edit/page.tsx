@@ -36,6 +36,12 @@ export default async function JobPostEditPage({
     .eq("job_post_id", id)
     .maybeSingle();
 
+  const { data: company } = await authSupabase
+    .from("company_profiles")
+    .select("contact_phone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { data: categories } = await supabase
     .from("categories")
     .select("id, name, parent_id, slug, sort_order, is_active")
@@ -84,6 +90,7 @@ export default async function JobPostEditPage({
       initialData={initialData}
       mainCategories={mainCategories}
       subCategories={subCategories}
+      contactPhoneFromProfile={company?.contact_phone ?? null}
     />
   );
 }

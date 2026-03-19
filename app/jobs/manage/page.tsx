@@ -11,6 +11,7 @@ import { getKstTodayString, getKstTomorrowString } from "@/lib/jobs/kst-date";
 import { birthYearToAgeRangeLabel } from "@/lib/jobs/age-range";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type JobPostRow = {
   id: string;

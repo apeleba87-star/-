@@ -11,7 +11,9 @@ const OPTIONS: { value: OnboardingChoice; label: string }[] = [
   { value: "promote", label: "제품 홍보" },
 ];
 
-export default function OnboardingForm() {
+type Props = { nextUrl?: string };
+
+export default function OnboardingForm({ nextUrl }: Props) {
   const router = useRouter();
   const [choices, setChoices] = useState<OnboardingChoice[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,7 @@ export default function OnboardingForm() {
       setLoading(false);
       return;
     }
-    router.push("/");
+    router.push(nextUrl ?? "/");
     router.refresh();
   }
 

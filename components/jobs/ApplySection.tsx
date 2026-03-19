@@ -20,6 +20,7 @@ type Props = {
   disabled?: boolean;
   alreadyApplied?: boolean;
   workerProfileComplete: boolean;
+  onboardingDone?: boolean;
   initialWorker: InitialWorker;
 };
 
@@ -29,6 +30,7 @@ export default function ApplySection({
   disabled,
   alreadyApplied,
   workerProfileComplete,
+  onboardingDone = true,
   initialWorker,
 }: Props) {
   const router = useRouter();
@@ -39,6 +41,10 @@ export default function ApplySection({
 
   async function handleApplyClick() {
     setError(null);
+    if (!onboardingDone) {
+      router.push(`/onboarding?next=${encodeURIComponent(`/jobs/${jobPostId}`)}`);
+      return;
+    }
     if (workerProfileComplete) {
       setLoading(true);
       const result = await applyToPosition(positionId, jobPostId);

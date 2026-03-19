@@ -125,30 +125,49 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
 
   // lookupSubscribeBillingKey는 빌링키 발급용 영수증만 지원. 결제완료(100원) 영수증이 넘어오면 실패함.
   // receiptPayment로 조회 시 결제/빌링키 영수증 모두 billing_key를 내려주는 경우가 있으므로 폴백으로 사용.
+  function pickBillingKey(obj: unknown): string | null {
+    if (!obj || typeof obj !== "object") return null;
+    const o = obj as Record<string, unknown>;
+    const key = (o.billing_key ?? (o.data && typeof o.data === "object" && (o.data as Record<string, unknown>).billing_key)) as string | undefined;
+    return typeof key === "string" && key.trim() ? key.trim() : null;
+  }
   try {
     const receipt = await withTimeout(
       Promise.resolve(Bootpay.receiptPayment(receiptId)),
       BOOTPAY_TIMEOUT_MS
-    ) as unknown as { status?: number; billing_key?: string };
+    ) as unknown as { status?: number; billing_key?: string; data?: { billing_key?: string } };
     const okStatus = receipt?.status === 1 || receipt?.status === 11 || receipt?.status === 42; // 1: 결제완료, 11/42: 빌링키 발급 완료/성공
-    if (okStatus && receipt?.billing_key) {
-      return { billing_key: receipt.billing_key };
+    const bk = pickBillingKey(receipt);
+    if (okStatus && bk) {
+      return { billing_key: bk };
     }
   } catch {
     // ignore
   }
 
-  // PG 반영 지연: 5초 후 한 번 더 빌링키 조회 시도 (0원/100원 동시 결제 시 링크 지연 대비)
-  await new Promise((r) => setTimeout(r, 5000));
-  try {
-    const res = await withTimeout(
-      Promise.resolve(Bootpay.lookupSubscribeBillingKey(receiptId)),
-      BOOTPAY_TIMEOUT_MS
-    );
-    const d = res as unknown as { billing_key?: string };
-    if (d?.billing_key) return { billing_key: d.billing_key };
-  } catch {
-    // ignore
+  // PG 반영 지연: 5초 후, 8초 후 한 번씩 더 빌링키 조회 (0원/100원 동시 결제 시 링크 지연 대비)
+  for (const delayMs of [5000, 8000]) {
+    await new Promise((r) => setTimeout(r, delayMs));
+    try {
+      const res = await withTimeout(
+        Promise.resolve(Bootpay.lookupSubscribeBillingKey(receiptId)),
+        BOOTPAY_TIMEOUT_MS
+      );
+      const d = res as unknown as { billing_key?: string };
+      if (d?.billing_key) return { billing_key: d.billing_key };
+    } catch {
+      // ignore
+    }
+    try {
+      const receipt = await withTimeout(
+        Promise.resolve(Bootpay.receiptPayment(receiptId)),
+        BOOTPAY_TIMEOUT_MS
+      ) as unknown as Record<string, unknown>;
+      const bk = (receipt?.billing_key ?? (receipt?.data && typeof receipt.data === "object" && (receipt.data as Record<string, unknown>).billing_key)) as string | undefined;
+      if (typeof bk === "string" && bk.trim()) return { billing_key: bk.trim() };
+    } catch {
+      // ignore
+    }
   }
 
   return {

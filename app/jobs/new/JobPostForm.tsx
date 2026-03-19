@@ -83,6 +83,8 @@ type Props = {
   jobPostId?: string;
   companyProfileComplete?: boolean;
   initialCompany?: InitialCompany;
+  /** 업체(마이페이지) 연락처로 고정 시 이 값 사용, 입력란 비활성화 */
+  contactPhoneFromProfile?: string | null;
 };
 
 const defaultPosition: PositionInput = {
@@ -111,6 +113,7 @@ export default function JobPostForm({
     business_number: "",
     contact_phone: "",
   },
+  contactPhoneFromProfile,
 }: Props) {
   const router = useRouter();
   const isEdit = Boolean(jobPostId && initialData);
@@ -127,7 +130,10 @@ export default function JobPostForm({
   const [startTime, setStartTime] = useState(initialData?.startTime ?? "");
   const [endTime, setEndTime] = useState(initialData?.endTime ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
-  const [contactPhone, setContactPhone] = useState(initialData?.contactPhone ?? "");
+  const lockedPhone = (contactPhoneFromProfile ?? "").trim() || null;
+  const [contactPhone, setContactPhone] = useState(
+    initialData?.contactPhone ?? (initialCompany?.contact_phone ? formatPhoneInput(initialCompany.contact_phone) : "") ?? ""
+  );
   const [fullAddress, setFullAddress] = useState(initialData?.fullAddress ?? "");
   const [accessInstructions, setAccessInstructions] = useState(initialData?.accessInstructions ?? "");
   const [parkingInfo, setParkingInfo] = useState(initialData?.parkingInfo ?? "");
@@ -199,7 +205,8 @@ export default function JobPostForm({
       setLoading(false);
       return;
     }
-    if (!contactPhone.trim()) {
+    const effectiveContact = lockedPhone ? lockedPhone.replace(/-/g, "") : contactPhone.trim();
+    if (!effectiveContact) {
       setError("연락처를 입력하세요.");
       setLoading(false);
       return;
@@ -213,10 +220,10 @@ export default function JobPostForm({
       start_time: startTime.trim() || null,
       end_time: endTime.trim() || null,
       description: description.trim() || null,
-      contact_phone: contactPhone.trim(),
+      contact_phone: effectiveContact,
       private_details: {
         full_address: fullAddress.trim() || null,
-        contact_phone: contactPhone.trim() || null,
+        contact_phone: effectiveContact || null,
         access_instructions: accessInstructions.trim() || null,
         parking_info: parkingInfo.trim() || null,
         notes: siteNotes.trim() || null,
@@ -494,13 +501,18 @@ export default function JobPostForm({
                 type="tel"
                 inputMode="numeric"
                 autoComplete="tel"
-                value={contactPhone}
-                onChange={(e) => handleContactChange(e.target.value)}
+                value={lockedPhone ? formatPhoneInput(lockedPhone) : contactPhone}
+                onChange={lockedPhone ? undefined : (e) => handleContactChange(e.target.value)}
+                readOnly={!!lockedPhone}
+                disabled={!!lockedPhone}
                 className={inputClass}
                 placeholder="010-1111-2222"
                 maxLength={13}
                 required
               />
+              {lockedPhone && (
+                <p className="mt-1 text-xs text-slate-500">마이페이지(업체 정보)에 저장된 연락처입니다. 변경은 업체 정보에서 하세요.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">현장 간편 설명 (선택)</label>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import {
   lookupBillingKeyByReceiptWithRetry,
   isBootpayConfigured,
@@ -11,15 +11,15 @@ import {
   getSubscriptionPromoConfig,
 } from "@/lib/app-settings";
 
-/** redirect 복귀 시 receipt_id(필수)와 선택적으로 billing_key로 구독 등록. billing_key 있으면 조회 생략 */
+/** redirect 복귀 시 receipt_id(필수)와 선택적으로 billing_key로 구독 등록. 저장은 service role로 해서 세션/RLS 이슈 방지 */
 export async function POST(req: Request) {
   try {
     if (!isBootpayConfigured()) {
       return NextResponse.json({ error: "결제가 설정되지 않았습니다." }, { status: 503 });
     }
 
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authSupabase = await createServerSupabase();
+    const { data: { user } } = await authSupabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
@@ -57,9 +57,18 @@ export async function POST(req: Request) {
       }
       billing_key = result.billing_key;
     }
-    const normalAmount = await getSubscriptionAmountCents(supabase);
-    const firstChargeAmount = await getSubscriptionFirstChargeAmount(supabase);
-    const promo = await getSubscriptionPromoConfig(supabase);
+    let serviceSupabase;
+    try {
+      serviceSupabase = createServiceSupabase();
+    } catch {
+      return NextResponse.json(
+        { error: "서버 설정 오류로 구독을 저장할 수 없습니다. 관리자에게 문의해 주세요." },
+        { status: 503 }
+      );
+    }
+    const normalAmount = await getSubscriptionAmountCents(serviceSupabase);
+    const firstChargeAmount = await getSubscriptionFirstChargeAmount(serviceSupabase);
+    const promo = await getSubscriptionPromoConfig(serviceSupabase);
     const appliedPromo =
       promo.enabled &&
       firstChargeAmount === promo.amount_cents &&
@@ -69,7 +78,7 @@ export async function POST(req: Request) {
     const nextBilling = new Date();
     nextBilling.setMonth(nextBilling.getMonth() + 1);
 
-    const { error: upsertError } = await supabase.from("subscriptions").upsert(
+    const { error: upsertError } = await serviceSupabase.from("subscriptions").upsert(
       {
         user_id: user.id,
         billing_key,
@@ -88,7 +97,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `구독 저장 실패: ${upsertError.message}` }, { status: 500 });
     }
 
-    await supabase.from("profiles").update({ subscription_plan: "paid", updated_at: new Date().toISOString() }).eq("id", user.id);
+    await serviceSupabase.from("profiles").update({ subscription_plan: "paid", updated_at: new Date().toISOString() }).eq("id", user.id);
 
     return NextResponse.json({ ok: true, message: "구독이 시작되었습니다." });
   } catch (err: unknown) {

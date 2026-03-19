@@ -5,6 +5,7 @@ import MatchesView from "@/components/jobs/MatchesView";
 import { glassCard } from "@/lib/ui-styles";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export type MatchItem = {
   applicationId: string;

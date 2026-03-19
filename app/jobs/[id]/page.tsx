@@ -157,6 +157,12 @@ export default async function JobPostDetailPage({
     (myWorker.gender === "M" || myWorker.gender === "F") &&
     (myWorker?.contact_phone ?? "").trim() !== "";
 
+  const { data: currentUserProfile } =
+    user && !isOwner
+      ? await authSupabase.from("profiles").select("onboarding_done").eq("id", user.id).single()
+      : { data: null };
+  const onboardingDone = currentUserProfile?.onboarding_done ?? false;
+
   const { data: privateDetails } = await authSupabase
     .from("job_post_private_details")
     .select("full_address, contact_phone, access_instructions, parking_info, notes")
@@ -414,6 +420,7 @@ export default async function JobPostDetailPage({
                               disabled={post.status === "closed"}
                               alreadyApplied={alreadyApplied}
                               workerProfileComplete={workerProfileComplete}
+                              onboardingDone={onboardingDone}
                               initialWorker={{
                                 nickname: myWorker?.nickname ?? "",
                                 birth_date: myWorker?.birth_date ?? null,

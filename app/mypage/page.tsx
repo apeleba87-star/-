@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
+
+export const dynamic = "force-dynamic";
 import { glassCard } from "@/lib/ui-styles";
 import MyPageForm from "./MyPageForm";
 import MyPageSubscriptionCard from "./MyPageSubscriptionCard";

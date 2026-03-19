@@ -4,6 +4,7 @@ import JobPostForm from "./JobPostForm";
 import type { InitialCompany } from "@/components/jobs/CompanyProfileModal";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function NewJobPostPage() {
   const supabase = createClient();
@@ -12,6 +13,9 @@ export default async function NewJobPostPage() {
     data: { user },
   } = await authSupabase.auth.getUser();
   if (!user) redirect("/login?next=/jobs/new");
+
+  const { data: profile } = await authSupabase.from("profiles").select("onboarding_done").eq("id", user.id).single();
+  if (!profile?.onboarding_done) redirect("/onboarding?next=/jobs/new");
 
   const { data: categories } = await supabase
     .from("categories")
@@ -66,6 +70,7 @@ export default async function NewJobPostPage() {
       subCategories={subCategories}
       companyProfileComplete={companyProfileComplete}
       initialCompany={initialCompany}
+      contactPhoneFromProfile={companyProfileComplete ? (initialCompany.contact_phone || null) : null}
     />
   );
 }

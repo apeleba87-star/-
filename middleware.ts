@@ -1,12 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+/**
+ * 매 요청마다 Supabase 세션을 갱신하고 쿠키를 응답에 반영.
+ * 서버 컴포넌트와 클라이언트가 동일한 세션을 보도록 함 (로그인 직후 메뉴 이동 시 재로그인 요구 방지).
+ */
+async function updateSession(req: NextRequest): Promise<NextResponse> {
+  const response = NextResponse.next({ request: req });
+
+  if (!url || !key) return response;
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll();
+      },
+      setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options as Parameters<NextResponse["cookies"]["set"]>[2] ?? {});
+        });
+      },
+    },
+  });
+
+  await supabase.auth.getSession();
+  return response;
+}
 
 /**
  * 로그인/회원가입 경로 IP별 rate limit (브루트포스·크레덴셜 스터핑 완화).
- * 같은 IP에서 1분당 요청 수 제한. 서버리스에서는 인스턴스별 메모리라 완전한 공유는 아니지만,
- * 동일 인스턴스 내 반복 요청은 차단됨. 프로덕션 다중 인스턴스 시 Upstash Redis 등 연동 권장.
  */
 const AUTH_RATE_WINDOW_MS = 60 * 1000; // 1분
-const AUTH_RATE_MAX = 30; // 1분당 최대 요청 수 (페이지 로드 + 폼 제출 등)
+const AUTH_RATE_MAX = 30; // 1분당 최대 요청 수
 
 const authRateStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -20,30 +48,35 @@ function isAuthPath(pathname: string): boolean {
   return pathname === "/login" || pathname === "/signup";
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  if (!isAuthPath(pathname)) return NextResponse.next();
 
-  const ip = getClientIp(req);
-  const now = Date.now();
-  let entry = authRateStore.get(ip);
+  const response = await updateSession(req);
 
-  if (!entry || now >= entry.resetAt) {
-    entry = { count: 0, resetAt: now + AUTH_RATE_WINDOW_MS };
-    authRateStore.set(ip, entry);
+  if (isAuthPath(pathname)) {
+    const ip = getClientIp(req);
+    const now = Date.now();
+    let entry = authRateStore.get(ip);
+
+    if (!entry || now >= entry.resetAt) {
+      entry = { count: 0, resetAt: now + AUTH_RATE_WINDOW_MS };
+      authRateStore.set(ip, entry);
+    }
+    entry.count += 1;
+
+    if (entry.count > AUTH_RATE_MAX) {
+      return new NextResponse(
+        "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
   }
-  entry.count += 1;
 
-  if (entry.count > AUTH_RATE_MAX) {
-    return new NextResponse(
-      "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
-      { status: 429, headers: { "Retry-After": "60" } }
-    );
-  }
-
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
-  matcher: ["/login", "/signup"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
