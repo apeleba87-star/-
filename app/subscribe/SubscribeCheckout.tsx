@@ -105,7 +105,7 @@ export default function SubscribeCheckout({
     })
       .then(async (res) => {
         const text = await res.text();
-        let json: { error?: string } = {};
+        let json: { error?: string; message?: string } = {};
         try {
           json = text ? JSON.parse(text) : {};
         } catch {
