@@ -15,6 +15,8 @@ import {
 
 /** Vercel 등: 빌링키 재조회 지연 시 함수 실행 시간 확보 */
 export const maxDuration = 60;
+/** @bootpay/backend-js 는 Node 전용 — Edge에서 실행 시 500 발생 가능 */
+export const runtime = "nodejs";
 
 /** redirect 복귀 시 receipt_id(필수)와 선택적으로 billing_key로 구독 등록. 저장은 service role로 해서 세션/RLS 이슈 방지 */
 export async function POST(req: Request) {
@@ -116,26 +118,48 @@ export async function POST(req: Request) {
     const nextBilling = new Date();
     nextBilling.setMonth(nextBilling.getMonth() + 1);
 
-    const { error: upsertError } = await serviceSupabase.from("subscriptions").upsert(
-      {
-        user_id: user.id,
-        billing_key,
-        plan: "monthly",
-        amount_cents: normalAmount,
-        status: "active",
-        next_billing_at: nextBilling.toISOString().slice(0, 10),
-        last_receipt_id: receipt_id,
-        updated_at: new Date().toISOString(),
-        ...(promoRemaining !== null && { promo_remaining_months: promoRemaining }),
-      },
-      { onConflict: "user_id" }
-    );
+    const baseRow = {
+      user_id: user.id,
+      billing_key,
+      plan: "monthly" as const,
+      amount_cents: normalAmount,
+      status: "active" as const,
+      next_billing_at: nextBilling.toISOString().slice(0, 10),
+      last_receipt_id: receipt_id,
+      updated_at: new Date().toISOString(),
+    };
+
+    let upsertPayload: typeof baseRow & { promo_remaining_months?: number } =
+      promoRemaining !== null ? { ...baseRow, promo_remaining_months: promoRemaining } : baseRow;
+
+    let { error: upsertError } = await serviceSupabase
+      .from("subscriptions")
+      .upsert(upsertPayload, { onConflict: "user_id" });
+
+    // 프로덕션에 075 마이그레이션 미적용 시 promo_remaining_months 컬럼 없음 → 컬럼 제외 후 재시도
+    if (
+      upsertError &&
+      promoRemaining !== null &&
+      /promo_remaining|42703|does not exist|schema cache|column/i.test(upsertError.message)
+    ) {
+      const retry = await serviceSupabase.from("subscriptions").upsert(baseRow, { onConflict: "user_id" });
+      upsertError = retry.error;
+    }
 
     if (upsertError) {
       return NextResponse.json({ error: `구독 저장 실패: ${upsertError.message}` }, { status: 500 });
     }
 
-    await serviceSupabase.from("profiles").update({ subscription_plan: "paid", updated_at: new Date().toISOString() }).eq("id", user.id);
+    const { error: profileErr } = await serviceSupabase
+      .from("profiles")
+      .update({ subscription_plan: "paid", updated_at: new Date().toISOString() })
+      .eq("id", user.id);
+    if (profileErr) {
+      return NextResponse.json(
+        { error: `프로필 갱신 실패: ${profileErr.message}. 구독은 저장되었을 수 있으니 새로고침 후 확인해 주세요.` },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ ok: true, message: "구독이 시작되었습니다." });
   } catch (err: unknown) {

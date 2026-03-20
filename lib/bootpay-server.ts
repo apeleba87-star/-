@@ -65,9 +65,9 @@ export function isBootpayReceiptSuccessStatus(status: number): boolean {
 export async function verifyReceipt(
   receiptId: string
 ): Promise<{ price: number; status: number; billing_key?: string | null } | null> {
-  getConfig();
-  await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
   try {
+    getConfig();
+    await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
     const raw = await withTimeout(
       Promise.resolve(Bootpay.receiptPayment(receiptId)),
       BOOTPAY_RECEIPT_TIMEOUT_MS
@@ -84,12 +84,12 @@ export async function verifyReceipt(
 
 /** 빌링키 발급 시 받은 receipt_id로 빌링키 조회 (redirect 복귀 후 사용) */
 export async function lookupBillingKeyByReceipt(receiptId: string): Promise<{ billing_key: string } | null> {
-  getConfig();
-  await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
   try {
+    getConfig();
+    await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
     const res = await withTimeout(
       Promise.resolve(Bootpay.lookupSubscribeBillingKey(receiptId)),
-      BOOTPAY_TIMEOUT_MS
+      BOOTPAY_RECEIPT_TIMEOUT_MS
     );
     const d = res as unknown as { billing_key?: string };
     return d?.billing_key ? { billing_key: d.billing_key } : null;
@@ -105,8 +105,18 @@ const RETRY_DELAY_MS = 2800;
 export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Promise<
   { billing_key: string } | { error: string }
 > {
-  getConfig();
-  await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
+  try {
+    getConfig();
+    await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      error:
+        msg.includes("timeout") || msg.includes("Timeout")
+          ? "부트페이 서버 응답이 지연되었습니다. 잠시 후 구독 페이지를 새로고침해 다시 시도해 주세요."
+          : `부트페이 연동 오류: ${msg || "알 수 없음"}`,
+    };
+  }
 
   const tryLookup = async (): Promise<{ billing_key?: string } | null> => {
     try {
