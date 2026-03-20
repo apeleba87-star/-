@@ -11,6 +11,8 @@ const PRIVATE_KEY = process.env.BOOTPAY_PRIVATE_KEY;
 const MODE = (process.env.BOOTPAY_MODE as "development" | "production" | "stage") || "production";
 
 const BOOTPAY_TIMEOUT_MS = 5000;
+/** 영수증/빌링키 조회는 PG 응답이 느릴 수 있어 조금 더 길게 */
+const BOOTPAY_RECEIPT_TIMEOUT_MS = 12000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -41,17 +43,40 @@ export async function getBootpayToken(): Promise<string> {
   return (res as { access_token: string }).access_token;
 }
 
+/** Bootpay receiptPayment 응답: 최상위 또는 data.* 에 status/price/billing_key 가 올 수 있음 */
+function pickReceiptFields(obj: unknown): { price: number; status: number; billing_key?: string | null } {
+  if (!obj || typeof obj !== "object") return { price: 0, status: 0 };
+  const o = obj as Record<string, unknown>;
+  const data = o.data && typeof o.data === "object" ? (o.data as Record<string, unknown>) : null;
+  const d = data ?? o;
+  const status = Number(d.status ?? o.status ?? 0);
+  const price = Number(d.price ?? o.price ?? 0);
+  const bkRaw = (d.billing_key ?? o.billing_key) as string | undefined;
+  const billing_key = typeof bkRaw === "string" && bkRaw.trim() ? bkRaw.trim() : null;
+  return { price, status, billing_key };
+}
+
+/** 결제/빌링키 발급 완료로 인정하는 Bootpay status (1: 결제완료, 11/42: 빌링키 관련 성공) */
+export function isBootpayReceiptSuccessStatus(status: number): boolean {
+  return status === 1 || status === 11 || status === 42;
+}
+
 /** 영수증 조회로 결제 검증 (빌링키 발급/결제 완료 후) */
-export async function verifyReceipt(receiptId: string): Promise<{ price: number; status: number } | null> {
+export async function verifyReceipt(
+  receiptId: string
+): Promise<{ price: number; status: number; billing_key?: string | null } | null> {
   getConfig();
   await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
   try {
-    const data = await withTimeout(
+    const raw = await withTimeout(
       Promise.resolve(Bootpay.receiptPayment(receiptId)),
-      BOOTPAY_TIMEOUT_MS
+      BOOTPAY_RECEIPT_TIMEOUT_MS
     );
-    const d = data as unknown as { price: number; status: number };
-    return { price: d?.price ?? 0, status: d?.status ?? 0 };
+    const parsed = pickReceiptFields(raw);
+    if (!parsed.status && !parsed.price && !parsed.billing_key) {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -87,7 +112,7 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
     try {
       const res = await withTimeout(
         Promise.resolve(Bootpay.lookupSubscribeBillingKey(receiptId)),
-        BOOTPAY_TIMEOUT_MS
+        BOOTPAY_RECEIPT_TIMEOUT_MS
       );
       const d = res as unknown as { billing_key?: string };
       return d?.billing_key ? { billing_key: d.billing_key } : null;
@@ -132,13 +157,13 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
     return typeof key === "string" && key.trim() ? key.trim() : null;
   }
   try {
-    const receipt = await withTimeout(
+    const receiptRaw = await withTimeout(
       Promise.resolve(Bootpay.receiptPayment(receiptId)),
-      BOOTPAY_TIMEOUT_MS
-    ) as unknown as { status?: number; billing_key?: string; data?: { billing_key?: string } };
-    const okStatus = receipt?.status === 1 || receipt?.status === 11 || receipt?.status === 42; // 1: 결제완료, 11/42: 빌링키 발급 완료/성공
-    const bk = pickBillingKey(receipt);
-    if (okStatus && bk) {
+      BOOTPAY_RECEIPT_TIMEOUT_MS
+    );
+    const fields = pickReceiptFields(receiptRaw);
+    const bk = fields.billing_key ?? pickBillingKey(receiptRaw);
+    if (isBootpayReceiptSuccessStatus(fields.status) && bk) {
       return { billing_key: bk };
     }
   } catch {
@@ -151,7 +176,7 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
     try {
       const res = await withTimeout(
         Promise.resolve(Bootpay.lookupSubscribeBillingKey(receiptId)),
-        BOOTPAY_TIMEOUT_MS
+        BOOTPAY_RECEIPT_TIMEOUT_MS
       );
       const d = res as unknown as { billing_key?: string };
       if (d?.billing_key) return { billing_key: d.billing_key };
@@ -159,11 +184,12 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
       // ignore
     }
     try {
-      const receipt = await withTimeout(
+      const receiptRaw = await withTimeout(
         Promise.resolve(Bootpay.receiptPayment(receiptId)),
-        BOOTPAY_TIMEOUT_MS
-      ) as unknown as Record<string, unknown>;
-      const bk = (receipt?.billing_key ?? (receipt?.data && typeof receipt.data === "object" && (receipt.data as Record<string, unknown>).billing_key)) as string | undefined;
+        BOOTPAY_RECEIPT_TIMEOUT_MS
+      );
+      const fields = pickReceiptFields(receiptRaw);
+      const bk = fields.billing_key ?? pickBillingKey(receiptRaw);
       if (typeof bk === "string" && bk.trim()) return { billing_key: bk.trim() };
     } catch {
       // ignore

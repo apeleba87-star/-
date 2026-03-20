@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
-import { verifyReceipt, isBootpayConfigured } from "@/lib/bootpay-server";
+import { verifyReceipt, isBootpayConfigured, isBootpayReceiptSuccessStatus } from "@/lib/bootpay-server";
 import {
   getSubscriptionAmountCents,
   getSubscriptionFirstChargeAmount,
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   // 빌링키 발급 시 받은 receipt_id로 검증 (선택)
   if (receipt_id) {
     const verified = await verifyReceipt(receipt_id);
-    if (!verified || verified.status !== 1) {
+    if (!verified || !isBootpayReceiptSuccessStatus(verified.status)) {
       return NextResponse.json({ error: "결제 정보 검증에 실패했습니다." }, { status: 400 });
     }
   }

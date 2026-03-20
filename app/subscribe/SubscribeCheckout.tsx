@@ -5,6 +5,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase";
 
 /** API/예외에서 나온 값을 화면에 쓸 수 있는 문자열로 변환 ([object Object] 방지) */
 function toErrorString(value: unknown): string {
@@ -66,6 +67,21 @@ export default function SubscribeCheckout({
   const [bootpayReady, setBootpayReady] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // PG redirect 복귀 시 페이지가 새로 열리며 체크박스가 초기화됨 → 이미 결제 전에 동의한 상태로 표시
+  useEffect(() => {
+    if (!redirectReceiptId) return;
+    const cameFromPayment =
+      redirectEvent === "done" ||
+      redirectEvent === "issued" ||
+      redirectEvent === "11" ||
+      redirectEvent === "1" ||
+      redirectEvent === "confirm" ||
+      redirectStatus === "11" ||
+      redirectStatus === "42" ||
+      redirectStatus === "1";
+    if (cameFromPayment) setAgreedToTerms(true);
+  }, [redirectReceiptId, redirectEvent, redirectStatus]);
+
   // 스크립트 onLoad가 클라이언트 네비게이션 시 안 불릴 수 있음 → 이미 로드됐거나 나중에 로드되면 감지
   useEffect(() => {
     const ready = () => {
@@ -91,37 +107,69 @@ export default function SubscribeCheckout({
   // redirect 복귀 시: receipt_id로 구독 등록 후 홈으로 (event 또는 status로 성공 여부 판단)
   useEffect(() => {
     if (!redirectReceiptId) return;
-    const eventOk = redirectEvent === "done" || redirectEvent === "issued" || redirectEvent === "11";
-    const statusOk = redirectStatus === "11" || redirectStatus === "42"; // 빌링키 발급 완료/성공
+    // 부트페이: done/issued, 숫자 status 1(결제완료)·11·42(빌링키) 등 조합 가능
+    const eventOk =
+      redirectEvent === "done" ||
+      redirectEvent === "issued" ||
+      redirectEvent === "11" ||
+      redirectEvent === "1" ||
+      redirectEvent === "confirm";
+    const statusOk =
+      redirectStatus === "11" ||
+      redirectStatus === "42" ||
+      redirectStatus === "1";
     if (!eventOk && !statusOk) return;
     setLoading(true);
     setError(null);
     const body: { receipt_id: string; billing_key?: string } = { receipt_id: redirectReceiptId };
     if (redirectBillingKey?.trim()) body.billing_key = redirectBillingKey.trim();
-    fetch("/api/subscribe/register-with-receipt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-      .then(async (res) => {
-        const text = await res.text();
-        let json: { error?: string; message?: string } = {};
-        try {
-          json = text ? JSON.parse(text) : {};
-        } catch {
-          json = {};
-        }
-        return { ok: res.ok, json, text };
-      })
-      .then(({ ok, json, text }) => {
-        if (ok) {
-          router.replace("/?subscribed=1");
-          router.refresh();
-        } else {
-          const msg = json?.error ?? json?.message ?? (text?.slice(0, 300) || "구독 등록에 실패했습니다.");
-          setError(toErrorString(msg));
-        }
-      })
+
+    const maxAttempts = 4;
+    const delayMs = 3500;
+
+    async function attemptRegister(attempt: number): Promise<void> {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/subscribe/register-with-receipt", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let json: { error?: string; message?: string } = {};
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        json = {};
+      }
+
+      if (res.ok) {
+        router.replace("/?subscribed=1");
+        router.refresh();
+        return;
+      }
+
+      const msg = json?.error ?? json?.message ?? (text?.slice(0, 300) || "구독 등록에 실패했습니다.");
+      const retryable =
+        attempt < maxAttempts - 1 &&
+        (res.status >= 502 ||
+          res.status === 408 ||
+          /반영 중|새로고침|빌링키|timeout|일시/i.test(String(msg)));
+
+      if (retryable) {
+        await new Promise((r) => setTimeout(r, delayMs));
+        return attemptRegister(attempt + 1);
+      }
+      setError(toErrorString(msg));
+    }
+
+    void attemptRegister(0)
       .catch((err) => {
         console.error("[Subscribe] register-with-receipt failed:", err);
         setError("구독 등록 중 오류가 발생했습니다. 네트워크를 확인하거나 잠시 후 다시 시도해 주세요.");
@@ -162,9 +210,15 @@ export default function SubscribeCheckout({
         return;
       }
 
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
       const res = await fetch("/api/subscribe/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
+        credentials: "include",
         body: JSON.stringify({ billing_key: billingKey, receipt_id: receiptId }),
       });
       const json = await res.json().catch(() => ({}));

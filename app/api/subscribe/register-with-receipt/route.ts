@@ -1,8 +1,10 @@
+import { createClient as createSupabaseJwtClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import {
   lookupBillingKeyByReceiptWithRetry,
   isBootpayConfigured,
+  isBootpayReceiptSuccessStatus,
   verifyReceipt,
 } from "@/lib/bootpay-server";
 import {
@@ -11,6 +13,9 @@ import {
   getSubscriptionPromoConfig,
 } from "@/lib/app-settings";
 
+/** Vercel 등: 빌링키 재조회 지연 시 함수 실행 시간 확보 */
+export const maxDuration = 60;
+
 /** redirect 복귀 시 receipt_id(필수)와 선택적으로 billing_key로 구독 등록. 저장은 service role로 해서 세션/RLS 이슈 방지 */
 export async function POST(req: Request) {
   try {
@@ -18,10 +23,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "결제가 설정되지 않았습니다." }, { status: 503 });
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
     const authSupabase = await createServerSupabase();
-    const { data: { user } } = await authSupabase.auth.getUser();
+    let {
+      data: { user },
+    } = await authSupabase.auth.getUser();
+
+    // PG redirect 직후 POST에서 쿠키가 비는 환경 대비: 클라이언트가 넘긴 Bearer로 동일 사용자 인증
+    if (!user && supabaseUrl && supabaseAnon) {
+      const bearer = req.headers.get("authorization");
+      const token = bearer?.startsWith("Bearer ") ? bearer.slice(7).trim() : "";
+      if (token) {
+        const jwtClient = createSupabaseJwtClient(supabaseUrl, supabaseAnon, {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const got = await jwtClient.auth.getUser();
+        user = got.data.user;
+      }
+    }
+
     if (!user) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+      return NextResponse.json(
+        { error: "로그인이 필요합니다. 구독 페이지를 새로고침한 뒤 다시 시도해 주세요." },
+        { status: 401 }
+      );
     }
 
     let body: { receipt_id: string; billing_key?: string };
@@ -40,13 +67,24 @@ export async function POST(req: Request) {
 
     if (billingKeyFromClient && typeof billingKeyFromClient === "string" && billingKeyFromClient.trim()) {
       const verified = await verifyReceipt(receipt_id);
-      if (!verified || (verified.status !== 1 && verified.status !== 11 && verified.status !== 42)) {
-        return NextResponse.json(
-          { error: "결제 정보 검증에 실패했습니다. 영수증 상태를 확인해 주세요." },
-          { status: 400 }
-        );
+      if (verified && isBootpayReceiptSuccessStatus(verified.status)) {
+        billing_key = billingKeyFromClient.trim();
+      } else {
+        // 영수증 응답 형식이 달라 verify가 실패해도, 서버에서 receipt로 빌링키를 다시 조회해 등록
+        const result = await lookupBillingKeyByReceiptWithRetry(receipt_id);
+        if ("error" in result) {
+          return NextResponse.json(
+            {
+              error:
+                verified && !isBootpayReceiptSuccessStatus(verified.status)
+                  ? `결제 정보 검증에 실패했습니다. (상태 코드: ${verified.status})`
+                  : result.error,
+            },
+            { status: 400 }
+          );
+        }
+        billing_key = result.billing_key;
       }
-      billing_key = billingKeyFromClient.trim();
     } else {
       const result = await lookupBillingKeyByReceiptWithRetry(receipt_id);
       if ("error" in result) {
