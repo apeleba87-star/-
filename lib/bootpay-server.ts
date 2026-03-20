@@ -101,6 +101,28 @@ export async function lookupBillingKeyByReceipt(receiptId: string): Promise<{ bi
 const BOOTPAY_PENDING_MESSAGE = "결제대기";
 const RETRY_DELAY_MS = 2800;
 
+function toBootpayErrorMessage(err: unknown): string {
+  if (err == null) return "unknown_error";
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  if (typeof err === "object") {
+    const o = err as Record<string, unknown>;
+    const candidate =
+      o.message ??
+      o.error ??
+      o.reason ??
+      o.description ??
+      (o as Record<string, unknown>).data?.message;
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+  return String(err);
+}
+
 /** redirect 복귀 직후 PG 반영 지연 시 "결제대기 상태가 아닙니다" 오류 완화: 재시도 + 영수증 조회 폴백 */
 export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Promise<
   { billing_key: string } | { error: string }
@@ -109,7 +131,7 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
     getConfig();
     await withTimeout(Promise.resolve(Bootpay.getAccessToken()), BOOTPAY_TIMEOUT_MS);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = toBootpayErrorMessage(err);
     return {
       error:
         msg.includes("timeout") || msg.includes("Timeout")
@@ -127,10 +149,7 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
       const d = res as unknown as { billing_key?: string };
       return d?.billing_key ? { billing_key: d.billing_key } : null;
     } catch (err: unknown) {
-      const msg = typeof err === "object" && err !== null && "message" in err
-        ? String((err as { message: unknown }).message)
-        : String(err);
-      throw new Error(msg);
+      throw new Error(toBootpayErrorMessage(err));
     }
   };
 
@@ -141,7 +160,7 @@ export async function lookupBillingKeyByReceiptWithRetry(receiptId: string): Pro
       const res = await tryLookup();
       if (res?.billing_key) return { billing_key: res.billing_key };
     } catch (err: unknown) {
-      lastError = err instanceof Error ? err.message : String(err);
+      lastError = err instanceof Error ? err.message : toBootpayErrorMessage(err);
       if (!lastError.includes(BOOTPAY_PENDING_MESSAGE)) {
         return { error: lastError || "빌링키를 조회할 수 없습니다." };
       }
