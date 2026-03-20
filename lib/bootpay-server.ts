@@ -107,12 +107,13 @@ function toBootpayErrorMessage(err: unknown): string {
   if (typeof err === "string") return err;
   if (typeof err === "object") {
     const o = err as Record<string, unknown>;
+    const data = o.data as Record<string, unknown> | undefined;
     const candidate =
       o.message ??
       o.error ??
       o.reason ??
       o.description ??
-      (o as Record<string, unknown>).data?.message;
+      data?.message;
     if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
     try {
       return JSON.stringify(err);
