@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import ExternalJobBulkUpload from "./ExternalJobBulkUpload";
 import ExternalJobPostForm from "./ExternalJobPostForm";
 
 export default async function AdminExternalJobPostPage() {
@@ -28,6 +29,7 @@ export default async function AdminExternalJobPostPage() {
         </p>
       </div>
       <ExternalJobPostForm categories={categories ?? []} />
+      <ExternalJobBulkUpload />
     </div>
   );
 }
