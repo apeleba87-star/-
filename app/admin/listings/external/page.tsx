@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import ExternalListingBulkUpload from "./ExternalListingBulkUpload";
 import ExternalListingForm from "./ExternalListingForm";
 import ExcelPasteForm from "./ExcelPasteForm";
 
@@ -38,6 +39,8 @@ export default async function AdminExternalListingPage() {
         listingTypes={LISTING_TYPE_OPTIONS}
         categories={categories ?? []}
       />
+
+      <ExternalListingBulkUpload />
 
       <hr className="border-slate-200" />
 

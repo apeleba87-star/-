@@ -1,7 +1,9 @@
 "use server";
 
+import type { ListingBulkParsedRow } from "@/lib/admin/listing-bulk-excel";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CreateExternalListingInput = {
   title: string;
@@ -20,22 +22,11 @@ export type CreateExternalListingInput = {
   source_url?: string | null;
 };
 
-export async function createExternalListing(input: CreateExternalListingInput) {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "로그인이 필요합니다." };
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "editor") return { ok: false, error: "권한이 없습니다." };
-
-  if (!input.title?.trim()) return { ok: false, error: "제목을 입력하세요." };
-  if (!input.region?.trim()) return { ok: false, error: "지역을 입력하세요." };
-  if (!input.category_main_id) return { ok: false, error: "카테고리를 선택하세요." };
-  if (!input.contact_phone?.trim()) return { ok: false, error: "연락처를 입력하세요." };
-
+async function executeExternalListingInsert(
+  supabase: SupabaseClient,
+  userId: string,
+  input: CreateExternalListingInput
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const monthly = input.monthly_amount != null ? Number(input.monthly_amount) : null;
   const deal = input.deal_amount != null ? Number(input.deal_amount) : null;
   const mult = input.sale_multiplier != null ? Number(input.sale_multiplier) : null;
@@ -49,22 +40,20 @@ export async function createExternalListing(input: CreateExternalListingInput) {
   if (payAmount <= 0) return { ok: false, error: "월 수금, 매매가 또는 성사 금액을 입력하세요." };
 
   const monthlyAmountDb = isSale || isSub ? (monthly ?? payAmount) : null;
-  const saleMultRaw = isSale && (mult != null || (monthly != null && deal != null && monthly > 0))
-    ? (mult ?? (monthly != null && deal != null ? deal / monthly : null))
-    : null;
+  const saleMultRaw =
+    isSale && (mult != null || (monthly != null && deal != null && monthly > 0))
+      ? mult ?? (monthly != null && deal != null ? deal / monthly : null)
+      : null;
   const saleMultDb =
     saleMultRaw != null && saleMultRaw > 0 && saleMultRaw <= 100 ? saleMultRaw : null;
-  const dealAmountDb =
-    isSale || isReferral
-      ? (deal ?? (isReferral ? payAmount : null))
-      : null;
+  const dealAmountDb = isSale || isReferral ? (deal ?? (isReferral ? payAmount : null)) : null;
   const dealAmountFinal =
     isSale && dealAmountDb == null && monthlyAmountDb != null && monthlyAmountDb > 0 && saleMultDb != null
       ? Math.round(monthlyAmountDb * saleMultDb)
       : dealAmountDb;
 
   const { error } = await supabase.from("listings").insert({
-    user_id: user.id,
+    user_id: userId,
     listing_type: input.listing_type,
     status: "open",
     title: input.title.trim(),
@@ -87,9 +76,78 @@ export async function createExternalListing(input: CreateExternalListingInput) {
   });
 
   if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function createExternalListing(input: CreateExternalListingInput) {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const role = (profile as { role?: string } | null)?.role;
+  if (role !== "admin" && role !== "editor") return { ok: false, error: "권한이 없습니다." };
+
+  if (!input.title?.trim()) return { ok: false, error: "제목을 입력하세요." };
+  if (!input.region?.trim()) return { ok: false, error: "지역을 입력하세요." };
+  if (!input.category_main_id) return { ok: false, error: "카테고리를 선택하세요." };
+  if (!input.contact_phone?.trim()) return { ok: false, error: "연락처를 입력하세요." };
+
+  const result = await executeExternalListingInsert(supabase, user.id, input);
+  if (!result.ok) return { ok: false, error: result.error };
+
   revalidatePath("/listings");
   revalidatePath("/admin/listings/external");
   return { ok: true };
+}
+
+export type BulkCreateListingExcelFailure = { rowIndex: number; message: string };
+
+export async function bulkCreateExternalListingsFromExcel(rows: ListingBulkParsedRow[]): Promise<
+  | { ok: true; inserted: number; failures: BulkCreateListingExcelFailure[] }
+  | { ok: false; error: string }
+> {
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const role = (profile as { role?: string } | null)?.role;
+  if (role !== "admin" && role !== "editor") return { ok: false, error: "권한이 없습니다." };
+
+  const failures: BulkCreateListingExcelFailure[] = [];
+  let inserted = 0;
+
+  for (const row of rows) {
+    const result = await executeExternalListingInsert(supabase, user.id, {
+      title: row.title,
+      body: row.body,
+      region: row.region,
+      listing_type: row.listing_type,
+      category_main_id: row.category_main_id,
+      category_sub_id: row.category_sub_id,
+      monthly_amount: row.monthly_amount,
+      deal_amount: row.deal_amount,
+      sale_multiplier: row.sale_multiplier,
+      area_pyeong: row.area_pyeong,
+      visits_per_week: row.visits_per_week,
+      contact_phone: row.contact_phone,
+      source_url: row.source_url,
+    });
+    if (result.ok) inserted++;
+    else failures.push({ rowIndex: row.rowIndex, message: result.error });
+  }
+
+  if (inserted > 0) {
+    revalidatePath("/listings");
+    revalidatePath("/admin/listings/external");
+  }
+
+  return { ok: true, inserted, failures };
 }
 
 const LISTING_TYPE_BY_LABEL: Record<string, string> = {
@@ -175,58 +233,30 @@ export async function createExternalListingsBulk(
     const mult = r.sale_multiplier != null && Number.isFinite(Number(r.sale_multiplier)) ? Number(r.sale_multiplier) : null;
     const areaPyeong = r.area_pyeong != null && Number.isFinite(Number(r.area_pyeong)) ? Number(r.area_pyeong) : null;
     const visits = r.visits_per_week != null ? Number(r.visits_per_week) : null;
-    const isSale = listingType === "sale_regular";
-    const isSub = listingType === "subcontract";
-    const isReferral = listingType === "referral_regular" || listingType === "referral_one_time";
-    const payAmount = isSub ? (monthly ?? 0) : isReferral ? (deal ?? 0) : (monthly ?? deal ?? 0);
-    if (!payAmount || payAmount <= 0) {
-      failed.push({ row: rowNum, message: "월 수금 또는 매매가(성사 금액) 없음" });
-      continue;
-    }
     const contactPhone = (r.contact_phone ?? "").trim();
     if (!contactPhone) {
       failed.push({ row: rowNum, message: "연락처 없음" });
       continue;
     }
 
-    const monthlyAmountDb = isSale || isSub ? (monthly ?? payAmount) : null;
-    const saleMultRaw = isSale && (mult != null || (monthly != null && deal != null && monthly > 0))
-      ? (mult ?? (monthly != null && deal != null ? deal / monthly : null))
-      : null;
-    const saleMultDb =
-      saleMultRaw != null && saleMultRaw > 0 && saleMultRaw <= 100 ? saleMultRaw : null;
-    const dealAmountDb = isSale || isReferral ? (deal ?? (isReferral ? payAmount : null)) : null;
-    const dealAmountFinal =
-      isSale && dealAmountDb == null && monthlyAmountDb != null && monthlyAmountDb > 0 && saleMultDb != null
-        ? Math.round(monthlyAmountDb * saleMultDb)
-        : dealAmountDb;
-    const visitsDb = visits != null && visits >= 1 && visits <= 7 ? visits : null;
-
-    const { error } = await supabase.from("listings").insert({
-      user_id: user.id,
-      listing_type: listingType,
-      status: "open",
+    const result = await executeExternalListingInsert(supabase, user.id, {
       title,
       body: (r.body ?? "").trim() || null,
       region,
+      listing_type: listingType,
       category_main_id: categoryMainId,
       category_sub_id: null,
-      pay_amount: payAmount,
-      pay_unit: "monthly",
-      normalized_daily_wage: null,
-      normalized_hourly_wage: null,
-      monthly_amount: monthlyAmountDb,
-      deal_amount: dealAmountFinal,
-      sale_multiplier: saleMultDb,
-      area_pyeong: areaPyeong ?? null,
-      visits_per_week: visitsDb,
+      monthly_amount: monthly,
+      deal_amount: deal,
+      sale_multiplier: mult,
+      area_pyeong: areaPyeong,
+      visits_per_week: visits,
       contact_phone: contactPhone,
-      is_external: true,
       source_url: (r.source_url ?? "").trim() || null,
     });
 
-    if (error) {
-      failed.push({ row: rowNum, message: error.message });
+    if (!result.ok) {
+      failed.push({ row: rowNum, message: result.error });
     } else {
       inserted++;
     }
