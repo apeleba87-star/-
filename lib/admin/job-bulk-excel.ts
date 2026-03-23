@@ -428,12 +428,63 @@ export function parseJobBulkWorkbook(
   return { ok, errors };
 }
 
-export type JobBulkTemplateSubRow = JobBulkSubMeta & { parent_name: string };
+/** 엑셀 기준표 한 줄: 구인 화면 JOB_TYPE_PRESETS 순서·라벨과 맞춤 */
+export type JobBulkTemplateSubRow = JobBulkSubMeta & {
+  parent_name: string;
+  /** 구인 등록 화면 태그 텍스트(유리청소, 상가청소 …) */
+  screen_label: string;
+  /** DB에 해당 slug 소분류가 없을 때 */
+  missing_in_db?: boolean;
+};
+
+/**
+ * DB 소분류 목록을 slug로 매칭해, 구인 화면과 동일한 순서·라벨로 기준표 행 생성.
+ * (상가청소 ↔ slug office ↔ DB 이름 "사무실청소" 처럼 라벨과 DB명이 다를 수 있음)
+ */
+export function buildPresetAlignedTemplateRows(
+  subs: JobBulkSubMeta[],
+  mainNameById: Map<string, string>
+): JobBulkTemplateSubRow[] {
+  const bySlug = new Map<string, JobBulkSubMeta[]>();
+  for (const s of subs) {
+    const sl = (s.slug ?? "").trim();
+    if (!sl) continue;
+    const arr = bySlug.get(sl) ?? [];
+    arr.push(s);
+    bySlug.set(sl, arr);
+  }
+
+  const rows: JobBulkTemplateSubRow[] = [];
+  for (const preset of JOB_TYPE_PRESETS) {
+    const matches = bySlug.get(preset.subSlug) ?? [];
+    const sub = matches[0];
+    if (sub) {
+      rows.push({
+        ...sub,
+        parent_name: mainNameById.get(sub.parent_id) ?? "",
+        screen_label: preset.label,
+        missing_in_db: false,
+      });
+    } else {
+      rows.push({
+        id: "",
+        parent_id: "",
+        name: "",
+        slug: preset.subSlug,
+        parent_name: "",
+        screen_label: preset.label,
+        missing_in_db: true,
+      });
+    }
+  }
+  return rows;
+}
 
 export function buildJobBulkTemplateWorkbook(subs: JobBulkTemplateSubRow[]): XLSXNS.WorkBook {
   const wb = XLSX.utils.book_new();
 
-  const exampleSubId = subs[0]?.id ?? "";
+  const firstWithId = subs.find((s) => s.id && !s.missing_in_db);
+  const exampleSubId = firstWithId?.id ?? "";
 
   const exampleRow = [
     "2025-01-15",
@@ -460,12 +511,35 @@ export function buildJobBulkTemplateWorkbook(subs: JobBulkTemplateSubRow[]): XLS
   const catRows = [
     [
       "category_sub_id(UUID)",
-      "작업종류",
+      "구인화면명",
+      "DB카테고리명",
       "상위업종",
       "slug",
-      "※ 구인 등록 화면의 작업 종류 태그와 동일한 소분류입니다. UUID를 업로드양식에 복사하세요.",
+      "비고",
     ],
-    ...subs.map((s) => [s.id, s.name, s.parent_name, s.slug ?? "", ""]),
+    [
+      "※ 같은 테이블 categories — 구인 폼 태그 순서와 맞춤. 상가청소는 DB에 사무실청소(slug=office)로 저장되는 등 라벨과 DB명이 다를 수 있음.",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ],
+    ...subs.map((s) => {
+      const note = s.missing_in_db
+        ? "DB에 이 slug 소분류 없음 — 마이그레이션 적용 후 재다운로드"
+        : s.screen_label !== s.name && s.name
+          ? "화면 라벨과 DB 저장명이 다름(동일 UUID)"
+          : "";
+      return [
+        s.id,
+        s.screen_label,
+        s.name || "(없음)",
+        s.parent_name || "(없음)",
+        s.slug ?? "",
+        note,
+      ];
+    }),
   ];
   const catSheet = XLSX.utils.aoa_to_sheet(catRows);
   XLSX.utils.book_append_sheet(wb, catSheet, JOB_BULK_SHEET_CATEGORIES);

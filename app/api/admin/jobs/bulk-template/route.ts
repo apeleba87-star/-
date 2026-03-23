@@ -1,7 +1,7 @@
 import {
   buildJobBulkTemplateWorkbook,
+  buildPresetAlignedTemplateRows,
   splitJobMainAndSubCategories,
-  type JobBulkTemplateSubRow,
 } from "@/lib/admin/job-bulk-excel";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
@@ -36,20 +36,9 @@ export async function GET() {
 
   const { mains, subs } = splitJobMainAndSubCategories(all ?? []);
   const mainById = new Map(mains.map((m) => [m.id, m.name]));
-  const parentRank = new Map<string, number>();
-  mains.forEach((m, i) => parentRank.set(m.id, m.sort_order ?? i));
 
-  const subsForTemplate: JobBulkTemplateSubRow[] = subs
-    .map((s) => ({
-      ...s,
-      parent_name: mainById.get(s.parent_id) ?? "",
-    }))
-    .sort((a, b) => {
-      const ra = parentRank.get(a.parent_id) ?? 999;
-      const rb = parentRank.get(b.parent_id) ?? 999;
-      if (ra !== rb) return ra - rb;
-      return a.name.localeCompare(b.name, "ko");
-    });
+  /** 구인 화면 JOB_TYPE_PRESETS 순서·라벨과 동일하게 (상가청소=office=사무실청소 등 구분 표시) */
+  const subsForTemplate = buildPresetAlignedTemplateRows(subs, mainById);
 
   const wb = buildJobBulkTemplateWorkbook(subsForTemplate);
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
