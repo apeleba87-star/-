@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import JobPostCard from "@/components/jobs/JobPostCard";
+import JobsPrimaryTabs from "@/components/jobs/JobsPrimaryTabs";
+import JobsSecondaryTabs from "@/components/jobs/JobsSecondaryTabs";
 import ManageView, {
   type ManageCalendarItem,
   type ManageCalendarDisplayStatus,
@@ -24,7 +26,16 @@ type JobPostRow = {
   user_id: string;
 };
 
-export default async function JobsManagePage() {
+export default async function JobsManagePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const rawView = typeof params.view === "string" ? params.view : "list";
+  const viewMode: "list" | "calendar" | "applicants" =
+    rawView === "calendar" || rawView === "applicants" ? rawView : "list";
+
   const authSupabase = await createServerSupabase();
   const {
     data: { user },
@@ -42,18 +53,23 @@ export default async function JobsManagePage() {
   if (!jobPosts?.length) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <Link href="/jobs" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-            <span aria-hidden>←</span> 인력 구인
-          </Link>
-        </div>
         <h1 className="text-xl font-bold text-slate-900">내 구인 관리</h1>
         <p className="mt-0.5 text-sm text-slate-600">내가 쓴 구인글이 없습니다.</p>
+        <JobsPrimaryTabs
+          active="posted"
+          allHref="/jobs"
+          postedHref="/jobs/manage"
+          appliedHref="/jobs?mine=applied"
+          matchesHref="/jobs/matches"
+        />
+        <JobsSecondaryTabs
+          activeKey={viewMode}
+          items={[
+            { key: "list", label: "목록", href: "/jobs/manage?view=list" },
+            { key: "calendar", label: "달력", href: "/jobs/manage?view=calendar" },
+            { key: "applicants", label: "전체 지원자", href: "/jobs/manage?view=applicants" },
+          ]}
+        />
         <div className="mt-6 rounded-2xl border border-white/30 bg-white/60 p-8 shadow-lg backdrop-blur-xl">
           <p className="text-center text-slate-500">구인글을 작성하면 지원자를 확인·관리할 수 있습니다.</p>
           <Link
@@ -316,16 +332,6 @@ export default async function JobsManagePage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow">
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </div>
-        <Link href="/jobs" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-          <span aria-hidden>←</span> 인력 구인
-        </Link>
-      </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">내 구인 관리</h1>
@@ -340,6 +346,21 @@ export default async function JobsManagePage() {
           구인하기
         </Link>
       </div>
+      <JobsPrimaryTabs
+        active="posted"
+        allHref="/jobs"
+        postedHref="/jobs/manage"
+        appliedHref="/jobs?mine=applied"
+        matchesHref="/jobs/matches"
+      />
+      <JobsSecondaryTabs
+        activeKey={viewMode}
+        items={[
+          { key: "list", label: "목록", href: "/jobs/manage?view=list" },
+          { key: "calendar", label: "달력", href: "/jobs/manage?view=calendar" },
+          { key: "applicants", label: "전체 지원자", href: "/jobs/manage?view=applicants" },
+        ]}
+      />
 
       <ManageView
         calendarItems={calendarItems}
@@ -347,6 +368,7 @@ export default async function JobsManagePage() {
         applicantsView={
           <ManageApplicantsView applicants={allApplicants} jobPostsForFilter={jobPostsForFilter} />
         }
+        viewMode={viewMode}
       />
     </div>
   );

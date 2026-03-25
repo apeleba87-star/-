@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { glassCard } from "@/lib/ui-styles";
 
@@ -25,45 +25,12 @@ type Props = {
   calendarItems: ManageCalendarItem[];
   listView: React.ReactNode;
   applicantsView?: React.ReactNode;
+  viewMode: ViewMode;
 };
 
-export default function ManageView({ calendarItems, listView, applicantsView }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
-
+export default function ManageView({ calendarItems, listView, applicantsView, viewMode }: Props) {
   return (
     <div className="mt-6">
-      <nav className="mb-4 flex flex-wrap gap-1 rounded-xl bg-slate-100/80 p-1" aria-label="보기 전환">
-        <button
-          type="button"
-          onClick={() => setViewMode("list")}
-          className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          목록
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("calendar")}
-          className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            viewMode === "calendar" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          달력
-        </button>
-        {applicantsView != null && (
-          <button
-            type="button"
-            onClick={() => setViewMode("applicants")}
-            className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-              viewMode === "applicants" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            전체 지원자
-          </button>
-        )}
-      </nav>
-
       {viewMode === "list" && listView}
 
       {viewMode === "calendar" && <ManageCalendar items={calendarItems} />}

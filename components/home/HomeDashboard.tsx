@@ -193,40 +193,6 @@ export default function HomeDashboard({
           </DashboardCard>
         </section>
 
-        {/* 첫 화면 뉴스레터 CTA: 3곳 노출 */}
-        <section className="mb-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 text-center shadow-sm">
-            <p className="text-sm font-semibold text-indigo-800">매주 청소 입찰 시장 요약을 받아보세요</p>
-            <p className="mt-1 text-xs text-slate-600">이메일로 리포트와 업계 소식을 정리해드립니다.</p>
-            <Link
-              href="/subscribe"
-              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
-            >
-              구독하기
-            </Link>
-          </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-center shadow-sm">
-            <p className="text-sm font-semibold text-emerald-800">매주 청소 입찰 시장 요약을 받아보세요</p>
-            <p className="mt-1 text-xs text-slate-600">시장 변화를 먼저 보고 더 빠르게 대응하세요.</p>
-            <Link
-              href="/subscribe"
-              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700"
-            >
-              구독하기
-            </Link>
-          </div>
-          <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 text-center shadow-sm">
-            <p className="text-sm font-semibold text-violet-800">매주 청소 입찰 시장 요약을 받아보세요</p>
-            <p className="mt-1 text-xs text-slate-600">업계 소식과 함께 한눈에 정리됩니다.</p>
-            <Link
-              href="/subscribe"
-              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-violet-700"
-            >
-              구독하기
-            </Link>
-          </div>
-        </section>
-
         {/* 2행: 현장 거래 · 견적 계산기 · 데이터 인사이트 */}
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <DashboardCard

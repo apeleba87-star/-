@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase-server";
+import JobsPrimaryTabs from "@/components/jobs/JobsPrimaryTabs";
+import JobsSecondaryTabs from "@/components/jobs/JobsSecondaryTabs";
 import MatchesView from "@/components/jobs/MatchesView";
 import { glassCard } from "@/lib/ui-styles";
 
@@ -20,7 +22,15 @@ export type MatchItem = {
   address: string | null;
 };
 
-export default async function JobsMatchesPage() {
+export default async function JobsMatchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const rawView = typeof params.view === "string" ? params.view : "list";
+  const viewMode: "list" | "calendar" = rawView === "calendar" ? "calendar" : "list";
+
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=${encodeURIComponent("/jobs/matches")}`);
@@ -34,12 +44,24 @@ export default async function JobsMatchesPage() {
   if (!applications?.length) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-        <Link href="/jobs" className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
-          <span aria-hidden>←</span> 인력 구인
-        </Link>
+        <h1 className="text-xl font-bold text-slate-900">내 매칭</h1>
+        <p className="mt-0.5 text-sm text-slate-600">확정된 현장 일정을 목록과 달력으로 확인하세요.</p>
+        <JobsPrimaryTabs
+          active="matches"
+          allHref="/jobs"
+          postedHref="/jobs/manage"
+          appliedHref="/jobs?mine=applied"
+          matchesHref="/jobs/matches"
+        />
+        <JobsSecondaryTabs
+          activeKey={viewMode}
+          items={[
+            { key: "list", label: "목록", href: "/jobs/matches?view=list" },
+            { key: "calendar", label: "달력", href: "/jobs/matches?view=calendar" },
+          ]}
+        />
         <div className={`${glassCard} p-8 text-center`}>
-          <h1 className="text-xl font-bold text-slate-900">내 매칭</h1>
-          <p className="mt-3 text-slate-600">아직 확정된 매칭이 없습니다.</p>
+          <p className="text-slate-600">아직 확정된 매칭이 없습니다.</p>
           <p className="mt-1 text-sm text-slate-500">지원한 구인글에서 확정되면 여기에 표시됩니다.</p>
           <Link href="/jobs" className="mt-6 inline-block text-blue-600 hover:underline">구인글 보기</Link>
         </div>
@@ -95,12 +117,23 @@ export default async function JobsMatchesPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
-      <Link href="/jobs" className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
-        <span aria-hidden>←</span> 인력 구인
-      </Link>
       <h1 className="text-xl font-bold text-slate-900">내 매칭</h1>
       <p className="mt-0.5 text-sm text-slate-600">확정된 현장 일정을 목록과 달력으로 확인하세요.</p>
-      <MatchesView matches={matches} />
+      <JobsPrimaryTabs
+        active="matches"
+        allHref="/jobs"
+        postedHref="/jobs/manage"
+        appliedHref="/jobs?mine=applied"
+        matchesHref="/jobs/matches"
+      />
+      <JobsSecondaryTabs
+        activeKey={viewMode}
+        items={[
+          { key: "list", label: "목록", href: "/jobs/matches?view=list" },
+          { key: "calendar", label: "달력", href: "/jobs/matches?view=calendar" },
+        ]}
+      />
+      <MatchesView matches={matches} viewMode={viewMode} />
     </div>
   );
 }

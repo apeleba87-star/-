@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import JobPostCard from "@/components/jobs/JobPostCard";
 import JobsListToolbar from "@/components/jobs/JobsListToolbar";
+import JobsPrimaryTabs from "@/components/jobs/JobsPrimaryTabs";
+import JobsSecondaryTabs from "@/components/jobs/JobsSecondaryTabs";
 import AuthRequiredCta from "@/components/AuthRequiredCta";
 import {
   SORT_OPTIONS,
@@ -188,6 +190,23 @@ export default async function JobsListPage({
         </div>
         <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
         <p className="mt-0.5 text-sm text-slate-600">{emptyMessage}</p>
+        <JobsPrimaryTabs
+          active={filter === "applied" ? "applied" : "all"}
+          allHref={`/jobs${buildJobsQuery({ ...currentQuery, mine: undefined })}`}
+          postedHref={user ? "/jobs/manage" : `/login?next=${encodeURIComponent("/jobs/manage")}`}
+          appliedHref={
+            user
+              ? `/jobs${buildJobsQuery({ ...currentQuery, mine: "applied" })}`
+              : `/login?next=${encodeURIComponent("/jobs?mine=applied")}`
+          }
+          matchesHref={user ? "/jobs/matches" : `/login?next=${encodeURIComponent("/jobs/matches")}`}
+        />
+        <JobsSecondaryTabs
+          activeKey="list"
+          items={[
+            { key: "list", label: "목록", href: `/jobs${buildJobsQuery(currentQuery)}` },
+          ]}
+        />
         <div className="mt-6 rounded-2xl border border-white/30 bg-white/60 p-8 shadow-lg backdrop-blur-xl">
           {filter === "all" ? (
             <>
@@ -444,45 +463,23 @@ export default async function JobsListPage({
         </div>
       ) : null}
 
-      {user && (
-        <nav
-          className="mt-4 flex gap-1 rounded-xl bg-slate-100/80 p-1"
-          aria-label="목록 필터"
-        >
-          <Link
-            href={`/jobs${buildJobsQuery({ ...currentQuery, mine: undefined })}`}
-            className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-              filter === "all"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            전체
-          </Link>
-          <Link
-            href="/jobs/manage"
-            className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
-          >
-            내 구인 관리
-          </Link>
-          <Link
-            href={`/jobs${buildJobsQuery({ ...currentQuery, mine: "applied" })}`}
-            className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-              filter === "applied"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            내가 지원한 현장
-          </Link>
-          <Link
-            href="/jobs/matches"
-            className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
-          >
-            내 매칭
-          </Link>
-        </nav>
-      )}
+      <JobsPrimaryTabs
+        active={filter === "applied" ? "applied" : "all"}
+        allHref={`/jobs${buildJobsQuery({ ...currentQuery, mine: undefined })}`}
+        postedHref={user ? "/jobs/manage" : `/login?next=${encodeURIComponent("/jobs/manage")}`}
+        appliedHref={
+          user
+            ? `/jobs${buildJobsQuery({ ...currentQuery, mine: "applied" })}`
+            : `/login?next=${encodeURIComponent("/jobs?mine=applied")}`
+        }
+        matchesHref={user ? "/jobs/matches" : `/login?next=${encodeURIComponent("/jobs/matches")}`}
+      />
+      <JobsSecondaryTabs
+        activeKey="list"
+        items={[
+          { key: "list", label: "목록", href: `/jobs${buildJobsQuery(currentQuery)}` },
+        ]}
+      />
 
       <Suspense fallback={<div className="mt-4 h-20 animate-pulse rounded-xl bg-slate-100" />}>
         <JobsListToolbar

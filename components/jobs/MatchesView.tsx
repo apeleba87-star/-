@@ -1,40 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { MatchItem } from "@/app/jobs/matches/page";
 import { glassCard } from "@/lib/ui-styles";
 
 type ViewMode = "list" | "calendar";
 
-type Props = { matches: MatchItem[] };
+type Props = { matches: MatchItem[]; viewMode: ViewMode };
 
-export default function MatchesView({ matches }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+export default function MatchesView({ matches, viewMode }: Props) {
 
   return (
     <div className="mt-6">
-      <nav className="mb-4 flex gap-1 rounded-xl bg-slate-100/80 p-1" aria-label="보기 전환">
-        <button
-          type="button"
-          onClick={() => setViewMode("list")}
-          className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          목록
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("calendar")}
-          className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            viewMode === "calendar" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          달력
-        </button>
-      </nav>
-
       {viewMode === "list" && (
         <ul className="space-y-3">
           {matches
@@ -73,7 +51,7 @@ export default function MatchesView({ matches }: Props) {
   );
 }
 
-function MatchesCalendar({ matches }: Props) {
+function MatchesCalendar({ matches }: { matches: MatchItem[] }) {
   const [current, setCurrent] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
