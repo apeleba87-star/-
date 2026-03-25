@@ -11,6 +11,7 @@ import {
   type JobsListSearchParams,
 } from "@/lib/jobs/job-list-options";
 import { getKstTodayString, getKstTomorrowString, addDaysToDateString } from "@/lib/jobs/kst-date";
+import { buildOpenVisibleJobsOrFilter } from "@/lib/jobs/visibility";
 import { getActiveJobsAds } from "@/lib/ads";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 
@@ -90,6 +91,7 @@ export default async function JobsListPage({
 
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
+  const todayKst = getKstTodayString();
 
   if (mine === "posted") redirect("/jobs/manage");
 
@@ -138,33 +140,25 @@ export default async function JobsListPage({
     }
   } else {
     const MAX_LIST_LIMIT = 50;
-    const { data } = await supabase
+    let q = supabase
       .from("job_posts")
       .select("id, title, status, region, district, work_date, created_at, user_id")
-      .order("created_at", { ascending: false })
-      .limit(MAX_LIST_LIMIT);
+      .eq("status", "open")
+      .or(buildOpenVisibleJobsOrFilter(todayKst));
+    if (filterRegion != null) q = q.eq("region", filterRegion);
+    if (filterDistrict != null) q = q.eq("district", filterDistrict);
+    if (workDateFrom != null) q = q.gte("work_date", workDateFrom);
+    if (workDateTo != null) q = q.lte("work_date", workDateTo);
+    const { data } = await q.order("created_at", { ascending: false }).limit(MAX_LIST_LIMIT);
     jobPosts = data ?? [];
     postIds = jobPosts.map((p) => p.id);
   }
 
   jobPosts = jobPosts ?? [];
 
-  if (filter === "all" && user && jobPosts.length > 0) {
-    const { data: myApps } = await authSupabase
-      .from("job_applications")
-      .select("position_id")
-      .eq("user_id", user.id);
-    const appliedPositionIds = (myApps ?? []).map((a) => a.position_id).filter(Boolean);
-    if (appliedPositionIds.length > 0) {
-      const { data: posRows } = await supabase
-        .from("job_post_positions")
-        .select("job_post_id")
-        .in("id", appliedPositionIds);
-      const myAppliedPostIds = new Set((posRows ?? []).map((p) => p.job_post_id));
-      jobPosts = jobPosts.filter((p) => !myAppliedPostIds.has(p.id));
-      postIds = jobPosts.map((p) => p.id);
-    }
-  }
+  // NOTE:
+  // "전체" 탭은 사용자가 이미 지원한 공고도 포함해서 보여준다.
+  // (이전에는 지원한 공고를 제외해서 홈 건수와 목록이 어긋나 보이는 문제가 있었다.)
 
   if (filter === "applied" && jobPosts.length > 0) {
     const todayKstForFilter = getKstTodayString();
@@ -175,24 +169,6 @@ export default async function JobsListPage({
     });
     postIds = jobPosts.map((p) => p.id);
   }
-
-  const { data: dayPositions } =
-    postIds.length > 0
-      ? await supabase
-          .from("job_post_positions")
-          .select("pay_amount, pay_unit, normalized_daily_wage")
-          .in("job_post_id", postIds)
-          .eq("pay_unit", "day")
-      : { data: [] };
-
-  const dayWages =
-    dayPositions?.map((p) =>
-      p.normalized_daily_wage != null ? Number(p.normalized_daily_wage) : Number(p.pay_amount)
-    ) ?? [];
-  const avgDailyWage =
-    dayWages.length > 0
-      ? Math.round(dayWages.reduce((a, b) => a + b, 0) / dayWages.length)
-      : null;
 
   const hasPosts = (jobPosts?.length ?? 0) > 0;
   const jobsAds = await getActiveJobsAds();
@@ -273,26 +249,17 @@ export default async function JobsListPage({
     positionsByPost.set(p.job_post_id, list);
   }
 
-  // 필터: 지역, 작업종류, 숙련도, 일당 이상, 작업일
+  // 필터: 작업종류, 숙련도 (지역/날짜는 전체 탭에서는 DB 쿼리에서 먼저 적용)
   let filteredPosts = jobPosts;
-  // 전체 목록: 작업일이 지난 글(마감)은 제외. 내가 쓴 글/지원한 글은 전부 노출
-  const todayKst = getKstTodayString();
-  if (filter === "all") {
-    filteredPosts = filteredPosts.filter(
-      (p) =>
-        p.status !== "closed" &&
-        (p.work_date == null || p.work_date >= todayKst)
-    );
-  }
-  if (filterRegion != null)
+  if (filterRegion != null && filter !== "all")
     filteredPosts = filteredPosts.filter((p) => p.region === filterRegion);
-  if (filterDistrict != null)
+  if (filterDistrict != null && filter !== "all")
     filteredPosts = filteredPosts.filter((p) => p.district === filterDistrict);
-  if (workDateFrom != null)
+  if (workDateFrom != null && filter !== "all")
     filteredPosts = filteredPosts.filter(
       (p) => p.work_date != null && p.work_date >= workDateFrom
     );
-  if (workDateTo != null)
+  if (workDateTo != null && filter !== "all")
     filteredPosts = filteredPosts.filter(
       (p) => p.work_date != null && p.work_date <= workDateTo
     );
@@ -360,6 +327,23 @@ export default async function JobsListPage({
   }
 
   const hasFilteredPosts = sortedPosts.length > 0;
+  const visiblePostIds = sortedPosts.map((p) => p.id);
+  const { data: dayPositions } =
+    visiblePostIds.length > 0
+      ? await supabase
+          .from("job_post_positions")
+          .select("pay_amount, pay_unit, normalized_daily_wage")
+          .in("job_post_id", visiblePostIds)
+          .eq("pay_unit", "day")
+      : { data: [] };
+  const dayWages =
+    dayPositions?.map((p) =>
+      p.normalized_daily_wage != null ? Number(p.normalized_daily_wage) : Number(p.pay_amount)
+    ) ?? [];
+  const avgDailyWage =
+    dayWages.length > 0
+      ? Math.round(dayWages.reduce((a, b) => a + b, 0) / dayWages.length)
+      : null;
 
   const { data: countRows } = await supabase.rpc(
     "get_job_post_application_counts",

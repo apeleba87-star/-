@@ -4,6 +4,7 @@ import { getActiveHomeAds } from "@/lib/ads";
 import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import { getKstTodayString, getKstTodayUtcRange } from "@/lib/jobs/kst-date";
+import { buildOpenVisibleJobsOrFilter } from "@/lib/jobs/visibility";
 import HomeDashboard from "@/components/home/HomeDashboard";
 import TenderSection from "@/components/home/TenderSection";
 import NewsSection from "@/components/home/NewsSection";
@@ -78,13 +79,14 @@ export default async function HomePage() {
   let listingsCount = listingStats?.total_count ?? 0;
   // 인력 구인 건수: service role로 직접 집계해 RLS/캐시와 무관하게 실제 건수 표시 (등록 직후 반영)
   let jobsOpenCount = jobPostStats?.open_count ?? 0;
+  const openVisibleFilter = buildOpenVisibleJobsOrFilter(todayKst);
   try {
     const service = createServiceSupabase();
     const directJobsRes = await service
       .from("job_posts")
       .select("id", { count: "exact", head: true })
       .eq("status", "open")
-      .or(`work_date.is.null,work_date.gte.${todayKst}`);
+      .or(openVisibleFilter);
     if (!directJobsRes.error && directJobsRes.count != null) {
       jobsOpenCount = directJobsRes.count;
     }
@@ -93,7 +95,7 @@ export default async function HomePage() {
       .from("job_posts")
       .select("id", { count: "exact", head: true })
       .eq("status", "open")
-      .or(`work_date.is.null,work_date.gte.${todayKst}`);
+      .or(openVisibleFilter);
     if (!directJobsRes.error && directJobsRes.count != null) {
       jobsOpenCount = directJobsRes.count;
     } else if (jobsOpenCount === 0) {

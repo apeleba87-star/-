@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -36,10 +36,12 @@ const iconBtnClass =
   "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-white/60 hover:text-slate-900 touch-manipulation";
 
 export default function Header() {
+  const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdminNav, setShowAdminNav] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (menuOpen) document.body.style.overflow = "hidden";
@@ -56,13 +58,15 @@ export default function Header() {
 
   const fetchProfileRole = () => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const user = session?.user ?? null;
+      setEmail(user?.email ?? null);
       setIsLoggedIn(!!user);
       if (!user) {
         setShowAdminNav(false);
         return;
       }
-      supabase
+      await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
@@ -76,6 +80,17 @@ export default function Header() {
   useEffect(() => {
     fetchProfileRole();
   }, []);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setEmail(session?.user?.email ?? null);
+      setIsLoggedIn(!!session?.user);
+      if (event === "SIGNED_OUT") setShowAdminNav(false);
+      router.refresh();
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   // 탭 포커스 시 역할 다시 조회 (DB에서 admin으로 바꾼 뒤 이 탭으로 돌아오면 반영)
   useEffect(() => {
@@ -159,7 +174,14 @@ export default function Header() {
             )}
             <span className="hidden min-h-[44px] items-center md:flex">
               <motion.span className="contents" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                <HeaderAuth />
+                <HeaderAuth
+                  email={email}
+                  onSignedOut={() => {
+                    setEmail(null);
+                    setIsLoggedIn(false);
+                    setShowAdminNav(false);
+                  }}
+                />
               </motion.span>
             </span>
             <HeaderAdminLink variant="pc" />
@@ -241,7 +263,14 @@ export default function Header() {
               </nav>
               <div className="border-t border-slate-200/80 p-4 space-y-2">
                 <div className="flex min-h-[44px] items-center md:hidden">
-                  <HeaderAuth />
+                  <HeaderAuth
+                    email={email}
+                    onSignedOut={() => {
+                      setEmail(null);
+                      setIsLoggedIn(false);
+                      setShowAdminNav(false);
+                    }}
+                  />
                 </div>
                 <HeaderAdminLink variant="mobile" onClick={() => setMenuOpen(false)} />
               </div>

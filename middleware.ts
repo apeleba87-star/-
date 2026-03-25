@@ -9,7 +9,7 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  * 서버 컴포넌트와 클라이언트가 동일한 세션을 보도록 함 (로그인 직후 메뉴 이동 시 재로그인 요구 방지).
  */
 async function updateSession(req: NextRequest): Promise<NextResponse> {
-  const response = NextResponse.next({ request: req });
+  let response = NextResponse.next({ request: req });
 
   if (!url || !key) return response;
 
@@ -19,6 +19,10 @@ async function updateSession(req: NextRequest): Promise<NextResponse> {
         return req.cookies.getAll();
       },
       setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          req.cookies.set(name, value);
+        });
+        response = NextResponse.next({ request: req });
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options as Parameters<NextResponse["cookies"]["set"]>[2] ?? {});
         });
