@@ -115,12 +115,12 @@ export default async function PostPage({ params }: PostPageParams) {
         }
       }
     }
-    const reportLocked = await getReportLocked(slugPost, reportData, supabase);
-    return renderPost(slugPost, adsResult, reportData, reportLocked);
+    const reportAccess = await getReportAccess(slugPost, reportData, supabase);
+    return renderPost(slugPost, adsResult, reportData, reportAccess);
   }
   await ensurePrivateAccess(post, authSupabase, user.id);
-  const reportLocked = await getReportLocked(post!, reportData, supabase);
-  return renderPost(post!, adsResult, reportData, reportLocked);
+  const reportAccess = await getReportAccess(post!, reportData, supabase);
+  return renderPost(post!, adsResult, reportData, reportAccess);
 }
 
 /** 리포트 포스트 중 published_at 기준 가장 최신 1건의 id 조회 (무료 열람 대상) */
@@ -137,31 +137,31 @@ async function getLatestReportPostId(supabase: ReturnType<typeof createClient>):
   return (data as { id: string } | null)?.id ?? null;
 }
 
-async function getReportLocked(
+async function getReportAccess(
   post: PostForRender,
   reportData: ReportData | null,
   supabase: ReturnType<typeof createClient>
-): Promise<boolean> {
-  if (!isReportPost(post) || !reportData) return false;
+): Promise<"free" | "shared" | "premium"> {
+  if (!isReportPost(post) || !reportData) return "free";
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
-  if (!user) return true;
+  if (!user) return "free";
   const { data: profile } = await authSupabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
   const role = (profile as { role?: string } | null)?.role;
-  if (role === "admin" || role === "editor") return false;
+  if (role === "admin" || role === "editor") return "premium";
   const latestId = await getLatestReportPostId(supabase);
-  if (latestId === post.id) return false;
   const todayKst = getKstDateString();
   const { data: sub } = await authSupabase
     .from("subscriptions")
     .select("id, status, next_billing_at")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (hasSubscriptionAccess(sub as { status: string; next_billing_at?: string | null } | null, todayKst)) return false;
+  if (hasSubscriptionAccess(sub as { status: string; next_billing_at?: string | null } | null, todayKst)) return "premium";
+  if (latestId === post.id) return "free";
   const { data: grant } = await authSupabase
     .from("report_share_grants")
     .select("id")
@@ -175,9 +175,9 @@ async function getReportLocked(
       .from("report_share_grants")
       .update({ used_at: new Date().toISOString() })
       .eq("id", grant.id);
-    return false;
+    return "shared";
   }
-  return true;
+  return "free";
 }
 
 type PostForRender = {
@@ -217,13 +217,13 @@ function renderPost(
   post: PostForRender,
   ads: PostDetailAds,
   reportData: ReportData | null,
-  reportLocked: boolean
+  reportAccess: "free" | "shared" | "premium"
 ) {
   const isReport = isReportPost(post);
   const showTopAd = ads.post_top?.enabled && (ads.post_top.campaign || ads.post_top.script_content);
   const showBottomAd = ads.post_bottom?.enabled && (ads.post_bottom.campaign || ads.post_bottom.script_content);
   const useDashboard = isReport && reportData;
-  const showLock = useDashboard && reportLocked;
+  const showLock = false;
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-6 sm:px-6 sm:py-10">
@@ -253,6 +253,7 @@ function renderPost(
             insightSentence={reportData!.insightSentence}
             excerpt={post.excerpt}
             updatedAt={post.updated_at ?? null}
+            accessLevel={reportAccess}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">

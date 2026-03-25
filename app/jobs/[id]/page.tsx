@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createClient, createServerSupabase } from "@/lib/supabase-server";
+import { createClient, createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PayUnit, PositionStatus } from "@/lib/jobs/types";
 import { POSITION_STATUS_LABELS } from "@/lib/jobs/types";
@@ -13,6 +13,8 @@ import ApplySection from "@/components/jobs/ApplySection";
 import JobPostPrivateDetails from "@/components/jobs/JobPostPrivateDetails";
 import JobPostOwnerActions from "@/components/jobs/JobPostOwnerActions";
 import NoShowAppealBlock from "@/components/jobs/NoShowAppealBlock";
+import JobShareActions from "@/components/jobs/JobShareActions";
+import { insertJobShareEvent } from "@/lib/jobs/share-events";
 
 export const revalidate = 60;
 
@@ -20,10 +22,13 @@ const REPORT_PERIOD_DAYS = 30;
 
 export default async function JobPostDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const supabase = createClient();
   const { data: post, error: postError } = await supabase
     .from("job_posts")
@@ -39,6 +44,24 @@ export default async function JobPostDetailPage({
     redirect(`/login?next=${encodeURIComponent(`/jobs/${id}`)}`);
   }
   const isOwner = post.user_id === user.id;
+  const ref = typeof query.ref === "string" ? query.ref : "";
+  const shareChannel = typeof query.channel === "string" ? query.channel : "unknown";
+  if (!isOwner && ref === "job_share") {
+    try {
+      const service = createServiceSupabase();
+      await insertJobShareEvent({
+        supabase: service,
+        jobPostId: id,
+        ownerUserId: post.user_id,
+        actorUserId: user.id,
+        eventType: "share_open",
+        channel: shareChannel,
+        ref: "job_share_url",
+      });
+    } catch {
+      // 공유 유입 기록 실패는 페이지 렌더를 막지 않는다.
+    }
+  }
 
   const { data: positions } = await supabase
     .from("job_post_positions")
@@ -235,6 +258,15 @@ export default async function JobPostDetailPage({
   const workDateFormatted = post.work_date
     ? new Date(post.work_date + "T12:00:00").toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })
     : null;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: shareEvents } = await authSupabase
+    .from("job_share_events")
+    .select("event_type")
+    .eq("owner_user_id", post.user_id)
+    .eq("job_post_id", id)
+    .gte("created_at", sevenDaysAgo);
+  const shareOpenCount = (shareEvents ?? []).filter((e) => e.event_type === "share_open").length;
+  const shareApplyCount = (shareEvents ?? []).filter((e) => e.event_type === "share_apply").length;
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
@@ -291,7 +323,16 @@ export default async function JobPostDetailPage({
         )}
 
         {isOwner && (
-          <JobPostOwnerActions jobPostId={id} isClosed={post.status === "closed"} />
+          <>
+            <JobPostOwnerActions jobPostId={id} isClosed={post.status === "closed"} />
+            <JobShareActions
+              postId={id}
+              title={post.title}
+              regionLabel={regionDisplay}
+              workDate={post.work_date}
+              statsSummary={`최근 7일 공유 유입 ${shareOpenCount}명 · 공유 경유 지원 ${shareApplyCount}건`}
+            />
+          </>
         )}
 
         {isAcceptedForThisPost && privateDetails && (
@@ -417,6 +458,8 @@ export default async function JobPostDetailPage({
                             <ApplySection
                               positionId={pos.id}
                               jobPostId={id}
+                              shareRef={ref === "job_share"}
+                              shareChannel={shareChannel}
                               disabled={post.status === "closed"}
                               alreadyApplied={alreadyApplied}
                               workerProfileComplete={workerProfileComplete}

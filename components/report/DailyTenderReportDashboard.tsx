@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Link from "next/link";
 import {
   BarChart,
@@ -23,6 +24,11 @@ import {
   Lightbulb,
   Info,
   BarChart2,
+  Gauge,
+  ShieldAlert,
+  Target,
+  Lock,
+  Crown,
 } from "lucide-react";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatters";
@@ -46,6 +52,7 @@ type Props = {
   insightSentence: string;
   excerpt?: string | null;
   updatedAt?: string | null;
+  accessLevel?: "free" | "shared" | "premium";
 };
 
 export default function DailyTenderReportDashboard({
@@ -55,6 +62,7 @@ export default function DailyTenderReportDashboard({
   insightSentence,
   excerpt,
   updatedAt,
+  accessLevel = "free",
 }: Props) {
   const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
 
@@ -73,6 +81,18 @@ export default function DailyTenderReportDashboard({
     count: r.count,
     pct: count_total > 0 ? Math.round((r.count / count_total) * 1000) / 10 : 0,
   }));
+  const averageBudget = count_total > 0 ? Math.round(payload.budget_total / count_total) : 0;
+  const highBudgetCount = top_budget_tenders.filter((t) => t.budget > averageBudget * 1.5).length;
+  const deadlinePressure = Math.min(100, deadline_soon_tenders.length * 18 + (payload.has_budget_unknown ? 10 : 0));
+  const concentrationScore = Math.min(100, Math.round(topRegionShare + topIndustryShare));
+  const marketHeat = Math.min(
+    100,
+    Math.round(
+      Math.min(60, count_total * 1.2) + Math.min(20, highBudgetCount * 6) + Math.min(20, concentrationScore * 0.3)
+    )
+  );
+  const riskScore = Math.min(100, Math.round(deadlinePressure * 0.6 + concentrationScore * 0.3 + (payload.has_budget_unknown ? 10 : 0)));
+  const panelOpenCount = accessLevel === "premium" ? 99 : accessLevel === "shared" ? 2 : 0;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 rounded-2xl p-3 bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 sm:space-y-6 sm:p-6">
@@ -100,6 +120,9 @@ export default function DailyTenderReportDashboard({
               </p>
               <p className="mt-2 text-base font-medium text-blue-100 sm:text-xl">{dateLabel}</p>
             </div>
+          </div>
+          <div className="self-start rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
+            {accessLevel === "premium" ? "프리미엄 전체 분석" : accessLevel === "shared" ? "공유 확장 모드" : "기본 요약 모드"}
           </div>
         </div>
       </header>
@@ -486,6 +509,67 @@ export default function DailyTenderReportDashboard({
         </div>
       </section>
 
+      {/* 6-1. 의사결정 엔진 (유료 중심) */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">의사결정 엔진</h2>
+          {accessLevel === "premium" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
+              <Crown className="h-3.5 w-3.5" />
+              프리미엄
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <DecisionPanel
+            open={panelOpenCount >= 1}
+            title="시장 온도"
+            icon={<Gauge className="h-5 w-5 text-blue-600" />}
+            lockMessage="공유 또는 프리미엄에서 시장 온도를 확인할 수 있습니다."
+            accessLevel={accessLevel}
+          >
+            <p className="text-3xl font-bold text-blue-700">{marketHeat}점</p>
+            <p className="mt-2 text-sm text-slate-600">공고 수·고예산 비중·집중도를 반영한 당일 온도 지수입니다.</p>
+            <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+              <li>총 공고: {count_total.toLocaleString()}건</li>
+              <li>평균 예산: {averageBudget > 0 ? `${Math.round(averageBudget / 10000).toLocaleString()}만원` : "—"}</li>
+              <li>고예산 신호: {highBudgetCount}건</li>
+            </ul>
+          </DecisionPanel>
+
+          <DecisionPanel
+            open={panelOpenCount >= 2}
+            title="리스크 경보"
+            icon={<ShieldAlert className="h-5 w-5 text-amber-600" />}
+            lockMessage="공유 또는 프리미엄에서 리스크 경보를 확인할 수 있습니다."
+            accessLevel={accessLevel}
+          >
+            <p className="text-3xl font-bold text-amber-700">{riskScore}점</p>
+            <p className="mt-2 text-sm text-slate-600">마감 압박·시장 집중·예산 미기재 신호를 반영한 리스크 지수입니다.</p>
+            <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+              <li>마감 임박: {deadline_soon_tenders.length}건</li>
+              <li>집중도 신호: {concentrationScore}점</li>
+              <li>예산 미기재 포함: {payload.has_budget_unknown ? "있음" : "없음"}</li>
+            </ul>
+          </DecisionPanel>
+
+          <DecisionPanel
+            open={panelOpenCount >= 3}
+            title="실행 우선순위"
+            icon={<Target className="h-5 w-5 text-emerald-600" />}
+            lockMessage="프리미엄에서 실행 우선순위 전략을 확인할 수 있습니다."
+            accessLevel={accessLevel}
+          >
+            <ol className="space-y-2 text-sm text-slate-700">
+              <li>1) {deadline_soon_tenders[0]?.agency ?? "주요 발주처"} 마감 임박 건부터 검토</li>
+              <li>2) {region_breakdown[0]?.name ?? "상위 지역"} 중심으로 필터링 후 우선 공략</li>
+              <li>3) 고예산({highBudgetCount}건) 공고를 별도 큐로 분리</li>
+            </ol>
+            <p className="mt-3 text-xs text-slate-500">실행 우선순위는 매일 데이터 변화에 맞춰 자동 갱신됩니다.</p>
+          </DecisionPanel>
+        </div>
+      </section>
+
       {/* 7. 푸터 안내 */}
       {/* 뉴스레터 CTA(리포트 하단) */}
       <section className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 shadow-xl sm:p-8">
@@ -538,5 +622,56 @@ export default function DailyTenderReportDashboard({
         </div>
       </footer>
     </div>
+  );
+}
+
+function DecisionPanel({
+  open,
+  title,
+  icon,
+  children,
+  lockMessage,
+  accessLevel,
+}: {
+  open: boolean;
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  lockMessage: string;
+  accessLevel: "free" | "shared" | "premium";
+}) {
+  if (open) {
+    return (
+      <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="rounded-lg bg-slate-100 p-2">{icon}</span>
+          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        </div>
+        {children}
+      </article>
+    );
+  }
+
+  return (
+    <article className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-lg sm:p-6">
+      <div className="mb-3 flex items-center gap-2 opacity-70">
+        <span className="rounded-lg bg-slate-100 p-2">{icon}</span>
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+      </div>
+      <div className="blur-[2px] opacity-50">{children}</div>
+      <div className="absolute inset-0 flex items-center justify-center bg-white/55 p-4">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm">
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+            <Lock className="h-4 w-4" /> 상세 잠금
+          </p>
+          <p className="mt-1 text-xs text-slate-600">{lockMessage}</p>
+          <div className="mt-2">
+            <Link href="/subscribe" className="text-xs font-medium text-blue-600 hover:underline">
+              {accessLevel === "shared" ? "프리미엄으로 전체 열기" : "공유 후 더 열기 / 프리미엄 보기"}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }

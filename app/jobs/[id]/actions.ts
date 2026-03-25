@@ -5,9 +5,14 @@ import { revalidatePath } from "next/cache";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
 import { resolveJobType } from "@/lib/jobs/resolve-job-type";
 import type { PositionInput } from "@/lib/jobs/types";
+import { insertJobShareEvent } from "@/lib/jobs/share-events";
 
 /** 포지션에 지원 */
-export async function applyToPosition(positionId: string, jobPostId: string) {
+export async function applyToPosition(
+  positionId: string,
+  jobPostId: string,
+  source?: { shareRef?: boolean; shareChannel?: string }
+) {
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -63,6 +68,26 @@ export async function applyToPosition(positionId: string, jobPostId: string) {
   });
   if (error) return { ok: false, error: error.message };
 
+  if (source?.shareRef) {
+    try {
+      const service = createServiceSupabase();
+      const { data: post } = await supabase.from("job_posts").select("id, user_id").eq("id", jobPostId).maybeSingle();
+      if (post) {
+        await insertJobShareEvent({
+          supabase: service,
+          jobPostId: post.id,
+          ownerUserId: post.user_id,
+          actorUserId: user.id,
+          eventType: "share_apply",
+          channel: source.shareChannel ?? "unknown",
+          ref: "job_share_url",
+        });
+      }
+    } catch {
+      // 공유 경유 지원 로그 실패는 지원 성공을 막지 않는다.
+    }
+  }
+
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
   return { ok: true };
@@ -84,7 +109,8 @@ function isValidBirthDate(value: string | null): boolean {
 export async function applyWithProfile(
   positionId: string,
   jobPostId: string,
-  profile: { nickname: string; birth_date: string; gender: "M" | "F"; contact_phone: string }
+  profile: { nickname: string; birth_date: string; gender: "M" | "F"; contact_phone: string },
+  source?: { shareRef?: boolean; shareChannel?: string }
 ) {
   const supabase = await createServerSupabase();
   const {
@@ -156,7 +182,7 @@ export async function applyWithProfile(
   revalidatePath(`/jobs/${jobPostId}`);
   revalidatePath("/jobs");
 
-  return applyToPosition(positionId, jobPostId);
+  return applyToPosition(positionId, jobPostId, source);
 }
 
 /** 지원 취소 (지원자만, 매칭 전에만) */

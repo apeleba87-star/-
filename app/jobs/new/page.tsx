@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import JobPostForm from "./JobPostForm";
 import type { InitialCompany } from "@/components/jobs/CompanyProfileModal";
+import { hasPremiumAccess } from "@/lib/jobs/wage-insight";
 
 export const revalidate = 60;
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function NewJobPostPage() {
 
   const { data: profile } = await authSupabase.from("profiles").select("onboarding_done").eq("id", user.id).single();
   if (!profile?.onboarding_done) redirect("/onboarding?next=/jobs/new");
+  const premiumAccess = await hasPremiumAccess(authSupabase, user.id);
 
   const { data: categories } = await supabase
     .from("categories")
@@ -71,6 +73,7 @@ export default async function NewJobPostPage() {
       companyProfileComplete={companyProfileComplete}
       initialCompany={initialCompany}
       contactPhoneFromProfile={companyProfileComplete ? (initialCompany.contact_phone || null) : null}
+      premiumAccess={premiumAccess}
     />
   );
 }

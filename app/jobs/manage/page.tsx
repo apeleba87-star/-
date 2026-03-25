@@ -11,6 +11,7 @@ import ManageView, {
 import ManageApplicantsView, { type ManageApplicantRow } from "@/components/jobs/ManageApplicantsView";
 import { getKstTodayString, getKstTomorrowString } from "@/lib/jobs/kst-date";
 import { birthYearToAgeRangeLabel } from "@/lib/jobs/age-range";
+import JobShareActions from "@/components/jobs/JobShareActions";
 
 export const revalidate = 60;
 export const dynamic = "force-dynamic";
@@ -267,6 +268,21 @@ export default async function JobsManagePage({
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: shareEvents } = await authSupabase
+    .from("job_share_events")
+    .select("job_post_id, event_type")
+    .eq("owner_user_id", user.id)
+    .in("job_post_id", postIds)
+    .gte("created_at", sevenDaysAgo);
+  const shareStatsByPost = new Map<string, { open: number; apply: number }>();
+  for (const ev of shareEvents ?? []) {
+    const prev = shareStatsByPost.get(ev.job_post_id) ?? { open: 0, apply: 0 };
+    if (ev.event_type === "share_open") prev.open += 1;
+    if (ev.event_type === "share_apply") prev.apply += 1;
+    shareStatsByPost.set(ev.job_post_id, prev);
+  }
+
   const calendarItems: ManageCalendarItem[] = sortedPosts.map((post) => {
     const posList = positionsByPost.get(post.id) ?? [];
     let displayStatus: ManageCalendarDisplayStatus = "recruiting";
@@ -288,7 +304,7 @@ export default async function JobsManagePage({
   });
 
   const listSection = (
-    <ul className="space-y-3">
+    <div className="space-y-3">
       {sortedPosts.map((post, idx) => {
         const posList = positionsByPost.get(post.id) ?? [];
         const workDateFormatted = post.work_date
@@ -299,35 +315,55 @@ export default async function JobsManagePage({
             })
           : null;
         return (
-          <JobPostCard
-            key={post.id}
-            index={idx}
-            id={post.id}
-            title={post.title}
-            status={post.status}
-            region={post.region}
-            district={post.district ?? ""}
-            work_date={workDateFormatted}
-            applicationCount={Number(applicationCountByPost.get(post.id)) || 0}
-            isOwner
-            hasNoShowApplicant={postIdsWithNoShow.has(post.id)}
-            urgentLabel={getUrgentLabel(post.work_date)}
-            positions={posList.map((p) => {
-              const { label, skillLabel } = positionDisplay(p);
-              return {
-                id: p.id,
-                categoryDisplay: skillLabel ? `${label} / ${skillLabel}` : label,
-                required_count: p.required_count,
-                filled_count: p.filled_count,
-                pay_amount: Number(p.pay_amount),
-                pay_unit: p.pay_unit,
-                status: (post.status === "closed" ? "closed" : p.status) as "open" | "partial" | "closed",
-              };
-            })}
-          />
+          <div key={post.id} className="space-y-2">
+            <JobPostCard
+              index={idx}
+              id={post.id}
+              title={post.title}
+              status={post.status}
+              region={post.region}
+              district={post.district ?? ""}
+              work_date={workDateFormatted}
+              applicationCount={Number(applicationCountByPost.get(post.id)) || 0}
+              isOwner
+              hasNoShowApplicant={postIdsWithNoShow.has(post.id)}
+              urgentLabel={getUrgentLabel(post.work_date)}
+              positions={posList.map((p) => {
+                const { label, skillLabel } = positionDisplay(p);
+                return {
+                  id: p.id,
+                  categoryDisplay: skillLabel ? `${label} / ${skillLabel}` : label,
+                  required_count: p.required_count,
+                  filled_count: p.filled_count,
+                  pay_amount: Number(p.pay_amount),
+                  pay_unit: p.pay_unit,
+                  status: (post.status === "closed" ? "closed" : p.status) as "open" | "partial" | "closed",
+                };
+              })}
+            />
+            <div className="pl-1">
+              {(() => {
+                const stats = shareStatsByPost.get(post.id) ?? { open: 0, apply: 0 };
+                const summary =
+                  stats.open > 0 || stats.apply > 0
+                    ? `최근 7일 공유 유입 ${stats.open}명 · 공유 경유 지원 ${stats.apply}건`
+                    : null;
+                return (
+              <JobShareActions
+                compact
+                postId={post.id}
+                title={post.title}
+                regionLabel={[post.region, post.district].filter(Boolean).join(" ")}
+                workDate={post.work_date}
+                statsSummary={summary}
+              />
+                );
+              })()}
+            </div>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 
   return (

@@ -17,6 +17,8 @@ type InitialWorker = {
 type Props = {
   positionId: string;
   jobPostId: string;
+  shareRef?: boolean;
+  shareChannel?: string;
   disabled?: boolean;
   alreadyApplied?: boolean;
   workerProfileComplete: boolean;
@@ -27,6 +29,8 @@ type Props = {
 export default function ApplySection({
   positionId,
   jobPostId,
+  shareRef = false,
+  shareChannel = "unknown",
   disabled,
   alreadyApplied,
   workerProfileComplete,
@@ -47,7 +51,10 @@ export default function ApplySection({
     }
     if (workerProfileComplete) {
       setLoading(true);
-      const result = await applyToPosition(positionId, jobPostId);
+      const result = await applyToPosition(positionId, jobPostId, {
+        shareRef,
+        shareChannel,
+      });
       setLoading(false);
       if (!result.ok) {
         setError(result.error ?? "지원 실패");
@@ -118,6 +125,8 @@ export default function ApplySection({
           initialWorker={initialWorker}
           positionId={positionId}
           jobPostId={jobPostId}
+          shareRef={shareRef}
+          shareChannel={shareChannel}
           onSuccess={handleModalSuccess}
           onCancel={() => setModalOpen(false)}
         />

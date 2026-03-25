@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Calendar, ChevronDown, ChevronUp, Crown, Lock, BarChart3 } from "lucide-react";
 import { createJobPost } from "./actions";
 import { updateJobPost } from "@/app/jobs/[id]/actions";
 import CompanyProfileModal, { type InitialCompany } from "@/components/jobs/CompanyProfileModal";
@@ -85,6 +85,7 @@ type Props = {
   initialCompany?: InitialCompany;
   /** 업체(마이페이지) 연락처로 고정 시 이 값 사용, 입력란 비활성화 */
   contactPhoneFromProfile?: string | null;
+  premiumAccess?: boolean;
 };
 
 const defaultPosition: PositionInput = {
@@ -114,6 +115,7 @@ export default function JobPostForm({
     contact_phone: "",
   },
   contactPhoneFromProfile,
+  premiumAccess = false,
 }: Props) {
   const router = useRouter();
   const isEdit = Boolean(jobPostId && initialData);
@@ -298,6 +300,8 @@ export default function JobPostForm({
 
   const inputClass =
     "mt-1.5 w-full rounded-xl border border-slate-200 bg-white/80 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20";
+  const jumboBoxClass = "rounded-xl border border-slate-200 bg-slate-50/50 p-4";
+  const jumboBoxSoftClass = "rounded-xl border border-slate-200 bg-white p-4";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
@@ -390,7 +394,7 @@ export default function JobPostForm({
                 placeholder="예: 길음로 15길 55"
               />
             </div>
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/30 p-4">
+            <div className={jumboBoxClass}>
               <div className="flex items-center gap-2 text-slate-800">
                 <Calendar className="h-4 w-4 text-slate-500" aria-hidden />
                 <span className="text-sm font-semibold">작업 일시</span>
@@ -448,7 +452,7 @@ export default function JobPostForm({
                 </div>
               </div>
             </div>
-            <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3">
+            <div className={`${jumboBoxClass} flex items-start gap-3 p-3`}>
               <input
                 type="checkbox"
                 id="use-same-time"
@@ -484,6 +488,8 @@ export default function JobPostForm({
                 index={idx}
                 position={pos}
                 inputClass={inputClass}
+                region={`${regionSido} ${effectiveGugun}`.trim()}
+                premiumAccess={premiumAccess}
                 useSameTime={useSameTimeForPositions}
                 onUpdate={(patch) => updatePosition(idx, patch)}
                 onRemove={!isEdit && positions.length > 1 ? () => removePosition(idx) : undefined}
@@ -524,7 +530,7 @@ export default function JobPostForm({
                 placeholder="통상적인 학교 청소 입니다"
               />
             </div>
-            <div className="rounded-xl border border-amber-200/60 bg-amber-50/30 overflow-hidden">
+            <div className={`${jumboBoxSoftClass} overflow-hidden`}>
               <button
                 type="button"
                 onClick={() => setExpandPrivateBlock((b) => !b)}
@@ -534,7 +540,7 @@ export default function JobPostForm({
                 {expandPrivateBlock ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
               </button>
               {expandPrivateBlock && (
-                <div className="border-t border-amber-200/60 bg-white/60 p-4 space-y-3">
+                <div className="border-t border-slate-200 bg-white/70 p-4 space-y-3">
                   <p className="text-xs text-slate-500">지원을 확정한 분에게만 아래 내용이 공개됩니다.</p>
                   <div>
                     <label className="block text-xs font-medium text-slate-600">출입 방법 (선택)</label>
@@ -605,6 +611,8 @@ function PositionFormBlock({
   index,
   position,
   inputClass,
+  region,
+  premiumAccess,
   useSameTime,
   onUpdate,
   onRemove,
@@ -612,6 +620,8 @@ function PositionFormBlock({
   index: number;
   position: PositionInput;
   inputClass: string;
+  region: string;
+  premiumAccess: boolean;
   useSameTime: boolean;
   onUpdate: (patch: Partial<PositionInput>) => void;
   onRemove?: () => void;
@@ -619,7 +629,7 @@ function PositionFormBlock({
   const isOther = position.job_type_key === JOB_TYPE_OTHER || !position.job_type_key;
 
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white/60 p-4 backdrop-blur-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-semibold text-slate-700">포지션 {index + 1}</span>
         {onRemove && (
@@ -725,6 +735,14 @@ function PositionFormBlock({
           </select>
         </div>
       </div>
+      <WageInsightPanel
+        jobTypeKey={position.job_type_key ?? null}
+        skillLevel={position.skill_level === "expert" ? "expert" : "general"}
+        payUnit={position.pay_unit}
+        payAmount={position.pay_amount}
+        region={region}
+        premiumAccess={premiumAccess}
+      />
       {position.pay_unit === "half_day" && (
         <div className="mt-4">
           <label className="block text-sm font-medium text-slate-700">반당 시간대</label>
@@ -771,6 +789,234 @@ function PositionFormBlock({
           className={inputClass}
         />
       </div>
+    </div>
+  );
+}
+
+function WageInsightPanel({
+  jobTypeKey,
+  skillLevel,
+  payUnit,
+  payAmount,
+  region,
+  premiumAccess,
+}: {
+  jobTypeKey: string | null;
+  skillLevel: "expert" | "general";
+  payUnit: PayUnit;
+  payAmount: number;
+  region: string;
+  premiumAccess: boolean;
+}) {
+  type UnlockState = "premium" | "ready" | "locked" | "used";
+  type DetailedState = {
+    avg: number | null;
+    sampleCount: number;
+    sampleBasis: string;
+    recommendedMin: number | null;
+    recommendedMax: number | null;
+    deltaPercent: number | null;
+  };
+
+  const [isPaidLive, setIsPaidLive] = useState(premiumAccess);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [freeAvg, setFreeAvg] = useState<number | null>(null);
+  const [sampleLabel, setSampleLabel] = useState<string>("");
+  const [unlock, setUnlock] = useState<{ todayShared: boolean; todayUsed: boolean; canOpenDetailedOnce: boolean }>({
+    todayShared: false,
+    todayUsed: false,
+    canOpenDetailedOnce: false,
+  });
+  const [detailed, setDetailed] = useState<DetailedState | null>(null);
+
+  const showPanel = payUnit === "day" && !!jobTypeKey;
+  useEffect(() => {
+    if (!showPanel || !jobTypeKey) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch("/api/jobs/share-unlock/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobTypeKey }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) throw new Error(data?.error || "인사이트 조회 실패");
+        if (cancelled) return;
+        setIsPaidLive(Boolean(data.isPaid) || premiumAccess);
+        setFreeAvg(data.free?.avg ?? null);
+        setSampleLabel(data.free?.sampleLabel ?? "");
+        setUnlock(data.unlock ?? { todayShared: false, todayUsed: false, canOpenDetailedOnce: false });
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "인사이트 조회 실패");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPanel, jobTypeKey]);
+
+  if (!showPanel) return null;
+
+  const unlockState: UnlockState = isPaidLive
+    ? "premium"
+    : unlock.todayUsed
+      ? "used"
+      : unlock.canOpenDetailedOnce
+        ? "ready"
+        : "locked";
+
+  const sampleCount =
+    detailed?.sampleCount ??
+    (() => {
+      const m = sampleLabel.match(/\d+/);
+      return m ? Number(m[0]) : 0;
+    })();
+  const sampleToneClass = sampleCount >= 40 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600";
+
+  async function grantUnlock() {
+    setError(null);
+    const shareText = "오늘 단가 인사이트를 확인하려고 공유합니다.";
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ text: shareText, url: window.location.href });
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareText} ${window.location.href}`);
+      }
+    } catch {
+      // 공유 UI 취소해도 버튼 요청은 진행.
+    }
+    const res = await fetch("/api/jobs/share-unlock/grant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-share-channel": "jobs_new_form" },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      setError(data?.error || "열람권 획득 실패");
+      return;
+    }
+    setUnlock((prev) => ({ ...prev, todayShared: true, canOpenDetailedOnce: true }));
+  }
+
+  async function consumeAndOpen() {
+    if (!jobTypeKey || payAmount <= 0) {
+      setError("금액 입력 후 상세 패널을 열 수 있습니다.");
+      return;
+    }
+    const res = await fetch("/api/jobs/share-unlock/consume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-share-channel": "jobs_new_form" },
+      body: JSON.stringify({
+        jobTypeKey,
+        region,
+        skillLevel,
+        payAmount,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      setError(data?.error || "상세 패널 열기에 실패했습니다.");
+      return;
+    }
+    if (data?.detailed) setDetailed(data.detailed);
+    setUnlock((prev) => ({ ...prev, todayUsed: true, canOpenDetailedOnce: false }));
+  }
+
+  return (
+    <div className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-blue-600" aria-hidden />
+          <p className="text-sm font-semibold text-slate-800">일당 인사이트</p>
+        </div>
+        {sampleLabel ? (
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${sampleToneClass}`}>{sampleLabel}</span>
+        ) : null}
+      </div>
+
+      <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2.5">
+        <p className="text-[12px] text-slate-500">기준 평균</p>
+        <p className="mt-0.5 text-base font-semibold text-slate-900">
+          {loading ? "불러오는 중..." : freeAvg ? formatAmountWon(freeAvg) : "표본 부족"}
+        </p>
+        {payAmount > 0 && (
+          <p className="mt-1 text-xs text-slate-600">
+            내 입력 금액 {formatAmountWon(payAmount)}
+            {detailed?.deltaPercent != null ? ` · 평균 대비 ${detailed.deltaPercent > 0 ? "+" : ""}${detailed.deltaPercent}%` : ""}
+          </p>
+        )}
+      </div>
+
+      {detailed && (
+        <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2.5 text-sm text-slate-700">
+          <p className="font-medium text-emerald-900">
+            추천 범위 {detailed.recommendedMin ? formatAmountWon(detailed.recommendedMin) : "-"} ~{" "}
+            {detailed.recommendedMax ? formatAmountWon(detailed.recommendedMax) : "-"}
+          </p>
+          <p className="mt-1 text-xs text-slate-600">기준: {detailed.sampleBasis} · 표본 {detailed.sampleCount}건</p>
+        </div>
+      )}
+
+      {!detailed && (
+        <div
+          className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+            unlockState === "premium"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : unlockState === "ready"
+                ? "border-blue-200 bg-blue-50 text-blue-800"
+                : unlockState === "used"
+                  ? "border-slate-200 bg-slate-50 text-slate-600"
+                  : "border-amber-200 bg-amber-50 text-amber-800"
+          }`}
+        >
+          {unlockState === "premium" && (
+            <p className="flex items-center gap-1.5">
+              <Crown className="h-3.5 w-3.5" aria-hidden /> 프리미엄 회원은 상세 단가를 언제든 확인할 수 있습니다.
+            </p>
+          )}
+          {unlockState === "ready" && <p>오늘 상세 열람 1회가 준비되었습니다.</p>}
+          {unlockState === "used" && <p>오늘 열람을 완료했어요. 내일 다시 열 수 있습니다.</p>}
+          {unlockState === "locked" && (
+            <p className="flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5" aria-hidden /> 오늘 1회 공유 시 상세 단가를 확인할 수 있어요.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+        {unlockState === "locked" && (
+          <button
+            type="button"
+            onClick={grantUnlock}
+            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 sm:px-3.5"
+          >
+            공유하고 오늘 1회 열기
+          </button>
+        )}
+        {(unlockState === "premium" || unlockState === "ready") && !detailed && (
+          <button
+            type="button"
+            onClick={consumeAndOpen}
+            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700 sm:px-3.5"
+          >
+            상세 보기
+          </button>
+        )}
+        {!isPaidLive && (
+          <Link href="/subscribe" className="text-xs font-medium text-blue-600 hover:underline">
+            프리미엄으로 항상 상세 보기
+          </Link>
+        )}
+      </div>
+
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );
 }

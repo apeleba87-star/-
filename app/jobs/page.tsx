@@ -12,6 +12,7 @@ import {
   type SortOption,
   type JobsListSearchParams,
 } from "@/lib/jobs/job-list-options";
+import { getJobsHeadlineDailyWageStats } from "@/lib/jobs/daily-wage-stats";
 import { getKstTodayString, getKstTomorrowString, addDaysToDateString } from "@/lib/jobs/kst-date";
 import { buildOpenVisibleJobsOrFilter } from "@/lib/jobs/visibility";
 import { getActiveJobsAds } from "@/lib/ads";
@@ -346,23 +347,7 @@ export default async function JobsListPage({
   }
 
   const hasFilteredPosts = sortedPosts.length > 0;
-  const visiblePostIds = sortedPosts.map((p) => p.id);
-  const { data: dayPositions } =
-    visiblePostIds.length > 0
-      ? await supabase
-          .from("job_post_positions")
-          .select("pay_amount, pay_unit, normalized_daily_wage")
-          .in("job_post_id", visiblePostIds)
-          .eq("pay_unit", "day")
-      : { data: [] };
-  const dayWages =
-    dayPositions?.map((p) =>
-      p.normalized_daily_wage != null ? Number(p.normalized_daily_wage) : Number(p.pay_amount)
-    ) ?? [];
-  const avgDailyWage =
-    dayWages.length > 0
-      ? Math.round(dayWages.reduce((a, b) => a + b, 0) / dayWages.length)
-      : null;
+  const { avgDailyWage, sampleCount } = await getJobsHeadlineDailyWageStats(supabase);
 
   const { data: countRows } = await supabase.rpc(
     "get_job_post_application_counts",
@@ -437,10 +422,10 @@ export default async function JobsListPage({
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
-            {avgDailyWage != null && dayWages.length > 0 ? (
+            {avgDailyWage != null && sampleCount > 0 ? (
               <p className="mt-0.5 text-sm text-slate-600">
                 일당 평균 <span className="font-semibold text-slate-800">{avgDailyWage.toLocaleString()}원</span>
-                <span className="text-slate-500"> (최근 {dayWages.length}건)</span>
+                <span className="text-slate-500"> (완료·엑셀 {sampleCount}건)</span>
               </p>
             ) : (
               <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>

@@ -22,6 +22,8 @@ type Props = {
   initialWorker: InitialWorker;
   positionId: string;
   jobPostId: string;
+  shareRef?: boolean;
+  shareChannel?: string;
   onSuccess: () => void;
   onCancel: () => void;
 };
@@ -30,6 +32,8 @@ export default function ApplyProfileModal({
   initialWorker,
   positionId,
   jobPostId,
+  shareRef = false,
+  shareChannel = "unknown",
   onSuccess,
   onCancel,
 }: Props) {
@@ -59,7 +63,7 @@ export default function ApplyProfileModal({
       birth_date: birthDate.trim(),
       gender: gender as "M" | "F",
       contact_phone: contactPhone.trim().replace(/-/g, ""),
-    });
+    }, { shareRef, shareChannel });
     setLoading(false);
     if (!result.ok) {
       setError(result.error ?? "지원에 실패했습니다.");

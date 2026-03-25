@@ -79,6 +79,9 @@ export default async function AdminLayout({
         <Link href="/admin/subscriptions" className="font-medium text-slate-700 hover:text-slate-900">
           구독 관리
         </Link>
+        <Link href="/admin/share-unlocks" className="font-medium text-slate-700 hover:text-slate-900">
+          공유 열람권 로그
+        </Link>
         <Link href="/admin/subscription-config" className="font-medium text-slate-700 hover:text-slate-900">
           구독 금액
         </Link>
