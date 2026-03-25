@@ -7,7 +7,7 @@ import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActivePostDetailAds } from "@/lib/ads";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
-import { aggregateDailyTenders } from "@/lib/content/tender-report-queries";
+import { aggregateDailyTenders, aggregateWeeklyTenders } from "@/lib/content/tender-report-queries";
 import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import { hasSubscriptionAccess } from "@/lib/subscription-access";
@@ -116,11 +116,13 @@ export default async function PostPage({ params }: PostPageParams) {
       }
     }
     const reportAccess = await getReportAccess(slugPost, reportData, supabase);
-    return renderPost(slugPost, adsResult, reportData, reportAccess);
+    const premiumInsights = await getPremiumInsights(supabase, reportData);
+    return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights);
   }
   await ensurePrivateAccess(post, authSupabase, user.id);
   const reportAccess = await getReportAccess(post!, reportData, supabase);
-  return renderPost(post!, adsResult, reportData, reportAccess);
+  const premiumInsights = await getPremiumInsights(supabase, reportData);
+  return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights);
 }
 
 /** 리포트 포스트 중 published_at 기준 가장 최신 1건의 id 조회 (무료 열람 대상) */
@@ -196,6 +198,64 @@ type PostForRender = {
 
 type PostDetailAds = Awaited<ReturnType<typeof getActivePostDetailAds>>;
 type ReportData = { payload: DailyTenderPayload; insightSentence: string };
+type PremiumInsights = {
+  weekCompare: { currentWeekCount: number; prevWeekCount: number; deltaPct: number | null };
+  drilldown: { topRegions: { name: string; count: number }[]; topIndustries: { name: string; count: number }[] };
+  agencies: { name: string; count: number }[];
+  budgetBands: { label: string; count: number }[];
+  anomalies: string[];
+} | null;
+
+async function getPremiumInsights(
+  supabase: ReturnType<typeof createClient>,
+  reportData: ReportData | null
+): Promise<PremiumInsights> {
+  if (!reportData) return null;
+  const baseDate = reportData.payload.date ? new Date(`${reportData.payload.date}T12:00:00Z`) : new Date();
+  const prevWeekDate = new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+  let currentWeekCount = 0;
+  let prevWeekCount = 0;
+  try {
+    const [currentWeek, prevWeek] = await Promise.all([
+      aggregateWeeklyTenders(supabase, baseDate),
+      aggregateWeeklyTenders(supabase, prevWeekDate),
+    ]);
+    currentWeekCount = currentWeek.count_total;
+    prevWeekCount = prevWeek.count_total;
+  } catch {
+    currentWeekCount = 0;
+    prevWeekCount = 0;
+  }
+  const deltaPct = prevWeekCount > 0 ? Number((((currentWeekCount - prevWeekCount) / prevWeekCount) * 100).toFixed(1)) : null;
+
+  const topRegions = reportData.payload.region_breakdown.slice(0, 5);
+  const topIndustries = (reportData.payload.industry_breakdown ?? [])
+    .filter((i) => i.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map((i) => ({ name: i.industry_name, count: i.count }));
+  const agencies = (reportData.payload.agency_breakdown ?? []).slice(0, 5);
+  const budgetBands = reportData.payload.budget_band_breakdown ?? [];
+  const anomalies: string[] = [];
+  const topRegionShare =
+    reportData.payload.count_total > 0 && reportData.payload.region_breakdown[0]
+      ? Math.round((reportData.payload.region_breakdown[0].count / reportData.payload.count_total) * 100)
+      : 0;
+  if (topRegionShare >= 45) anomalies.push(`상위 지역 집중도 높음 (${topRegionShare}%)`);
+  if (reportData.payload.has_budget_unknown) anomalies.push("금액 미기재 공고 포함");
+  if ((reportData.payload.deadline_soon_tenders ?? []).length >= 4) anomalies.push("마감 임박 공고 다수");
+  if ((reportData.payload.top_budget_tenders ?? []).length > 0 && (reportData.payload.top_budget_tenders[0]?.budget ?? 0) >= 300_000_000) {
+    anomalies.push("초고액 공고 출현");
+  }
+
+  return {
+    weekCompare: { currentWeekCount, prevWeekCount, deltaPct },
+    drilldown: { topRegions, topIndustries },
+    agencies,
+    budgetBands,
+    anomalies,
+  };
+}
 
 /** 자동 생성 입찰 리포트 여부: source_type 있거나 slug가 일간 디제스트 패턴이면 리포트 */
 function isReportPost(post: PostForRender): boolean {
@@ -217,7 +277,8 @@ function renderPost(
   post: PostForRender,
   ads: PostDetailAds,
   reportData: ReportData | null,
-  reportAccess: "free" | "shared" | "premium"
+  reportAccess: "free" | "shared" | "premium",
+  premiumInsights: PremiumInsights
 ) {
   const isReport = isReportPost(post);
   const showTopAd = ads.post_top?.enabled && (ads.post_top.campaign || ads.post_top.script_content);
@@ -254,6 +315,7 @@ function renderPost(
             excerpt={post.excerpt}
             updatedAt={post.updated_at ?? null}
             accessLevel={reportAccess}
+            premiumInsights={premiumInsights}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">

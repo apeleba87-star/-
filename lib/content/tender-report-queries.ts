@@ -45,6 +45,10 @@ export type DailyTenderPayload = {
   industry_breakdown?: IndustryBreakdownItem[];
   /** 당일 공고 수 1위 업종. 레거시 payload에는 없을 수 있음. */
   top_industry?: TopIndustryItem;
+  /** 당일 발주처 상위 분포(레거시 payload에는 없을 수 있음). */
+  agency_breakdown?: { name: string; count: number }[];
+  /** 당일 기초금액 밴드 분포(레거시 payload에는 없을 수 있음). */
+  budget_band_breakdown?: { label: string; count: number }[];
 };
 
 export type WeeklyTenderPayload = {
@@ -108,6 +112,8 @@ export async function aggregateDailyTenders(
       source_count: 0,
       industry_breakdown: [],
       top_industry: null,
+      agency_breakdown: [],
+      budget_band_breakdown: [],
     };
   }
 
@@ -139,16 +145,16 @@ export async function aggregateDailyTenders(
 
   const list = dayTenders.filter((t) => (tenderToCodes.get(t.id)?.size ?? 0) > 0);
 
-  const count_total = list.length;
-  const budget_total = list.reduce((sum, r) => sum + (r.base_amt ?? 0), 0);
-  const has_budget_unknown = list.some((r) => r.base_amt == null);
+  let count_total = list.length;
+  let budget_total = list.reduce((sum, r) => sum + (r.base_amt ?? 0), 0);
+  let has_budget_unknown = list.some((r) => r.base_amt == null);
 
   const regionMap = new Map<string, number>();
   for (const r of list) {
     const sido = getSido(r);
     regionMap.set(sido, (regionMap.get(sido) ?? 0) + 1);
   }
-  const region_breakdown: RegionBreakdownItem[] = Array.from(regionMap.entries())
+  let region_breakdown: RegionBreakdownItem[] = Array.from(regionMap.entries())
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
 
@@ -163,18 +169,73 @@ export async function aggregateDailyTenders(
       industryCountMap.set(code, (industryCountMap.get(code) ?? 0) + 1);
     }
   }
-  const industry_breakdown: IndustryBreakdownItem[] = activeIndustries.map((ind) => ({
+  let industry_breakdown: IndustryBreakdownItem[] = activeIndustries.map((ind) => ({
     industry_code: ind.code,
     industry_name: ind.name,
     count: industryCountMap.get(ind.code) ?? 0,
   }));
 
   const topByCount = industry_breakdown.filter((i) => i.count > 0).sort((a, b) => b.count - a.count)[0];
-  const top_industry: TopIndustryItem = topByCount
+  let top_industry: TopIndustryItem = topByCount
     ? { code: topByCount.industry_code, name: topByCount.industry_name, count: topByCount.count }
     : null;
 
   const withBudget = list.filter((r) => r.base_amt != null && r.base_amt > 0);
+  const agencyMap = new Map<string, number>();
+  for (const r of list) {
+    const agency = (r.ntce_instt_nm ?? "").trim() || "기타";
+    agencyMap.set(agency, (agencyMap.get(agency) ?? 0) + 1);
+  }
+  let agency_breakdown = Array.from(agencyMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  const budgetBands = new Map<string, number>([
+    ["1천만원 미만", 0],
+    ["1천만~5천만원", 0],
+    ["5천만~1억원", 0],
+    ["1억원 이상", 0],
+    ["금액 미기재", 0],
+  ]);
+  for (const r of list) {
+    const amt = r.base_amt;
+    if (amt == null || amt <= 0) {
+      budgetBands.set("금액 미기재", (budgetBands.get("금액 미기재") ?? 0) + 1);
+    } else if (amt < 10_000_000) {
+      budgetBands.set("1천만원 미만", (budgetBands.get("1천만원 미만") ?? 0) + 1);
+    } else if (amt < 50_000_000) {
+      budgetBands.set("1천만~5천만원", (budgetBands.get("1천만~5천만원") ?? 0) + 1);
+    } else if (amt < 100_000_000) {
+      budgetBands.set("5천만~1억원", (budgetBands.get("5천만~1억원") ?? 0) + 1);
+    } else {
+      budgetBands.set("1억원 이상", (budgetBands.get("1억원 이상") ?? 0) + 1);
+    }
+  }
+  let budget_band_breakdown = Array.from(budgetBands.entries()).map(([label, count]) => ({ label, count }));
+
+  // 집계 테이블이 있으면 우선 사용해 raw 풀스캔 부담을 줄인다.
+  const { data: agg } = await supabase
+    .from("tender_daily_aggregates")
+    .select("count_total, budget_total, has_budget_unknown, region_breakdown, industry_breakdown, top_industry, agency_breakdown, budget_band_breakdown")
+    .eq("day_kst", runKey)
+    .maybeSingle();
+  if (agg) {
+    count_total = Number((agg as { count_total?: number }).count_total ?? count_total);
+    budget_total = Number((agg as { budget_total?: number }).budget_total ?? budget_total);
+    has_budget_unknown = Boolean((agg as { has_budget_unknown?: boolean }).has_budget_unknown ?? has_budget_unknown);
+    const aggRegions = (agg as { region_breakdown?: RegionBreakdownItem[] }).region_breakdown;
+    const aggIndustries = (agg as { industry_breakdown?: IndustryBreakdownItem[] }).industry_breakdown;
+    const aggTopIndustry = (agg as { top_industry?: TopIndustryItem }).top_industry;
+    const aggAgencies = (agg as { agency_breakdown?: { name: string; count: number }[] }).agency_breakdown;
+    const aggBands = (agg as { budget_band_breakdown?: { label: string; count: number }[] }).budget_band_breakdown;
+    if (Array.isArray(aggRegions) && aggRegions.length) region_breakdown = aggRegions;
+    if (Array.isArray(aggIndustries) && aggIndustries.length) industry_breakdown = aggIndustries;
+    if (aggTopIndustry) top_industry = aggTopIndustry;
+    if (Array.isArray(aggAgencies) && aggAgencies.length) agency_breakdown = aggAgencies;
+    if (Array.isArray(aggBands) && aggBands.length) budget_band_breakdown = aggBands;
+  }
+
   const top_budget_tenders: TopTenderItem[] = withBudget.slice(0, 5).map((r) => ({
     title: (r.bid_ntce_nm ?? "").trim() || "제목 없음",
     agency: (r.ntce_instt_nm ?? "").trim() || "—",
@@ -213,6 +274,8 @@ export async function aggregateDailyTenders(
     source_count: count_total,
     industry_breakdown,
     top_industry,
+    agency_breakdown,
+    budget_band_breakdown,
   };
 }
 

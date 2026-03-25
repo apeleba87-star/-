@@ -6,7 +6,8 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "backfill:report-snapshots": "node scripts/backfill-report-snapshot-fields.mjs"
   },
   "dependencies": {
     "@bootpay/backend-js": "^2.4.1",

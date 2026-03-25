@@ -17,7 +17,7 @@ import {
 import {
   Sparkles,
   FileText,
-  DollarSign,
+  Banknote,
   MapPin,
   Building2,
   Clock,
@@ -53,6 +53,13 @@ type Props = {
   excerpt?: string | null;
   updatedAt?: string | null;
   accessLevel?: "free" | "shared" | "premium";
+  premiumInsights?: {
+    weekCompare: { currentWeekCount: number; prevWeekCount: number; deltaPct: number | null };
+    drilldown: { topRegions: { name: string; count: number }[]; topIndustries: { name: string; count: number }[] };
+    agencies: { name: string; count: number }[];
+    budgetBands: { label: string; count: number }[];
+    anomalies: string[];
+  } | null;
 };
 
 export default function DailyTenderReportDashboard({
@@ -63,6 +70,7 @@ export default function DailyTenderReportDashboard({
   excerpt,
   updatedAt,
   accessLevel = "free",
+  premiumInsights = null,
 }: Props) {
   const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
 
@@ -404,7 +412,7 @@ export default function DailyTenderReportDashboard({
       <section className="space-y-3 sm:space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:gap-3 sm:text-2xl">
-            <DollarSign className="h-6 w-6 text-emerald-600 sm:h-8 sm:w-8" />
+            <Banknote className="h-6 w-6 text-emerald-600 sm:h-8 sm:w-8" />
             예산 상위 공고
           </h2>
           <Link
@@ -440,7 +448,7 @@ export default function DailyTenderReportDashboard({
                       <span className="truncate">{t.agency}</span>
                     </span>
                     <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                      <DollarSign className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                      <Banknote className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
                       {t.budgetLabel}
                     </span>
                     <span className="flex items-center gap-1 text-amber-600">
@@ -568,6 +576,105 @@ export default function DailyTenderReportDashboard({
             <p className="mt-3 text-xs text-slate-500">실행 우선순위는 매일 데이터 변화에 맞춰 자동 갱신됩니다.</p>
           </DecisionPanel>
         </div>
+      </section>
+
+      {/* 6-2. 프리미엄 확장 패널 */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">프리미엄 확장 분석</h2>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <DecisionPanel
+            open={accessLevel === "premium"}
+            title="기간 비교 (7일/전주)"
+            icon={<BarChart2 className="h-5 w-5 text-indigo-600" />}
+            lockMessage="프리미엄에서 기간 비교 분석을 확인할 수 있습니다."
+            accessLevel={accessLevel}
+          >
+            <p className="text-sm text-slate-700">
+              이번 주 공고 <span className="font-semibold">{premiumInsights?.weekCompare.currentWeekCount ?? 0}건</span> ·
+              전주 <span className="font-semibold">{premiumInsights?.weekCompare.prevWeekCount ?? 0}건</span>
+            </p>
+            <p className="mt-2 text-xl font-bold text-indigo-700">
+              전주 대비 {premiumInsights?.weekCompare.deltaPct == null ? "—" : `${premiumInsights.weekCompare.deltaPct > 0 ? "+" : ""}${premiumInsights.weekCompare.deltaPct}%`}
+            </p>
+          </DecisionPanel>
+
+          <DecisionPanel
+            open={accessLevel === "premium"}
+            title="지역·업종 드릴다운"
+            icon={<MapPin className="h-5 w-5 text-cyan-600" />}
+            lockMessage="프리미엄에서 지역·업종 드릴다운을 확인할 수 있습니다."
+            accessLevel={accessLevel}
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold text-slate-500">상위 지역</p>
+                <ul className="mt-1 space-y-1 text-sm text-slate-700">
+                  {(premiumInsights?.drilldown.topRegions ?? []).slice(0, 3).map((r) => (
+                    <li key={r.name}>{r.name} · {r.count}건</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">상위 업종</p>
+                <ul className="mt-1 space-y-1 text-sm text-slate-700">
+                  {(premiumInsights?.drilldown.topIndustries ?? []).slice(0, 3).map((r) => (
+                    <li key={r.name}>{r.name} · {r.count}건</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </DecisionPanel>
+
+          <DecisionPanel
+            open={accessLevel === "premium"}
+            title="발주처 패턴"
+            icon={<Building2 className="h-5 w-5 text-violet-600" />}
+            lockMessage="프리미엄에서 발주처 패턴을 확인할 수 있습니다."
+            accessLevel={accessLevel}
+          >
+            <ul className="space-y-1.5 text-sm text-slate-700">
+              {(premiumInsights?.agencies ?? []).slice(0, 5).map((a) => (
+                <li key={a.name} className="flex items-center justify-between gap-3">
+                  <span className="truncate">{a.name}</span>
+                  <span className="shrink-0 text-slate-500">{a.count}건</span>
+                </li>
+              ))}
+            </ul>
+          </DecisionPanel>
+
+          <DecisionPanel
+            open={accessLevel === "premium"}
+            title="금액 구간 전략"
+            icon={<Banknote className="h-5 w-5 text-emerald-600" />}
+            lockMessage="프리미엄에서 금액 구간별 전략을 확인할 수 있습니다."
+            accessLevel={accessLevel}
+          >
+            <ul className="space-y-1.5 text-sm text-slate-700">
+              {(premiumInsights?.budgetBands ?? []).map((b) => (
+                <li key={b.label} className="flex items-center justify-between gap-3">
+                  <span>{b.label}</span>
+                  <span className="text-slate-500">{b.count}건</span>
+                </li>
+              ))}
+            </ul>
+          </DecisionPanel>
+        </div>
+
+        <DecisionPanel
+          open={accessLevel === "premium"}
+          title="이상치·경고 히스토리"
+          icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
+          lockMessage="프리미엄에서 이상치 경고 히스토리를 확인할 수 있습니다."
+          accessLevel={accessLevel}
+        >
+          <ul className="space-y-1.5 text-sm text-slate-700">
+            {(premiumInsights?.anomalies?.length ?? 0) === 0 ? (
+              <li>특이 경고 없음</li>
+            ) : (
+              (premiumInsights?.anomalies ?? []).map((a) => <li key={a}>- {a}</li>)
+            )}
+          </ul>
+        </DecisionPanel>
       </section>
 
       {/* 7. 푸터 안내 */}

@@ -245,6 +245,23 @@ export async function runTenderFetch(options?: {
         batchIds.push(row.id);
       }
 
+      const rawRows = batch
+        .map((p) => {
+          const k = `${normNo(p.bid_ntce_no)}|${normOrd(p.bid_ntce_ord)}`;
+          const tenderId = idByKey.get(k);
+          const raw = (p.raw ?? null) as Record<string, unknown> | null;
+          if (!tenderId || !raw) return null;
+          return {
+            tender_id: tenderId,
+            raw,
+            updated_at: now,
+          };
+        })
+        .filter(Boolean) as { tender_id: string; raw: Record<string, unknown>; updated_at: string }[];
+      if (rawRows.length > 0) {
+        await supabase.from("tender_raw_payloads").upsert(rawRows, { onConflict: "tender_id" });
+      }
+
       processed += batch.length;
       onProgress?.({ phase: "upsert", total, done: processed, message: `저장 완료 (${processed}/${total}건)…` });
     }
@@ -597,6 +614,12 @@ export async function runTenderFetch(options?: {
       const onlyList = listKeys.filter((k) => !new Set(licenseKeys).has(k)).slice(0, 3);
       if (onlyLicense.length) console.log("[G2B] 면허에만 있는 공고번호 샘플:", onlyLicense);
       if (onlyList.length) console.log("[G2B] 목록에만 있는 공고번호 샘플:", onlyList);
+    }
+    try {
+      const kstDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      await supabase.rpc("refresh_tender_daily_aggregate", { p_day_kst: kstDate });
+    } catch {
+      // 집계 갱신 실패는 수집 성공을 막지 않는다.
     }
     return {
       ok: true,
