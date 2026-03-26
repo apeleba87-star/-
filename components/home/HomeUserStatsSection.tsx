@@ -60,7 +60,7 @@ export default async function HomeUserStatsSection({ userId, todayKst }: Props) 
   };
 
   return (
-    <section className="mb-8 grid gap-4 sm:grid-cols-2">
+    <section className="mb-8 grid grid-cols-1 gap-4">
       <Link href="/jobs/manage" className="block h-full">
         <div className={`${homeDashboardCardClass} flex h-full flex-col border-emerald-200 bg-emerald-50/50`}>
           <div className="flex items-center gap-2">

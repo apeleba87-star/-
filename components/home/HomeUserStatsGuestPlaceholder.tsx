@@ -11,7 +11,7 @@ import { homeDashboardCardClass } from "./home-section-styles";
  */
 export default function HomeUserStatsGuestPlaceholder() {
   return (
-    <section className="mb-8 grid gap-4 sm:grid-cols-2">
+    <section className="mb-8 grid grid-cols-1 gap-4">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

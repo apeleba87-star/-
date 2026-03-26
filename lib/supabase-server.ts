@@ -66,11 +66,18 @@ export async function createServerSupabase() {
   const cookieStore = await cookies();
   return createServerClient(url, key, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      getAll() {
+        return cookieStore.getAll();
       },
-      set() {},
-      remove() {},
+      setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2]);
+          });
+        } catch {
+          // Server Component 등 읽기 전용 컨텍스트에서는 set 불가 — signOut은 Route Handler에서 처리
+        }
+      },
     },
   });
 }

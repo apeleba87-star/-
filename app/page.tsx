@@ -204,45 +204,49 @@ export default async function HomePage() {
     );
 
   return (
-    <>
-      <HomeDashboard
-        tenderCount={tenderStats.tenderCount}
-        tenderTodayCount={tenderStats.tenderTodayCount}
-        newsCount={newsCount}
-        listingsCount={listingsCount}
-        recentListings={recentListings}
-        jobsOpenCount={jobsOpenCount}
-        latestNewsletter={latestNewsletter}
-        isLoggedIn={!!user}
-        userStatsSlot={userStatsSlot}
-      />
-
-      <div className="mx-auto w-full max-w-2xl min-w-0 px-3 pt-2 pb-10 xs:px-4 sm:px-6 sm:pb-12">
-        {(ads.premium_banner?.enabled && (ads.premium_banner.campaign || ads.premium_banner.script_content)) ? (
-          <AdSlotRenderer slot={ads.premium_banner} variant="banner" />
-        ) : null}
-
-        <TenderSection
-          tenders={tenderStats.recentTenders}
-          relatedCount={tenderStats.tenderCount}
-          todayCount={tenderStats.tenderTodayCount}
-          industryBreakdown={tenderStats.industryBreakdown}
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
+      <div className="page-shell py-8 sm:py-10 lg:py-12">
+        <div className="mx-auto w-full max-w-3xl sm:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
+        <HomeDashboard
+          tenderCount={tenderStats.tenderCount}
+          tenderTodayCount={tenderStats.tenderTodayCount}
+          newsCount={newsCount}
+          listingsCount={listingsCount}
+          recentListings={recentListings}
+          jobsOpenCount={jobsOpenCount}
+          latestNewsletter={latestNewsletter}
           isLoggedIn={!!user}
+          userStatsSlot={userStatsSlot}
         />
-        <NewsSection posts={news} isLoggedIn={!!user} />
 
-        {(ads.native_card?.enabled && (ads.native_card.campaign || ads.native_card.script_content)) ? (
-          <AdSlotRenderer slot={ads.native_card} variant="card" />
-        ) : null}
+        <div className="mt-10 space-y-10 sm:mt-12">
+          {(ads.premium_banner?.enabled && (ads.premium_banner.campaign || ads.premium_banner.script_content)) ? (
+            <AdSlotRenderer slot={ads.premium_banner} variant="banner" />
+          ) : null}
 
-        {(ads.home_bottom?.enabled && (ads.home_bottom.campaign || ads.home_bottom.script_content)) ? (
-          <div className="mt-8">
-            <AdSlotRenderer slot={ads.home_bottom} variant="card" />
-          </div>
-        ) : null}
+          <TenderSection
+            tenders={tenderStats.recentTenders}
+            relatedCount={tenderStats.tenderCount}
+            todayCount={tenderStats.tenderTodayCount}
+            industryBreakdown={tenderStats.industryBreakdown}
+            isLoggedIn={!!user}
+          />
+          <NewsSection posts={news} isLoggedIn={!!user} />
 
-        <DataInsightSection />
+          {(ads.native_card?.enabled && (ads.native_card.campaign || ads.native_card.script_content)) ? (
+            <AdSlotRenderer slot={ads.native_card} variant="card" />
+          ) : null}
+
+          {(ads.home_bottom?.enabled && (ads.home_bottom.campaign || ads.home_bottom.script_content)) ? (
+            <div>
+              <AdSlotRenderer slot={ads.home_bottom} variant="card" />
+            </div>
+          ) : null}
+
+          <DataInsightSection />
+        </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

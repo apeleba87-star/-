@@ -22,7 +22,7 @@ export default function DataInsightSection() {
       <h2 className="text-xl font-bold text-slate-900">데이터 인사이트</h2>
       <p className="mt-0.5 text-xs text-slate-500">청소 단가 요약 · 출시 예정 (구독 시 더 많은 인사이트 제공)</p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className={`${homeCardClass} border-blue-200/60 opacity-90`}>
           <p className="text-sm text-slate-500">사무실 청소 평균 단가</p>
           <p className="mt-1 text-xl font-bold text-blue-600">평당 출시 예정</p>

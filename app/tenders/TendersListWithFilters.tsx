@@ -431,8 +431,8 @@ export default function TendersListWithFilters({
         </div>
       </section>
 
-      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-        <section className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-6 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="relative flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label htmlFor="tenders-region" className="mb-3 block text-sm font-semibold text-slate-700">
             시·도
           </label>
@@ -441,7 +441,7 @@ export default function TendersListWithFilters({
               id="tenders-region"
               value={selectedRegion}
               onChange={(e) => setRegion(e.target.value)}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="min-h-[44px] w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {REGION_OPTIONS.map((r) => (
                 <option key={r} value={r}>
@@ -456,7 +456,7 @@ export default function TendersListWithFilters({
           </div>
         </section>
 
-        <section className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="relative flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label htmlFor="tenders-gugun" className="mb-3 block text-sm font-semibold text-slate-700">
             시·군·구
           </label>
@@ -466,7 +466,7 @@ export default function TendersListWithFilters({
               value={selectedGugun}
               onChange={(e) => setGugun(e.target.value)}
               disabled={selectedRegion === "전체 지역"}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[44px] w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="">시·도 전체 (구·군 미선택)</option>
               {gugunOptions.map((g) => (
@@ -482,7 +482,7 @@ export default function TendersListWithFilters({
           </div>
         </section>
 
-        <section className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="relative flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label htmlFor="tenders-sort" className="mb-3 block text-sm font-semibold text-slate-700">
             정렬 기준
           </label>
@@ -491,7 +491,7 @@ export default function TendersListWithFilters({
               id="tenders-sort"
               value={sortBy}
               onChange={(e) => setSort(e.target.value as SortId)}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="min-h-[44px] w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.id} value={opt.id}>

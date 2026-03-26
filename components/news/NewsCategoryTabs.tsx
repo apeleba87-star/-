@@ -19,7 +19,7 @@ export default function NewsCategoryTabs({ current, showPrivateTab }: Props) {
   ];
   return (
     <nav
-      className="flex gap-1.5 overflow-x-auto rounded-xl border border-slate-200/80 bg-white/60 p-1.5 scrollbar-thin"
+      className="flex gap-1.5 rounded-xl border border-slate-200/80 bg-white/60 p-1.5 scrollbar-thin max-md:flex-nowrap max-md:overflow-x-auto md:flex-wrap md:justify-center"
       aria-label="업계 소식 카테고리"
     >
       {tabs.map((tab) => (

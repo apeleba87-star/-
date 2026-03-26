@@ -53,7 +53,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className="flex min-h-screen min-w-0 flex-col antialiased">
         <Header />
-        <main className="flex min-h-0 min-w-0 flex-1 pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)]">
+        <main className="flex min-h-0 min-w-0 w-full max-w-[100vw] flex-1 flex-col items-stretch pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)] lg:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
           {children}
         </main>
         <Footer />

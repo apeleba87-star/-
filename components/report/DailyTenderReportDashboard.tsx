@@ -173,7 +173,7 @@ export default function DailyTenderReportDashboard({
     accessLevel === "premium" || (accessLevel === "shared" && sharedRevealSet.has(key));
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1400px] space-y-4 rounded-2xl bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-2 xs:p-3 sm:space-y-6 sm:p-6">
+    <div className="mx-auto min-w-0 max-w-[1400px] space-y-4 rounded-2xl bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-2 xs:p-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
       {/* 1. 헤더 (히어로 배너) */}
       <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-4 shadow-2xl sm:p-8">
         <div

@@ -292,7 +292,7 @@ function renderPost(
   const showLock = false;
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10">
+    <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
       <Link href="/categories" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
         ← 카테고리
       </Link>

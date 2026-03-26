@@ -116,7 +116,7 @@ export default async function TendersPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
-      <div className="mx-auto max-w-5xl px-4 py-12">
+      <div className="page-shell py-10 lg:py-12">
         <header className="mb-8">
           <h1 className="mb-2 text-3xl font-bold text-slate-900">입찰 공고 목록</h1>
           <p className="text-slate-600">

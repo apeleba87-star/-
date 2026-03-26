@@ -3,7 +3,7 @@ import { homeDashboardCardClass } from "./home-section-styles";
 /** Suspense fallback: 내 구인·지원 영역 스켈레톤 */
 export default function HomeUserStatsSkeleton() {
   return (
-    <section className="mb-8 grid gap-4 sm:grid-cols-2">
+    <section className="mb-8 grid grid-cols-1 gap-4">
       <div className={`${homeDashboardCardClass} flex h-full flex-col border-emerald-200 bg-emerald-50/50`}>
         <div className="flex items-center gap-2">
           <span className="inline-flex h-9 w-9 animate-pulse rounded-lg bg-emerald-200" />

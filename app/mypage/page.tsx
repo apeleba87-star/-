@@ -4,6 +4,7 @@ import { createServerSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 import { glassCard } from "@/lib/ui-styles";
+import SignOutButton from "@/components/SignOutButton";
 import MyPageForm from "./MyPageForm";
 import MyPageSubscriptionCard from "./MyPageSubscriptionCard";
 
@@ -89,6 +90,11 @@ export default async function MypagePage() {
             </Link>
           </li>
         </ul>
+      </section>
+
+      <section className="mt-10 border-t border-slate-200 pt-8">
+        <h2 className="sr-only">계정</h2>
+        <SignOutButton />
       </section>
     </div>
   );

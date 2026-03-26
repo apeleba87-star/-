@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
@@ -19,13 +19,20 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import HeaderAuth from "./HeaderAuth";
-import HeaderAdminLink from "./HeaderAdminLink";
+import NotificationBell from "./notifications/NotificationBell";
 import TenderFocusNavChip from "./TenderFocusNavChip";
 
-const navItems: { href: string; label: string; Icon: typeof Home; adminOnly?: boolean; showWhenLoggedIn?: boolean }[] = [
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: typeof Home;
+  /** 데스크톱 오른쪽 관리자 영역용 짧은 라벨 */
+  shortLabel?: string;
+};
+
+/** 데스크톱 가운데: 공개 메뉴만 (한 줄 유지) */
+const primaryNavItems: NavItem[] = [
   { href: "/", label: "홈", Icon: Home },
-  { href: "/admin", label: "관리자 모드", Icon: Shield, adminOnly: true },
-  { href: "/archive", label: "뉴스레터 아카이브", Icon: FileText, adminOnly: true },
   { href: "/news", label: "업계 소식", Icon: Newspaper },
   { href: "/tenders", label: "입찰 공고", Icon: Gavel },
   { href: "/listings", label: "현장 거래", Icon: Briefcase },
@@ -33,8 +40,18 @@ const navItems: { href: string; label: string; Icon: typeof Home; adminOnly?: bo
   { href: "/estimate", label: "견적 계산기", Icon: Calculator },
 ];
 
+/** 모바일 드로어 + 데스크톱 오른쪽 (관리자만) */
+const adminNavItems: NavItem[] = [
+  { href: "/admin", label: "관리자 모드", shortLabel: "관리자", Icon: Shield },
+  { href: "/archive", label: "뉴스레터 아카이브", shortLabel: "아카이브", Icon: FileText },
+];
+
 const iconBtnClass =
   "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-white/60 hover:text-slate-900 touch-manipulation";
+
+function navLinkActive(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
 
 export default function Header() {
   const router = useRouter();
@@ -44,6 +61,11 @@ export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
+  const mobileDrawerItems = [
+    ...primaryNavItems,
+    ...(showAdminNav ? adminNavItems : []),
+  ];
+
   useEffect(() => {
     if (menuOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
@@ -52,12 +74,11 @@ export default function Header() {
     };
   }, [menuOpen]);
 
-  // 모바일: 경로가 바뀌면 드로어 닫기 (로그인 등 HeaderAuth 링크 클릭 시에도 메뉴가 사라지도록)
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
-  const fetchProfileRole = () => {
+  const fetchProfileRole = useCallback(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const user = session?.user ?? null;
@@ -76,15 +97,17 @@ export default function Header() {
           setShowAdminNav(data?.role === "admin" || data?.role === "editor");
         });
     });
-  };
-
-  useEffect(() => {
-    fetchProfileRole();
   }, []);
 
   useEffect(() => {
+    fetchProfileRole();
+  }, [pathname, fetchProfileRole]);
+
+  useEffect(() => {
     const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setEmail(session?.user?.email ?? null);
       setIsLoggedIn(!!session?.user);
       if (event === "SIGNED_OUT") setShowAdminNav(false);
@@ -93,12 +116,11 @@ export default function Header() {
     return () => subscription.unsubscribe();
   }, [router]);
 
-  // 탭 포커스 시 역할 다시 조회 (DB에서 admin으로 바꾼 뒤 이 탭으로 돌아오면 반영)
   useEffect(() => {
     const onFocus = () => fetchProfileRole();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, []);
+  }, [fetchProfileRole]);
 
   return (
     <>
@@ -108,78 +130,86 @@ export default function Header() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <div className="mx-auto flex h-14 min-h-[56px] max-w-6xl items-center justify-between gap-1.5 px-3 xs:gap-2 xs:px-4 sm:px-6">
-          <Link href="/" className="flex min-h-[44px] min-w-0 max-w-[65%] items-center gap-1.5 touch-manipulation xs:max-w-none xs:gap-2">
-            <motion.span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-md"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
+        <div className="page-shell flex h-14 min-h-[56px] items-center justify-between gap-2 lg:grid lg:min-h-[56px] lg:h-auto lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-3 lg:py-1.5 xl:h-14 xl:py-0">
+          <div className="flex min-w-0 shrink-0 items-center gap-2 justify-self-start">
+            <Link
+              href="/"
+              className="flex min-h-[44px] min-w-0 items-center gap-1.5 touch-manipulation sm:gap-2"
             >
-              C
-            </motion.span>
-            <span className="hidden truncate text-sm font-bold text-slate-800 xs:inline sm:text-base">
-              클린아이덱스
-            </span>
-          </Link>
-
-          <div className="hidden shrink-0 lg:block">
+              <motion.span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-md lg:h-10 lg:w-10"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                C
+              </motion.span>
+              <span className="hidden text-sm font-bold text-slate-800 xs:inline xs:max-w-[10rem] xs:truncate sm:max-w-none sm:overflow-visible sm:whitespace-normal sm:text-base lg:text-lg">
+                클린아이덱스
+              </span>
+            </Link>
             <TenderFocusNavChip />
           </div>
 
-          {/* PC: 가로 네비 */}
-          <nav className="hidden items-center gap-0.5 lg:flex" aria-label="메인 메뉴">
-            {navItems
-              .filter(
-                (item) =>
-                  item.showWhenLoggedIn
-                    ? isLoggedIn
-                    : !item.adminOnly || showAdminNav
-              )
-              .map((item) => {
-                const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          <nav
+            className="hidden min-w-0 w-full justify-center justify-self-stretch lg:flex"
+            aria-label="메인 메뉴"
+          >
+            {/* PC: 가로 스크롤 없음 — 중앙 열 전체 너비를 쓰고, 매우 좁을 때만 줄바꿈(xl↑ 한 줄 고정) */}
+            <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 xl:flex-nowrap xl:gap-x-1">
+              {primaryNavItems.map((item) => {
+                const isActive = navLinkActive(pathname, item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="inline-flex min-h-[44px] cursor-pointer items-center"
+                    className="inline-flex shrink-0 cursor-pointer items-center"
                     prefetch={true}
                   >
                     <motion.span
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium ${
+                      className={`flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-[0.8125rem] font-medium xl:gap-1.5 xl:px-2.5 xl:text-sm ${
                         isActive
                           ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
-                      whileHover={{ scale: 1.05 }}
+                      whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <item.Icon className="h-4 w-4 shrink-0" />
+                      <item.Icon className="h-3.5 w-3.5 shrink-0 xl:h-4 xl:w-4" />
                       {item.label}
                     </motion.span>
                   </Link>
                 );
               })}
+            </div>
           </nav>
 
-          {/* 우측: 알림(로그인 시만), 유저, 관리자(PC) / 햄버거(모바일) */}
-          <div className="flex items-center gap-0.5 sm:gap-1">
-            {isLoggedIn && (
-              <motion.button
-                type="button"
-                className={`${iconBtnClass} relative hidden sm:flex`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                aria-label="알림"
-              >
-                <Bell className="h-5 w-5" />
-                <motion.span
-                  className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"
-                  animate={{ scale: [1, 1.2, 1], opacity: [1, 0.8, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                />
-              </motion.button>
-            )}
-            <span className="hidden min-h-[44px] items-center md:flex">
+          <div className="flex shrink-0 items-center justify-end justify-self-end gap-1 sm:gap-1.5 lg:pl-2">
+            <NotificationBell isLoggedIn={isLoggedIn} />
+            {showAdminNav ? (
+              <div className="hidden items-center gap-0.5 border-r border-slate-200/80 pr-2 lg:flex">
+                {adminNavItems.map((item) => {
+                  const isActive = navLinkActive(pathname, item.href);
+                  const label = item.shortLabel ?? item.label;
+                  return (
+                    <Link key={item.href} href={item.href} prefetch={true} className="shrink-0">
+                      <motion.span
+                        className={`flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium xl:px-2.5 xl:text-[0.8125rem] ${
+                          isActive
+                            ? "bg-slate-200/90 text-slate-900"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <item.Icon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                        {label}
+                      </motion.span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+            <span className="hidden min-h-[44px] shrink-0 items-center md:flex">
               <motion.span className="contents" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <HeaderAuth
                   email={email}
@@ -191,7 +221,6 @@ export default function Header() {
                 />
               </motion.span>
             </span>
-            <HeaderAdminLink variant="pc" />
             <motion.button
               type="button"
               className={`${iconBtnClass} md:hidden`}
@@ -206,7 +235,6 @@ export default function Header() {
         </div>
       </motion.header>
 
-      {/* 모바일 드로어 */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -242,33 +270,38 @@ export default function Header() {
                 </motion.button>
               </div>
               <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-4" aria-label="모바일 메뉴">
-                {navItems
-                  .filter(
-                    (item) =>
-                      item.showWhenLoggedIn
-                        ? isLoggedIn
-                        : !item.adminOnly || showAdminNav
-                  )
-                  .map((item) => {
-                    const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 touch-manipulation ${
-                          isActive
-                            ? "bg-gradient-to-r from-teal-500/90 to-emerald-600/90 text-white"
-                            : "text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
-                        }`}
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        <item.Icon className={`h-5 w-5 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
-                        <span className="font-medium">{item.label}</span>
-                      </Link>
-                    );
-                  })}
+                {mobileDrawerItems.map((item) => {
+                  const isActive = navLinkActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 touch-manipulation ${
+                        isActive
+                          ? "bg-gradient-to-r from-teal-500/90 to-emerald-600/90 text-white"
+                          : "text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
+                      }`}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <item.Icon className={`h-5 w-5 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
+                  );
+                })}
               </nav>
-              <div className="border-t border-slate-200/80 p-4 space-y-2">
+              {isLoggedIn ? (
+                <div className="px-4 pb-2 md:hidden">
+                  <Link
+                    href="/notifications"
+                    className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Bell className="h-5 w-5 shrink-0 text-slate-500" />
+                    <span className="font-medium">알림</span>
+                  </Link>
+                </div>
+              ) : null}
+              <div className="border-t border-slate-200/80 p-4">
                 <div className="flex min-h-[44px] items-center md:hidden">
                   <HeaderAuth
                     email={email}
@@ -279,7 +312,6 @@ export default function Header() {
                     }}
                   />
                 </div>
-                <HeaderAdminLink variant="mobile" onClick={() => setMenuOpen(false)} />
               </div>
             </motion.aside>
           </>

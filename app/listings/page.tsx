@@ -229,7 +229,7 @@ export default async function ListingsPage({ searchParams }: PageProps) {
   const listingsAds = await getActiveListingsAds();
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="page-shell py-8 lg:py-10">
       <ListingsPageHeader isLoggedIn={!!user} />
 
       <ListingsSortFilter

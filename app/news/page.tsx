@@ -62,20 +62,22 @@ export default async function NewsPage({
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
-        <div className="mx-auto max-w-6xl px-4 py-10">
-          <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-            업계 소식
-          </h1>
-          <p className="mb-6 text-sm text-slate-600">
-            사용자에게 비공개로 설정된 글입니다. 관리자만 열람할 수 있습니다.
-          </p>
+        <div className="page-shell py-10 lg:py-12">
+          <div className="lg:text-center">
+            <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+              업계 소식
+            </h1>
+            <p className="mb-6 text-sm text-slate-600">
+              사용자에게 비공개로 설정된 글입니다. 관리자만 열람할 수 있습니다.
+            </p>
+          </div>
           <NewsCategoryTabs current={category} showPrivateTab={true} />
           {!privatePosts?.length ? (
             <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
               <p className="text-slate-500">비공개 글이 없습니다.</p>
             </div>
           ) : (
-            <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-8 grid w-full min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {privatePosts.map((post) => (
                 <li key={post.id}>
                   <NewsCard
@@ -127,20 +129,22 @@ export default async function NewsPage({
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
-        <div className="mx-auto max-w-6xl px-4 py-10">
-          <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-            업계 소식
-          </h1>
-          <p className="mb-6 text-sm text-slate-600">
-            청소·소독·방역 관련 약품, 장비, 근로, 업계이슈 소식입니다.
-          </p>
+        <div className="page-shell py-10 lg:py-12">
+          <div className="lg:text-center">
+            <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+              업계 소식
+            </h1>
+            <p className="mb-6 text-sm text-slate-600">
+              청소·소독·방역 관련 약품, 장비, 근로, 업계이슈 소식입니다.
+            </p>
+          </div>
           <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
           {!posts?.length ? (
             <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
               <p className="text-slate-500">아직 올라온 글이 없습니다.</p>
             </div>
           ) : (
-            <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-8 grid w-full min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {posts.map((post) => (
                 <li key={post.id}>
                   <NewsCard
@@ -175,20 +179,22 @@ export default async function NewsPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-          업계 소식
-        </h1>
-        <p className="mb-6 text-sm text-slate-600">
-          청소·소독·방역 입찰 리포트와 업계 소식입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다.
-        </p>
+      <div className="page-shell py-10 lg:py-12">
+        <div className="lg:text-center">
+          <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+            업계 소식
+          </h1>
+          <p className="mb-6 text-sm text-slate-600">
+            청소·소독·방역 입찰 리포트와 업계 소식입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다.
+          </p>
+        </div>
         <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
         {!posts?.length ? (
           <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
             <p className="text-slate-500">아직 올라온 소식이 없습니다.</p>
           </div>
         ) : (
-          <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-8 grid w-full min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post) => {
               const sourceType = (post as { source_type?: string | null }).source_type ?? null;
               const sourceRef = (post as { source_ref?: string | null }).source_ref ?? null;
