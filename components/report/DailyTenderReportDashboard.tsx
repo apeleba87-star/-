@@ -29,10 +29,17 @@ import {
   Target,
   Lock,
   Crown,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatters";
+import type { SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import DataTrust3Pack from "@/components/DataTrust3Pack";
+import ReportShareUnlockButton from "@/components/report/ReportShareUnlockButton";
 
 const CHART_COLORS = [
   "#3b82f6",
@@ -45,7 +52,63 @@ const CHART_COLORS = [
   "#6366f1",
 ];
 
+const chartTooltipContentStyle = {
+  backgroundColor: "white",
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
+  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+  fontSize: 12,
+} as const;
+
+function maxInCounts(items: { count: number }[]): number {
+  return items.reduce((m, x) => Math.max(m, x.count), 0);
+}
+
+function PremiumInsightBarRow({
+  label,
+  count,
+  max,
+  colorIndex,
+  showShare,
+  total,
+}: {
+  label: string;
+  count: number;
+  max: number;
+  colorIndex: number;
+  showShare?: boolean;
+  total?: number;
+}) {
+  const pct = max > 0 ? Math.min(100, Math.round((count / max) * 100)) : 0;
+  const share =
+    showShare && total != null && total > 0 ? ((count / total) * 100).toFixed(1) : null;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span className="min-w-0 truncate font-medium text-slate-800" title={label}>
+          {label}
+        </span>
+        <span className="shrink-0 tabular-nums text-slate-600">
+          <span className="font-semibold text-slate-800">{count}</span>
+          <span className="text-slate-400">건</span>
+          {share != null && <span className="ml-1.5 text-xs text-slate-400">({share}%)</span>}
+        </span>
+      </div>
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full transition-[width] duration-700 ease-out"
+          style={{
+            width: `${pct}%`,
+            backgroundColor: CHART_COLORS[colorIndex % CHART_COLORS.length],
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 type Props = {
+  postId?: string;
   payload: DailyTenderPayload;
   title: string;
   dateLabel: string;
@@ -53,6 +116,8 @@ type Props = {
   excerpt?: string | null;
   updatedAt?: string | null;
   accessLevel?: "free" | "shared" | "premium";
+  /** 공유 해금 시 열리는 심화 패널 키 (3개) */
+  sharedRevealKeys?: SharedRandomPanelKey[] | null;
   premiumInsights?: {
     weekCompare: { currentWeekCount: number; prevWeekCount: number; deltaPct: number | null };
     drilldown: { topRegions: { name: string; count: number }[]; topIndustries: { name: string; count: number }[] };
@@ -63,6 +128,7 @@ type Props = {
 };
 
 export default function DailyTenderReportDashboard({
+  postId,
   payload,
   title,
   dateLabel,
@@ -70,6 +136,7 @@ export default function DailyTenderReportDashboard({
   excerpt,
   updatedAt,
   accessLevel = "free",
+  sharedRevealKeys = null,
   premiumInsights = null,
 }: Props) {
   const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
@@ -100,10 +167,13 @@ export default function DailyTenderReportDashboard({
     )
   );
   const riskScore = Math.min(100, Math.round(deadlinePressure * 0.6 + concentrationScore * 0.3 + (payload.has_budget_unknown ? 10 : 0)));
-  const panelOpenCount = accessLevel === "premium" ? 99 : accessLevel === "shared" ? 2 : 0;
+  const sharedRevealSet = new Set<string>(sharedRevealKeys ?? []);
+  const coreUnlocked = accessLevel === "premium" || accessLevel === "shared";
+  const deepOpen = (key: SharedRandomPanelKey) =>
+    accessLevel === "premium" || (accessLevel === "shared" && sharedRevealSet.has(key));
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-4 rounded-2xl p-3 bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 sm:space-y-6 sm:p-6">
+    <div className="mx-auto min-w-0 max-w-[1400px] space-y-4 rounded-2xl bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-2 xs:p-3 sm:space-y-6 sm:p-6">
       {/* 1. 헤더 (히어로 배너) */}
       <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-4 shadow-2xl sm:p-8">
         <div
@@ -130,10 +200,93 @@ export default function DailyTenderReportDashboard({
             </div>
           </div>
           <div className="self-start rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-            {accessLevel === "premium" ? "프리미엄 전체 분석" : accessLevel === "shared" ? "공유 확장 모드" : "기본 요약 모드"}
+            {accessLevel === "premium"
+              ? "프리미엄 전체 분석"
+              : accessLevel === "shared"
+                ? "공유 · 심화 3종 + 당일 핵심"
+                : "기본 요약 모드"}
           </div>
         </div>
       </header>
+
+      {/* 오늘 한눈에: 데이터 히어로 */}
+      <section
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-lg shadow-slate-200/40 sm:p-5"
+        aria-label="오늘 한눈에 요약"
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">오늘 한눈에</p>
+          <p className="text-xs text-slate-400">{dateLabel}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="flex flex-col rounded-xl border border-slate-100 bg-gradient-to-br from-blue-50/90 to-white p-3.5 sm:p-4">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <FileText className="h-3.5 w-3.5 text-blue-600" aria-hidden />
+              총 공고
+            </div>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl">{count_total.toLocaleString()}</p>
+            <p className="text-xs text-slate-500">건</p>
+          </div>
+
+          <div className="flex flex-col rounded-xl border border-slate-100 bg-gradient-to-br from-violet-50/80 to-white p-3.5 sm:p-4">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <MapPin className="h-3.5 w-3.5 text-violet-600" aria-hidden />
+              1위 지역
+            </div>
+            {topRegionShare > 0 && region_breakdown[0] ? (
+              <>
+                <p className="mt-2 line-clamp-2 text-base font-bold leading-snug text-slate-900 sm:text-lg">
+                  {region_breakdown[0].name}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {region_breakdown[0].count.toLocaleString()}건 · 전체의 {topRegionShare}%
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">집계 없음</p>
+            )}
+          </div>
+
+          <div className="flex flex-col rounded-xl border border-slate-100 bg-gradient-to-br from-emerald-50/80 to-white p-3.5 sm:p-4">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <BarChart2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+              {isIndustryPayload ? "1위 업종" : "예산 합계"}
+            </div>
+            {isIndustryPayload && top_industry && top_industry.count > 0 ? (
+              <>
+                <p className="mt-2 line-clamp-2 text-base font-bold leading-snug text-slate-900 sm:text-lg">
+                  {top_industry.name}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {top_industry.count.toLocaleString()}건
+                  {topIndustryShare > 0 ? ` · 전체의 ${topIndustryShare}%` : ""}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-base font-bold tabular-nums text-slate-900 sm:text-lg">{payload.budget_label}</p>
+                <p className="mt-1 text-xs text-slate-600">당일 기초금액 합산 기준</p>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-col rounded-xl border border-slate-100 bg-gradient-to-br from-amber-50/90 to-white p-3.5 sm:p-4">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <Clock className="h-3.5 w-3.5 text-amber-600" aria-hidden />
+              마감 임박
+            </div>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl">
+              {deadline_soon_tenders.length}
+            </p>
+            <p className="text-xs text-slate-500">건 (상위 표시 구간)</p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-slate-500">
+          {isIndustryPayload
+            ? "등록 업종·지역 기준 당일 집계입니다. 아래 차트에서 세부 분포를 확인할 수 있습니다."
+            : "청소·소독·방역 분류 기준 당일 집계입니다. 지역·마감은 리포트에 반영된 공고만 해당합니다."}
+        </p>
+      </section>
 
       {/* 데이터 신뢰 3종 세트 */}
       <DataTrust3Pack
@@ -517,164 +670,523 @@ export default function DailyTenderReportDashboard({
         </div>
       </section>
 
-      {/* 6-1. 의사결정 엔진 (유료 중심) */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">의사결정 엔진</h2>
-          {accessLevel === "premium" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
-              <Crown className="h-3.5 w-3.5" />
-              프리미엄
-            </span>
-          )}
+      {/* 6-1. 프리미엄 패널 (당일 핵심 + 심화 분석 통합) */}
+      <section className="relative overflow-hidden rounded-3xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/50 p-4 shadow-xl shadow-violet-500/10 ring-1 ring-violet-100/60 sm:p-6 sm:p-8">
+        <div
+          className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-violet-200/25 blur-3xl"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-indigo-200/20 blur-3xl"
+          aria-hidden
+        />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30 sm:h-14 sm:w-14">
+              <Layers className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">프리미엄 패널</h2>
+                {accessLevel === "premium" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-600/15 to-indigo-600/15 px-2.5 py-0.5 text-xs font-semibold text-violet-900 ring-1 ring-violet-300/60">
+                    <Crown className="h-3.5 w-3.5 text-violet-600" />
+                    전용 인사이트
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                오늘 시장 온도·리스크·실행 우선순위를 먼저 보고, 이어서 주간 흐름·지역·업종·발주처·금액대를 한곳에서 비교할 수 있습니다.
+              </p>
+              {accessLevel === "free" && postId && (
+                <div className="mt-4 max-w-xl">
+                  <ReportShareUnlockButton
+                    postId={postId}
+                    shareTitle={title}
+                    shareText={`${title} — 클린아이덱스 입찰 리포트`}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <Link
+            href="/tenders"
+            className="inline-flex shrink-0 items-center justify-center gap-1 self-stretch rounded-xl border border-violet-200/90 bg-white px-3 py-2.5 text-xs font-semibold text-violet-800 shadow-md shadow-violet-500/5 transition hover:border-violet-400 hover:bg-violet-50/80 sm:self-start sm:py-2 sm:text-sm"
+          >
+            입찰 목록에서 필터
+            <ChevronRight className="h-4 w-4 opacity-70" aria-hidden />
+          </Link>
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <DecisionPanel
-            open={panelOpenCount >= 1}
-            title="시장 온도"
-            icon={<Gauge className="h-5 w-5 text-blue-600" />}
-            lockMessage="공유 또는 프리미엄에서 시장 온도를 확인할 수 있습니다."
-            accessLevel={accessLevel}
-          >
-            <p className="text-3xl font-bold text-blue-700">{marketHeat}점</p>
-            <p className="mt-2 text-sm text-slate-600">공고 수·고예산 비중·집중도를 반영한 당일 온도 지수입니다.</p>
-            <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-              <li>총 공고: {count_total.toLocaleString()}건</li>
-              <li>평균 예산: {averageBudget > 0 ? `${Math.round(averageBudget / 10000).toLocaleString()}만원` : "—"}</li>
-              <li>고예산 신호: {highBudgetCount}건</li>
-            </ul>
-          </DecisionPanel>
 
-          <DecisionPanel
-            open={panelOpenCount >= 2}
-            title="리스크 경보"
-            icon={<ShieldAlert className="h-5 w-5 text-amber-600" />}
-            lockMessage="공유 또는 프리미엄에서 리스크 경보를 확인할 수 있습니다."
-            accessLevel={accessLevel}
-          >
-            <p className="text-3xl font-bold text-amber-700">{riskScore}점</p>
-            <p className="mt-2 text-sm text-slate-600">마감 압박·시장 집중·예산 미기재 신호를 반영한 리스크 지수입니다.</p>
-            <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-              <li>마감 임박: {deadline_soon_tenders.length}건</li>
-              <li>집중도 신호: {concentrationScore}점</li>
-              <li>예산 미기재 포함: {payload.has_budget_unknown ? "있음" : "없음"}</li>
-            </ul>
-          </DecisionPanel>
+        {/* 당일 핵심 (시장 온도 · 리스크 · 실행 우선순위) */}
+        <div className="relative mt-8 rounded-2xl border border-violet-200/40 bg-white/55 p-4 shadow-inner shadow-violet-500/5 backdrop-blur-sm sm:p-5">
+          <div className="mb-4 border-b border-violet-100/80 pb-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-violet-600/90">당일 핵심</p>
+            <p className="mt-0.5 text-xs text-slate-500">당일 데이터 기준 요약 지표입니다.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <DecisionPanel
+              open={coreUnlocked}
+              title="시장 온도"
+              icon={<Gauge className="h-5 w-5 text-blue-600" />}
+              lockMessage="공유 또는 프리미엄에서 시장 온도를 확인할 수 있습니다."
+              accessLevel={accessLevel}
+              tone="premium"
+            >
+              <p className="text-3xl font-bold tabular-nums text-blue-700">{marketHeat}점</p>
+              <p className="mt-2 text-sm leading-snug text-slate-600">
+                공고 수·고예산 비중·집중도를 반영한 당일 온도 지수입니다.
+              </p>
+              <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                <li className="flex justify-between gap-2 border-b border-slate-100/80 pb-1.5">
+                  <span className="text-slate-500">총 공고</span>
+                  <span className="font-semibold text-slate-800">{count_total.toLocaleString()}건</span>
+                </li>
+                <li className="flex justify-between gap-2 border-b border-slate-100/80 pb-1.5">
+                  <span className="text-slate-500">평균 예산</span>
+                  <span className="font-semibold text-slate-800">
+                    {averageBudget > 0 ? `${Math.round(averageBudget / 10000).toLocaleString()}만원` : "—"}
+                  </span>
+                </li>
+                <li className="flex justify-between gap-2 pt-0.5">
+                  <span className="text-slate-500">고예산 신호</span>
+                  <span className="font-semibold text-slate-800">{highBudgetCount}건</span>
+                </li>
+              </ul>
+            </DecisionPanel>
 
-          <DecisionPanel
-            open={panelOpenCount >= 3}
-            title="실행 우선순위"
-            icon={<Target className="h-5 w-5 text-emerald-600" />}
-            lockMessage="프리미엄에서 실행 우선순위 전략을 확인할 수 있습니다."
-            accessLevel={accessLevel}
-          >
-            <ol className="space-y-2 text-sm text-slate-700">
-              <li>1) {deadline_soon_tenders[0]?.agency ?? "주요 발주처"} 마감 임박 건부터 검토</li>
-              <li>2) {region_breakdown[0]?.name ?? "상위 지역"} 중심으로 필터링 후 우선 공략</li>
-              <li>3) 고예산({highBudgetCount}건) 공고를 별도 큐로 분리</li>
-            </ol>
-            <p className="mt-3 text-xs text-slate-500">실행 우선순위는 매일 데이터 변화에 맞춰 자동 갱신됩니다.</p>
-          </DecisionPanel>
+            <DecisionPanel
+              open={coreUnlocked}
+              title="리스크 경보"
+              icon={<ShieldAlert className="h-5 w-5 text-amber-600" />}
+              lockMessage="공유 또는 프리미엄에서 리스크 경보를 확인할 수 있습니다."
+              accessLevel={accessLevel}
+              tone="premium"
+            >
+              <p className="text-3xl font-bold tabular-nums text-amber-700">{riskScore}점</p>
+              <p className="mt-2 text-sm leading-snug text-slate-600">
+                마감 압박·시장 집중·예산 미기재 신호를 반영한 리스크 지수입니다.
+              </p>
+              <ul className="mt-4 space-y-2 text-xs text-slate-600">
+                <li className="flex justify-between gap-2 border-b border-slate-100/80 pb-1.5">
+                  <span className="text-slate-500">마감 임박</span>
+                  <span className="font-semibold text-slate-800">{deadline_soon_tenders.length}건</span>
+                </li>
+                <li className="flex justify-between gap-2 border-b border-slate-100/80 pb-1.5">
+                  <span className="text-slate-500">집중도 신호</span>
+                  <span className="font-semibold text-slate-800">{concentrationScore}점</span>
+                </li>
+                <li className="flex justify-between gap-2 pt-0.5">
+                  <span className="text-slate-500">예산 미기재</span>
+                  <span className="font-semibold text-slate-800">{payload.has_budget_unknown ? "있음" : "없음"}</span>
+                </li>
+              </ul>
+            </DecisionPanel>
+
+            <DecisionPanel
+              open={coreUnlocked}
+              title="실행 우선순위"
+              icon={<Target className="h-5 w-5 text-emerald-600" />}
+              lockMessage="공유 또는 프리미엄에서 실행 우선순위를 확인할 수 있습니다."
+              accessLevel={accessLevel}
+              tone="premium"
+            >
+              <ol className="space-y-3 text-sm leading-snug text-slate-700">
+                <li className="flex gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-800">
+                    1
+                  </span>
+                  <span>{deadline_soon_tenders[0]?.agency ?? "주요 발주처"} 마감 임박 건부터 검토</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-800">
+                    2
+                  </span>
+                  <span>{region_breakdown[0]?.name ?? "상위 지역"} 중심으로 필터링 후 우선 공략</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-800">
+                    3
+                  </span>
+                  <span>고예산({highBudgetCount}건) 공고를 별도 큐로 분리</span>
+                </li>
+              </ol>
+              <p className="mt-4 text-xs leading-relaxed text-slate-500">
+                매일 데이터 변화에 맞춰 자동 갱신됩니다.
+              </p>
+            </DecisionPanel>
+          </div>
         </div>
-      </section>
 
-      {/* 6-2. 프리미엄 확장 패널 */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">프리미엄 확장 분석</h2>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="relative mt-8 border-t border-violet-200/50 pt-8">
+          <div className="mb-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-indigo-600/90">심화 분석</p>
+            <p className="mt-0.5 text-xs text-slate-500">주간 비교·구조 분포·경고 히스토리입니다.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <DecisionPanel
-            open={accessLevel === "premium"}
+            open={deepOpen("week_compare")}
             title="기간 비교 (7일/전주)"
             icon={<BarChart2 className="h-5 w-5 text-indigo-600" />}
-            lockMessage="프리미엄에서 기간 비교 분석을 확인할 수 있습니다."
+            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
             accessLevel={accessLevel}
+            tone="premium"
           >
-            <p className="text-sm text-slate-700">
-              이번 주 공고 <span className="font-semibold">{premiumInsights?.weekCompare.currentWeekCount ?? 0}건</span> ·
-              전주 <span className="font-semibold">{premiumInsights?.weekCompare.prevWeekCount ?? 0}건</span>
-            </p>
-            <p className="mt-2 text-xl font-bold text-indigo-700">
-              전주 대비 {premiumInsights?.weekCompare.deltaPct == null ? "—" : `${premiumInsights.weekCompare.deltaPct > 0 ? "+" : ""}${premiumInsights.weekCompare.deltaPct}%`}
-            </p>
+            {(() => {
+              const cur = premiumInsights?.weekCompare.currentWeekCount ?? 0;
+              const prev = premiumInsights?.weekCompare.prevWeekCount ?? 0;
+              const delta = premiumInsights?.weekCompare.deltaPct;
+              const maxW = Math.max(cur, prev, 1);
+              const TrendIcon =
+                delta == null ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+              const trendClass =
+                delta == null
+                  ? "text-slate-500"
+                  : delta > 0
+                    ? "text-indigo-600"
+                    : delta < 0
+                      ? "text-amber-700"
+                      : "text-slate-500";
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold ${trendClass} bg-slate-50 ring-1 ring-slate-200/80`}
+                    >
+                      <TrendIcon className="h-4 w-4 shrink-0" />
+                      전주 대비{" "}
+                      {delta == null ? "—" : `${delta > 0 ? "+" : ""}${delta}%`}
+                    </span>
+                    <span className="text-xs text-slate-500">KST 기준 최근 7일 창 비교</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="rounded-xl border border-indigo-100/80 bg-indigo-50/40 p-3 sm:p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600/90">이번 주</p>
+                      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl">{cur}</p>
+                      <p className="text-xs text-slate-500">건</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 sm:p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">전주 동기</p>
+                      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-700 sm:text-3xl">{prev}</p>
+                      <p className="text-xs text-slate-500">건</p>
+                    </div>
+                  </div>
+                  <div className="h-36 w-full min-w-0 sm:h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          { name: "이번 주", v: cur },
+                          { name: "전주 동기", v: prev },
+                        ]}
+                        margin={{ top: 12, right: 12, left: 4, bottom: 8 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                        <YAxis domain={[0, maxW]} width={32} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                        <Tooltip contentStyle={chartTooltipContentStyle} formatter={(v) => [`${v}건`, "공고 수"]} />
+                        <Bar dataKey="v" radius={[8, 8, 0, 0]} maxBarSize={56}>
+                          <Cell fill="#6366f1" />
+                          <Cell fill="#94a3b8" />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    세로축은 두 기간 중 큰 값({maxW}건)까지 스케일됩니다.
+                  </p>
+                </div>
+              );
+            })()}
           </DecisionPanel>
 
           <DecisionPanel
-            open={accessLevel === "premium"}
+            open={deepOpen("drilldown")}
             title="지역·업종 드릴다운"
             icon={<MapPin className="h-5 w-5 text-cyan-600" />}
-            lockMessage="프리미엄에서 지역·업종 드릴다운을 확인할 수 있습니다."
+            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
             accessLevel={accessLevel}
+            tone="premium"
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-semibold text-slate-500">상위 지역</p>
-                <ul className="mt-1 space-y-1 text-sm text-slate-700">
-                  {(premiumInsights?.drilldown.topRegions ?? []).slice(0, 3).map((r) => (
-                    <li key={r.name}>{r.name} · {r.count}건</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500">상위 업종</p>
-                <ul className="mt-1 space-y-1 text-sm text-slate-700">
-                  {(premiumInsights?.drilldown.topIndustries ?? []).slice(0, 3).map((r) => (
-                    <li key={r.name}>{r.name} · {r.count}건</li>
-                  ))}
-                </ul>
-              </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              {(() => {
+                const regions = (premiumInsights?.drilldown.topRegions ?? []).slice(0, 5);
+                const industries = (premiumInsights?.drilldown.topIndustries ?? []).slice(0, 5);
+                const rMax = maxInCounts(regions);
+                const iMax = maxInCounts(industries);
+                const rTotal = regions.reduce((s, x) => s + x.count, 0);
+                const iTotal = industries.reduce((s, x) => s + x.count, 0);
+                return (
+                  <>
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-cyan-800/90">상위 지역</p>
+                      {regions.length === 0 ? (
+                        <p className="text-sm text-slate-500">데이터 없음</p>
+                      ) : (
+                        <>
+                          <div className="h-36 w-full min-w-0 sm:h-40">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                layout="vertical"
+                                data={regions.map((r, i) => ({
+                                  name:
+                                    r.name.length > 7
+                                      ? `${i + 1}. ${r.name.slice(0, 6)}…`
+                                      : `${i + 1}. ${r.name}`,
+                                  full: r.name,
+                                  c: r.count,
+                                }))}
+                                margin={{ top: 4, right: 8, left: 4, bottom: 4 }}
+                              >
+                                <XAxis type="number" hide domain={[0, Math.max(rMax, 1)]} />
+                                <YAxis
+                                  type="category"
+                                  dataKey="name"
+                                  width={68}
+                                  tick={{ fontSize: 11, fill: "#475569" }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  contentStyle={chartTooltipContentStyle}
+                                  formatter={(v, _n, item) => {
+                                    const row = item?.payload as { full?: string; c?: number } | undefined;
+                                    return [`${v}건`, row?.full ?? ""];
+                                  }}
+                                />
+                                <Bar dataKey="c" radius={[0, 4, 4, 0]} maxBarSize={14}>
+                                  {regions.map((_, idx) => (
+                                    <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="space-y-2.5 border-t border-slate-100 pt-3">
+                            {regions.slice(0, 3).map((r, i) => (
+                              <PremiumInsightBarRow
+                                key={r.name}
+                                label={r.name}
+                                count={r.count}
+                                max={rMax}
+                                colorIndex={i}
+                                showShare
+                                total={rTotal}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-cyan-800/90">상위 업종</p>
+                      {industries.length === 0 ? (
+                        <p className="text-sm text-slate-500">데이터 없음</p>
+                      ) : (
+                        <>
+                          <div className="h-36 w-full min-w-0 sm:h-40">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                layout="vertical"
+                                data={industries.map((r, i) => ({
+                                  name:
+                                    r.name.length > 7
+                                      ? `${i + 1}. ${r.name.slice(0, 6)}…`
+                                      : `${i + 1}. ${r.name}`,
+                                  full: r.name,
+                                  c: r.count,
+                                }))}
+                                margin={{ top: 4, right: 8, left: 4, bottom: 4 }}
+                              >
+                                <XAxis type="number" hide domain={[0, Math.max(iMax, 1)]} />
+                                <YAxis
+                                  type="category"
+                                  dataKey="name"
+                                  width={68}
+                                  tick={{ fontSize: 11, fill: "#475569" }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  contentStyle={chartTooltipContentStyle}
+                                  formatter={(v, _n, item) => {
+                                    const row = item?.payload as { full?: string; c?: number } | undefined;
+                                    return [`${v}건`, row?.full ?? ""];
+                                  }}
+                                />
+                                <Bar dataKey="c" radius={[0, 4, 4, 0]} maxBarSize={14}>
+                                  {industries.map((_, idx) => (
+                                    <Cell key={idx} fill={CHART_COLORS[(idx + 2) % CHART_COLORS.length]} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="space-y-2.5 border-t border-slate-100 pt-3">
+                            {industries.slice(0, 3).map((r, i) => (
+                              <PremiumInsightBarRow
+                                key={r.name}
+                                label={r.name}
+                                count={r.count}
+                                max={iMax}
+                                colorIndex={i + 2}
+                                showShare
+                                total={iTotal}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </DecisionPanel>
 
           <DecisionPanel
-            open={accessLevel === "premium"}
+            open={deepOpen("agencies")}
             title="발주처 패턴"
             icon={<Building2 className="h-5 w-5 text-violet-600" />}
-            lockMessage="프리미엄에서 발주처 패턴을 확인할 수 있습니다."
+            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
             accessLevel={accessLevel}
+            tone="premium"
           >
-            <ul className="space-y-1.5 text-sm text-slate-700">
-              {(premiumInsights?.agencies ?? []).slice(0, 5).map((a) => (
-                <li key={a.name} className="flex items-center justify-between gap-3">
-                  <span className="truncate">{a.name}</span>
-                  <span className="shrink-0 text-slate-500">{a.count}건</span>
-                </li>
-              ))}
-            </ul>
+            <p className="mb-3 text-xs leading-relaxed text-slate-500">
+              당일 기준 발주기관(또는 상위 표본)에서 반복 노출이 큰 곳을 빠르게 짚습니다.
+            </p>
+            <div className="space-y-3">
+              {(premiumInsights?.agencies ?? []).length === 0 ? (
+                <p className="text-sm text-slate-500">표시할 발주처 분포가 없습니다.</p>
+              ) : (
+                (() => {
+                  const list = (premiumInsights?.agencies ?? []).slice(0, 5);
+                  const aMax = maxInCounts(list);
+                  return list.map((a, i) => (
+                    <div key={a.name} className="flex gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-xs font-bold text-violet-800">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <PremiumInsightBarRow
+                          label={a.name}
+                          count={a.count}
+                          max={aMax}
+                          colorIndex={i + 1}
+                        />
+                      </div>
+                    </div>
+                  ));
+                })()
+              )}
+            </div>
           </DecisionPanel>
 
           <DecisionPanel
-            open={accessLevel === "premium"}
+            open={deepOpen("budget_bands")}
             title="금액 구간 전략"
             icon={<Banknote className="h-5 w-5 text-emerald-600" />}
-            lockMessage="프리미엄에서 금액 구간별 전략을 확인할 수 있습니다."
+            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
             accessLevel={accessLevel}
+            tone="premium"
           >
-            <ul className="space-y-1.5 text-sm text-slate-700">
-              {(premiumInsights?.budgetBands ?? []).map((b) => (
-                <li key={b.label} className="flex items-center justify-between gap-3">
-                  <span>{b.label}</span>
-                  <span className="text-slate-500">{b.count}건</span>
-                </li>
-              ))}
-            </ul>
+            <p className="mb-3 text-xs leading-relaxed text-slate-500">
+              기초금액 구간별 건수 분포로 입찰 단가·팀 구성 전략을 가늠할 수 있습니다.
+            </p>
+            <div className="space-y-3">
+              {(premiumInsights?.budgetBands ?? []).length === 0 ? (
+                <p className="text-sm text-slate-500">금액 구간 데이터가 없습니다.</p>
+              ) : (
+                (() => {
+                  const bands = premiumInsights?.budgetBands ?? [];
+                  const bMax = maxInCounts(bands);
+                  return (
+                    <>
+                      <div className="h-44 w-full min-w-0 sm:h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={bands}
+                            margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                            <XAxis
+                              dataKey="label"
+                              tick={{ fontSize: 10, fill: "#64748b" }}
+                              interval={0}
+                              angle={-28}
+                              textAnchor="end"
+                              height={68}
+                            />
+                            <YAxis hide domain={[0, "auto"]} />
+                            <Tooltip
+                              contentStyle={chartTooltipContentStyle}
+                              formatter={(v) => [`${v}건`, "공고 수"]}
+                            />
+                            <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={36}>
+                              {bands.map((b, idx) => (
+                                <Cell key={b.label} fill={CHART_COLORS[(idx + 3) % CHART_COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="space-y-2.5 border-t border-slate-100 pt-3">
+                        {bands.map((b, i) => (
+                          <PremiumInsightBarRow
+                            key={b.label}
+                            label={b.label}
+                            count={b.count}
+                            max={bMax}
+                            colorIndex={i + 3}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()
+              )}
+            </div>
           </DecisionPanel>
         </div>
+        </div>
 
-        <DecisionPanel
-          open={accessLevel === "premium"}
-          title="이상치·경고 히스토리"
-          icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
-          lockMessage="프리미엄에서 이상치 경고 히스토리를 확인할 수 있습니다."
-          accessLevel={accessLevel}
-        >
-          <ul className="space-y-1.5 text-sm text-slate-700">
+        <div className="relative mt-2">
+          <DecisionPanel
+            open={deepOpen("anomalies")}
+            title="이상치·경고 히스토리"
+            icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
+            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
+            accessLevel={accessLevel}
+            tone="premium"
+          >
             {(premiumInsights?.anomalies?.length ?? 0) === 0 ? (
-              <li>특이 경고 없음</li>
+              <div className="flex items-start gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                  <ShieldAlert className="h-5 w-5 text-emerald-700" />
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-900">특이 경고 없음</p>
+                  <p className="mt-0.5 text-sm text-emerald-800/80">
+                    오늘 리포트 기준으로 눈에 띄는 리스크 플래그가 감지되지 않았습니다.
+                  </p>
+                </div>
+              </div>
             ) : (
-              (premiumInsights?.anomalies ?? []).map((a) => <li key={a}>- {a}</li>)
+              <ul className="space-y-2">
+                {(premiumInsights?.anomalies ?? []).map((a) => (
+                  <li
+                    key={a}
+                    className="flex items-start gap-3 rounded-xl border border-rose-200/80 bg-gradient-to-r from-rose-50/90 to-white p-3.5 shadow-sm"
+                  >
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">
+                      !
+                    </span>
+                    <span className="text-sm font-medium leading-snug text-slate-800">{a}</span>
+                  </li>
+                ))}
+              </ul>
             )}
-          </ul>
-        </DecisionPanel>
+          </DecisionPanel>
+        </div>
       </section>
 
       {/* 7. 푸터 안내 */}
@@ -739,6 +1251,7 @@ function DecisionPanel({
   children,
   lockMessage,
   accessLevel,
+  tone = "default",
 }: {
   open: boolean;
   title: string;
@@ -746,24 +1259,40 @@ function DecisionPanel({
   children: React.ReactNode;
   lockMessage: string;
   accessLevel: "free" | "shared" | "premium";
+  tone?: "default" | "premium";
 }) {
+  const openSurface =
+    tone === "premium"
+      ? "rounded-2xl border border-white/80 bg-white/90 p-4 shadow-md shadow-violet-500/5 ring-1 ring-slate-200/60 backdrop-blur-sm sm:p-6"
+      : "rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6";
+  const iconWrap =
+    tone === "premium"
+      ? "rounded-xl bg-gradient-to-br from-slate-50 to-violet-50/80 p-2 ring-1 ring-slate-100"
+      : "rounded-lg bg-slate-100 p-2";
+  const titleClass = tone === "premium" ? "text-base font-bold text-slate-900" : "text-base font-semibold text-slate-900";
+
   if (open) {
     return (
-      <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="rounded-lg bg-slate-100 p-2">{icon}</span>
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+      <article className={openSurface}>
+        <div className="mb-3 flex items-center gap-2 sm:mb-4">
+          <span className={iconWrap}>{icon}</span>
+          <h3 className={titleClass}>{title}</h3>
         </div>
         {children}
       </article>
     );
   }
 
+  const lockedSurface =
+    tone === "premium"
+      ? "relative overflow-hidden rounded-2xl border border-violet-200/50 bg-violet-50/30 p-4 shadow-md sm:p-6"
+      : "relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-lg sm:p-6";
+
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-lg sm:p-6">
-      <div className="mb-3 flex items-center gap-2 opacity-70">
-        <span className="rounded-lg bg-slate-100 p-2">{icon}</span>
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+    <article className={lockedSurface}>
+      <div className={`mb-3 flex items-center gap-2 opacity-70 ${tone === "premium" ? "sm:mb-4" : ""}`}>
+        <span className={iconWrap}>{icon}</span>
+        <h3 className={titleClass}>{title}</h3>
       </div>
       <div className="blur-[2px] opacity-50">{children}</div>
       <div className="absolute inset-0 flex items-center justify-center bg-white/55 p-4">

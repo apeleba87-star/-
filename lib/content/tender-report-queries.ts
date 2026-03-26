@@ -65,6 +65,81 @@ export type WeeklyTenderPayload = {
   top_industry?: TopIndustryItem | null;
 };
 
+function dedupeTopTendersForPremium(a: TopTenderItem[], b: TopTenderItem[]): TopTenderItem[] {
+  const seen = new Set<string>();
+  const out: TopTenderItem[] = [];
+  for (const t of [...a, ...b]) {
+    const key = `${t.title}\0${t.agency}\0${t.budget}\0${t.deadline}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
+
+/** 레거시 스냅샷 등에서 agency_breakdown이 없을 때 상위·마감임박 목록으로 근사 (scripts/backfill-report-snapshot-fields.mjs와 동일 규칙) */
+export function buildAgencyBreakdownFromTopTenders(topTenders: TopTenderItem[]): { name: string; count: number }[] {
+  const map = new Map<string, number>();
+  for (const t of topTenders) {
+    const name = (t.agency ?? "").trim() || "기타";
+    map.set(name, (map.get(name) ?? 0) + 1);
+  }
+  return Array.from(map.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+}
+
+export function buildBudgetBandBreakdownFromTopTenders(
+  topTenders: TopTenderItem[],
+  hasBudgetUnknown: boolean
+): { label: string; count: number }[] {
+  const bands = new Map<string, number>([
+    ["1천만원 미만", 0],
+    ["1천만~5천만원", 0],
+    ["5천만~1억원", 0],
+    ["1억원 이상", 0],
+    ["금액 미기재", hasBudgetUnknown ? 1 : 0],
+  ]);
+  for (const t of topTenders) {
+    const amt = Number(t.budget);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      bands.set("금액 미기재", (bands.get("금액 미기재") ?? 0) + 1);
+    } else if (amt < 10_000_000) {
+      bands.set("1천만원 미만", (bands.get("1천만원 미만") ?? 0) + 1);
+    } else if (amt < 50_000_000) {
+      bands.set("1천만~5천만원", (bands.get("1천만~5천만원") ?? 0) + 1);
+    } else if (amt < 100_000_000) {
+      bands.set("5천만~1억원", (bands.get("5천만~1억원") ?? 0) + 1);
+    } else {
+      bands.set("1억원 이상", (bands.get("1억원 이상") ?? 0) + 1);
+    }
+  }
+  return Array.from(bands.entries()).map(([label, count]) => ({ label, count }));
+}
+
+/** 프리미엄 패널: 집계 필드가 비었으면 목록 기반으로 채움 */
+export function resolvePremiumAgencyAndBudgetBands(payload: DailyTenderPayload): {
+  agencies: { name: string; count: number }[];
+  budgetBands: { label: string; count: number }[];
+} {
+  const pool = dedupeTopTendersForPremium(
+    Array.isArray(payload.top_budget_tenders) ? payload.top_budget_tenders : [],
+    Array.isArray(payload.deadline_soon_tenders) ? payload.deadline_soon_tenders : []
+  );
+  const rawAgencies = payload.agency_breakdown;
+  const agencies =
+    Array.isArray(rawAgencies) && rawAgencies.length > 0
+      ? rawAgencies
+      : buildAgencyBreakdownFromTopTenders(pool);
+  const rawBands = payload.budget_band_breakdown;
+  const budgetBands =
+    Array.isArray(rawBands) && rawBands.length > 0
+      ? rawBands
+      : buildBudgetBandBreakdownFromTopTenders(pool, Boolean(payload.has_budget_unknown));
+  return { agencies, budgetBands };
+}
+
 function getSido(row: TenderRow): string {
   const region = parseRegionSido(row.bsns_dstr_nm ?? row.ntce_instt_nm ?? null);
   return region ?? "기타";

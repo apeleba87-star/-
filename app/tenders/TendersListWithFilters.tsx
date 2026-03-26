@@ -1,16 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { FileText, ChevronDown } from "lucide-react";
+import { FileText, ChevronDown, Bookmark } from "lucide-react";
 import TenderBidCard from "@/components/tender/TenderBidCard";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import type { HomeAdSlotWithCampaign } from "@/lib/ads";
-import { parseRegionSido } from "@/lib/tender-utils";
 import { getBaseAmtFromRaw } from "@/lib/tender-utils";
 import { ddayNumber } from "@/lib/tender-utils";
+import { REGION_GUGUN, type RegionSido } from "@/lib/listings/regions";
+import {
+  buildTendersSearchParams,
+  focusMatchesUrl,
+  type UserTenderFocusRow,
+} from "@/lib/tenders/user-focus";
+import { saveUserTenderFocus, clearUserTenderFocus } from "./actions";
+import { dispatchTenderFocusUpdated } from "@/lib/tenders/tender-focus-events";
+
+const MAX_INDUSTRIES = 4;
 
 const SORT_OPTIONS = [
   { id: "posted", label: "최신순" },
@@ -42,21 +51,6 @@ const REGION_OPTIONS = [
 
 type SortId = (typeof SORT_OPTIONS)[number]["id"];
 
-function getTenderRegionSido(t: TenderBidCardT): string | null {
-  return parseRegionSido(t.bsns_dstr_nm ?? t.ntce_instt_nm ?? null);
-}
-
-function getTenderIndustryCodes(t: TenderBidCardT): string[] {
-  return (t.tender_industries ?? []).map((ti) => ti.industry_code);
-}
-
-function industryMatch(tender: TenderBidCardT, selectedCodes: string[]): boolean {
-  if (selectedCodes.length === 0) return true;
-  const tenderCodes = getTenderIndustryCodes(tender);
-  if (tenderCodes.length === 0) return false;
-  return selectedCodes.some((c) => tenderCodes.includes(c));
-}
-
 function getBaseAmount(t: TenderBidCardT): number {
   if (t.base_amt != null) return Number(t.base_amt);
   const fromRaw = getBaseAmtFromRaw(t.raw);
@@ -70,19 +64,42 @@ type Props = {
   industries: IndustryRow[];
   initialIndustryCodes?: string[];
   initialRegion?: string;
+  /** 시·군·구 (시·도 선택 시에만, 빈 문자열이면 시·도 전체만) */
+  initialGugun?: string;
   initialSort?: SortId;
   adSlotMid?: HomeAdSlotWithCampaign | null;
-  /** 로그인 시 기초금액·낙찰하한율 표시, 비로그인 시 블러 처리 */
   isLoggedIn?: boolean;
+  savedFocus?: UserTenderFocusRow | null;
+  totalOpenCount?: number;
+  /** 로그인 + 저장된 내 관심 있을 때만 숫자 */
+  myFocusOpenCount?: number | null;
 };
 
-function buildTendersUrl(params: { industry: string[]; region: string; sort: string }): string {
-  const q = new URLSearchParams();
-  if (params.industry.length > 0) q.set("industry", params.industry.join(","));
-  if (params.region && params.region !== "전체 지역") q.set("region", params.region);
-  if (params.sort && params.sort !== "posted") q.set("sort", params.sort);
-  const s = q.toString();
-  return s ? `/tenders?${s}` : "/tenders";
+function buildListUrl(params: {
+  industry: string[];
+  region: string;
+  gugun: string;
+  sort: string;
+}): string {
+  const regionSido = params.region === "전체 지역" ? null : params.region;
+  const q =
+    "/tenders" +
+    buildTendersSearchParams({
+      industryCodes: params.industry,
+      regionSido,
+      regionGugun: params.gugun.trim() || null,
+      sort: params.sort !== "posted" ? params.sort : undefined,
+    });
+  return q || "/tenders";
+}
+
+function serializeFilterKey(industry: string[], region: string, gugun: string, sort: string): string {
+  return JSON.stringify({
+    i: [...industry].sort(),
+    r: region,
+    g: gugun,
+    s: sort,
+  });
 }
 
 export default function TendersListWithFilters({
@@ -90,26 +107,78 @@ export default function TendersListWithFilters({
   industries,
   initialIndustryCodes = [],
   initialRegion = "전체 지역",
+  initialGugun = "",
   initialSort = "posted",
   adSlotMid = null,
   isLoggedIn = false,
+  savedFocus = null,
+  totalOpenCount = 0,
+  myFocusOpenCount = null,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [pending, startTransition] = useTransition();
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [industryCapTip, setIndustryCapTip] = useState(false);
+  const [showSaveBanner, setShowSaveBanner] = useState(false);
+
   const selectedIndustryCodes = initialIndustryCodes;
   const selectedRegion = initialRegion;
+  const selectedGugun = initialGugun;
   const sortBy = initialSort;
 
+  /** 정렬 변경만 한 경우에는 내 관심 배너를 띄우지 않음 */
+  const filterKeyForBanner = useMemo(
+    () => serializeFilterKey(selectedIndustryCodes, selectedRegion, selectedGugun, ""),
+    [selectedIndustryCodes, selectedRegion, selectedGugun]
+  );
+  const prevKeyRef = useRef<string | null>(null);
+
+  const hasActiveFilters =
+    selectedIndustryCodes.length > 0 || selectedRegion !== "전체 지역" || Boolean(selectedGugun.trim());
+
+  useEffect(() => {
+    if (prevKeyRef.current === null) {
+      prevKeyRef.current = filterKeyForBanner;
+      return;
+    }
+    if (prevKeyRef.current === filterKeyForBanner) return;
+    prevKeyRef.current = filterKeyForBanner;
+
+    if (!hasActiveFilters) {
+      setShowSaveBanner(false);
+      return;
+    }
+    const urlState = {
+      industryCodes: selectedIndustryCodes,
+      regionSido: selectedRegion === "전체 지역" ? null : selectedRegion,
+      regionGugun: selectedGugun.trim() || null,
+    };
+    if (isLoggedIn && savedFocus && focusMatchesUrl(savedFocus, urlState)) {
+      setShowSaveBanner(false);
+      return;
+    }
+    setShowSaveBanner(true);
+  }, [filterKeyForBanner, hasActiveFilters, isLoggedIn, savedFocus, selectedIndustryCodes, selectedRegion, selectedGugun]);
+
   const industryNames = useMemo(() => Object.fromEntries(industries.map((i) => [i.code, i.name])), [industries]);
+
+  const gugunOptions: readonly string[] =
+    selectedRegion !== "전체 지역"
+      ? REGION_GUGUN[selectedRegion as RegionSido] ?? []
+      : [];
 
   const { openTenders, closedTenders } = useMemo(() => {
     const sortFn = (a: TenderBidCardT, b: TenderBidCardT) => {
       switch (sortBy) {
         case "deadline":
           return ddayNumber(a.bid_clse_dt) - ddayNumber(b.bid_clse_dt);
-        case "posted":
+        case "posted": {
           const dtCmp = (b.bid_ntce_dt ?? "").localeCompare(a.bid_ntce_dt ?? "");
           if (dtCmp !== 0) return dtCmp;
           return (a.bid_ntce_no ?? "").localeCompare(b.bid_ntce_no ?? "");
+        }
         case "amount-high":
           return getBaseAmount(b) - getBaseAmount(a);
         case "amount-low":
@@ -123,31 +192,216 @@ export default function TendersListWithFilters({
     return { openTenders: open, closedTenders: closed };
   }, [tenders, sortBy]);
 
-  const hasActiveFilters = selectedIndustryCodes.length > 0 || selectedRegion !== "전체 지역";
-
   const clearFilters = () => router.push("/tenders");
 
   const toggleIndustry = (code: string) => {
-    const next = selectedIndustryCodes.includes(code)
-      ? selectedIndustryCodes.filter((c) => c !== code)
-      : [...selectedIndustryCodes, code];
-    router.push(buildTendersUrl({ industry: next, region: selectedRegion, sort: sortBy }));
+    if (selectedIndustryCodes.includes(code)) {
+      router.push(
+        buildListUrl({
+          industry: selectedIndustryCodes.filter((c) => c !== code),
+          region: selectedRegion,
+          gugun: selectedGugun,
+          sort: sortBy,
+        })
+      );
+      return;
+    }
+    if (selectedIndustryCodes.length >= MAX_INDUSTRIES) {
+      setIndustryCapTip(true);
+      window.setTimeout(() => setIndustryCapTip(false), 2500);
+      return;
+    }
+    router.push(
+      buildListUrl({
+        industry: [...selectedIndustryCodes, code],
+        region: selectedRegion,
+        gugun: selectedGugun,
+        sort: sortBy,
+      })
+    );
   };
 
   const setRegion = (region: string) => {
-    router.push(buildTendersUrl({ industry: selectedIndustryCodes, region, sort: sortBy }));
+    let nextGugun = selectedGugun;
+    if (region === "전체 지역") nextGugun = "";
+    else if (nextGugun && !(REGION_GUGUN[region as RegionSido] ?? []).includes(nextGugun)) nextGugun = "";
+    router.push(
+      buildListUrl({
+        industry: selectedIndustryCodes,
+        region,
+        gugun: nextGugun,
+        sort: sortBy,
+      })
+    );
+  };
+
+  const setGugun = (gugun: string) => {
+    router.push(
+      buildListUrl({
+        industry: selectedIndustryCodes,
+        region: selectedRegion,
+        gugun,
+        sort: sortBy,
+      })
+    );
   };
 
   const setSort = (sort: SortId) => {
-    router.push(buildTendersUrl({ industry: selectedIndustryCodes, region: selectedRegion, sort }));
+    router.push(
+      buildListUrl({
+        industry: selectedIndustryCodes,
+        region: selectedRegion,
+        gugun: selectedGugun,
+        sort,
+      })
+    );
+  };
+
+  const loginNextPath = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}` || "/tenders";
+
+  const onSaveFocus = () => {
+    setSaveMsg(null);
+    startTransition(async () => {
+      const res = await saveUserTenderFocus({
+        regionSido: selectedRegion === "전체 지역" ? null : selectedRegion,
+        regionGugun: selectedGugun.trim() || null,
+        industryCodes: selectedIndustryCodes,
+      });
+      if (res.ok) {
+        setShowSaveBanner(false);
+        setSaveMsg("내 관심으로 저장했어요.");
+        dispatchTenderFocusUpdated();
+        router.refresh();
+      } else {
+        setSaveMsg(res.error ?? "저장에 실패했습니다.");
+      }
+    });
+  };
+
+  const onClearFocus = () => {
+    setSaveMsg(null);
+    startTransition(async () => {
+      const res = await clearUserTenderFocus();
+      if (res.ok) {
+        setSaveMsg("내 관심을 해제했어요.");
+        dispatchTenderFocusUpdated();
+        router.refresh();
+      } else {
+        setSaveMsg(res.error ?? "해제에 실패했습니다.");
+      }
+    });
   };
 
   return (
     <>
-      {/* 필터: 업종 (다중 선택). 화면은 업종명, 필터 로직은 업종 코드 기준 */}
+      {/* 진행 중 공고 수: 전체(무료) · 내 관심(로그인) */}
+      <section className="mb-4 rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-sm shadow-sm">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-700">
+          <span>
+            진행 중 공고 · 전체{" "}
+            <span className="font-semibold tabular-nums text-slate-900">
+              {totalOpenCount.toLocaleString()}
+            </span>
+            건
+          </span>
+          {isLoggedIn && myFocusOpenCount !== null && (
+            <>
+              <span className="text-slate-300" aria-hidden>
+                ·
+              </span>
+              <span>
+                내 관심 기준{" "}
+                <span className="font-semibold tabular-nums text-teal-700">{myFocusOpenCount.toLocaleString()}</span>
+                건
+              </span>
+            </>
+          )}
+        </p>
+        {!isLoggedIn && (
+          <p className="mt-2 text-xs text-slate-500">
+            <Link href={`/login?next=${encodeURIComponent("/tenders")}`} className="font-medium text-blue-600 hover:underline">
+              로그인
+            </Link>
+            하면 저장한 「내 관심」조건으로 진행 중 건수를 볼 수 있어요.
+          </p>
+        )}
+        {isLoggedIn && savedFocus && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Link
+              href={
+                "/tenders" +
+                buildTendersSearchParams({
+                  industryCodes: savedFocus.industry_codes ?? [],
+                  regionSido: savedFocus.region_sido,
+                  regionGugun: savedFocus.region_gugun,
+                })
+              }
+              className="text-xs font-medium text-teal-700 hover:underline"
+            >
+              저장된 내 관심으로 목록 열기
+            </Link>
+            <span className="text-slate-300">|</span>
+            <button
+              type="button"
+              onClick={onClearFocus}
+              disabled={pending}
+              className="text-xs font-medium text-slate-500 hover:text-slate-800 disabled:opacity-50"
+            >
+              내 관심 해제
+            </button>
+          </div>
+        )}
+        {saveMsg && <p className="mt-2 text-xs text-slate-600">{saveMsg}</p>}
+      </section>
+
+      {showSaveBanner && hasActiveFilters && (
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <Bookmark className="mt-0.5 h-5 w-5 shrink-0 text-teal-600" aria-hidden />
+            <div>
+              <p className="text-sm font-semibold text-slate-900">이 조건, 내 관심으로 저장할까요?</p>
+              <p className="mt-0.5 text-xs text-slate-600">
+                다음에 입찰 목록을 열 때 바로 같은 필터가 적용됩니다. (업종 최대 {MAX_INDUSTRIES}개)
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {!isLoggedIn ? (
+              <Link
+                href={`/login?next=${encodeURIComponent(loginNextPath)}`}
+                className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700"
+              >
+                로그인하고 저장
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={onSaveFocus}
+                disabled={pending}
+                className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-60"
+              >
+                내 관심으로 저장
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowSaveBanner(false)}
+              className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              오늘만 보기
+            </button>
+          </div>
+        </div>
+      )}
+
       <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-1 text-sm font-semibold text-slate-700">업종</h2>
-        <p className="mb-3 text-xs text-slate-500">업종명으로 선택 시, 수집된 공고는 업종 코드 기준으로 필터됩니다.</p>
+        <p className="mb-3 text-xs text-slate-500">
+          업종명으로 선택 시 코드 기준으로 필터됩니다. 최대 {MAX_INDUSTRIES}개까지 선택할 수 있어요.
+        </p>
+        {industryCapTip && (
+          <p className="mb-2 text-xs font-medium text-amber-700">업종은 최대 {MAX_INDUSTRIES}개까지 선택할 수 있어요.</p>
+        )}
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -177,11 +431,10 @@ export default function TendersListWithFilters({
         </div>
       </section>
 
-      {/* 필터: 지역 & 정렬 */}
-      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         <section className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label htmlFor="tenders-region" className="mb-3 block text-sm font-semibold text-slate-700">
-            지역 선택
+            시·도
           </label>
           <div className="relative">
             <select
@@ -202,6 +455,33 @@ export default function TendersListWithFilters({
             />
           </div>
         </section>
+
+        <section className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <label htmlFor="tenders-gugun" className="mb-3 block text-sm font-semibold text-slate-700">
+            시·군·구
+          </label>
+          <div className="relative">
+            <select
+              id="tenders-gugun"
+              value={selectedGugun}
+              onChange={(e) => setGugun(e.target.value)}
+              disabled={selectedRegion === "전체 지역"}
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">시·도 전체 (구·군 미선택)</option>
+              {gugunOptions.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-slate-500"
+              aria-hidden
+            />
+          </div>
+        </section>
+
         <section className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label htmlFor="tenders-sort" className="mb-3 block text-sm font-semibold text-slate-700">
             정렬 기준
@@ -227,7 +507,6 @@ export default function TendersListWithFilters({
         </section>
       </div>
 
-      {/* 활성 필터 요약 */}
       {hasActiveFilters && (
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-slate-600">필터 적용:</span>
@@ -239,7 +518,7 @@ export default function TendersListWithFilters({
             ))}
           {selectedRegion !== "전체 지역" && (
             <span className="rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-700">
-              {selectedRegion}
+              {selectedGugun ? `${selectedRegion} ${selectedGugun}` : selectedRegion}
             </span>
           )}
           <button
@@ -252,7 +531,6 @@ export default function TendersListWithFilters({
         </div>
       )}
 
-      {/* 검색 결과 카운트: 진행 중 / 마감 구분 */}
       <p className="mb-4 text-sm text-slate-600">
         진행 중{" "}
         <span className="font-semibold text-blue-600">{openTenders.length}</span>개
@@ -263,9 +541,9 @@ export default function TendersListWithFilters({
             <span className="font-semibold text-slate-500">{closedTenders.length}</span>개
           </>
         )}
+        <span className="ml-1 text-xs text-slate-400">(목록 최대 50건)</span>
       </p>
 
-      {/* 진행 중인 공고 */}
       {openTenders.length === 0 && closedTenders.length === 0 ? (
         <>
           <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
@@ -290,7 +568,6 @@ export default function TendersListWithFilters({
               </Link>
             </div>
           </div>
-          {/* 뉴스레터 CTA: 빈 결과일 때도 노출 */}
           <section className="mt-10 rounded-2xl border border-slate-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6 text-center shadow-sm">
             <p className="text-base font-semibold text-slate-800 sm:text-lg">
               매주 청소 입찰 시장 요약을 받아보세요
@@ -318,9 +595,7 @@ export default function TendersListWithFilters({
         <>
           {openTenders.length > 0 && (
             <section className="mb-10">
-              <h2 className="mb-4 text-lg font-semibold text-slate-800">
-                진행 중인 공고
-              </h2>
+              <h2 className="mb-4 text-lg font-semibold text-slate-800">진행 중인 공고</h2>
               <ul className="space-y-4">
                 {openTenders.map((t) => (
                   <li key={t.id}>
@@ -337,7 +612,6 @@ export default function TendersListWithFilters({
             </div>
           )}
 
-          {/* 마감된 공고 (참고용) */}
           {closedTenders.length > 0 && (
             <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold text-slate-600">
@@ -355,11 +629,10 @@ export default function TendersListWithFilters({
 
           {(openTenders.length > 0 || closedTenders.length > 0) && (
             <p className="mt-8 text-center text-sm text-slate-500">
-              💡 예상 낙찰 하한가를 확인하려면 공고를 클릭하세요
+              예상 낙찰 하한가를 확인하려면 공고를 클릭하세요
             </p>
           )}
 
-          {/* 뉴스레터 CTA: 리스트 하단 */}
           <section className="mt-10 rounded-2xl border border-slate-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6 text-center shadow-sm">
             <p className="text-base font-semibold text-slate-800 sm:text-lg">
               매주 청소 입찰 시장 요약을 받아보세요

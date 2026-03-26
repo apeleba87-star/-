@@ -7,10 +7,15 @@ import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActivePostDetailAds } from "@/lib/ads";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
-import { aggregateDailyTenders, aggregateWeeklyTenders } from "@/lib/content/tender-report-queries";
+import {
+  aggregateDailyTenders,
+  aggregateWeeklyTenders,
+  resolvePremiumAgencyAndBudgetBands,
+} from "@/lib/content/tender-report-queries";
 import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import { hasSubscriptionAccess } from "@/lib/subscription-access";
+import { ensureSharedRevealKeys, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import DailyTenderReportDashboard from "@/components/report/DailyTenderReportDashboard";
 import ReportPaywallLock from "@/components/report/ReportPaywallLock";
 import ReportSnapshotView from "@/components/report/ReportSnapshotView";
@@ -125,61 +130,58 @@ export default async function PostPage({ params }: PostPageParams) {
   return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights);
 }
 
-/** 리포트 포스트 중 published_at 기준 가장 최신 1건의 id 조회 (무료 열람 대상) */
-async function getLatestReportPostId(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  const { data } = await supabase
-    .from("posts")
-    .select("id")
-    .not("published_at", "is", null)
-    .eq("is_private", false)
-    .or("source_type.not.is.null,slug.ilike.*daily-tender-digest*,slug.ilike.*report-*")
-    .order("published_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data as { id: string } | null)?.id ?? null;
-}
+type ReportAccessState = {
+  level: "free" | "shared" | "premium";
+  sharedRevealKeys: SharedRandomPanelKey[] | null;
+};
 
 async function getReportAccess(
   post: PostForRender,
   reportData: ReportData | null,
-  supabase: ReturnType<typeof createClient>
-): Promise<"free" | "shared" | "premium"> {
-  if (!isReportPost(post) || !reportData) return "free";
+  _supabase: ReturnType<typeof createClient>
+): Promise<ReportAccessState> {
+  const none: ReportAccessState = { level: "free", sharedRevealKeys: null };
+  if (!isReportPost(post) || !reportData) return none;
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
-  if (!user) return "free";
+  if (!user) return none;
   const { data: profile } = await authSupabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
   const role = (profile as { role?: string } | null)?.role;
-  if (role === "admin" || role === "editor") return "premium";
-  const latestId = await getLatestReportPostId(supabase);
+  if (role === "admin" || role === "editor") {
+    return { level: "premium", sharedRevealKeys: null };
+  }
   const todayKst = getKstDateString();
   const { data: sub } = await authSupabase
     .from("subscriptions")
     .select("id, status, next_billing_at")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (hasSubscriptionAccess(sub as { status: string; next_billing_at?: string | null } | null, todayKst)) return "premium";
-  if (latestId === post.id) return "free";
-  const { data: grant } = await authSupabase
-    .from("report_share_grants")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("post_id", post.id)
-    .eq("grant_date", todayKst)
-    .is("used_at", null)
-    .maybeSingle();
-  if (grant) {
-    await authSupabase
-      .from("report_share_grants")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", grant.id);
-    return "shared";
+  if (hasSubscriptionAccess(sub as { status: string; next_billing_at?: string | null } | null, todayKst)) {
+    return { level: "premium", sharedRevealKeys: null };
   }
-  return "free";
+
+  const { data: todayGrant } = await authSupabase
+    .from("report_share_grants")
+    .select("post_id, revealed_panel_keys")
+    .eq("user_id", user.id)
+    .eq("grant_date", todayKst)
+    .maybeSingle();
+
+  if (todayGrant && todayGrant.post_id === post.id) {
+    const keys = ensureSharedRevealKeys(
+      user.id,
+      post.id,
+      todayKst,
+      (todayGrant as { revealed_panel_keys?: string[] | null }).revealed_panel_keys
+    );
+    return { level: "shared", sharedRevealKeys: keys };
+  }
+
+  return none;
 }
 
 type PostForRender = {
@@ -234,8 +236,11 @@ async function getPremiumInsights(
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
     .map((i) => ({ name: i.industry_name, count: i.count }));
-  const agencies = (reportData.payload.agency_breakdown ?? []).slice(0, 5);
-  const budgetBands = reportData.payload.budget_band_breakdown ?? [];
+  const { agencies: resolvedAgencies, budgetBands: resolvedBands } = resolvePremiumAgencyAndBudgetBands(
+    reportData.payload
+  );
+  const agencies = resolvedAgencies.slice(0, 5);
+  const budgetBands = resolvedBands;
   const anomalies: string[] = [];
   const topRegionShare =
     reportData.payload.count_total > 0 && reportData.payload.region_breakdown[0]
@@ -277,7 +282,7 @@ function renderPost(
   post: PostForRender,
   ads: PostDetailAds,
   reportData: ReportData | null,
-  reportAccess: "free" | "shared" | "premium",
+  reportAccess: ReportAccessState,
   premiumInsights: PremiumInsights
 ) {
   const isReport = isReportPost(post);
@@ -287,7 +292,7 @@ function renderPost(
   const showLock = false;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-3 py-6 sm:px-6 sm:py-10">
+    <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10">
       <Link href="/categories" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
         ← 카테고리
       </Link>
@@ -308,13 +313,15 @@ function renderPost(
             </div>
           )}
           <DailyTenderReportDashboard
+            postId={post.id}
             payload={reportData!.payload}
             title={post.title}
             dateLabel={reportData!.payload.dateLabel}
             insightSentence={reportData!.insightSentence}
             excerpt={post.excerpt}
             updatedAt={post.updated_at ?? null}
-            accessLevel={reportAccess}
+            accessLevel={reportAccess.level}
+            sharedRevealKeys={reportAccess.sharedRevealKeys}
             premiumInsights={premiumInsights}
           />
           {showBottomAd && ads.post_bottom && (

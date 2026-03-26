@@ -51,12 +51,22 @@ body {
   .post-report h2 {
     @apply mt-8 border-b-2 border-slate-200 pb-2 text-lg font-semibold text-slate-800 first:mt-0;
   }
+  /* 좁은 뷰포트: 리포트 표 가로 스크롤 (360px 대응) */
+  .post-report {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .post-report table {
-    @apply my-4 w-full border-collapse rounded-lg border border-slate-200 text-sm shadow-sm;
+    @apply my-4 border-collapse rounded-lg border border-slate-200 text-sm shadow-sm;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
   }
   .post-report th,
   .post-report td {
-    @apply border border-slate-200 px-3 py-2.5 text-left;
+    @apply border border-slate-200 px-2 py-2 text-left xs:px-3 xs:py-2.5;
   }
   .post-report th {
     @apply bg-slate-100 font-semibold text-slate-700;

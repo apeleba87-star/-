@@ -123,7 +123,7 @@ export default function HomeDashboard({
   const loginNext = (path: string) => (isLoggedIn ? path : `/login?next=${encodeURIComponent(path)}`);
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto min-w-0 max-w-5xl px-3 py-8 xs:px-4 sm:px-6 sm:py-10">
         <motion.header
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}

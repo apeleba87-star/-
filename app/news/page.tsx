@@ -2,7 +2,7 @@ import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
-import NewsCard, { type NewsCardBadge } from "@/components/news/NewsCard";
+import NewsCard from "@/components/news/NewsCard";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -180,7 +180,7 @@ export default async function NewsPage({
           업계 소식
         </h1>
         <p className="mb-6 text-sm text-slate-600">
-          청소·소독·방역 입찰 리포트와 업계 소식입니다. 가장 최신 1건은 무료, 나머지는 구독 또는 공유 1회로 열람할 수 있습니다.
+          청소·소독·방역 입찰 리포트와 업계 소식입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다.
         </p>
         <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
         {!posts?.length ? (
@@ -189,20 +189,17 @@ export default async function NewsPage({
           </div>
         ) : (
           <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {posts.map((post, index) => {
+            {posts.map((post) => {
               const sourceType = (post as { source_type?: string | null }).source_type ?? null;
               const sourceRef = (post as { source_ref?: string | null }).source_ref ?? null;
               const isDaily = sourceType === "auto_tender_daily" || (post.slug ?? "").includes("daily-tender-digest");
               const isToday = isDaily && sourceRef === todayKst;
-              // 가장 최신 1건만 무료(목록은 published_at 내림차순이므로 index === 0)
-              const isFree = index === 0;
               const listTitle = isDaily
                 ? isToday
                   ? "오늘 청소 입찰 리포트"
                   : formatReportDateLabel(sourceRef)
                 : post.title;
               const categoryTag = isDaily ? "입찰 리포트" : getReportTypeLabel(sourceType ?? "");
-              const badge: NewsCardBadge = isFree ? "free" : "premium";
               return (
                 <li key={post.id}>
                   <NewsCard
@@ -218,8 +215,9 @@ export default async function NewsPage({
                           )
                         : ""
                     }
-                    badge={badge}
                     categoryTag={categoryTag}
+                    reportHero
+                    accentSeed={post.published_at ?? post.id}
                   />
                 </li>
               );

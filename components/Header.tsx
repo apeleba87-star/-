@@ -20,6 +20,7 @@ import {
 import { createClient } from "@/lib/supabase";
 import HeaderAuth from "./HeaderAuth";
 import HeaderAdminLink from "./HeaderAdminLink";
+import TenderFocusNavChip from "./TenderFocusNavChip";
 
 const navItems: { href: string; label: string; Icon: typeof Home; adminOnly?: boolean; showWhenLoggedIn?: boolean }[] = [
   { href: "/", label: "홈", Icon: Home },
@@ -107,8 +108,8 @@ export default function Header() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <div className="mx-auto flex h-14 min-h-[56px] max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
-          <Link href="/" className="flex min-h-[44px] items-center gap-2 touch-manipulation">
+        <div className="mx-auto flex h-14 min-h-[56px] max-w-6xl items-center justify-between gap-1.5 px-3 xs:gap-2 xs:px-4 sm:px-6">
+          <Link href="/" className="flex min-h-[44px] min-w-0 max-w-[65%] items-center gap-1.5 touch-manipulation xs:max-w-none xs:gap-2">
             <motion.span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-md"
               whileHover={{ scale: 1.05 }}
@@ -116,8 +117,14 @@ export default function Header() {
             >
               C
             </motion.span>
-            <span className="hidden font-bold text-slate-800 sm:inline">클린아이덱스</span>
+            <span className="hidden truncate text-sm font-bold text-slate-800 xs:inline sm:text-base">
+              클린아이덱스
+            </span>
           </Link>
+
+          <div className="hidden shrink-0 lg:block">
+            <TenderFocusNavChip />
+          </div>
 
           {/* PC: 가로 네비 */}
           <nav className="hidden items-center gap-0.5 lg:flex" aria-label="메인 메뉴">
@@ -216,7 +223,7 @@ export default function Header() {
               role="dialog"
               aria-modal="true"
               aria-label="메뉴"
-              className="fixed right-0 top-0 z-[70] flex h-full w-full max-w-[320px] flex-col border-l border-white/20 bg-white/95 shadow-2xl backdrop-blur-xl md:hidden"
+              className="fixed right-0 top-0 z-[70] flex h-full w-[min(100%,360px)] max-w-full flex-col border-l border-white/20 bg-white/95 pt-[env(safe-area-inset-top,0px)] shadow-2xl backdrop-blur-xl md:hidden"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}

@@ -217,7 +217,7 @@ export default async function HomePage() {
         userStatsSlot={userStatsSlot}
       />
 
-      <div className="mx-auto w-full max-w-2xl px-4 pt-2 pb-10 sm:px-6 sm:pb-12">
+      <div className="mx-auto w-full max-w-2xl min-w-0 px-3 pt-2 pb-10 xs:px-4 sm:px-6 sm:pb-12">
         {(ads.premium_banner?.enabled && (ads.premium_banner.campaign || ads.premium_banner.script_content)) ? (
           <AdSlotRenderer slot={ads.premium_banner} variant="banner" />
         ) : null}
