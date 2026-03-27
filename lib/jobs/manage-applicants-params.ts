@@ -4,8 +4,10 @@ export type ApplicantsPeriod = "upcoming" | "past" | "all";
 export type ApplicantsSort = "applied_desc" | "work_desc" | "work_asc";
 export type ApplicantsStatusFilter = "all" | "pending" | "accepted" | "no_show_reported";
 
-export const MANAGE_APPLICANTS_PAGE_SIZE = 25;
+export const MANAGE_APPLICANTS_PAGE_SIZE = 10;
 export const MANAGE_APPLICANTS_FETCH_CAP = 4000;
+/** 과거 현장 + 작업일 정렬 시 DB에서 가져오는 상한 (메모리 정렬 부담 완화) */
+export const MANAGE_APPLICANTS_FETCH_CAP_PAST = 1200;
 
 export type ManageApplicantsParsedParams = {
   q: string;

@@ -5,6 +5,7 @@ import type { ManageApplicantRow } from "@/components/jobs/ManageApplicantsView"
 import type { ApplicationStatus } from "@/lib/jobs/types";
 import {
   MANAGE_APPLICANTS_FETCH_CAP,
+  MANAGE_APPLICANTS_FETCH_CAP_PAST,
   MANAGE_APPLICANTS_PAGE_SIZE,
   type ManageApplicantsParsedParams,
 } from "@/lib/jobs/manage-applicants-params";
@@ -124,14 +125,28 @@ export async function loadManageApplicantsData(opts: {
   params: ManageApplicantsParsedParams;
   /** For global pending / total counts (all posts owned by user). */
   allPositionIds: string[];
+  /** When set, skip counting via allPositionIds (scoped 메타 로드 시 전체 건수 유지). */
+  ownerApplicationTotals?: { totalAll: number; pendingTotal: number };
 }): Promise<ManageApplicantsDataResult> {
-  const { authSupabase, supabasePublic, jobPosts, positions, categoryMap, params, allPositionIds } = opts;
+  const {
+    authSupabase,
+    supabasePublic,
+    jobPosts,
+    positions,
+    categoryMap,
+    params,
+    allPositionIds,
+    ownerApplicationTotals,
+  } = opts;
   const todayStr = getKstTodayString();
   const pageSize = MANAGE_APPLICANTS_PAGE_SIZE;
 
   let pendingTotal = 0;
   let totalAll = 0;
-  if (allPositionIds.length > 0) {
+  if (ownerApplicationTotals) {
+    totalAll = ownerApplicationTotals.totalAll;
+    pendingTotal = ownerApplicationTotals.pendingTotal;
+  } else if (allPositionIds.length > 0) {
     const { count: cAll } = await authSupabase
       .from("job_applications")
       .select("id", { count: "exact", head: true })
@@ -265,12 +280,11 @@ export async function loadManageApplicantsData(opts: {
     dataQ = dataQ.eq("status", "no_show_reported");
   }
   if (searchUserIds) dataQ = dataQ.in("user_id", searchUserIds);
-  const { data: batchRaw, error: batchErr } = await dataQ
-    .order("created_at", { ascending: false })
-    .limit(MANAGE_APPLICANTS_FETCH_CAP);
+  const memCap = params.period === "past" ? MANAGE_APPLICANTS_FETCH_CAP_PAST : MANAGE_APPLICANTS_FETCH_CAP;
+  const { data: batchRaw, error: batchErr } = await dataQ.order("created_at", { ascending: false }).limit(memCap);
   if (batchErr) throw batchErr;
   const batch = (batchRaw ?? []) as AppRow[];
-  if (totalFiltered > MANAGE_APPLICANTS_FETCH_CAP) {
+  if (totalFiltered > memCap) {
     hitFetchCap = true;
   }
 

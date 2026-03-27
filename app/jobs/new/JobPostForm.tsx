@@ -816,6 +816,12 @@ function WageInsightPanel({
     recommendedMin: number | null;
     recommendedMax: number | null;
     deltaPercent: number | null;
+    p25: number | null;
+    p50: number | null;
+    p75: number | null;
+    percentile: number | null;
+    riskLabel: string;
+    confidenceLabel: "표본 적음" | "표본 보통" | "표본 충분";
   };
 
   const [isPaidLive, setIsPaidLive] = useState(premiumAccess);
@@ -879,15 +885,30 @@ function WageInsightPanel({
       return m ? Number(m[0]) : 0;
     })();
   const sampleToneClass = sampleCount >= 40 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600";
+  const sampleBadgeText = sampleCount > 0 ? `참고 ${sampleCount}건` : "참고 데이터 없음";
+  const deltaPercent =
+    detailed?.deltaPercent ??
+    (payAmount > 0 && freeAvg != null && freeAvg > 0
+      ? Number((((payAmount - freeAvg) / freeAvg) * 100).toFixed(1))
+      : null);
+  const deltaBadgeClass =
+    deltaPercent == null
+      ? "bg-slate-100 text-slate-500"
+      : deltaPercent > 0
+        ? "bg-blue-600 text-white"
+        : deltaPercent < 0
+          ? "bg-rose-600 text-white"
+          : "bg-slate-700 text-white";
 
   async function grantUnlock() {
     setError(null);
-    const shareText = "오늘 단가 인사이트를 확인하려고 공유합니다.";
+    const shareTitle = "내 일당, 업계 평균보다 낮을 수 있습니다";
+    const shareText = ["업계 평균 대비 내 위치 확인", "사람 잘 구하는 단가까지 바로 확인", "", "👇 지금 확인"].join("\n");
     try {
       if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({ text: shareText, url: window.location.href });
+        await navigator.share({ title: shareTitle, text: shareText, url: window.location.href });
       } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(`${shareText} ${window.location.href}`);
+        await navigator.clipboard.writeText(`👉 ${shareTitle}\n\n${shareText}\n${window.location.href}`);
       }
     } catch {
       // 공유 UI 취소해도 버튼 요청은 진행.
@@ -929,43 +950,63 @@ function WageInsightPanel({
   }
 
   return (
-    <div className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-blue-600" aria-hidden />
-          <p className="text-sm font-semibold text-slate-800">일당 인사이트</p>
-        </div>
-        {sampleLabel ? (
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${sampleToneClass}`}>{sampleLabel}</span>
-        ) : null}
+    <div className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+          <BarChart3 className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <p className="text-base font-semibold text-slate-900">일당 가이드</p>
       </div>
+      <p className="mt-1.5 text-xs text-slate-600">복잡한 통계 대신, 지금 입력한 금액이 적정한지 간단히 보여드려요.</p>
 
-      <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-        <p className="text-[12px] text-slate-500">기준 평균</p>
-        <p className="mt-0.5 text-base font-semibold text-slate-900">
+      <div className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-slate-600">보편 일당</p>
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${sampleToneClass}`}>{sampleBadgeText}</span>
+        </div>
+        <p className="mt-1.5 text-3xl font-extrabold tracking-tight text-indigo-600">
           {loading ? "불러오는 중..." : freeAvg ? formatAmountWon(freeAvg) : "표본 부족"}
         </p>
         {payAmount > 0 && (
-          <p className="mt-1 text-xs text-slate-600">
-            내 입력 금액 {formatAmountWon(payAmount)}
-            {detailed?.deltaPercent != null ? ` · 평균 대비 ${detailed.deltaPercent > 0 ? "+" : ""}${detailed.deltaPercent}%` : ""}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-lg bg-white px-2.5 py-2 text-xs">
+            <p className="text-slate-600">
+              입력한 일당 <strong>{formatAmountWon(payAmount)}</strong>
+            </p>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${deltaBadgeClass}`}>
+              {deltaPercent == null ? "비교 대기" : `${deltaPercent > 0 ? "+" : ""}${deltaPercent}%`}
+            </span>
+          </div>
         )}
       </div>
 
       {detailed && (
-        <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2.5 text-sm text-slate-700">
-          <p className="font-medium text-emerald-900">
-            추천 범위 {detailed.recommendedMin ? formatAmountWon(detailed.recommendedMin) : "-"} ~{" "}
+        <div className="mt-3 rounded-xl border border-emerald-300 bg-gradient-to-br from-emerald-500 to-teal-400 px-3 py-3 text-white shadow-sm">
+          <p className="text-sm font-semibold">권장 일당</p>
+          <p className="mt-1.5 text-2xl font-extrabold tracking-tight">
+            {detailed.recommendedMin ? formatAmountWon(detailed.recommendedMin) : "-"} ~{" "}
             {detailed.recommendedMax ? formatAmountWon(detailed.recommendedMax) : "-"}
           </p>
-          <p className="mt-1 text-xs text-slate-600">기준: {detailed.sampleBasis} · 표본 {detailed.sampleCount}건</p>
+          <p className="mt-1 text-xs text-emerald-50">비슷한 조건 공고에서 반응이 좋았던 구간이에요.</p>
+          <ul className="mt-2 space-y-1 text-xs leading-4 text-emerald-50">
+            <li>
+              •{" "}
+              {payAmount > 0 && detailed.recommendedMin && detailed.recommendedMax
+                ? payAmount < detailed.recommendedMin
+                  ? "현재 입력 금액은 권장 범위보다 낮아요."
+                  : payAmount > detailed.recommendedMax
+                    ? "현재 입력 금액은 권장 범위보다 높아요."
+                    : "현재 입력 금액은 권장 범위 안에 있어요."
+                : "입력한 금액이 권장 범위에 맞는지 확인해 보세요."}
+            </li>
+            <li>• 최근 비슷한 작업 일당 기준 {detailed.sampleCount}건입니다.</li>
+            {detailed.confidenceLabel === "표본 적음" ? <li>• 표본이 적어 참고용으로 확인해 주세요.</li> : null}
+          </ul>
         </div>
       )}
 
       {!detailed && (
         <div
-          className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+          className={`mt-2.5 rounded-lg border px-2.5 py-2 text-xs ${
             unlockState === "premium"
               ? "border-emerald-200 bg-emerald-50 text-emerald-800"
               : unlockState === "ready"
@@ -977,41 +1018,41 @@ function WageInsightPanel({
         >
           {unlockState === "premium" && (
             <p className="flex items-center gap-1.5">
-              <Crown className="h-3.5 w-3.5" aria-hidden /> 프리미엄 회원은 상세 단가를 언제든 확인할 수 있습니다.
+              <Crown className="h-3.5 w-3.5" aria-hidden /> 프리미엄 회원은 권장 일당을 바로 확인할 수 있어요.
             </p>
           )}
-          {unlockState === "ready" && <p>오늘 상세 열람 1회가 준비되었습니다.</p>}
-          {unlockState === "used" && <p>오늘 열람을 완료했어요. 내일 다시 열 수 있습니다.</p>}
+          {unlockState === "ready" && <p>오늘 1회 무료로 권장 일당을 볼 수 있어요.</p>}
+          {unlockState === "used" && <p>오늘 1회 확인을 완료했어요. 내일 다시 열 수 있어요.</p>}
           {unlockState === "locked" && (
             <p className="flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5" aria-hidden /> 오늘 1회 공유 시 상세 단가를 확인할 수 있어요.
+              <Lock className="h-3.5 w-3.5" aria-hidden /> 공유하면 오늘 1회 권장 일당을 확인할 수 있어요.
             </p>
           )}
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:gap-2.5">
         {unlockState === "locked" && (
           <button
             type="button"
             onClick={grantUnlock}
-            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 sm:px-3.5"
+            className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 sm:px-3"
           >
-            공유하고 오늘 1회 열기
+            공유하고 1회 확인
           </button>
         )}
         {(unlockState === "premium" || unlockState === "ready") && !detailed && (
           <button
             type="button"
             onClick={consumeAndOpen}
-            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700 sm:px-3.5"
+            className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 sm:px-3"
           >
-            상세 보기
+            권장 일당 보기
           </button>
         )}
         {!isPaidLive && (
           <Link href="/subscribe" className="text-xs font-medium text-blue-600 hover:underline">
-            프리미엄으로 항상 상세 보기
+            프리미엄으로 항상 보기
           </Link>
         )}
       </div>

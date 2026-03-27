@@ -20,11 +20,11 @@ function toNumber(v: number | string | null | undefined): number | null {
 function bucketLabel(b: Bucket): string {
   switch (b) {
     case "region_skill":
-      return "지역+숙련도";
+      return "지역·숙련도";
     case "region":
       return "지역";
     case "nation_skill":
-      return "전국+숙련도";
+      return "전국·숙련도";
     default:
       return "전국";
   }
@@ -41,6 +41,21 @@ function quantile(sorted: number[], q: number): number {
   return sorted[base];
 }
 
+function percentileRank(sorted: number[], value: number): number {
+  if (sorted.length === 0) return 0;
+  let lessOrEqual = 0;
+  for (const v of sorted) {
+    if (v <= value) lessOrEqual += 1;
+  }
+  return Math.round((lessOrEqual / sorted.length) * 100);
+}
+
+function confidenceLabel(sampleCount: number): "표본 적음" | "표본 보통" | "표본 충분" {
+  if (sampleCount >= 30) return "표본 충분";
+  if (sampleCount >= 10) return "표본 보통";
+  return "표본 적음";
+}
+
 export type FreeInsight = {
   avg: number | null;
   sampleCount: number;
@@ -54,6 +69,12 @@ export type DetailedInsight = {
   recommendedMin: number | null;
   recommendedMax: number | null;
   deltaPercent: number | null;
+  p25: number | null;
+  p50: number | null;
+  p75: number | null;
+  percentile: number | null;
+  riskLabel: string;
+  confidenceLabel: "표본 적음" | "표본 보통" | "표본 충분";
 };
 
 async function fetchSamples(
@@ -134,8 +155,11 @@ export async function getFreeWageInsightByJobTypeKey(
   const samples = await fetchSamples(supabase, sub.id);
   const wages = extractWages(samples);
   if (wages.length === 0) return { avg: null, sampleCount: 0, sampleLabel: "표본 없음" };
-  const avg = Math.round(wages.reduce((a, b) => a + b, 0) / wages.length);
-  const label = wages.length >= 40 ? "표본 40+ (신뢰도 높음)" : `표본 ${wages.length}건 (참고용)`;
+  const sorted = [...wages].sort((a, b) => a - b);
+  // 무료 노출 기준값은 이상치 영향이 적은 중앙값(p50)을 사용한다.
+  const avg = Math.round(quantile(sorted, 0.5));
+  const conf = confidenceLabel(wages.length);
+  const label = conf === "표본 충분" ? `표본 ${wages.length}건 (신뢰도 높음)` : `표본 ${wages.length}건 (참고용)`;
   return { avg, sampleCount: wages.length, sampleLabel: label };
 }
 
@@ -156,6 +180,12 @@ export async function getDetailedWageInsightByJobTypeKey(params: {
       recommendedMin: null,
       recommendedMax: null,
       deltaPercent: null,
+      p25: null,
+      p50: null,
+      p75: null,
+      percentile: null,
+      riskLabel: "표본이 부족합니다.",
+      confidenceLabel: "표본 적음",
     };
   }
 
@@ -175,6 +205,12 @@ export async function getDetailedWageInsightByJobTypeKey(params: {
       recommendedMin: null,
       recommendedMax: null,
       deltaPercent: null,
+      p25: null,
+      p50: null,
+      p75: null,
+      percentile: null,
+      riskLabel: "표본이 부족합니다.",
+      confidenceLabel: "표본 적음",
     };
   }
 
@@ -188,16 +224,25 @@ export async function getDetailedWageInsightByJobTypeKey(params: {
       if (bucket === "nation_skill") return sameSkill;
       return true;
     });
-
-  const order: Bucket[] = ["region_skill", "region", "nation_skill", "nation"];
+  const order: Array<{ key: Bucket; min: number }> = [
+    { key: "region_skill", min: 10 },
+    { key: "region", min: 15 },
+    { key: "nation_skill", min: 20 },
+    { key: "nation", min: 25 },
+  ];
   let chosen: Bucket = "nation";
   let chosenRows: WageSampleRow[] = [];
   for (const b of order) {
-    const rows = byBucket(b);
-    if (rows.length > 0) {
-      chosen = b;
+    const rows = byBucket(b.key);
+    if (rows.length >= b.min) {
+      chosen = b.key;
       chosenRows = rows;
       break;
+    }
+    if (chosenRows.length === 0 && rows.length > 0) {
+      // 최소 표본에 못 미치더라도, 가능한 가장 구체적인 버킷을 우선 보관.
+      chosen = b.key;
+      chosenRows = rows;
     }
   }
 
@@ -210,22 +255,48 @@ export async function getDetailedWageInsightByJobTypeKey(params: {
       recommendedMin: null,
       recommendedMax: null,
       deltaPercent: null,
+      p25: null,
+      p50: null,
+      p75: null,
+      percentile: null,
+      riskLabel: "표본이 부족합니다.",
+      confidenceLabel: "표본 적음",
     };
   }
-  const avg = Math.round(wages.reduce((a, b) => a + b, 0) / wages.length);
+
   const sorted = [...wages].sort((a, b) => a - b);
   const q1 = quantile(sorted, 0.25);
+  const q2 = quantile(sorted, 0.5);
   const q3 = quantile(sorted, 0.75);
   const recommendedMin = Math.round(q1);
   const recommendedMax = Math.round(q3);
-  const deltaPercent = currentPayAmount > 0 ? Number((((currentPayAmount - avg) / avg) * 100).toFixed(1)) : null;
+  const center = q2 > 0 ? q2 : 0;
+  const avg = Math.round(q2);
+  const deltaPercent = center > 0 ? Number((((currentPayAmount - center) / center) * 100).toFixed(1)) : null;
+  const percentile = percentileRank(sorted, currentPayAmount);
+  const confLabel = confidenceLabel(wages.length);
+  const sampleBasis = `${bucketLabel(chosen)} · 최근 표본`;
+  let riskLabel = "적정 범위에 가깝습니다.";
+  if (wages.length < 10) {
+    riskLabel = "표본이 적어 참고용으로 확인해 주세요.";
+  } else if (percentile < 25) {
+    riskLabel = "지원자 부족 가능성이 있습니다.";
+  } else if (percentile > 75) {
+    riskLabel = "비용 과다 가능성이 있습니다.";
+  }
   return {
     avg,
     sampleCount: wages.length,
-    sampleBasis: bucketLabel(chosen),
+    sampleBasis,
     recommendedMin,
     recommendedMax,
     deltaPercent,
+    p25: Math.round(q1),
+    p50: Math.round(q2),
+    p75: Math.round(q3),
+    percentile,
+    riskLabel,
+    confidenceLabel: confLabel,
   };
 }
 
