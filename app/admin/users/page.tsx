@@ -1,4 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase-server";
+import Link from "next/link";
 
 const ROLE_LABEL: Record<string, string> = {
   subscriber: "구독자",
@@ -11,14 +12,39 @@ const PLAN_LABEL: Record<string, string> = {
   paid: "유료",
 };
 
-export default async function AdminUsersPage() {
+const PAGE_SIZE = 50;
+
+function parsePage(raw: Record<string, string | string[] | undefined>): number {
+  const p = typeof raw.page === "string" ? raw.page.trim() : "";
+  if (!p) return 1;
+  const n = parseInt(p, 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const page = parsePage(params);
   const supabase = await createServerSupabase();
+
+  const { count: totalCount } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true });
+
+  const total = totalCount ?? 0;
+  const pageCount = total === 0 ? 1 : Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const from = (safePage - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
 
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, email, display_name, role, subscription_plan, phone, onboarding_done, created_at, updated_at")
     .order("created_at", { ascending: false })
-    .limit(500);
+    .range(from, to);
 
   if (error) {
     return (
@@ -35,7 +61,7 @@ export default async function AdminUsersPage() {
     <div>
       <h1 className="mb-2 text-2xl font-bold text-slate-900">사용자 관리</h1>
       <p className="mb-6 text-sm text-slate-600">
-        가입된 회원 목록입니다. 이메일·닉네임·역할·가입일 등을 확인할 수 있습니다.
+        가입된 회원 목록입니다. 이메일·닉네임·역할·가입일 등을 확인할 수 있습니다. (총 {total}명)
       </p>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -101,9 +127,34 @@ export default async function AdminUsersPage() {
         </table>
       </div>
 
-      {list.length >= 500 && (
-        <p className="mt-3 text-xs text-slate-500">최근 500명만 표시됩니다. 더 보려면 검색/필터 기능을 추가할 수 있습니다.</p>
-      )}
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-slate-500">
+          {(total === 0 ? 0 : from + 1)}-{Math.min(to + 1, total)} / {total}
+        </p>
+        <div className="flex items-center gap-2">
+          <Link
+            href={safePage <= 1 ? "/admin/users" : `/admin/users?page=${safePage - 1}`}
+            className={`rounded-lg border px-3 py-1.5 text-sm ${
+              safePage <= 1
+                ? "pointer-events-none border-slate-200 text-slate-300"
+                : "border-slate-300 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            이전
+          </Link>
+          <span className="text-sm text-slate-600">{safePage} / {pageCount}</span>
+          <Link
+            href={safePage >= pageCount ? `/admin/users?page=${pageCount}` : `/admin/users?page=${safePage + 1}`}
+            className={`rounded-lg border px-3 py-1.5 text-sm ${
+              safePage >= pageCount
+                ? "pointer-events-none border-slate-200 text-slate-300"
+                : "border-slate-300 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            다음
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

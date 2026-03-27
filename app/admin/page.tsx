@@ -10,17 +10,23 @@ export default async function AdminDashboardPage() {
     { count: queueCount },
     { count: ugcPending },
     { count: reportsCount },
+    { count: usersCount },
   ] = await Promise.all([
     supabase.from("posts").select("*", { count: "exact", head: true }),
     supabase.from("newsletter_queue").select("*", { count: "exact", head: true }).is("used_in_issue_id", null),
     supabase.from("ugc").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("reports").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("profiles").select("*", { count: "exact", head: true }),
   ]);
 
   return (
     <div>
       <h1 className="mb-8 text-2xl font-bold text-slate-900">관리자 대시보드</h1>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Link href="/admin/users" className="card block hover:border-blue-200">
+          <h3 className="text-sm font-medium text-slate-500">총 사용자</h3>
+          <p className="mt-1 text-2xl font-bold text-slate-800">{usersCount ?? 0}명</p>
+        </Link>
         <Link href="/admin/posts" className="card block hover:border-blue-200">
           <h3 className="text-sm font-medium text-slate-500">글</h3>
           <p className="mt-1 text-2xl font-bold text-slate-800">{postsCount ?? 0}개</p>
