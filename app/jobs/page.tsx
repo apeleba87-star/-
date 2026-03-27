@@ -12,7 +12,7 @@ import {
   type SortOption,
   type JobsListSearchParams,
 } from "@/lib/jobs/job-list-options";
-import { getJobsHeadlineDailyWageStats } from "@/lib/jobs/daily-wage-stats";
+import { getCachedJobsHeadlineDailyWageStats } from "@/lib/jobs/jobs-headline-wage-cache";
 import { getKstTodayString, getKstTomorrowString, addDaysToDateString } from "@/lib/jobs/kst-date";
 import { buildOpenVisibleJobsOrFilter } from "@/lib/jobs/visibility";
 import { getActiveJobsAds } from "@/lib/ads";
@@ -241,21 +241,25 @@ export default async function JobsListPage({
   }
 
   const ownerIds = [...new Set((jobPosts ?? []).map((p) => p.user_id).filter(Boolean))] as string[];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .in("id", ownerIds.length ? ownerIds : ["00000000-0000-0000-0000-000000000000"]);
+  const idPlaceholder = "00000000-0000-0000-0000-000000000000";
+  const ownerIdList = ownerIds.length ? ownerIds : [idPlaceholder];
+  const postIdList = postIds.length ? postIds : [idPlaceholder];
+
+  const [{ data: profiles }, { data: positions }, { data: categories }] = await Promise.all([
+    supabase.from("profiles").select("id, display_name").in("id", ownerIdList),
+    supabase
+      .from("job_post_positions")
+      .select(
+        "id, job_post_id, category_main_id, category_sub_id, custom_subcategory_text, job_type_input, normalized_job_type_key, skill_level, required_count, filled_count, pay_amount, pay_unit, normalized_daily_wage, status"
+      )
+      .in("job_post_id", postIdList)
+      .order("sort_order", { ascending: true }),
+    supabase.from("categories").select("id, name, parent_id").in("usage", ["job", "default"]),
+  ]);
+
   const nicknameByOwner = new Map(
     (profiles ?? []).map((p) => [p.id, (p.display_name ?? "").trim()])
   );
-
-  const { data: positions } = await supabase
-    .from("job_post_positions")
-    .select("id, job_post_id, category_main_id, category_sub_id, custom_subcategory_text, job_type_input, normalized_job_type_key, skill_level, required_count, filled_count, pay_amount, pay_unit, normalized_daily_wage, status")
-    .in("job_post_id", postIds)
-    .order("sort_order", { ascending: true });
-
-  const { data: categories } = await supabase.from("categories").select("id, name, parent_id").in("usage", ["job", "default"]);
 
   const categoryMap = new Map<string, string>();
   for (const c of categories ?? []) {
@@ -346,13 +350,24 @@ export default async function JobsListPage({
     return undefined;
   }
 
-  const hasFilteredPosts = sortedPosts.length > 0;
-  const { avgDailyWage, sampleCount } = await getJobsHeadlineDailyWageStats(supabase);
+  const positionIdsForMyPosts = (positions ?? [])
+    .filter((p) => postIds.includes(p.job_post_id))
+    .map((p) => p.id);
+  const myAppsFetch =
+    user && positionIdsForMyPosts.length > 0
+      ? authSupabase
+          .from("job_applications")
+          .select("position_id, status")
+          .eq("user_id", user.id)
+          .in("position_id", positionIdsForMyPosts)
+      : Promise.resolve({ data: [] as { position_id: string; status: string }[] | null });
 
-  const { data: countRows } = await supabase.rpc(
-    "get_job_post_application_counts",
-    { post_ids: postIds }
-  );
+  const [{ avgDailyWage, sampleCount }, { data: countRows }, myAppRes] = await Promise.all([
+    getCachedJobsHeadlineDailyWageStats(),
+    supabase.rpc("get_job_post_application_counts", { post_ids: postIds }),
+    myAppsFetch,
+  ]);
+
   const applicationCountByPost = new Map(
     (countRows ?? []).map((r: { job_post_id: string; application_count: number }) => [
       r.job_post_id,
@@ -361,43 +376,35 @@ export default async function JobsListPage({
   );
 
   let myStatusByPostId = new Map<string, string>();
-  if (user && (jobPosts?.length ?? 0) > 0) {
-    const positionIdsForMyPosts = (positions ?? [])
-      .filter((p) => postIds.includes(p.job_post_id))
-      .map((p) => p.id);
-    if (positionIdsForMyPosts.length > 0) {
-      const { data: myAppDetails } = await authSupabase
-        .from("job_applications")
-        .select("position_id, status")
-        .eq("user_id", user.id)
-        .in("position_id", positionIdsForMyPosts);
-      const statusByPositionId = new Map((myAppDetails ?? []).map((a: { position_id: string; status: string }) => [a.position_id, a.status]));
-      const statusLabels: Record<string, string> = {
-        applied: "지원함",
-        reviewing: "검토 중",
-        accepted: "확정됨",
-        rejected: "거절됨",
-        cancelled: "취소함",
-        no_show_reported: "노쇼 발생",
-      };
-      // 내가 지원한 현장 목록에서는 노쇼 발생을 노출하지 않고 마감으로만 표시
-      const statusLabelsForApplicant: Record<string, string> = {
-        ...statusLabels,
-        no_show_reported: "마감",
-      };
-      const labels = filter === "applied" ? statusLabelsForApplicant : statusLabels;
-      for (const post of jobPosts ?? []) {
-        const posList = positionsByPost.get(post.id) ?? [];
-        for (const pos of posList) {
-          const st = statusByPositionId.get(pos.id);
-          if (st) {
-            myStatusByPostId.set(post.id, labels[st] ?? st);
-            break;
-          }
+  if (user && (jobPosts?.length ?? 0) > 0 && (myAppRes.data?.length ?? 0) > 0) {
+    const myAppDetails = myAppRes.data ?? [];
+    const statusByPositionId = new Map(myAppDetails.map((a) => [a.position_id, a.status]));
+    const statusLabels: Record<string, string> = {
+      applied: "지원함",
+      reviewing: "검토 중",
+      accepted: "확정됨",
+      rejected: "거절됨",
+      cancelled: "취소함",
+      no_show_reported: "노쇼 발생",
+    };
+    const statusLabelsForApplicant: Record<string, string> = {
+      ...statusLabels,
+      no_show_reported: "마감",
+    };
+    const labels = filter === "applied" ? statusLabelsForApplicant : statusLabels;
+    for (const post of jobPosts ?? []) {
+      const posList = positionsByPost.get(post.id) ?? [];
+      for (const pos of posList) {
+        const st = statusByPositionId.get(pos.id);
+        if (st) {
+          myStatusByPostId.set(post.id, labels[st] ?? st);
+          break;
         }
       }
     }
   }
+
+  const hasFilteredPosts = sortedPosts.length > 0;
 
   const skillLevelLabel: Record<string, string> = { expert: "숙련자(기공)", general: "일반(보조)" };
   type PositionRow = NonNullable<typeof positions>[number];

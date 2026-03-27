@@ -32,7 +32,9 @@ export default async function JobPostDetailPage({
   const supabase = createClient();
   const { data: post, error: postError } = await supabase
     .from("job_posts")
-    .select("*")
+    .select(
+      "id, user_id, title, status, region, district, address, work_date, start_time, end_time, contact_phone, description, is_external"
+    )
     .eq("id", id)
     .single();
 
@@ -47,79 +49,127 @@ export default async function JobPostDetailPage({
   const ref = typeof query.ref === "string" ? query.ref : "";
   const shareChannel = typeof query.channel === "string" ? query.channel : "unknown";
   if (!isOwner && ref === "job_share") {
-    try {
-      const service = createServiceSupabase();
-      await insertJobShareEvent({
-        supabase: service,
-        jobPostId: id,
-        ownerUserId: post.user_id,
-        actorUserId: user.id,
-        eventType: "share_open",
-        channel: shareChannel,
-        ref: "job_share_url",
-      });
-    } catch {
-      // 공유 유입 기록 실패는 페이지 렌더를 막지 않는다.
-    }
+    void (async () => {
+      try {
+        const service = createServiceSupabase();
+        await insertJobShareEvent({
+          supabase: service,
+          jobPostId: id,
+          ownerUserId: post.user_id,
+          actorUserId: user.id,
+          eventType: "share_open",
+          channel: shareChannel,
+          ref: "job_share_url",
+        });
+      } catch {
+        // 공유 유입 기록 실패는 페이지 렌더를 막지 않는다.
+      }
+    })();
   }
 
   const { data: positions } = await supabase
     .from("job_post_positions")
-    .select("*")
+    .select(
+      "id, job_post_id, category_main_id, category_sub_id, job_type_input, custom_subcategory_text, skill_level, required_count, filled_count, pay_amount, pay_unit, normalized_daily_wage, status, work_scope, notes"
+    )
     .eq("job_post_id", id)
     .order("sort_order", { ascending: true });
 
   const positionIds = (positions ?? []).map((p) => p.id);
+  const idPlaceholder = "00000000-0000-0000-0000-000000000000";
+  const positionIdList = positionIds.length ? positionIds : [idPlaceholder];
 
   const { data: applications } = await authSupabase
     .from("job_applications")
     .select("id, position_id, user_id, status")
-    .in("position_id", positionIds.length ? positionIds : ["00000000-0000-0000-0000-000000000000"]);
+    .in("position_id", positionIdList);
 
   const applicantUserIds = [...new Set((applications ?? []).map((a) => a.user_id))];
-  const { data: workerProfiles } = await supabase
-    .from("worker_profiles")
-    .select("user_id, nickname, birth_date, gender, bio, contact_phone")
-    .in("user_id", applicantUserIds.length ? applicantUserIds : ["00000000-0000-0000-0000-000000000000"]);
-
-  const profileByUser = new Map((workerProfiles ?? []).map((p) => [p.user_id, p]));
-
-  // 확정된 지원자 연락처(전화만, 이메일 제외): 구인자만 조회 가능(RLS).
-  let applicantContactByUser = new Map<string, { phone: string | null }>();
-  if (isOwner && applicantUserIds.length > 0) {
-    const { data: applicantProfiles } = await authSupabase
-      .from("profiles")
-      .select("id, phone")
-      .in("id", applicantUserIds);
-    applicantContactByUser = new Map(
-      (applicantProfiles ?? []).map((p) => [p.id, { phone: (p.phone ?? "").trim() || null }])
-    );
-  }
+  const applicantIdsForReport = applicantUserIds.length ? applicantUserIds : [idPlaceholder];
 
   const since = new Date();
   since.setDate(since.getDate() - REPORT_PERIOD_DAYS);
   const sinceIso = since.toISOString();
-  const applicantIdsForReport = applicantUserIds.length ? applicantUserIds : ["00000000-0000-0000-0000-000000000000"];
+  const regionFull = [post.region, post.district].filter(Boolean).join(" ").trim() || post.region;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: reports } = await supabase
-    .from("job_reports")
-    .select("reported_user_id")
-    .in("reported_user_id", applicantIdsForReport)
-    .gte("created_at", sinceIso)
-    .neq("status", "rescinded");
+  const applicantProfilesPromise =
+    isOwner && applicantUserIds.length > 0
+      ? authSupabase.from("profiles").select("id, phone").in("id", applicantUserIds)
+      : Promise.resolve({ data: [] as { id: string; phone: string | null }[] | null });
+
+  const [
+    { data: workerProfiles },
+    { data: reports },
+    { data: noShowReports },
+    { data: applicantProfiles },
+    myWorkerRes,
+    currentUserProfileRes,
+    { data: privateDetails },
+    { data: categories },
+    benchmarkRes,
+    { data: shareEvents },
+  ] = await Promise.all([
+    supabase
+      .from("worker_profiles")
+      .select("user_id, nickname, birth_date, gender, bio, contact_phone")
+      .in("user_id", applicantIdsForReport),
+    supabase
+      .from("job_reports")
+      .select("reported_user_id")
+      .in("reported_user_id", applicantIdsForReport)
+      .gte("created_at", sinceIso)
+      .neq("status", "rescinded"),
+    supabase
+      .from("job_reports")
+      .select("reported_user_id")
+      .eq("reason_type", "no_show")
+      .in("reported_user_id", applicantIdsForReport)
+      .gte("created_at", sinceIso)
+      .neq("status", "rescinded"),
+    applicantProfilesPromise,
+    user && !isOwner
+      ? authSupabase
+          .from("worker_profiles")
+          .select("nickname, birth_date, gender, contact_phone")
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    user && !isOwner
+      ? authSupabase.from("profiles").select("onboarding_done").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+    authSupabase
+      .from("job_post_private_details")
+      .select("full_address, contact_phone, access_instructions, parking_info, notes")
+      .eq("job_post_id", id)
+      .maybeSingle(),
+    supabase.from("categories").select("id, name").in("usage", ["job", "default"]),
+    (positions ?? []).length > 0
+      ? supabase
+          .from("market_benchmarks")
+          .select(
+            "category_main_id, category_sub_id, pay_unit, skill_level, sample_count, average_pay, average_normalized_daily_wage"
+          )
+          .eq("region", regionFull)
+      : Promise.resolve({ data: [] }),
+    authSupabase
+      .from("job_share_events")
+      .select("event_type")
+      .eq("owner_user_id", post.user_id)
+      .eq("job_post_id", id)
+      .gte("created_at", sevenDaysAgo),
+  ]);
+
+  const profileByUser = new Map((workerProfiles ?? []).map((p) => [p.user_id, p]));
+
+  const applicantContactByUser = new Map<string, { phone: string | null }>(
+    (applicantProfiles ?? []).map((p) => [p.id, { phone: (p.phone ?? "").trim() || null }])
+  );
 
   const reportCountByUser = new Map<string, number>();
   for (const r of reports ?? []) {
     reportCountByUser.set(r.reported_user_id, (reportCountByUser.get(r.reported_user_id) ?? 0) + 1);
   }
-
-  const { data: noShowReports } = await supabase
-    .from("job_reports")
-    .select("reported_user_id")
-    .eq("reason_type", "no_show")
-    .in("reported_user_id", applicantIdsForReport)
-    .gte("created_at", sinceIso)
-    .neq("status", "rescinded");
 
   const noShowCountByUser = new Map<string, number>();
   for (const r of noShowReports ?? []) {
@@ -164,14 +214,7 @@ export default async function JobPostDetailPage({
     user &&
     (applications ?? []).some((a) => a.user_id === user.id && a.status === "accepted");
 
-  const { data: myWorker } =
-    user && !isOwner
-      ? await authSupabase
-          .from("worker_profiles")
-          .select("nickname, birth_date, gender, contact_phone")
-          .eq("user_id", user.id)
-          .maybeSingle()
-      : { data: null };
+  const myWorker = myWorkerRes.data;
   const workerProfileComplete =
     (myWorker?.nickname ?? "").trim() !== "" &&
     myWorker?.birth_date != null &&
@@ -180,29 +223,12 @@ export default async function JobPostDetailPage({
     (myWorker.gender === "M" || myWorker.gender === "F") &&
     (myWorker?.contact_phone ?? "").trim() !== "";
 
-  const { data: currentUserProfile } =
-    user && !isOwner
-      ? await authSupabase.from("profiles").select("onboarding_done").eq("id", user.id).single()
-      : { data: null };
+  const currentUserProfile = currentUserProfileRes.data;
   const onboardingDone = currentUserProfile?.onboarding_done ?? false;
 
-  const { data: privateDetails } = await authSupabase
-    .from("job_post_private_details")
-    .select("full_address, contact_phone, access_instructions, parking_info, notes")
-    .eq("job_post_id", id)
-    .maybeSingle();
-  const { data: categories } = await supabase.from("categories").select("id, name").in("usage", ["job", "default"]);
   const categoryMap = new Map((categories ?? []).map((c) => [c.id, c.name]));
 
-  const regionFull = [post.region, post.district].filter(Boolean).join(" ").trim() || post.region;
-
-  const { data: benchmarkRows } =
-    (positions ?? []).length > 0
-      ? await supabase
-          .from("market_benchmarks")
-          .select("category_main_id, category_sub_id, pay_unit, skill_level, sample_count, average_pay, average_normalized_daily_wage")
-          .eq("region", regionFull)
-      : { data: [] };
+  const benchmarkRows = benchmarkRes.data;
 
   const benchmarkKey = (mainId: string, subId: string | null, unit: string, level: string) =>
     `${mainId}|${subId ?? ""}|${unit}|${level ?? ""}`;
@@ -258,13 +284,6 @@ export default async function JobPostDetailPage({
   const workDateFormatted = post.work_date
     ? new Date(post.work_date + "T12:00:00").toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })
     : null;
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: shareEvents } = await authSupabase
-    .from("job_share_events")
-    .select("event_type")
-    .eq("owner_user_id", post.user_id)
-    .eq("job_post_id", id)
-    .gte("created_at", sevenDaysAgo);
   const shareOpenCount = (shareEvents ?? []).filter((e) => e.event_type === "share_open").length;
   const shareApplyCount = (shareEvents ?? []).filter((e) => e.event_type === "share_apply").length;
 
