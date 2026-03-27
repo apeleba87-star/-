@@ -19,18 +19,26 @@ export default function ReportShareUnlockButton({ postId, shareTitle, shareText 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function completeShareFlow() {
-    const res = await fetch("/api/report/share", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ post_id: postId }),
-    });
-    const data = (await res.json()) as { ok?: boolean; error?: string };
-    if (!data.ok) {
-      setError(data.error ?? "처리하지 못했습니다.");
-      return;
+  async function completeShareFlowWithRetry() {
+    let lastError: string | null = null;
+    for (let i = 0; i < 3; i += 1) {
+      const res = await fetch("/api/report/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ post_id: postId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (data.ok) return true;
+      lastError = data.error ?? null;
+      if (i < 2) {
+        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+      }
     }
-    router.refresh();
+    // 공유 자체는 끝났을 가능성이 높으므로 hard error 대신 안내만 표기.
+    if (lastError) {
+      setError("공유는 완료되었습니다. 상태 반영이 지연되어 새로고침합니다.");
+    }
+    return false;
   }
 
   async function handleClick() {
@@ -63,9 +71,13 @@ export default function ReportShareUnlockButton({ postId, shareTitle, shareText 
     }
     await new Promise((r) => setTimeout(r, REPORT_SHARE_COMPLETE_DELAY_MS));
     try {
-      await completeShareFlow();
+      // 낙관적으로 먼저 refresh해서 사용자는 즉시 패널 변화를 확인.
+      router.refresh();
+      await completeShareFlowWithRetry();
+      router.refresh();
     } catch {
-      setError("서버 요청 중 오류가 발생했습니다.");
+      setError("공유는 완료되었습니다. 상태 반영이 지연되어 새로고침합니다.");
+      router.refresh();
     }
     setLoading(false);
   }

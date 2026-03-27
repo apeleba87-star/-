@@ -30,7 +30,9 @@ async function updateSession(req: NextRequest): Promise<NextResponse> {
     },
   });
 
-  await supabase.auth.getSession();
+  // getUser() triggers token revalidation/refresh more reliably than getSession()
+  // and helps avoid intermittent "logged out right after OAuth redirect" cases.
+  await supabase.auth.getUser();
   return response;
 }
 
