@@ -700,11 +700,26 @@ export default function DailyTenderReportDashboard({
               </p>
               {accessLevel === "free" && postId && (
                 <div className="mt-4 max-w-xl">
+                  {(() => {
+                    const shareMessage = [
+                      `👉 ${title}`,
+                      "",
+                      `입찰 ${count_total.toLocaleString()}건`,
+                      "✔ 바로 지원 가능한 것만 선별",
+                      "✔ 경쟁 낮은 건 포함",
+                      "",
+                      "오늘 안 보면 끝입니다",
+                      "",
+                      "👇 지금 확인",
+                    ].join("\n");
+                    return (
                   <ReportShareUnlockButton
                     postId={postId}
                     shareTitle={title}
-                    shareText={`${title} — 클린아이덱스 입찰 리포트`}
+                    shareText={shareMessage}
                   />
+                    );
+                  })()}
                 </div>
               )}
             </div>

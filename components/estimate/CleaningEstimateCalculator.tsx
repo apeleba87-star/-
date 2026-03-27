@@ -870,16 +870,8 @@ export default function CleaningEstimateCalculator({ config }: { config: Estimat
       </AnimatePresence>
 
       {/* 모바일 하단 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:hidden">
-        <a
-          href={KAKAO_CHAT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-medium text-slate-900"
-        >
-          무플 상담하기
-        </a>
-        <div className="min-w-0 flex-1 text-right text-sm">
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-end border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:hidden">
+        <div className="min-w-0 text-right text-sm">
           <p className="font-medium text-slate-800">
             {tab === "area" ? formatWon(areaMonthlyTotal) : formatWon(laborResult.recommendedTotal)}
           </p>

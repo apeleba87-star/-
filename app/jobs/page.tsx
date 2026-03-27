@@ -429,14 +429,7 @@ export default async function JobsListPage({
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
-            {avgDailyWage != null && sampleCount > 0 ? (
-              <p className="mt-0.5 text-sm text-slate-600">
-                일당 평균 <span className="font-semibold text-slate-800">{avgDailyWage.toLocaleString()}원</span>
-                <span className="text-slate-500"> (완료·엑셀 {sampleCount}건)</span>
-              </p>
-            ) : (
-              <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>
-            )}
+            <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>
           </div>
         </div>
         <AuthRequiredCta
