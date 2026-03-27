@@ -39,7 +39,7 @@ function formatPhoneInput(value: string): string {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
-/** 금액 입력: 190,000 형식 표시 (문자열로 표시용) */
+/** 금액 입력: 100,000 형식 표시 (문자열로 표시용) */
 function formatAmountDisplay(value: number | string | null | undefined): string {
   if (value === "" || value === null || value === undefined) return "";
   const n = typeof value === "string" ? parseInt(value.replace(/\D/g, ""), 10) : Number(value);
@@ -53,7 +53,7 @@ function parseAmountInput(value: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
-/** 금액 표기: 190,000원 */
+/** 금액 표기: 100,000원 */
 function formatAmountWon(n: number): string {
   return `${Number(n).toLocaleString("ko-KR")}원`;
 }
@@ -77,8 +77,9 @@ export type EditInitialData = {
 };
 
 type Props = {
-  mainCategories: { id: string }[];
+  mainCategories: { id: string; name: string; sort_order?: number }[];
   subCategories: unknown[];
+  jobTypePresets?: { key: string; label: string; sort_order?: number; is_active?: boolean }[];
   initialData?: EditInitialData;
   jobPostId?: string;
   companyProfileComplete?: boolean;
@@ -105,6 +106,7 @@ const defaultPosition: PositionInput = {
 export default function JobPostForm({
   mainCategories,
   subCategories,
+  jobTypePresets = [],
   initialData,
   jobPostId,
   companyProfileComplete = true,
@@ -145,6 +147,15 @@ export default function JobPostForm({
     initialData?.positions ?? [{ ...defaultPosition }]
   );
   const [expandPrivateBlock, setExpandPrivateBlock] = useState(true);
+  const effectiveJobTypePresets = useMemo(() => {
+    const rows = (jobTypePresets ?? []).filter((p) => p.key && p.label);
+    if (rows.length > 0) {
+      return [...rows].sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.label.localeCompare(b.label)
+      );
+    }
+    return JOB_TYPE_PRESETS.map((p, idx) => ({ key: p.key, label: p.label, sort_order: idx }));
+  }, [jobTypePresets]);
 
   const suggestedTitle = useMemo(() => {
     const regionPart = [regionSido, effectiveGugun].filter(Boolean).join(" ");
@@ -468,7 +479,7 @@ export default function JobPostForm({
         </StepSection>
 
         <StepSection step={2} title="모집 포지션">
-          <p className="mb-4 text-sm text-slate-600">직종, 인원, 급여(190,000원 형식)를 입력하세요.</p>
+          <p className="mb-4 text-sm text-slate-600">직종, 인원, 급여(100,000원 형식)를 입력하세요.</p>
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-slate-500">포지션을 추가해 모집 인원과 조건을 정하세요.</span>
             {!isEdit && (
@@ -487,6 +498,7 @@ export default function JobPostForm({
                 key={idx}
                 index={idx}
                 position={pos}
+                jobTypePresets={effectiveJobTypePresets}
                 inputClass={inputClass}
                 region={`${regionSido} ${effectiveGugun}`.trim()}
                 premiumAccess={premiumAccess}
@@ -610,6 +622,7 @@ export default function JobPostForm({
 function PositionFormBlock({
   index,
   position,
+  jobTypePresets,
   inputClass,
   region,
   premiumAccess,
@@ -619,6 +632,7 @@ function PositionFormBlock({
 }: {
   index: number;
   position: PositionInput;
+  jobTypePresets: { key: string; label: string; sort_order?: number }[];
   inputClass: string;
   region: string;
   premiumAccess: boolean;
@@ -627,6 +641,9 @@ function PositionFormBlock({
   onRemove?: () => void;
 }) {
   const isOther = position.job_type_key === JOB_TYPE_OTHER || !position.job_type_key;
+  const orderedPresets = [...jobTypePresets].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.label.localeCompare(b.label)
+  );
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -646,20 +663,21 @@ function PositionFormBlock({
       <div>
         <label className="block text-sm font-medium text-slate-700">어떤 작업인가요? *</label>
         <div className="mt-2 flex flex-wrap gap-2">
-          {JOB_TYPE_PRESETS.map((preset) => (
+          {orderedPresets.map((preset) => {
+            const active = position.job_type_key === preset.key;
+            return (
             <button
               key={preset.key}
               type="button"
               onClick={() => onUpdate({ job_type_key: preset.key, job_type_input: preset.label })}
               className={`rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
-                position.job_type_key === preset.key
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
               {preset.label}
             </button>
-          ))}
+            );
+          })}
           <button
             type="button"
             onClick={() => onUpdate({ job_type_key: JOB_TYPE_OTHER, job_type_input: position.job_type_input || "" })}
@@ -716,7 +734,7 @@ function PositionFormBlock({
             value={formatAmountDisplay(position.pay_amount)}
             onChange={(e) => onUpdate({ pay_amount: parseAmountInput(e.target.value) })}
             className={inputClass}
-            placeholder="190,000"
+            placeholder="100,000"
           />
           {position.pay_amount > 0 && (
             <p className="mt-0.5 text-xs text-slate-500">{formatAmountWon(position.pay_amount)} (지급 단위별)</p>

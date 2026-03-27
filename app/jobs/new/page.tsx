@@ -25,6 +25,12 @@ export default async function NewJobPostPage() {
     .eq("is_active", true)
     .in("usage", ["job", "default"])
     .order("sort_order", { ascending: true });
+  const { data: jobTypePresets } = await supabase
+    .from("job_type_presets")
+    .select("key, label, sort_order, is_active")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("label", { ascending: true });
 
   const list = categories ?? [];
   const mainCategories = list.filter((c) => c.parent_id == null);
@@ -70,6 +76,7 @@ export default async function NewJobPostPage() {
     <JobPostForm
       mainCategories={mainCategories}
       subCategories={subCategories}
+      jobTypePresets={(jobTypePresets ?? []) as { key: string; label: string; sort_order?: number; is_active?: boolean }[]}
       companyProfileComplete={companyProfileComplete}
       initialCompany={initialCompany}
       contactPhoneFromProfile={companyProfileComplete ? (initialCompany.contact_phone || null) : null}

@@ -1,10 +1,12 @@
-import { getCategories, getCategoryListingTypesMap } from "./actions";
+import { getCategories, getCategoryListingTypesMap, getJobCategoryReferences, getJobTypePresets } from "./actions";
 import CategoriesManager from "./CategoriesManager";
 
 export default async function AdminCategoriesPage() {
-  const [{ data: categories, error }, { data: listingTypesMap, error: ltError }] = await Promise.all([
+  const [{ data: categories, error }, { data: listingTypesMap, error: ltError }, { data: jobCategoryRefs }, { data: jobTypePresets }] = await Promise.all([
     getCategories(),
     getCategoryListingTypesMap(),
+    getJobCategoryReferences(),
+    getJobTypePresets(),
   ]);
 
   if (error) {
@@ -25,6 +27,8 @@ export default async function AdminCategoriesPage() {
       <CategoriesManager
         initialCategories={categories}
         initialCategoryListingTypes={ltError ? {} : (listingTypesMap ?? {})}
+        initialJobCategoryRefs={jobCategoryRefs ?? []}
+        initialJobTypePresets={jobTypePresets ?? []}
       />
     </div>
   );

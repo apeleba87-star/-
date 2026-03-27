@@ -48,6 +48,12 @@ export default async function JobPostEditPage({
     .eq("is_active", true)
     .in("usage", ["job", "default"])
     .order("sort_order", { ascending: true });
+  const { data: jobTypePresets } = await supabase
+    .from("job_type_presets")
+    .select("key, label, sort_order, is_active")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("label", { ascending: true });
 
   const list = categories ?? [];
   const mainCategories = list.filter((c) => c.parent_id == null);
@@ -90,6 +96,7 @@ export default async function JobPostEditPage({
       initialData={initialData}
       mainCategories={mainCategories}
       subCategories={subCategories}
+      jobTypePresets={(jobTypePresets ?? []) as { key: string; label: string; sort_order?: number; is_active?: boolean }[]}
       contactPhoneFromProfile={company?.contact_phone ?? null}
     />
   );

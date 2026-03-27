@@ -29,6 +29,22 @@ export async function resolveJobType(
       normalization_status: "manual_review",
     };
   }
+  const { data: presetRow } = await supabase
+    .from("job_type_presets")
+    .select("category_main_id, category_sub_id, label")
+    .eq("key", jobTypeKey)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+  if (presetRow?.category_main_id) {
+    return {
+      category_main_id: presetRow.category_main_id as string,
+      category_sub_id: (presetRow.category_sub_id as string | null) ?? null,
+      job_type_input: (presetRow.label as string) ?? inputText,
+      normalized_job_type_key: jobTypeKey,
+      normalization_status: "manual_mapped",
+    };
+  }
   const preset = JOB_TYPE_PRESETS.find((x) => x.key === jobTypeKey);
   if (!preset) {
     return {
