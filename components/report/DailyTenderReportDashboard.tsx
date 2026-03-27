@@ -702,8 +702,6 @@ export default function DailyTenderReportDashboard({
                 <div className="mt-4 max-w-xl">
                   {(() => {
                     const shareMessage = [
-                      `👉 ${title}`,
-                      "",
                       `입찰 ${count_total.toLocaleString()}건`,
                       "✔ 바로 지원 가능한 것만 선별",
                       "✔ 경쟁 낮은 건 포함",

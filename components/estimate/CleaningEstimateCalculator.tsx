@@ -34,7 +34,14 @@ import {
 } from "@/lib/estimate-calc";
 
 const KAKAO_CHAT_URL = process.env.NEXT_PUBLIC_KAKAO_CHAT_URL || "#";
-const SHARE_TEXT = "[내 단가 전략 점검 완료] 업계 평균 기준, 당신은 어디에 있나요?";
+const SHARE_TITLE = "내 단가, 평균보다 낮으면 계속 손해입니다";
+const SHARE_TEXT = [
+  "👉 내 단가, 평균보다 낮으면 계속 손해입니다",
+  "",
+  "업계 평균 대비 내 위치 확인",
+  "",
+  "👇 지금 확인",
+].join("\n");
 const STORAGE_KEY = "cleaning-estimate-daily-unlocks";
 
 function getDailyUnlocks(): { date: string; count: number } {
@@ -257,7 +264,7 @@ export default function CleaningEstimateCalculator({ config }: { config: Estimat
 
   function handleShareAndUnlock() {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    const shareTitle = SHARE_TEXT;
+    const shareTitle = SHARE_TITLE;
     const shareText = SHARE_TEXT;
     const shareMessage = `${SHARE_TEXT}\n${url}`;
 
