@@ -13,7 +13,8 @@ import HomeUserStatsSection from "@/components/home/HomeUserStatsSection";
 import HomeUserStatsSkeleton from "@/components/home/HomeUserStatsSkeleton";
 import HomeUserStatsGuestPlaceholder from "@/components/home/HomeUserStatsGuestPlaceholder";
 
-export const revalidate = 10;
+/** 홈은 집계 테이블·크론 갱신 위주라 30초 ISR로 원본 부하 완화 */
+export const revalidate = 30;
 
 const LISTING_DEAL_TYPES = ["referral_regular", "referral_one_time", "sale_regular", "subcontract"];
 

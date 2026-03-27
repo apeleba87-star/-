@@ -1,4 +1,5 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -7,17 +8,24 @@ import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getActivePostDetailAds } from "@/lib/ads";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
-import {
-  aggregateDailyTenders,
-  aggregateWeeklyTenders,
-  resolvePremiumAgencyAndBudgetBands,
-} from "@/lib/content/tender-report-queries";
+import { resolvePremiumAgencyAndBudgetBands } from "@/lib/content/tender-report-queries";
+import { getCachedDailyTenderPayload, getCachedWeeklyTenderPayload } from "@/lib/content/tender-report-cache";
 import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import { hasSubscriptionAccess } from "@/lib/subscription-access";
-import { ensureSharedRevealKeys, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
-import DailyTenderReportDashboard from "@/components/report/DailyTenderReportDashboard";
+import { ensureSharedRevealKeys, kstCalendarMinusDays, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import ReportPaywallLock from "@/components/report/ReportPaywallLock";
+
+const DailyTenderReportDashboard = dynamic(
+  () => import("@/components/report/DailyTenderReportDashboard"),
+  {
+    loading: () => (
+      <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-8 xs:px-4 sm:px-6">
+        <div className="h-72 animate-pulse rounded-2xl bg-slate-100/90 sm:h-96" />
+      </div>
+    ),
+  }
+);
 import ReportSnapshotView from "@/components/report/ReportSnapshotView";
 
 export const revalidate = 60;
@@ -85,7 +93,7 @@ export default async function PostPage({ params }: PostPageParams) {
       const reportDate = getReportDate(resolvedPost);
       if (reportDate) {
         try {
-          const payload = await aggregateDailyTenders(supabase, new Date(`${reportDate}T12:00:00Z`));
+          const payload = await getCachedDailyTenderPayload(reportDate);
           reportData = { payload, insightSentence: buildInsightSentence(payload) };
         } catch {
           reportData = null;
@@ -112,7 +120,7 @@ export default async function PostPage({ params }: PostPageParams) {
         const reportDate = getReportDate(slugPost);
         if (reportDate) {
           try {
-            const payload = await aggregateDailyTenders(supabase, new Date(`${reportDate}T12:00:00Z`));
+            const payload = await getCachedDailyTenderPayload(reportDate);
             reportData = { payload, insightSentence: buildInsightSentence(payload) };
           } catch {
             // keep null
@@ -120,13 +128,17 @@ export default async function PostPage({ params }: PostPageParams) {
         }
       }
     }
-    const reportAccess = await getReportAccess(slugPost, reportData, supabase);
-    const premiumInsights = await getPremiumInsights(supabase, reportData);
+    const [reportAccess, premiumInsights] = await Promise.all([
+      getReportAccess(slugPost, reportData, supabase),
+      getPremiumInsights(reportData),
+    ]);
     return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights);
   }
   await ensurePrivateAccess(post, authSupabase, user.id);
-  const reportAccess = await getReportAccess(post!, reportData, supabase);
-  const premiumInsights = await getPremiumInsights(supabase, reportData);
+  const [reportAccess, premiumInsights] = await Promise.all([
+    getReportAccess(post!, reportData, supabase),
+    getPremiumInsights(reportData),
+  ]);
   return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights);
 }
 
@@ -208,19 +220,20 @@ type PremiumInsights = {
   anomalies: string[];
 } | null;
 
-async function getPremiumInsights(
-  supabase: ReturnType<typeof createClient>,
-  reportData: ReportData | null
-): Promise<PremiumInsights> {
+async function getPremiumInsights(reportData: ReportData | null): Promise<PremiumInsights> {
   if (!reportData) return null;
   const baseDate = reportData.payload.date ? new Date(`${reportData.payload.date}T12:00:00Z`) : new Date();
-  const prevWeekDate = new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const baseYmd =
+    reportData.payload.date && /^\d{4}-\d{2}-\d{2}$/.test(reportData.payload.date)
+      ? reportData.payload.date
+      : getKstDateString(baseDate);
+  const prevYmd = kstCalendarMinusDays(baseYmd, 7);
   let currentWeekCount = 0;
   let prevWeekCount = 0;
   try {
     const [currentWeek, prevWeek] = await Promise.all([
-      aggregateWeeklyTenders(supabase, baseDate),
-      aggregateWeeklyTenders(supabase, prevWeekDate),
+      getCachedWeeklyTenderPayload(baseYmd),
+      getCachedWeeklyTenderPayload(prevYmd),
     ]);
     currentWeekCount = currentWeek.count_total;
     prevWeekCount = prevWeek.count_total;

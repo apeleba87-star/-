@@ -31,32 +31,6 @@ export default async function TendersDashboardPage({
   const in24h = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const in72h = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
-  const { count: todayCount } = await supabase
-    .from("tenders")
-    .select("*", { count: "exact", head: true })
-    .gte("bid_ntce_dt", today)
-    .lt("bid_ntce_dt", todayEnd);
-
-  const { count: todayCleanCount } = await supabase
-    .from("tenders")
-    .select("*", { count: "exact", head: true })
-    .gte("bid_ntce_dt", today)
-    .lt("bid_ntce_dt", todayEnd)
-    .contains("categories", ["cleaning"]);
-
-  const { count: todayDisinfectionCount } = await supabase
-    .from("tenders")
-    .select("*", { count: "exact", head: true })
-    .gte("bid_ntce_dt", today)
-    .lt("bid_ntce_dt", todayEnd)
-    .contains("categories", ["disinfection"]);
-
-  const { count: currentOpenBothCount } = await supabase
-    .from("tenders")
-    .select("*", { count: "exact", head: true })
-    .gt("bid_clse_dt", now)
-    .overlaps("categories", ["cleaning", "disinfection"]);
-
   let closingSoonQ = supabase
     .from("tenders")
     .select("id, bid_ntce_nm, ntce_instt_nm, bid_clse_dt, categories")
@@ -65,27 +39,53 @@ export default async function TendersDashboardPage({
     .order("bid_clse_dt", { ascending: true })
     .limit(50);
   closingSoonQ = applyCategoryFilter(closingSoonQ, category);
-  const { data: closingSoon } = await closingSoonQ;
 
-  const days: { date: string; count: number; cleanCount: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const start = d.toISOString().slice(0, 10);
-    const end = start + "T23:59:59.999Z";
-    const { count } = await supabase
+  const [
+    { count: todayCount },
+    { count: todayCleanCount },
+    { count: todayDisinfectionCount },
+    { count: currentOpenBothCount },
+    { data: closingSoon },
+  ] = await Promise.all([
+    supabase.from("tenders").select("*", { count: "exact", head: true }).gte("bid_ntce_dt", today).lt("bid_ntce_dt", todayEnd),
+    supabase
       .from("tenders")
       .select("*", { count: "exact", head: true })
-      .gte("bid_ntce_dt", start)
-      .lt("bid_ntce_dt", end);
-    const { count: relatedCount } = await supabase
+      .gte("bid_ntce_dt", today)
+      .lt("bid_ntce_dt", todayEnd)
+      .contains("categories", ["cleaning"]),
+    supabase
       .from("tenders")
       .select("*", { count: "exact", head: true })
-      .gte("bid_ntce_dt", start)
-      .lt("bid_ntce_dt", end)
-      .overlaps("categories", ["cleaning", "disinfection"]);
-    days.push({ date: start, count: count ?? 0, cleanCount: relatedCount ?? 0 });
-  }
+      .gte("bid_ntce_dt", today)
+      .lt("bid_ntce_dt", todayEnd)
+      .contains("categories", ["disinfection"]),
+    supabase
+      .from("tenders")
+      .select("*", { count: "exact", head: true })
+      .gt("bid_clse_dt", now)
+      .overlaps("categories", ["cleaning", "disinfection"]),
+    closingSoonQ,
+  ]);
+
+  const days: { date: string; count: number; cleanCount: number }[] = await Promise.all(
+    [6, 5, 4, 3, 2, 1, 0].map(async (offset) => {
+      const d = new Date();
+      d.setDate(d.getDate() - offset);
+      const start = d.toISOString().slice(0, 10);
+      const end = start + "T23:59:59.999Z";
+      const [{ count }, { count: relatedCount }] = await Promise.all([
+        supabase.from("tenders").select("*", { count: "exact", head: true }).gte("bid_ntce_dt", start).lt("bid_ntce_dt", end),
+        supabase
+          .from("tenders")
+          .select("*", { count: "exact", head: true })
+          .gte("bid_ntce_dt", start)
+          .lt("bid_ntce_dt", end)
+          .overlaps("categories", ["cleaning", "disinfection"]),
+      ]);
+      return { date: start, count: count ?? 0, cleanCount: relatedCount ?? 0 };
+    })
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
