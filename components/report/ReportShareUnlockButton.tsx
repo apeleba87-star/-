@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Share2 } from "lucide-react";
+import { SHARED_RANDOM_PANEL_COUNT } from "@/lib/report/share-unlock-panels";
 
 /** 견적 계산기 분석 모달과 동일한 복귀 후 대기(ms) — 필요 시 한곳에서 조정 */
 export const REPORT_SHARE_COMPLETE_DELAY_MS = 2000;
@@ -72,7 +73,8 @@ export default function ReportShareUnlockButton({ postId, shareTitle, shareText 
   return (
     <div className="rounded-2xl border border-violet-200/80 bg-white/80 p-4 shadow-inner backdrop-blur-sm">
       <p className="text-sm font-medium text-slate-800">
-        오늘 1회 공유 시 이 리포트에서 <span className="text-violet-700">심화 패널 3종</span>이 무작위로 열립니다. (하루 한 리포트만)
+        오늘 1회 공유 시 이 리포트에서{" "}
+        <span className="text-violet-700">심화 패널 {SHARED_RANDOM_PANEL_COUNT}종</span>이 무작위로 열립니다. (하루 한 리포트만)
       </p>
       <button
         type="button"
@@ -81,7 +83,7 @@ export default function ReportShareUnlockButton({ postId, shareTitle, shareText 
         className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:from-violet-700 hover:to-indigo-700 disabled:opacity-60 sm:w-auto"
       >
         <Share2 className="h-4 w-4 shrink-0" aria-hidden />
-        {loading ? "처리 중…" : "공유하고 심화 3종 열기"}
+        {loading ? "처리 중…" : `공유하고 심화 ${SHARED_RANDOM_PANEL_COUNT}종 열기`}
       </button>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>

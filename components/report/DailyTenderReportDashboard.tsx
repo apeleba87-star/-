@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatters";
-import type { SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
+import { SHARED_RANDOM_PANEL_COUNT, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import DataTrust3Pack from "@/components/DataTrust3Pack";
 import ReportShareUnlockButton from "@/components/report/ReportShareUnlockButton";
 
@@ -116,7 +116,7 @@ type Props = {
   excerpt?: string | null;
   updatedAt?: string | null;
   accessLevel?: "free" | "shared" | "premium";
-  /** 공유 해금 시 열리는 심화 패널 키 (3개) */
+  /** 공유 해금 시 열리는 심화 패널 키 (SHARED_RANDOM_PANEL_COUNT) */
   sharedRevealKeys?: SharedRandomPanelKey[] | null;
   premiumInsights?: {
     weekCompare: { currentWeekCount: number; prevWeekCount: number; deltaPct: number | null };
@@ -203,7 +203,7 @@ export default function DailyTenderReportDashboard({
             {accessLevel === "premium"
               ? "프리미엄 전체 분석"
               : accessLevel === "shared"
-                ? "공유 · 심화 3종 + 당일 핵심"
+                ? `공유 · 심화 ${SHARED_RANDOM_PANEL_COUNT}종 + 당일 핵심`
                 : "기본 요약 모드"}
           </div>
         </div>
@@ -828,7 +828,7 @@ export default function DailyTenderReportDashboard({
             open={deepOpen("week_compare")}
             title="기간 비교 (7일/전주)"
             icon={<BarChart2 className="h-5 w-5 text-indigo-600" />}
-            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
+            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
             accessLevel={accessLevel}
             tone="premium"
           >
@@ -903,7 +903,7 @@ export default function DailyTenderReportDashboard({
             open={deepOpen("drilldown")}
             title="지역·업종 드릴다운"
             icon={<MapPin className="h-5 w-5 text-cyan-600" />}
-            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
+            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
             accessLevel={accessLevel}
             tone="premium"
           >
@@ -1047,7 +1047,7 @@ export default function DailyTenderReportDashboard({
             open={deepOpen("agencies")}
             title="발주처 패턴"
             icon={<Building2 className="h-5 w-5 text-violet-600" />}
-            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
+            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
             accessLevel={accessLevel}
             tone="premium"
           >
@@ -1085,7 +1085,7 @@ export default function DailyTenderReportDashboard({
             open={deepOpen("budget_bands")}
             title="금액 구간 전략"
             icon={<Banknote className="h-5 w-5 text-emerald-600" />}
-            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
+            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
             accessLevel={accessLevel}
             tone="premium"
           >
@@ -1154,7 +1154,7 @@ export default function DailyTenderReportDashboard({
             open={deepOpen("anomalies")}
             title="이상치·경고 히스토리"
             icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
-            lockMessage="공유 시 무작위 3종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다."
+            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
             accessLevel={accessLevel}
             tone="premium"
           >

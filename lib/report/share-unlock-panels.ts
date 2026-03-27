@@ -1,5 +1,5 @@
 /**
- * 입찰 리포트: 공유 해금 시 심화 프리미엄 패널 중 무작위로 3개 노출 (고정 공개 제외).
+ * 입찰 리포트: 공유 해금 시 심화 프리미엄 패널 중 무작위로 N개 노출 (고정 공개 제외).
  */
 
 export const SHARED_RANDOM_PANEL_KEYS = [
@@ -18,7 +18,7 @@ export function isSharedRandomPanelKey(k: string): k is SharedRandomPanelKey {
   return KEY_SET.has(k);
 }
 
-export const SHARED_RANDOM_PANEL_COUNT = 3;
+export const SHARED_RANDOM_PANEL_COUNT = 2;
 
 function seedToUint32(seed: string): number {
   let h = 2166136261;
@@ -50,7 +50,7 @@ export function kstCalendarMinusDays(dateKst: string, days: number): string {
 }
 
 /**
- * 최근 7일(오늘 제외)에 노출된 패널 키를 피해, 시드 기준으로 3개 선택.
+ * 최근 7일(오늘 제외)에 노출된 패널 키를 피해, 시드 기준으로 N개 선택.
  * 피할 후보가 부족하면 전체 풀에서 채움.
  */
 export function pickSharedRandomPanels(params: {
@@ -77,7 +77,7 @@ export function pickSharedRandomPanels(params: {
   return out;
 }
 
-/** DB에 키가 없는 기존 행용: 최근 이력 없이 동일 시드로 3개 고정 */
+/** DB에 키가 없는 기존 행용: 최근 이력 없이 동일 시드로 N개 고정 */
 export function legacySharedPanelsFromSeed(
   userId: string,
   postId: string,
@@ -101,7 +101,7 @@ export function sanitizeStoredPanelKeys(raw: string[] | null | undefined): Share
   return out;
 }
 
-/** DB에 저장된 키가 비었거나 부족할 때 시드로 3개를 맞춤 */
+/** DB에 저장된 키가 비었거나 부족할 때 시드로 N개를 맞춤 */
 export function ensureSharedRevealKeys(
   userId: string,
   postId: string,
