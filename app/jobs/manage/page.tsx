@@ -8,10 +8,11 @@ import ManageView, {
   type ManageCalendarItem,
   type ManageCalendarDisplayStatus,
 } from "@/components/jobs/ManageView";
-import ManageApplicantsView, { type ManageApplicantRow } from "@/components/jobs/ManageApplicantsView";
+import ManageApplicantsView from "@/components/jobs/ManageApplicantsView";
 import { getKstTodayString, getKstTomorrowString } from "@/lib/jobs/kst-date";
-import { birthYearToAgeRangeLabel } from "@/lib/jobs/age-range";
 import JobShareActions from "@/components/jobs/JobShareActions";
+import { parseManageApplicantsParams, MANAGE_APPLICANTS_PAGE_SIZE } from "@/lib/jobs/manage-applicants-params";
+import { loadManageApplicantsData } from "@/lib/jobs/manage-applicants-data";
 
 export const revalidate = 60;
 export const dynamic = "force-dynamic";
@@ -133,59 +134,6 @@ export default async function JobsManagePage({
     if (pos) postIdsWithNoShow.add(pos.job_post_id);
   }
 
-  const REPORT_PERIOD_DAYS = 30;
-  const { data: allApplications } =
-    positionIds.length > 0
-      ? await authSupabase
-          .from("job_applications")
-          .select("id, position_id, user_id, status, created_at")
-          .in("position_id", positionIds)
-          .order("created_at", { ascending: false })
-      : { data: [] };
-
-  const applicantUserIds = [...new Set((allApplications ?? []).map((a) => a.user_id))];
-  const acceptedUserIds = [...new Set((allApplications ?? []).filter((a) => a.status === "accepted").map((a) => a.user_id))];
-  const { data: workerProfiles } =
-    applicantUserIds.length > 0
-      ? await supabase
-          .from("worker_profiles")
-          .select("user_id, nickname, birth_date, gender, bio, contact_phone")
-          .in("user_id", applicantUserIds)
-      : { data: [] };
-  const profileByUser = new Map((workerProfiles ?? []).map((p) => [p.user_id, p]));
-
-  // 확정된 지원자 연락처(전화만, 이메일 제외): 구인자만 조회 가능
-  let acceptedPhoneByUser = new Map<string, string | null>();
-  if (acceptedUserIds.length > 0) {
-    const { data: acceptedProfiles } = await authSupabase
-      .from("profiles")
-      .select("id, phone")
-      .in("id", acceptedUserIds);
-    acceptedPhoneByUser = new Map(
-      (acceptedProfiles ?? []).map((p) => [p.id, (p.phone ?? "").trim() || null])
-    );
-  }
-
-  const since = new Date();
-  since.setDate(since.getDate() - REPORT_PERIOD_DAYS);
-  const sinceIso = since.toISOString();
-  const applicantIdsForNoShow =
-    applicantUserIds.length > 0 ? applicantUserIds : ["00000000-0000-0000-0000-000000000000"];
-  const { data: noShowReports } =
-    applicantUserIds.length > 0
-      ? await supabase
-          .from("job_reports")
-          .select("reported_user_id")
-          .eq("reason_type", "no_show")
-          .in("reported_user_id", applicantIdsForNoShow)
-          .gte("created_at", sinceIso)
-          .neq("status", "rescinded")
-      : { data: [] };
-  const noShowCountByUser = new Map<string, number>();
-  for (const r of noShowReports ?? []) {
-    noShowCountByUser.set(r.reported_user_id, (noShowCountByUser.get(r.reported_user_id) ?? 0) + 1);
-  }
-
   const skillLevelLabel: Record<string, string> = { expert: "숙련자(기공)", general: "일반(보조)" };
   type PositionRow = NonNullable<typeof positions>[number];
   function positionDisplay(pos: PositionRow): { label: string; skillLabel: string } {
@@ -202,54 +150,36 @@ export default async function JobsManagePage({
     return { label, skillLabel };
   }
 
-  const allApplicants: ManageApplicantRow[] = (allApplications ?? []).map((app) => {
-    const pos = (positions ?? []).find((p) => p.id === app.position_id);
-    const post = pos ? jobPosts?.find((p) => p.id === pos.job_post_id) : null;
-    const profile = profileByUser.get(app.user_id);
-    const { label, skillLabel } = pos ? positionDisplay(pos) : { label: "—", skillLabel: "" };
-    const positionLabel = skillLabel ? `${label} / ${skillLabel}` : label;
-    const birthYear = profile?.birth_date
-      ? parseInt(String(profile.birth_date).slice(0, 4), 10)
-      : null;
-    const ageRangeLabel =
-      birthYear != null && birthYear >= 1900 && birthYear <= 2100
-        ? birthYearToAgeRangeLabel(birthYear)
-        : "—";
-
-    const contactPhone =
-      app.status === "accepted"
-        ? acceptedPhoneByUser.get(app.user_id) ?? (profile?.contact_phone?.trim() || null)
-        : null;
-
-    return {
-      applicationId: app.id,
-      jobPostId: pos?.job_post_id ?? "",
-      jobTitle: post?.title ?? "—",
-      workDate: post?.work_date ?? null,
-      region: post?.region ?? "",
-      district: post?.district ?? null,
-      positionId: app.position_id,
-      positionLabel,
-      requiredCount: pos?.required_count ?? 0,
-      filledCount: pos?.filled_count ?? 0,
-      postStatus: post?.status ?? "open",
-      userId: app.user_id,
-      nickname: profile?.nickname ?? "",
-      ageRangeLabel,
-      gender: profile?.gender ?? null,
-      bio: profile?.bio ?? null,
-      status: app.status as ManageApplicantRow["status"],
-      noShowCountInPeriod: noShowCountByUser.get(app.user_id) ?? 0,
-      createdAt: app.created_at,
-      contactPhone: contactPhone || null,
-    };
-  });
-
   const jobPostsForFilter = (jobPosts ?? []).map((p) => ({
     id: p.id,
     title: p.title,
     work_date: p.work_date,
   }));
+
+  const applicantsParams = parseManageApplicantsParams(params);
+  const applicantsData =
+    viewMode !== "applicants"
+      ? null
+      : positionIds.length === 0
+        ? {
+            rows: [],
+            totalFiltered: 0,
+            totalAll: 0,
+            pendingTotal: 0,
+            page: 1,
+            pageSize: MANAGE_APPLICANTS_PAGE_SIZE,
+            pageCount: 0,
+            hitFetchCap: false,
+          }
+        : await loadManageApplicantsData({
+            authSupabase,
+            supabasePublic: supabase,
+            jobPosts: jobPosts ?? [],
+            positions: positions ?? [],
+            categoryMap,
+            params: applicantsParams,
+            allPositionIds: positionIds,
+          });
 
   const todayStr = getKstTodayString();
   const tomorrowStr = getKstTomorrowString();
@@ -402,7 +332,20 @@ export default async function JobsManagePage({
         calendarItems={calendarItems}
         listView={listSection}
         applicantsView={
-          <ManageApplicantsView applicants={allApplicants} jobPostsForFilter={jobPostsForFilter} />
+          applicantsData ? (
+            <ManageApplicantsView
+              applicants={applicantsData.rows}
+              jobPostsForFilter={jobPostsForFilter}
+              query={applicantsParams}
+              totalFiltered={applicantsData.totalFiltered}
+              totalAll={applicantsData.totalAll}
+              pendingTotal={applicantsData.pendingTotal}
+              page={applicantsData.page}
+              pageSize={applicantsData.pageSize}
+              pageCount={applicantsData.pageCount}
+              hitFetchCap={applicantsData.hitFetchCap}
+            />
+          ) : null
         }
         viewMode={viewMode}
       />
