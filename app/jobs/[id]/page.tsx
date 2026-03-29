@@ -33,7 +33,7 @@ export default async function JobPostDetailPage({
   const { data: post, error: postError } = await supabase
     .from("job_posts")
     .select(
-      "id, user_id, title, status, region, district, address, work_date, start_time, end_time, contact_phone, description, is_external"
+      "id, user_id, title, status, region, district, address, work_date, start_time, end_time, contact_phone, description, is_external, view_count"
     )
     .eq("id", id)
     .single();
@@ -46,6 +46,13 @@ export default async function JobPostDetailPage({
     redirect(`/login?next=${encodeURIComponent(`/jobs/${id}`)}`);
   }
   const isOwner = post.user_id === user.id;
+
+  {
+    const { error: viewErr } = await authSupabase.rpc("record_job_post_view", { p_job_post_id: id });
+    if (viewErr) {
+      // 조회 집계 실패는 상세 페이지 렌더를 막지 않음
+    }
+  }
   const ref = typeof query.ref === "string" ? query.ref : "";
   const shareChannel = typeof query.channel === "string" ? query.channel : "unknown";
   if (!isOwner && ref === "job_share") {
@@ -321,6 +328,14 @@ export default async function JobPostDetailPage({
                 <dt className="text-slate-500">시간</dt>
                 <dd className="font-medium text-slate-800">
                   {String(post.start_time).slice(0, 5)} ~ {String(post.end_time).slice(0, 5)}
+                </dd>
+              </div>
+            )}
+            {isOwner && (
+              <div className="flex items-baseline gap-1.5">
+                <dt className="text-slate-500">조회</dt>
+                <dd className="font-medium text-slate-800">
+                  {Number(post.view_count ?? 0).toLocaleString("ko-KR")}회
                 </dd>
               </div>
             )}

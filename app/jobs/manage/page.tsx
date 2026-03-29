@@ -132,7 +132,7 @@ export default async function JobsManagePage({
     const to = from + MANAGE_LIST_PAGE_SIZE - 1;
     let dataQ = authSupabase
       .from("job_posts")
-      .select("id, title, status, region, district, work_date, created_at, user_id")
+      .select("id, title, status, region, district, work_date, created_at, user_id, view_count")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -146,7 +146,7 @@ export default async function JobsManagePage({
   if (viewMode === "calendar") {
     const { data } = await authSupabase
       .from("job_posts")
-      .select("id, title, status, region, district, work_date, created_at, user_id")
+      .select("id, title, status, region, district, work_date, created_at, user_id, view_count")
       .eq("user_id", user.id)
       .or(buildActiveJobPostsOrFilter())
       .order("created_at", { ascending: false })
@@ -159,7 +159,7 @@ export default async function JobsManagePage({
   if (viewMode === "applicants") {
     let metaQ = authSupabase
       .from("job_posts")
-      .select("id, title, status, region, district, work_date, created_at, user_id")
+      .select("id, title, status, region, district, work_date, created_at, user_id, view_count")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (applicantsParams.period === "upcoming") {

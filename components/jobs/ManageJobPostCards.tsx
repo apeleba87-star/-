@@ -11,6 +11,7 @@ export type ManageJobPostRow = {
   work_date: string | null;
   created_at: string;
   user_id: string;
+  view_count?: number | null;
 };
 
 type PositionRow = {
@@ -96,6 +97,7 @@ export default function ManageJobPostCards({
               district={post.district ?? ""}
               work_date={workDateFormatted}
               applicationCount={Number(applicationCountByPost.get(post.id)) || 0}
+              viewCount={Number(post.view_count ?? 0)}
               isOwner
               hasNoShowApplicant={postIdsWithNoShow.has(post.id)}
               urgentLabel={getUrgentLabel(post.work_date)}

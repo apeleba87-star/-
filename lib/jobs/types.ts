@@ -22,6 +22,8 @@ export interface JobPostRow {
   status: JobPostStatus;
   created_at: string;
   updated_at: string;
+  /** 구인 상세 조회 집계(타인 조회, 5분 쿨다운) */
+  view_count?: number;
 }
 
 export interface JobPostPositionRow {

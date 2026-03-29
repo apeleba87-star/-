@@ -70,6 +70,9 @@ export default async function AdminLayout({
         <Link href="/admin/tender-keywords" className="font-medium text-slate-700 hover:text-slate-900">
           입찰 키워드
         </Link>
+        <Link href="/admin/naver-trend-keywords" className="font-medium text-slate-700 hover:text-slate-900">
+          네이버 트렌드
+        </Link>
         <Link href="/admin/industries" className="font-medium text-slate-700 hover:text-slate-900">
           업종 관리
         </Link>

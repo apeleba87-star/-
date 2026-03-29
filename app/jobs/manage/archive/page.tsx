@@ -68,7 +68,7 @@ export default async function JobsManageArchivePage({
 
   const { data: rows } = await authSupabase
     .from("job_posts")
-    .select("id, title, status, region, district, work_date, created_at, user_id")
+    .select("id, title, status, region, district, work_date, created_at, user_id, view_count")
     .eq("user_id", user.id)
     .eq("status", "closed")
     .or(buildArchivedClosedOrFilter())

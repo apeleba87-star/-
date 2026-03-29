@@ -28,6 +28,8 @@ type Props = {
   ownerNickname?: string;
   /** 해당 구인글 총 지원자 수 (목록용) */
   applicationCount?: number;
+  /** 내 구인 관리: 상세 조회 집계 */
+  viewCount?: number;
   /** 내가 지원한 현장일 때 내 지원 상태 라벨 (예: 지원함, 확정됨) */
   myStatusLabel?: string;
   /** 현재 사용자가 구인글 작성자인지 (카드에 "내 글" 표시) */
@@ -63,6 +65,7 @@ export default function JobPostCard({
   work_date,
   ownerNickname,
   applicationCount,
+  viewCount,
   myStatusLabel,
   isOwner,
   urgentLabel,
@@ -102,6 +105,9 @@ export default function JobPostCard({
                 </span>
                 {applicationCount != null && applicationCount > 0 && (
                   <span className="text-slate-500">지원 {applicationCount}명</span>
+                )}
+                {isOwner && (
+                  <span className="text-slate-500">조회 {(viewCount ?? 0).toLocaleString("ko-KR")}회</span>
                 )}
               </div>
             </div>
