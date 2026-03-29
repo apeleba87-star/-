@@ -16,8 +16,6 @@ import {
   Calculator,
   Newspaper,
   Shield,
-  TrendingUp,
-  Wallet,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import HeaderAuth from "./HeaderAuth";
@@ -36,11 +34,9 @@ type NavItem = {
 const primaryNavItems: NavItem[] = [
   { href: "/", label: "홈", Icon: Home },
   { href: "/news", label: "업계 소식", Icon: Newspaper },
-  { href: "/marketing-report", label: "마케팅 리포트", Icon: TrendingUp },
   { href: "/tenders", label: "입찰 공고", Icon: Gavel },
   { href: "/listings", label: "현장 거래", Icon: Briefcase },
   { href: "/jobs", label: "인력 구인", Icon: UserPlus },
-  { href: "/job-market-report", label: "일당 리포트", Icon: Wallet },
   { href: "/estimate", label: "견적 계산기", Icon: Calculator },
 ];
 

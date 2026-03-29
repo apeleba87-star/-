@@ -26,23 +26,17 @@ export type DailyReportPayload = {
   falling: GroupTrendRow[];
   stable: GroupTrendRow[];
   topThree: { groupName: string; id: string; hint: string }[];
-  /** 선정 그룹(topThree)만, 템플릿×(서브×크기) 랜덤 조합 스냅샷 */
+  /** 선정 그룹(topThree)만, 그룹별 자기 템플릿에서 2제목씩(리포트 단위로 겹침 최소화) */
   suggestedTitles: Record<string, string[]>;
 };
+
+/** 공개 페이지·스냅샷에서 키워드당 노출하는 파생 제목 개수 */
+export const MARKETING_SUGGESTED_TITLE_DISPLAY_CAP = 2;
 
 function classify(delta: number): TrendBucket {
   if (delta >= STRONG_DELTA) return "rising";
   if (delta <= -STRONG_DELTA) return "falling";
   return "stable";
-}
-
-const MAX_TITLE_IDEAS_PER_GROUP = 10;
-
-function shuffleInPlace<T>(arr: T[]): void {
-  for (let i = arr.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
 }
 
 function applyTitleTemplate(tpl: string, main: string, sub: string, size: string): string {
@@ -52,62 +46,136 @@ function applyTitleTemplate(tpl: string, main: string, sub: string, size: string
     .replaceAll("{크기}", size);
 }
 
-/**
- * 발행 시 1회: 서브·크기가 모두 있으면 tpl×sub×size, 하나만 있으면 해당 축만 곱함.
- * 서브도 크기도 비면 제목 후보 없음.
- */
-function buildTitleIdeasSnapshot(
-  mainKeyword: string,
-  subKeywords: string[],
-  sizeKeywords: string[],
-  templates: string[]
-): string[] {
-  const main = mainKeyword.trim();
-  const subs = subKeywords.map((s) => s.trim()).filter(Boolean);
-  const sizes = sizeKeywords.map((s) => s.trim()).filter(Boolean);
-  const tpls = templates.map((t) => t.trim()).filter(Boolean);
-  if (!main || tpls.length === 0) return [];
-  if (subs.length === 0 && sizes.length === 0) return [];
+/** KST 리포트 기준일(YYYY-MM-DD) → UTC 일수(1970-01-01 기준) */
+function rotationDayIndex(ymd: string): number {
+  const parts = ymd.split("-").map(Number);
+  const y = parts[0];
+  const m = parts[1];
+  const d = parts[2];
+  if (!y || !m || !d) return 0;
+  return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+}
 
-  type Combo = { tpl: string; sub: string; size: string };
-  const combos: Combo[] = [];
-
-  if (subs.length > 0 && sizes.length > 0) {
-    for (const tpl of tpls) {
-      for (const sub of subs) {
-        for (const size of sizes) {
-          combos.push({ tpl, sub, size });
-        }
-      }
-    }
-  } else if (subs.length > 0) {
-    for (const tpl of tpls) {
-      for (const sub of subs) {
-        combos.push({ tpl, sub, size: "" });
-      }
-    }
+function flattenSubSizeCombos(subs: string[], sizes: string[]): { sub: string; size: string }[] {
+  const s = subs.map((x) => x.trim()).filter(Boolean);
+  const z = sizes.map((x) => x.trim()).filter(Boolean);
+  const out: { sub: string; size: string }[] = [];
+  if (s.length > 0 && z.length > 0) {
+    for (const sub of s) for (const size of z) out.push({ sub, size });
+  } else if (s.length > 0) {
+    for (const sub of s) out.push({ sub, size: "" });
+  } else if (z.length > 0) {
+    for (const size of z) out.push({ sub: "", size });
   } else {
-    for (const tpl of tpls) {
-      for (const size of sizes) {
-        combos.push({ tpl, sub: "", size });
-      }
-    }
-  }
-
-  shuffleInPlace(combos);
-
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const { tpl, sub, size } of combos) {
-    if (out.length >= MAX_TITLE_IDEAS_PER_GROUP) break;
-    let title = applyTitleTemplate(tpl, main, sub, size);
-    title = title.replace(/\s{2,}/g, " ").trim();
-    if (!seen.has(title)) {
-      seen.add(title);
-      out.push(title);
-    }
+    out.push({ sub: "", size: "" });
   }
   return out;
+}
+
+type GroupMetaForTitles = {
+  sub_keywords: string[];
+  size_keywords: string[];
+  title_templates: string[];
+  main: string;
+};
+
+const TOP_RANKS = 3;
+const TITLES_PER_RANK = 2;
+const SLOTS_PER_DAY = TOP_RANKS * TITLES_PER_RANK;
+
+/** 같은 리포트에서 여러 키워드에 반복되기 쉬운 문구 — 템플릿 문자열 기준으로 전역 1회까지 우선 제한 */
+const TITLE_DIVERSITY_MARKERS = ["한눈에 정리"] as const;
+const MAX_USES_PER_MARKER_GLOBAL = 1;
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function exceedsMarkerBudget(tpl: string, markerCounts: Map<string, number>, maxPer: number): boolean {
+  for (const m of TITLE_DIVERSITY_MARKERS) {
+    if (tpl.includes(m) && (markerCounts.get(m) ?? 0) >= maxPer) return true;
+  }
+  return false;
+}
+
+function registerMarkers(tpl: string, markerCounts: Map<string, number>): void {
+  for (const m of TITLE_DIVERSITY_MARKERS) {
+    if (tpl.includes(m)) markerCounts.set(m, (markerCounts.get(m) ?? 0) + 1);
+  }
+}
+
+type PickPass = "strict" | "noMarker" | "any";
+
+/**
+ * 그룹마다 해당 그룹의 title_templates만 사용. 리포트 전체에서 (1) 동일 템플릿 줄 재사용 금지,
+ * (2) TITLE_DIVERSITY_MARKERS 문구는 가능하면 리포트당 1번만 쓰도록 배정. 불가하면 단계적으로 완화.
+ */
+function buildRotatedSuggestedTitles(
+  reportDateYmd: string,
+  topThree: { id: string; groupName: string }[],
+  groupMeta: Map<string, GroupMetaForTitles>
+): Record<string, string[]> {
+  const dayRot = rotationDayIndex(reportDateYmd);
+  const suggestedTitles: Record<string, string[]> = {};
+  const usedRawTemplates = new Set<string>();
+  const markerCounts = new Map<string, number>();
+
+  function tryPickFromGroup(tpls: string[], base: number, k: number, pass: PickPass): string | null {
+    const tg = tpls.length;
+    if (tg === 0) return null;
+    for (let o = 0; o < tg; o += 1) {
+      const ti = (base + k + o) % tg;
+      const tpl = tpls[ti]!;
+      if (pass === "strict" || pass === "noMarker") {
+        if (usedRawTemplates.has(tpl)) continue;
+      }
+      if (pass === "strict" && exceedsMarkerBudget(tpl, markerCounts, MAX_USES_PER_MARKER_GLOBAL)) continue;
+      return tpl;
+    }
+    return null;
+  }
+
+  topThree.forEach((t, i) => {
+    const meta = groupMeta.get(t.id);
+    if (!meta) return;
+    const main = meta.main.trim() || t.groupName;
+    const tpls = (meta.title_templates ?? []).map((x) => x.trim()).filter(Boolean);
+    const combos = flattenSubSizeCombos(meta.sub_keywords, meta.size_keywords);
+    const C = Math.max(combos.length, 1);
+    const titles: string[] = [];
+
+    if (tpls.length === 0) {
+      suggestedTitles[t.groupName] = titles;
+      return;
+    }
+
+    const tg = tpls.length;
+    const base = (dayRot * 7 + hashString(t.id) + i * 13) % tg;
+
+    for (let k = 0; k < TITLES_PER_RANK; k += 1) {
+      const ci = ((dayRot * SLOTS_PER_DAY + i * TITLES_PER_RANK + k) % C + C) % C;
+      const { sub, size } = combos[ci]!;
+
+      const tpl =
+        tryPickFromGroup(tpls, base, k, "strict") ??
+        tryPickFromGroup(tpls, base, k, "noMarker") ??
+        tryPickFromGroup(tpls, base, k, "any") ??
+        tpls[(base + k) % tg]!;
+
+      usedRawTemplates.add(tpl);
+      registerMarkers(tpl, markerCounts);
+
+      let title = applyTitleTemplate(tpl, main, sub, size);
+      title = title.replace(/\s{2,}/g, " ").trim();
+      titles.push(title);
+    }
+
+    suggestedTitles[t.groupName] = titles;
+  });
+
+  return suggestedTitles;
 }
 
 function periodToDate(period: string): string {
@@ -157,7 +225,7 @@ export async function runNaverTrendReportJob(supabase: SupabaseClient): Promise<
           topThree: [],
           suggestedTitles: {},
           titleIdeasNote:
-            "아래는 관리자가 등록한 서브·크기·템플릿으로 리포트 발행 시 한 번 뽑은 예시 제목입니다. {지역}은 실제 지명으로 바꿔 쓰세요.",
+            "아래는 관리자가 등록한 템플릿·서브·크기로 배정한 예시 제목입니다. 그룹마다 자기 템플릿만 쓰며 리포트 단위로 겹침을 줄입니다. {지역}은 실제 지명으로 바꿔 쓰세요.",
         } as DailyReportPayload,
         fetch_error: "no_keyword_groups",
         computed_at: new Date().toISOString(),
@@ -323,21 +391,13 @@ export async function runNaverTrendReportJob(supabase: SupabaseClient): Promise<
     ])
   );
 
-  const suggestedTitles: Record<string, string[]> = {};
-  for (const t of topThree) {
-    const meta = groupMeta.get(t.id);
-    if (!meta) continue;
-    const ideas = buildTitleIdeasSnapshot(meta.main, meta.sub_keywords, meta.size_keywords, meta.title_templates);
-    if (ideas.length > 0) {
-      suggestedTitles[t.groupName] = ideas;
-    }
-  }
+  const suggestedTitles = buildRotatedSuggestedTitles(endDate, topThree, groupMeta);
 
   const payload: DailyReportPayload = {
     disclaimer:
       "네이버 데이터랩 통합검색 검색어 트렌드 기준이며, 수치는 기간 내 상대 비율(최고값=100)입니다. 실제 검색 건수가 아닙니다.",
     titleIdeasNote:
-      "파생 아이디어는 데이터랩이 아니라 관리자 등록 서브·크기·템플릿으로 발행 시 한 번 조합해 저장한 스냅샷입니다. 서브와 크기가 모두 있으면 모든 조합 후보에서 섞어 뽑습니다. {지역}은 그대로 두고 실제 지역명으로 바꿔 사용하세요.",
+      "파생 아이디어는 데이터랩이 아니라 관리자 등록 템플릿·서브·크기로 만듭니다. 키워드(그룹)마다 그 그룹에 등록된 템플릿만 쓰며, 같은 리포트 안에서는 동일 템플릿 줄과 반복 문구(예: 한눈에 정리)가 여러 키워드에 겹치지 않도록 최대한 피해 배정합니다. {지역}은 실제 지명으로 바꿔 쓰세요.",
     window: { startDate, endDate, timeUnit: "date" },
     groups: groupTrends,
     rising,

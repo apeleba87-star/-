@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getKstDayHalfOpenUtcRange, getKstTodayString, getKstYesterdayString } from "@/lib/jobs/kst-date";
+import { addDaysToDateString, getKstDayHalfOpenUtcRange, getKstTodayString, getKstYesterdayString } from "@/lib/jobs/kst-date";
 
 export type JobWageDailyReportPayload = {
   methodologyNote: string;
@@ -176,7 +176,11 @@ export async function runJobWageDailyReportJob(
   } else if (jobPostCount === 0) {
     headline = `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다.`;
   } else {
-    headline = `어제 신규 구인 「${dominantCategory.name}」 기준 — 시·도별 평균 일당`;
+    const y = getKstYesterdayString();
+    headline =
+      reportDate === y
+        ? `어제 신규 구인 「${dominantCategory.name}」 기준 — 시·도별 평균 일당`
+        : `「${dominantCategory.name}」 ${reportDate} 신규 구인 기준 — 시·도별 평균 일당`;
   }
 
   const payload: JobWageDailyReportPayload = {
@@ -203,4 +207,15 @@ export async function runJobWageDailyReportJob(
 
   if (upErr) return { ok: false, error: upErr.message, report_date: reportDate };
   return { ok: true, report_date: reportDate };
+}
+
+/** KST 어제부터 과거로 30일간의 report_date (어제 포함) */
+export function getLast30ReportDatesKst(): string[] {
+  const out: string[] = [];
+  let d = getKstYesterdayString();
+  for (let i = 0; i < 30; i += 1) {
+    out.push(d);
+    d = addDaysToDateString(d, -1);
+  }
+  return out;
 }

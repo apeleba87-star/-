@@ -76,10 +76,9 @@ export default function NaverTrendKeywordsManager({ initialRows }: Props) {
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-800">키워드 그룹 추가</h2>
         <p className="mb-3 text-xs text-slate-500">
-          데이터랩에는 그룹당 <strong>메인 키워드 1개</strong>만 전송합니다. 서브·제목 템플릿은 리포트 발행 시 선정 그룹(top)에 대해 한 번 조합해
-          저장합니다. 템플릿에 <code className="rounded bg-white px-1">{`{메인}`}</code>,{" "}
-          <code className="rounded bg-white px-1">{`{서브}`}</code>,{" "}
-          <code className="rounded bg-white px-1">{`{지역}`}</code> 를 쓸 수 있습니다({`{지역}`}은 글 쓸 때 직접 바꿉니다).
+          데이터랩에는 그룹당 <strong>메인 키워드 1개</strong>만 전송합니다. 파생 제목은 선정 1~3위마다 <strong>해당 그룹에 등록된 템플릿</strong>에서 2개씩 뽑으며, 같은 날 리포트 안에서 템플릿 줄·특정 반복 문구가 키워드끼리 겹치지 않게 조정합니다. 템플릿에{" "}
+          <code className="rounded bg-white px-1">{`{메인}`}</code>, <code className="rounded bg-white px-1">{`{서브}`}</code>,{" "}
+          <code className="rounded bg-white px-1">{`{크기}`}</code>, <code className="rounded bg-white px-1">{`{지역}`}</code> 를 쓸 수 있습니다.
         </p>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">

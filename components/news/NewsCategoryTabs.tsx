@@ -1,9 +1,19 @@
 import Link from "next/link";
 
-export type NewsCategoryKey = "report" | "chemical" | "equipment" | "labor" | "industry" | "private";
+export type NewsCategoryKey =
+  | "report"
+  | "marketing"
+  | "job_wage"
+  | "chemical"
+  | "equipment"
+  | "labor"
+  | "industry"
+  | "private";
 
 const TABS: { key: Exclude<NewsCategoryKey, "private">; label: string; href: string }[] = [
   { key: "report", label: "입찰 리포트", href: "/news?category=report" },
+  { key: "marketing", label: "마케팅 리포트", href: "/marketing-report" },
+  { key: "job_wage", label: "일당 리포트", href: "/job-market-report" },
   { key: "chemical", label: "약품", href: "/news?category=chemical" },
   { key: "equipment", label: "장비", href: "/news?category=equipment" },
   { key: "labor", label: "근로", href: "/news?category=labor" },

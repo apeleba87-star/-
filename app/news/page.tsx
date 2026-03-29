@@ -16,7 +16,12 @@ export const metadata: Metadata = {
 const CATEGORY_REPORT = "report";
 const CATEGORY_PRIVATE = "private";
 const CONTENT_CATEGORY_SLUGS = ["chemical", "equipment", "labor", "industry"] as const;
-export type NewsCategoryKey = typeof CATEGORY_REPORT | (typeof CONTENT_CATEGORY_SLUGS)[number] | typeof CATEGORY_PRIVATE;
+export type NewsCategoryKey =
+  | typeof CATEGORY_REPORT
+  | "marketing"
+  | "job_wage"
+  | (typeof CONTENT_CATEGORY_SLUGS)[number]
+  | typeof CATEGORY_PRIVATE;
 
 function formatReportDateLabel(sourceRef: string | null): string {
   if (!sourceRef || !/^\d{4}-\d{2}-\d{2}$/.test(sourceRef)) return "입찰 리포트";
@@ -38,6 +43,12 @@ export default async function NewsPage({
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   let category: NewsCategoryKey;
+  if (rawCategory === "marketing") {
+    redirect("/marketing-report");
+  }
+  if (rawCategory === "job_wage") {
+    redirect("/job-market-report");
+  }
   if (rawCategory === CATEGORY_PRIVATE) {
     if (!isAdmin) redirect("/news");
     category = CATEGORY_PRIVATE;
