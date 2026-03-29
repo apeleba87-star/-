@@ -77,23 +77,34 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
           </section>
 
           <section className={`${glassCard} mb-6 p-5 sm:p-6`}>
-            <h2 className="text-sm font-semibold text-slate-800">추천 블로그 제목 (복붙용)</h2>
-            <ul className="mt-3 space-y-4">
-              {payload.topThree.map((t) => (
-                <li key={t.id}>
-                  <p className="text-xs font-medium text-slate-500">{t.groupName}</p>
-                  <ul className="mt-1 space-y-1">
-                    {(payload.suggestedTitles[t.groupName] ?? []).map((title) => (
-                      <li
-                        key={title}
-                        className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2 text-sm text-slate-800"
-                      >
-                        {title}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
+            <h2 className="text-sm font-semibold text-slate-800">파생 아이디어 · 블로그 제목 (복붙용)</h2>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              {payload.titleIdeasNote ??
+                "선정된 키워드에 대해 관리자가 등록한 서브·크기·템플릿으로 리포트 발행 시 한 번 조합해 저장한 목록입니다. {지역}은 실제 지명으로 바꿔 쓰세요."}
+            </p>
+            <ul className="mt-4 space-y-4">
+              {payload.topThree.map((t) => {
+                const titles = payload.suggestedTitles[t.groupName] ?? [];
+                return (
+                  <li key={t.id}>
+                    <p className="text-xs font-medium text-slate-500">{t.groupName}</p>
+                    {titles.length === 0 ? (
+                      <p className="mt-1 text-xs text-slate-400">이 그룹은 서브·크기·템플릿이 없거나 조합 결과가 없습니다.</p>
+                    ) : (
+                      <ul className="mt-1 space-y-1">
+                        {titles.map((title) => (
+                          <li
+                            key={title}
+                            className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2 text-sm text-slate-800"
+                          >
+                            {title}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
 

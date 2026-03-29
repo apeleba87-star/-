@@ -18,12 +18,15 @@ export type GroupTrendRow = {
 
 export type DailyReportPayload = {
   disclaimer: string;
+  /** 파생 제목 블록 상단 안내(발행 시 스냅샷) */
+  titleIdeasNote?: string;
   window: { startDate: string; endDate: string; timeUnit: string };
   groups: GroupTrendRow[];
   rising: GroupTrendRow[];
   falling: GroupTrendRow[];
   stable: GroupTrendRow[];
   topThree: { groupName: string; id: string; hint: string }[];
+  /** 선정 그룹(topThree)만, 템플릿×(서브×크기) 랜덤 조합 스냅샷 */
   suggestedTitles: Record<string, string[]>;
 };
 
@@ -33,12 +36,78 @@ function classify(delta: number): TrendBucket {
   return "stable";
 }
 
-function buildSuggestedTitles(groupName: string): string[] {
-  return [
-    `${groupName} 비용·체크리스트 총정리`,
-    `${groupName} 업체 선택 기준 3가지`,
-    `2026 ${groupName} 트렌드, 꼭 알아둘 점`,
-  ];
+const MAX_TITLE_IDEAS_PER_GROUP = 10;
+
+function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function applyTitleTemplate(tpl: string, main: string, sub: string, size: string): string {
+  return tpl
+    .replaceAll("{메인}", main)
+    .replaceAll("{서브}", sub)
+    .replaceAll("{크기}", size);
+}
+
+/**
+ * 발행 시 1회: 서브·크기가 모두 있으면 tpl×sub×size, 하나만 있으면 해당 축만 곱함.
+ * 서브도 크기도 비면 제목 후보 없음.
+ */
+function buildTitleIdeasSnapshot(
+  mainKeyword: string,
+  subKeywords: string[],
+  sizeKeywords: string[],
+  templates: string[]
+): string[] {
+  const main = mainKeyword.trim();
+  const subs = subKeywords.map((s) => s.trim()).filter(Boolean);
+  const sizes = sizeKeywords.map((s) => s.trim()).filter(Boolean);
+  const tpls = templates.map((t) => t.trim()).filter(Boolean);
+  if (!main || tpls.length === 0) return [];
+  if (subs.length === 0 && sizes.length === 0) return [];
+
+  type Combo = { tpl: string; sub: string; size: string };
+  const combos: Combo[] = [];
+
+  if (subs.length > 0 && sizes.length > 0) {
+    for (const tpl of tpls) {
+      for (const sub of subs) {
+        for (const size of sizes) {
+          combos.push({ tpl, sub, size });
+        }
+      }
+    }
+  } else if (subs.length > 0) {
+    for (const tpl of tpls) {
+      for (const sub of subs) {
+        combos.push({ tpl, sub, size: "" });
+      }
+    }
+  } else {
+    for (const tpl of tpls) {
+      for (const size of sizes) {
+        combos.push({ tpl, sub: "", size });
+      }
+    }
+  }
+
+  shuffleInPlace(combos);
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const { tpl, sub, size } of combos) {
+    if (out.length >= MAX_TITLE_IDEAS_PER_GROUP) break;
+    let title = applyTitleTemplate(tpl, main, sub, size);
+    title = title.replace(/\s{2,}/g, " ").trim();
+    if (!seen.has(title)) {
+      seen.add(title);
+      out.push(title);
+    }
+  }
+  return out;
 }
 
 function periodToDate(period: string): string {
@@ -66,7 +135,7 @@ export async function runNaverTrendReportJob(supabase: SupabaseClient): Promise<
 
   const { data: groups, error: gErr } = await supabase
     .from("naver_trend_keyword_groups")
-    .select("id, group_name, keywords, sort_order")
+    .select("id, group_name, keywords, sort_order, sub_keywords, size_keywords, title_templates")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
@@ -87,6 +156,8 @@ export async function runNaverTrendReportJob(supabase: SupabaseClient): Promise<
           stable: [],
           topThree: [],
           suggestedTitles: {},
+          titleIdeasNote:
+            "아래는 관리자가 등록한 서브·크기·템플릿으로 리포트 발행 시 한 번 뽑은 예시 제목입니다. {지역}은 실제 지명으로 바꿔 쓰세요.",
         } as DailyReportPayload,
         fetch_error: "no_keyword_groups",
         computed_at: new Date().toISOString(),
@@ -103,10 +174,14 @@ export async function runNaverTrendReportJob(supabase: SupabaseClient): Promise<
 
   try {
     for (const chunk of chunks) {
-      const keywordGroups: DatalabKeywordGroup[] = chunk.map((row) => ({
-        groupName: row.group_name,
-        keywords: row.keywords as string[],
-      }));
+      const keywordGroups: DatalabKeywordGroup[] = chunk.map((row) => {
+        const kw = (row.keywords as string[]) ?? [];
+        const main = (kw[0] ?? row.group_name).trim() || row.group_name;
+        return {
+          groupName: row.group_name,
+          keywords: [main],
+        };
+      });
 
       const json = await fetchNaverDatalabSearchTrend({
         startDate,
@@ -236,14 +311,33 @@ export async function runNaverTrendReportJob(supabase: SupabaseClient): Promise<
     used.add(t.id);
   }
 
+  const groupMeta = new Map(
+    list.map((g) => [
+      g.id,
+      {
+        sub_keywords: (g.sub_keywords as string[]) ?? [],
+        size_keywords: (g.size_keywords as string[]) ?? [],
+        title_templates: (g.title_templates as string[]) ?? [],
+        main: ((g.keywords as string[])?.[0] ?? g.group_name).trim() || g.group_name,
+      },
+    ])
+  );
+
   const suggestedTitles: Record<string, string[]> = {};
-  for (const t of groupTrends) {
-    suggestedTitles[t.groupName] = buildSuggestedTitles(t.groupName);
+  for (const t of topThree) {
+    const meta = groupMeta.get(t.id);
+    if (!meta) continue;
+    const ideas = buildTitleIdeasSnapshot(meta.main, meta.sub_keywords, meta.size_keywords, meta.title_templates);
+    if (ideas.length > 0) {
+      suggestedTitles[t.groupName] = ideas;
+    }
   }
 
   const payload: DailyReportPayload = {
     disclaimer:
       "네이버 데이터랩 통합검색 검색어 트렌드 기준이며, 수치는 기간 내 상대 비율(최고값=100)입니다. 실제 검색 건수가 아닙니다.",
+    titleIdeasNote:
+      "파생 아이디어는 데이터랩이 아니라 관리자 등록 서브·크기·템플릿으로 발행 시 한 번 조합해 저장한 스냅샷입니다. 서브와 크기가 모두 있으면 모든 조합 후보에서 섞어 뽑습니다. {지역}은 그대로 두고 실제 지역명으로 바꿔 사용하세요.",
     window: { startDate, endDate, timeUnit: "date" },
     groups: groupTrends,
     rising,

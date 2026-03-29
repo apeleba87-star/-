@@ -73,6 +73,9 @@ export default async function AdminLayout({
         <Link href="/admin/naver-trend-keywords" className="font-medium text-slate-700 hover:text-slate-900">
           네이버 트렌드
         </Link>
+        <Link href="/admin/job-wage-report" className="font-medium text-slate-700 hover:text-slate-900">
+          일당 리포트
+        </Link>
         <Link href="/admin/industries" className="font-medium text-slate-700 hover:text-slate-900">
           업종 관리
         </Link>

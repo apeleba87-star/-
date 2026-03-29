@@ -40,3 +40,18 @@ export function addDaysToDateString(dateStr: string, days: number): string {
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** KST 기준 어제 날짜 YYYY-MM-DD */
+export function getKstYesterdayString(): string {
+  return addDaysToDateString(getKstTodayString(), -1);
+}
+
+/**
+ * KST 달력일 하루를 UTC 구간 [start, end) 로 반환 (end는 다음날 KST 0시, half-open).
+ */
+export function getKstDayHalfOpenUtcRange(dateYmd: string): [string, string] {
+  const start = new Date(`${dateYmd}T00:00:00+09:00`).toISOString();
+  const next = addDaysToDateString(dateYmd, 1);
+  const end = new Date(`${next}T00:00:00+09:00`).toISOString();
+  return [start, end];
+}

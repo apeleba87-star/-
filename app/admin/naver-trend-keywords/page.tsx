@@ -5,7 +5,7 @@ export default async function AdminNaverTrendKeywordsPage() {
   const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from("naver_trend_keyword_groups")
-    .select("id, group_name, keywords, sort_order, is_active")
+    .select("id, group_name, keywords, sort_order, is_active, sub_keywords, size_keywords, title_templates")
     .order("sort_order", { ascending: true });
 
   if (error) {

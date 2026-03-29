@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   addNaverTrendKeywordGroup,
   deleteNaverTrendKeywordGroup,
   runNaverTrendReportManual,
   updateNaverTrendKeywordGroup,
 } from "./actions";
+import NaverTrendExcelUpload from "./NaverTrendExcelUpload";
 
 export type KeywordGroupRow = {
   id: string;
   group_name: string;
   keywords: string[];
+  sub_keywords: string[];
+  size_keywords: string[];
+  title_templates: string[];
   sort_order: number;
   is_active: boolean;
 };
@@ -23,7 +27,10 @@ export default function NaverTrendKeywordsManager({ initialRows }: Props) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [keywords, setKeywords] = useState("");
+  const [mainKeyword, setMainKeyword] = useState("");
+  const [subs, setSubs] = useState("");
+  const [sizes, setSizes] = useState("");
+  const [templates, setTemplates] = useState("");
   const [sortOrder, setSortOrder] = useState(0);
 
   return (
@@ -57,61 +64,107 @@ export default function NaverTrendKeywordsManager({ initialRows }: Props) {
         {msg && <p className="mt-2 text-sm text-slate-700">{msg}</p>}
       </section>
 
+      <NaverTrendExcelUpload
+        pending={pending}
+        startTransition={startTransition}
+        setMsg={setMsg}
+        onImported={(imported) => {
+          setRows((prev) => [...prev, ...imported].sort((a, b) => a.sort_order - b.sort_order));
+        }}
+      />
+
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-800">키워드 그룹 추가</h2>
         <p className="mb-3 text-xs text-slate-500">
-          데이터랩 API는 요청당 최대 5개 그룹입니다. 그룹이 많으면 자동으로 나눠 호출합니다. 그룹당 키워드 최대 20개(쉼표·줄바꿈 구분).
+          데이터랩에는 그룹당 <strong>메인 키워드 1개</strong>만 전송합니다. 서브·제목 템플릿은 리포트 발행 시 선정 그룹(top)에 대해 한 번 조합해
+          저장합니다. 템플릿에 <code className="rounded bg-white px-1">{`{메인}`}</code>,{" "}
+          <code className="rounded bg-white px-1">{`{서브}`}</code>,{" "}
+          <code className="rounded bg-white px-1">{`{지역}`}</code> 를 쓸 수 있습니다({`{지역}`}은 글 쓸 때 직접 바꿉니다).
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <label className="block min-w-[160px]">
-            <span className="text-xs font-medium text-slate-600">주제어(그룹명)</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              placeholder="예: 입주청소"
-            />
-          </label>
-          <label className="block min-w-[200px]">
-            <span className="text-xs font-medium text-slate-600">순서</span>
-            <input
-              type="number"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block min-w-[280px] flex-1">
-            <span className="text-xs font-medium text-slate-600">키워드</span>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <label className="block min-w-[160px]">
+              <span className="text-xs font-medium text-slate-600">주제어(그룹명)</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                placeholder="예: 입주청소"
+              />
+            </label>
+            <label className="block min-w-[180px]">
+              <span className="text-xs font-medium text-slate-600">메인 키워드 (데이터랩)</span>
+              <input
+                value={mainKeyword}
+                onChange={(e) => setMainKeyword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                placeholder="비우면 주제어와 동일"
+              />
+            </label>
+            <label className="block min-w-[200px]">
+              <span className="text-xs font-medium text-slate-600">순서</span>
+              <input
+                type="number"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setMsg(null);
+                startTransition(async () => {
+                  const r = await addNaverTrendKeywordGroup(name, mainKeyword, subs, sizes, templates, sortOrder);
+                  if (!r.ok) {
+                    setMsg(r.error ?? "추가 실패");
+                    return;
+                  }
+                  if (r.row) setRows((prev) => [...prev, r.row as KeywordGroupRow].sort((a, b) => a.sort_order - b.sort_order));
+                  setName("");
+                  setMainKeyword("");
+                  setSubs("");
+                  setSizes("");
+                  setTemplates("");
+                  setMsg("추가했습니다.");
+                });
+              }}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:self-end"
+            >
+              추가
+            </button>
+          </div>
+          <label className="block max-w-3xl">
+            <span className="text-xs font-medium text-slate-600">서브 키워드 (쉼표로 구분, 줄바꿈·세미콜론도 가능)</span>
             <textarea
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
+              value={subs}
+              onChange={(e) => setSubs(e.target.value)}
               rows={2}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              placeholder="입주청소, 입주 청소 비용"
+              placeholder="비용, 후기"
             />
           </label>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              setMsg(null);
-              startTransition(async () => {
-                const r = await addNaverTrendKeywordGroup(name, keywords, sortOrder);
-                if (!r.ok) {
-                  setMsg(r.error ?? "추가 실패");
-                  return;
-                }
-                if (r.row) setRows((prev) => [...prev, r.row as KeywordGroupRow].sort((a, b) => a.sort_order - b.sort_order));
-                setName("");
-                setKeywords("");
-                setMsg("추가했습니다.");
-              });
-            }}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            추가
-          </button>
+          <label className="block max-w-3xl">
+            <span className="text-xs font-medium text-slate-600">크기·유형 (쉼표로 구분 — 예: 10평, 11평, 원룸, 투룸)</span>
+            <textarea
+              value={sizes}
+              onChange={(e) => setSizes(e.target.value)}
+              rows={2}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              placeholder="10평, 11평, 원룸, 투룸"
+            />
+          </label>
+          <label className="block max-w-3xl">
+            <span className="text-xs font-medium text-slate-600">제목 템플릿 (한 줄에 하나)</span>
+            <textarea
+              value={templates}
+              onChange={(e) => setTemplates(e.target.value)}
+              rows={4}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono text-xs"
+              placeholder="{지역} {크기} {메인} {서브} 정리"
+            />
+          </label>
         </div>
       </section>
 
@@ -123,7 +176,8 @@ export default function NaverTrendKeywordsManager({ initialRows }: Props) {
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="px-3 py-2 font-semibold text-slate-700">순서</th>
                 <th className="px-3 py-2 font-semibold text-slate-700">주제어</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">키워드</th>
+                <th className="px-3 py-2 font-semibold text-slate-700">메인</th>
+                <th className="px-3 py-2 font-semibold text-slate-700">서브·템플릿</th>
                 <th className="px-3 py-2 font-semibold text-slate-700">활성</th>
                 <th className="px-3 py-2 font-semibold text-slate-700">동작</th>
               </tr>
@@ -131,7 +185,7 @@ export default function NaverTrendKeywordsManager({ initialRows }: Props) {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
                     그룹이 없습니다.
                   </td>
                 </tr>
@@ -161,7 +215,30 @@ function GroupRowEditor({
 }) {
   const [sortOrder, setSortOrder] = useState(row.sort_order);
   const [active, setActive] = useState(row.is_active);
-  const [kwText, setKwText] = useState(row.keywords.join(", "));
+  const [groupName, setGroupName] = useState(row.group_name);
+  const [mainKw, setMainKw] = useState(row.keywords[0] ?? "");
+  const [subsText, setSubsText] = useState((row.sub_keywords ?? []).join("\n"));
+  const [sizesText, setSizesText] = useState((row.size_keywords ?? []).join("\n"));
+  const [tplText, setTplText] = useState((row.title_templates ?? []).join("\n"));
+
+  useEffect(() => {
+    setSortOrder(row.sort_order);
+    setActive(row.is_active);
+    setGroupName(row.group_name);
+    setMainKw(row.keywords[0] ?? "");
+    setSubsText((row.sub_keywords ?? []).join("\n"));
+    setSizesText((row.size_keywords ?? []).join("\n"));
+    setTplText((row.title_templates ?? []).join("\n"));
+  }, [
+    row.id,
+    row.group_name,
+    row.sort_order,
+    row.is_active,
+    row.keywords[0],
+    (row.sub_keywords ?? []).join("\u0001"),
+    (row.size_keywords ?? []).join("\u0001"),
+    (row.title_templates ?? []).join("\u0001"),
+  ]);
 
   return (
     <tr className="border-b border-slate-100">
@@ -181,22 +258,76 @@ function GroupRowEditor({
           }}
         />
       </td>
-      <td className="px-3 py-2 font-medium text-slate-800">{row.group_name}</td>
-      <td className="max-w-md px-3 py-2">
-        <textarea
-          className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
-          rows={2}
-          value={kwText}
-          onChange={(e) => setKwText(e.target.value)}
+      <td className="max-w-[140px] px-3 py-2">
+        <input
+          className="w-full rounded border border-slate-200 px-2 py-1 text-xs font-medium text-slate-800"
+          value={groupName}
+          onChange={(e) => setGroupName(e.target.value)}
           onBlur={() => {
-            const parts = kwText
-              .split(/[,，\n]+/)
-              .map((s) => s.trim())
-              .filter(Boolean);
-            if (parts.length < 1 || parts.length > 20) return;
+            const next = groupName.trim();
+            if (!next || next === row.group_name) return;
             startTransition(async () => {
-              await updateNaverTrendKeywordGroup(row.id, { keywords: parts });
-              onChange((prev) => prev.map((r) => (r.id === row.id ? { ...r, keywords: parts } : r)));
+              await updateNaverTrendKeywordGroup(row.id, { group_name: next });
+              onChange((prev) => prev.map((r) => (r.id === row.id ? { ...r, group_name: next } : r)));
+            });
+          }}
+        />
+      </td>
+      <td className="max-w-[160px] px-3 py-2">
+        <input
+          className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+          value={mainKw}
+          onChange={(e) => setMainKw(e.target.value)}
+          onBlur={() => {
+            const main = mainKw.split(/[,，\n]+/).map((s) => s.trim()).filter(Boolean)[0];
+            if (!main) return;
+            startTransition(async () => {
+              await updateNaverTrendKeywordGroup(row.id, { keywords: [main] });
+              onChange((prev) => prev.map((r) => (r.id === row.id ? { ...r, keywords: [main] } : r)));
+            });
+          }}
+        />
+      </td>
+      <td className="max-w-xl px-3 py-2">
+        <p className="mb-1 text-[10px] font-medium text-slate-500">서브</p>
+        <textarea
+          className="mb-2 w-full rounded border border-slate-200 px-2 py-1 text-xs"
+          rows={2}
+          value={subsText}
+          onChange={(e) => setSubsText(e.target.value)}
+          onBlur={() => {
+            const sub_keywords = subsText.split(/[,，;；\n\r]+/).map((s) => s.trim()).filter(Boolean);
+            startTransition(async () => {
+              await updateNaverTrendKeywordGroup(row.id, { sub_keywords });
+              onChange((prev) => prev.map((r) => (r.id === row.id ? { ...r, sub_keywords } : r)));
+            });
+          }}
+        />
+        <p className="mb-1 text-[10px] font-medium text-slate-500">크기·유형</p>
+        <textarea
+          className="mb-2 w-full rounded border border-slate-200 px-2 py-1 text-xs"
+          rows={2}
+          value={sizesText}
+          onChange={(e) => setSizesText(e.target.value)}
+          onBlur={() => {
+            const size_keywords = sizesText.split(/[,，;；\n\r]+/).map((s) => s.trim()).filter(Boolean);
+            startTransition(async () => {
+              await updateNaverTrendKeywordGroup(row.id, { size_keywords });
+              onChange((prev) => prev.map((r) => (r.id === row.id ? { ...r, size_keywords } : r)));
+            });
+          }}
+        />
+        <p className="mb-1 text-[10px] font-medium text-slate-500">템플릿(줄당 1개)</p>
+        <textarea
+          className="w-full rounded border border-slate-200 px-2 py-1 font-mono text-[11px]"
+          rows={3}
+          value={tplText}
+          onChange={(e) => setTplText(e.target.value)}
+          onBlur={() => {
+            const title_templates = tplText.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+            startTransition(async () => {
+              await updateNaverTrendKeywordGroup(row.id, { title_templates });
+              onChange((prev) => prev.map((r) => (r.id === row.id ? { ...r, title_templates } : r)));
             });
           }}
         />
