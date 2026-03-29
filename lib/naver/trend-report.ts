@@ -18,7 +18,7 @@ export type GroupTrendRow = {
 
 export type DailyReportPayload = {
   disclaimer: string;
-  /** 파생 제목 블록 상단 안내(발행 시 스냅샷) */
+  /** 추천 제목 블록 안내(발행 시 스냅샷, 공개 UI는 고정 문구 사용 가능) */
   titleIdeasNote?: string;
   window: { startDate: string; endDate: string; timeUnit: string };
   groups: GroupTrendRow[];
@@ -26,11 +26,11 @@ export type DailyReportPayload = {
   falling: GroupTrendRow[];
   stable: GroupTrendRow[];
   topThree: { groupName: string; id: string; hint: string }[];
-  /** 선정 그룹(topThree)만, 그룹별 자기 템플릿에서 2제목씩(리포트 단위로 겹침 최소화) */
+  /** 선정 그룹(topThree)만, 그룹별 자기 템플릿에서 추천 제목(리포트 단위로 겹침 최소화) */
   suggestedTitles: Record<string, string[]>;
 };
 
-/** 공개 페이지·스냅샷에서 키워드당 노출하는 파생 제목 개수 */
+/** 공개 페이지·스냅샷에서 키워드당 노출하는 추천 제목 개수 */
 export const MARKETING_SUGGESTED_TITLE_DISPLAY_CAP = 2;
 
 function classify(delta: number): TrendBucket {
@@ -396,8 +396,7 @@ export async function runNaverTrendReportJob(supabase: SupabaseClient): Promise<
   const payload: DailyReportPayload = {
     disclaimer:
       "네이버 데이터랩 통합검색 검색어 트렌드 기준이며, 수치는 기간 내 상대 비율(최고값=100)입니다. 실제 검색 건수가 아닙니다.",
-    titleIdeasNote:
-      "파생 아이디어는 데이터랩이 아니라 관리자 등록 템플릿·서브·크기로 만듭니다. 키워드(그룹)마다 그 그룹에 등록된 템플릿만 쓰며, 같은 리포트 안에서는 동일 템플릿 줄과 반복 문구(예: 한눈에 정리)가 여러 키워드에 겹치지 않도록 최대한 피해 배정합니다. {지역}은 실제 지명으로 바꿔 쓰세요.",
+    titleIdeasNote: "키워드별 추천 제목입니다. 참고용으로만 사용하세요.",
     window: { startDate, endDate, timeUnit: "date" },
     groups: groupTrends,
     rising,

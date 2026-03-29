@@ -114,11 +114,12 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
               <section className={`${cardClass} mb-6`}>
                 <div className="flex items-center gap-2">
                   <Lightbulb className="h-5 w-5 shrink-0 text-teal-600" aria-hidden />
-                  <h2 className="text-base font-semibold text-slate-800">파생 아이디어 · 블로그 제목 (복붙용)</h2>
+                  <h2 className="text-base font-semibold text-slate-800">추천 제목</h2>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                  {payload.titleIdeasNote ??
-                    "선정된 키워드에 대해 관리자가 등록한 템플릿·서브·크기로 기준일마다 순환 배정한 목록입니다. {지역}은 실제 지명으로 바꿔 쓰세요."}
+                  키워드별 추천 제목입니다.
+                  <br />
+                  참고용으로만 사용하세요.
                 </p>
                 <ul className="mt-4 space-y-5">
                   {payload.topThree.map((t) => {
