@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 function formatJobWageListTitle(ymd: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
   const [, m, d] = ymd.split("-").map(Number);
-  return `${m}월 ${d}일 구인 일당 스냅샷`;
+  return `${m}월 ${d}일 말일 · 30일 구간 일당 리포트`;
 }
 
 export default async function JobMarketReportIndexPage() {
@@ -52,7 +52,7 @@ export default async function JobMarketReportIndexPage() {
               일당 리포트
             </h1>
             <p className="mx-auto mt-3 max-w-md text-sm text-slate-600">
-              저장된 일간 스냅샷이 없습니다. 관리자에서 일당 리포트 집계를 실행해 주세요.
+              저장된 30일 구간 리포트가 없습니다. 관리자에서「30일 기준 리포트 생성」을 실행해 주세요.
             </p>
           </div>
           <div className="mt-6">
@@ -81,7 +81,7 @@ export default async function JobMarketReportIndexPage() {
             일당 리포트
           </h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">
-            날짜별로 저장된 시·도별 평균 일당·직종 요약을 열람할 수 있습니다. 매일 스냅샷이 쌓입니다.
+            KST 달력 30일 구간을 한 번에 집계한 시·도별 평균 일당·직종 요약입니다. 갱신할 때마다 리포트는 1건으로 덮어씁니다.
           </p>
         </div>
 
@@ -89,7 +89,9 @@ export default async function JobMarketReportIndexPage() {
           <NewsCategoryTabs current="job_wage" showPrivateTab={isAdmin} />
         </div>
 
-        <p className="mx-auto mt-4 max-w-4xl text-center text-xs text-slate-500">최근 {rows.length}건 표시 (최대 365일)</p>
+        <p className="mx-auto mt-4 max-w-4xl text-center text-xs text-slate-500">
+          {rows.length}건 (30일 구간 리포트는 보통 1건)
+        </p>
 
         <ul className="mx-auto mt-8 grid w-full max-w-6xl min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => (

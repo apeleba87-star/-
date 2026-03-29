@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import type { JobWageDailyReportPayload } from "@/lib/jobs/job-wage-daily-report";
+import { addDaysToDateString } from "@/lib/jobs/kst-date";
+import { JOB_WAGE_REPORT_WINDOW_DAYS, type JobWageDailyReportPayload } from "@/lib/jobs/job-wage-daily-report";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,15 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
     typeof payload.reportDateKst === "string" &&
     Array.isArray(payload.regions);
 
+  const windowDays = payload?.windowDays ?? JOB_WAGE_REPORT_WINDOW_DAYS;
+  const windowStartKst =
+    payload?.windowStartKst ??
+    (payload?.reportDateKst ? addDaysToDateString(payload.reportDateKst, -(windowDays - 1)) : null);
+  const windowRangeLabel =
+    windowStartKst && payload?.reportDateKst
+      ? `${windowStartKst} ~ ${payload.reportDateKst} (KST, ${windowDays}일)`
+      : `${date} (KST)`;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
       <div className="page-shell py-10 lg:py-12">
@@ -62,7 +72,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             일당 리포트
           </h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">{report.headline}</p>
-          <p className="mt-1 text-xs text-slate-500">기준일(KST): {date}</p>
+          <p className="mt-1 text-xs text-slate-500">집계 구간: {windowRangeLabel}</p>
         </div>
 
         <div className="mt-6">
@@ -88,7 +98,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             <>
               {payload.dominantCategory && (
                 <section className={`${cardClass} mb-6`}>
-                  <h2 className="text-base font-semibold text-slate-800">어제 가장 많이 올라온 직종(대분류)</h2>
+                  <h2 className="text-base font-semibold text-slate-800">기간 내 가장 많이 등록된 직종(대분류)</h2>
                   <p className="mt-2 text-lg font-semibold text-slate-900">{payload.dominantCategory.name}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     신규 포지션 {payload.dominantCategory.positionCount}건 (전체 신규 {payload.totalNewPositionCount}건 중)
@@ -134,7 +144,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
               <p className="text-xs leading-relaxed text-slate-500">{payload.methodologyNote}</p>
               {payload.window && (
                 <p className="mt-2 text-xs text-slate-400">
-                  집계 구간(UTC): {payload.window.startUtc} ~ {payload.window.endExclusiveUtc} (전일 KST 하루)
+                  집계 구간(UTC): {payload.window.startUtc} ~ {payload.window.endExclusiveUtc} ({windowDays}일, KST 달력)
                 </p>
               )}
             </>

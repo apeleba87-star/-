@@ -55,3 +55,17 @@ export function getKstDayHalfOpenUtcRange(dateYmd: string): [string, string] {
   const end = new Date(`${next}T00:00:00+09:00`).toISOString();
   return [start, end];
 }
+
+/**
+ * KST 달력일 endYmd(포함)까지 거슬러 calendarDays일(포함)을 half-open UTC 구간으로 반환.
+ * 예: endYmd=어제, calendarDays=30 → 어제부터 29일 전 KST 0시부터, 어제 끝 다음 순간(=오늘 KST 0시) 전까지.
+ */
+export function getKstRollingWindowHalfOpenUtcRange(endYmd: string, calendarDays: number): [string, string] {
+  if (calendarDays < 1) {
+    return getKstDayHalfOpenUtcRange(endYmd);
+  }
+  const startYmd = addDaysToDateString(endYmd, -(calendarDays - 1));
+  const [startUtc] = getKstDayHalfOpenUtcRange(startYmd);
+  const [, endExclusiveUtc] = getKstDayHalfOpenUtcRange(endYmd);
+  return [startUtc, endExclusiveUtc];
+}

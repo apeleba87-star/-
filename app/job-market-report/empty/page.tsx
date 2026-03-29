@@ -20,11 +20,11 @@ export default async function JobMarketReportEmptyPage() {
             일당 리포트
           </h1>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-            아직 발행된 스냅샷이 없습니다. Supabase에 마이그레이션을 적용한 뒤 관리자{" "}
+            아직 30일 구간 리포트가 없습니다. 관리자{" "}
             <Link href="/admin/job-wage-report" className="font-medium text-teal-700 hover:underline">
               일당 리포트
             </Link>
-            에서 수동 집계를 실행해 주세요.
+            에서「30일 기준 리포트 생성」을 실행해 주세요.
           </p>
         </div>
         <div className="mt-6">

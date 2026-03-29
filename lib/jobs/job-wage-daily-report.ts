@@ -1,11 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addDaysToDateString, getKstDayHalfOpenUtcRange, getKstTodayString, getKstYesterdayString } from "@/lib/jobs/kst-date";
+import { addDaysToDateString, getKstRollingWindowHalfOpenUtcRange, getKstTodayString, getKstYesterdayString } from "@/lib/jobs/kst-date";
+
+/** 집계에 쓰는 KST 달력일 수(포함) */
+export const JOB_WAGE_REPORT_WINDOW_DAYS = 30;
 
 export type JobWageDailyReportPayload = {
   methodologyNote: string;
+  /** 집계 구간의 마지막 날(KST 달력일, 포함) */
   reportDateKst: string;
+  /** 집계 구간의 첫 날(KST 달력일, 포함) */
+  windowStartKst: string;
+  windowDays: number;
   window: { startUtc: string; endExclusiveUtc: string };
-  /** 해당 일 신규 포지션 전체(직종 선정 전) */
+  /** 구간 내 신규 포지션 전체(직종 선정 전) */
   totalNewPositionCount: number;
   dominantCategory: { id: string; name: string; positionCount: number } | null;
   /** 1위 직종만 남긴 뒤, 일당이 유효한 공고 수 */
@@ -21,42 +28,57 @@ type PositionRow = {
   normalized_daily_wage: number | string | null;
 };
 
-/**
- * KST reportDate의 전일 0~24시에 생성된 포지션만 집계.
- * 1위 대분류 직종만 사용. 공고당 대표 일당 = 해당 직종 포지션의 normalized_daily_wage 최댓값.
- */
-export async function runJobWageDailyReportJob(
+async function replaceJobWageReportsWithSingleRow(
   supabase: SupabaseClient,
-  options?: { reportDateKst?: string }
+  row: {
+    report_date: string;
+    headline: string;
+    payload: Record<string, unknown>;
+    fetch_error: string | null;
+    computed_at: string;
+  }
+): Promise<{ error: Error | null }> {
+  const { error: delErr } = await supabase.from("job_wage_daily_reports").delete().not("report_date", "is", null);
+  if (delErr) return { error: new Error(delErr.message) };
+  const { error: insErr } = await supabase.from("job_wage_daily_reports").insert(row);
+  if (insErr) return { error: new Error(insErr.message) };
+  return { error: null };
+}
+
+/**
+ * KST 기준 [windowEnd - 29일, windowEnd] 달력 30일 동안 생성된 포지션을 한 번에 집계.
+ * 1위 대분류 직종만 사용. 공고당 대표 일당 = 해당 직종 포지션의 normalized_daily_wage 최댓값.
+ * 저장 시 기존 job_wage_daily_reports 행을 모두 지운 뒤 1건만 둡니다(report_date = 구간 말일).
+ */
+export async function runJobWage30DayReportJob(
+  supabase: SupabaseClient,
+  options?: { windowEndKst?: string; /** @deprecated */ reportDateKst?: string }
 ): Promise<{ ok: boolean; report_date?: string; error?: string }> {
-  const reportDate = options?.reportDateKst ?? getKstYesterdayString();
+  const windowEnd = options?.windowEndKst ?? options?.reportDateKst ?? getKstYesterdayString();
   const todayKst = getKstTodayString();
-  if (reportDate >= todayKst) {
-    return { ok: false, error: "reportDateKst must be before KST today" };
+  if (windowEnd >= todayKst) {
+    return { ok: false, error: "windowEndKst must be before KST today" };
   }
 
-  const [startUtc, endExclusiveUtc] = getKstDayHalfOpenUtcRange(reportDate);
+  const windowStartKst = addDaysToDateString(windowEnd, -(JOB_WAGE_REPORT_WINDOW_DAYS - 1));
+  const [startUtc, endExclusiveUtc] = getKstRollingWindowHalfOpenUtcRange(windowEnd, JOB_WAGE_REPORT_WINDOW_DAYS);
 
   const { data: rawRows, error: qErr } = await supabase
     .from("job_post_positions")
-    .select(
-      "id, job_post_id, category_main_id, normalized_daily_wage, job_posts!inner(region)"
-    )
+    .select("id, job_post_id, category_main_id, normalized_daily_wage, job_posts!inner(region)")
     .gte("created_at", startUtc)
     .lt("created_at", endExclusiveUtc);
 
   if (qErr) {
-    await supabase.from("job_wage_daily_reports").upsert(
-      {
-        report_date: reportDate,
-        headline: "집계에 실패했습니다.",
-        payload: { error: qErr.message } as Record<string, unknown>,
-        fetch_error: qErr.message,
-        computed_at: new Date().toISOString(),
-      },
-      { onConflict: "report_date" }
-    );
-    return { ok: false, error: qErr.message, report_date: reportDate };
+    const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
+      report_date: windowEnd,
+      headline: "집계에 실패했습니다.",
+      payload: { error: qErr.message } as Record<string, unknown>,
+      fetch_error: qErr.message,
+      computed_at: new Date().toISOString(),
+    });
+    if (upErr) return { ok: false, error: upErr.message, report_date: windowEnd };
+    return { ok: false, error: qErr.message, report_date: windowEnd };
   }
 
   const rows = (rawRows ?? []) as unknown as PositionRow[];
@@ -80,12 +102,14 @@ export async function runJobWageDailyReportJob(
   }
 
   const methodologyNote =
-    "해당 기간 등록 공고 기준입니다. KST 전일 0시~24시에 새로 생성된 구인 포지션만 포함하며, 직종은 그중 등록 건수가 가장 많은 대분류 하나만 반영합니다. 현장(공고)당 대표 일당은 해당 직종 포지션의 일당 환산액 중 최댓값입니다. 시·도별 숫자는 그 대표 일당의 산술평균이며, 노출되는 극단값은 최고 일당만 표시합니다.";
+    `KST 달력 ${windowStartKst} ~ ${windowEnd} (${JOB_WAGE_REPORT_WINDOW_DAYS}일) 동안 새로 생성된 구인 포지션만 포함합니다. 그중 등록 건수가 가장 많은 대분류 직종 하나만 반영하며, 현장(공고)당 대표 일당은 해당 직종 포지션의 일당 환산액 중 최댓값입니다. 시·도별 숫자는 그 대표 일당의 산술평균이며, 노출되는 극단값은 최고 일당만 표시합니다.`;
 
   if (rows.length === 0) {
     const payload: JobWageDailyReportPayload = {
       methodologyNote,
-      reportDateKst: reportDate,
+      reportDateKst: windowEnd,
+      windowStartKst,
+      windowDays: JOB_WAGE_REPORT_WINDOW_DAYS,
       window: { startUtc, endExclusiveUtc },
       totalNewPositionCount: 0,
       dominantCategory: null,
@@ -93,17 +117,15 @@ export async function runJobWageDailyReportJob(
       regions: [],
       maxDailyWage: null,
     };
-    await supabase.from("job_wage_daily_reports").upsert(
-      {
-        report_date: reportDate,
-        headline: `${reportDate} (KST)에는 등록된 신규 구인 포지션이 없습니다.`,
-        payload: payload as unknown as Record<string, unknown>,
-        fetch_error: null,
-        computed_at: new Date().toISOString(),
-      },
-      { onConflict: "report_date" }
-    );
-    return { ok: true, report_date: reportDate };
+    const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
+      report_date: windowEnd,
+      headline: `${windowStartKst} ~ ${windowEnd} (KST) 구간에 등록된 신규 구인 포지션이 없습니다.`,
+      payload: payload as unknown as Record<string, unknown>,
+      fetch_error: null,
+      computed_at: new Date().toISOString(),
+    });
+    if (upErr) return { ok: false, error: upErr.message, report_date: windowEnd };
+    return { ok: true, report_date: windowEnd };
   }
 
   const catCounts = new Map<string, number>();
@@ -125,9 +147,7 @@ export async function runJobWageDailyReportJob(
   }
 
   const dominantCategory =
-    dominantId != null
-      ? { id: dominantId, name: dominantName, positionCount: dominantCount }
-      : null;
+    dominantId != null ? { id: dominantId, name: dominantName, positionCount: dominantCount } : null;
 
   const filtered = dominantId ? rows.filter((r) => r.category_main_id === dominantId) : [];
 
@@ -172,20 +192,18 @@ export async function runJobWageDailyReportJob(
 
   let headline: string;
   if (!dominantCategory) {
-    headline = `${reportDate} (KST) 신규 포지션에서 직종을 특정하지 못했습니다.`;
+    headline = `${windowStartKst}~${windowEnd} 신규 포지션에서 직종을 특정하지 못했습니다.`;
   } else if (jobPostCount === 0) {
-    headline = `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다.`;
+    headline = `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다. (${JOB_WAGE_REPORT_WINDOW_DAYS}일 구간)`;
   } else {
-    const y = getKstYesterdayString();
-    headline =
-      reportDate === y
-        ? `어제 신규 구인 「${dominantCategory.name}」 기준 — 시·도별 평균 일당`
-        : `「${dominantCategory.name}」 ${reportDate} 신규 구인 기준 — 시·도별 평균 일당`;
+    headline = `최근 ${JOB_WAGE_REPORT_WINDOW_DAYS}일(KST) 신규 구인 「${dominantCategory.name}」 기준 — 시·도별 평균 일당 (${windowStartKst}~${windowEnd})`;
   }
 
   const payload: JobWageDailyReportPayload = {
     methodologyNote,
-    reportDateKst: reportDate,
+    reportDateKst: windowEnd,
+    windowStartKst,
+    windowDays: JOB_WAGE_REPORT_WINDOW_DAYS,
     window: { startUtc, endExclusiveUtc },
     totalNewPositionCount,
     dominantCategory,
@@ -194,28 +212,17 @@ export async function runJobWageDailyReportJob(
     maxDailyWage,
   };
 
-  const { error: upErr } = await supabase.from("job_wage_daily_reports").upsert(
-    {
-      report_date: reportDate,
-      headline,
-      payload: payload as unknown as Record<string, unknown>,
-      fetch_error: null,
-      computed_at: new Date().toISOString(),
-    },
-    { onConflict: "report_date" }
-  );
+  const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
+    report_date: windowEnd,
+    headline,
+    payload: payload as unknown as Record<string, unknown>,
+    fetch_error: null,
+    computed_at: new Date().toISOString(),
+  });
 
-  if (upErr) return { ok: false, error: upErr.message, report_date: reportDate };
-  return { ok: true, report_date: reportDate };
+  if (upErr) return { ok: false, error: upErr.message, report_date: windowEnd };
+  return { ok: true, report_date: windowEnd };
 }
 
-/** KST 어제부터 과거로 30일간의 report_date (어제 포함) */
-export function getLast30ReportDatesKst(): string[] {
-  const out: string[] = [];
-  let d = getKstYesterdayString();
-  for (let i = 0; i < 30; i += 1) {
-    out.push(d);
-    d = addDaysToDateString(d, -1);
-  }
-  return out;
-}
+/** 크론·기존 호출 호환용 별칭 */
+export const runJobWageDailyReportJob = runJobWage30DayReportJob;

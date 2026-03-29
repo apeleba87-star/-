@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
-import { getLast30ReportDatesKst, runJobWageDailyReportJob } from "@/lib/jobs/job-wage-daily-report";
+import { runJobWage30DayReportJob } from "@/lib/jobs/job-wage-daily-report";
 
 async function requireAdmin() {
   const supabase = await createServerSupabase();
@@ -17,14 +17,14 @@ async function requireAdmin() {
   return { ok: true as const };
 }
 
-/** KST 전일 신규 포지션 기준 일당 스냅샷 (Cron 없이 수동 실행) */
-export async function runJobWageDailyReportManual() {
+/** KST 어제를 말일로 하는 달력 30일 구간을 한 번에 집계해 단일 리포트로 저장 */
+export async function runJobWage30DayReportManual() {
   const auth = await requireAdmin();
   if (!auth.ok) return { ok: false, error: auth.error };
 
   try {
     const supabase = createServiceSupabase();
-    const result = await runJobWageDailyReportJob(supabase);
+    const result = await runJobWage30DayReportJob(supabase);
     revalidatePath("/admin/job-wage-report");
     revalidatePath("/job-market-report");
     if (result.report_date) {
@@ -34,43 +34,5 @@ export async function runJobWageDailyReportManual() {
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return { ok: false, error: message };
-  }
-}
-
-/** KST 어제 포함 최근 30일 각각 스냅샷 upsert (과거 데이터 백필) */
-export async function runJobWageDailyReportBackfill30Days() {
-  const auth = await requireAdmin();
-  if (!auth.ok) return { ok: false as const, error: auth.error };
-
-  try {
-    const supabase = createServiceSupabase();
-    const dates = getLast30ReportDatesKst();
-    let succeeded = 0;
-    const failures: { date: string; error: string }[] = [];
-
-    for (const reportDateKst of dates) {
-      const r = await runJobWageDailyReportJob(supabase, { reportDateKst });
-      if (r.ok) {
-        succeeded += 1;
-      } else {
-        failures.push({ date: reportDateKst, error: r.error ?? "unknown" });
-      }
-    }
-
-    revalidatePath("/admin/job-wage-report");
-    revalidatePath("/job-market-report");
-    for (const d of dates) {
-      revalidatePath(`/job-market-report/${d}`);
-    }
-
-    return {
-      ok: true as const,
-      total: dates.length,
-      succeeded,
-      failures,
-    };
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return { ok: false as const, error: message };
   }
 }

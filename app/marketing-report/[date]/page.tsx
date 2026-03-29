@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FileText, Lightbulb, Search, TrendingDown, TrendingUp } from "lucide-react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import { MARKETING_SUGGESTED_TITLE_DISPLAY_CAP, type DailyReportPayload } from "@/lib/naver/trend-report";
+import {
+  MARKETING_SUGGESTED_TITLE_DISPLAY_CAP,
+  type DailyReportPayload,
+  type GroupTrendRow,
+} from "@/lib/naver/trend-report";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +16,12 @@ function isYmd(s: string): boolean {
 }
 
 const cardClass = "rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm sm:p-6";
+
+function rankBadgeClass(i: number): string {
+  if (i === 0) return "bg-gradient-to-br from-teal-600 to-emerald-600 text-white shadow-sm";
+  if (i === 1) return "bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-sm";
+  return "bg-slate-500 text-white shadow-sm";
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params;
@@ -49,19 +60,16 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
       <div className="page-shell py-10 lg:py-12">
         <div className="lg:text-center">
-          <p className="text-xs font-medium uppercase tracking-wide text-teal-700">네이버 데이터랩 · 통합검색 트렌드</p>
-          <h1 className="mt-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+          <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
             마케팅 리포트
           </h1>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">{report.headline}</p>
-          <p className="mt-1 text-xs text-slate-500">기준일(KST): {date}</p>
+          <p className="mx-auto mb-1 max-w-2xl text-sm font-medium text-slate-800">{report.headline}</p>
+          <p className="mx-auto mb-6 text-sm text-slate-600">네이버 데이터랩 · 통합검색 트렌드 · 기준일(KST) {date}</p>
         </div>
 
-        <div className="mt-6">
-          <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
-        </div>
+        <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
 
-        <p className="mx-auto mt-4 max-w-3xl text-center text-sm">
+        <p className="mx-auto mt-6 max-w-3xl text-center text-sm">
           <Link href="/marketing-report" className="font-medium text-teal-700 hover:underline">
             ← 전체 리포트 목록
           </Link>
@@ -73,23 +81,28 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
           </div>
         )}
 
-        <div className="mx-auto mt-8 max-w-3xl">
+        <div className="mx-auto mt-8 max-w-5xl px-0">
           {!hasPayload ? (
             <div className={`${cardClass} text-center text-slate-600`}>리포트 데이터가 없습니다.</div>
           ) : (
             <>
               <section className={`${cardClass} mb-6`}>
-                <h2 className="text-base font-semibold text-slate-800">오늘 쓸 만한 키워드</h2>
+                <div className="flex items-center gap-2">
+                  <Search className="h-5 w-5 shrink-0 text-teal-600" aria-hidden />
+                  <h2 className="text-base font-semibold text-slate-800">오늘 쓸 만한 키워드</h2>
+                </div>
                 <ul className="mt-4 space-y-3">
                   {payload.topThree.map((t, i) => (
                     <li
                       key={t.id}
                       className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 text-sm font-bold text-white shadow-sm">
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${rankBadgeClass(i)}`}
+                      >
                         {i + 1}
                       </span>
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-semibold text-slate-900">{t.groupName}</p>
                         <p className="text-xs text-slate-500">{t.hint}</p>
                       </div>
@@ -99,7 +112,10 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
               </section>
 
               <section className={`${cardClass} mb-6`}>
-                <h2 className="text-base font-semibold text-slate-800">파생 아이디어 · 블로그 제목 (복붙용)</h2>
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 shrink-0 text-teal-600" aria-hidden />
+                  <h2 className="text-base font-semibold text-slate-800">파생 아이디어 · 블로그 제목 (복붙용)</h2>
+                </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">
                   {payload.titleIdeasNote ??
                     "선정된 키워드에 대해 관리자가 등록한 템플릿·서브·크기로 기준일마다 순환 배정한 목록입니다. {지역}은 실제 지명으로 바꿔 쓰세요."}
@@ -122,9 +138,10 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
                             {titles.map((title, idx) => (
                               <li
                                 key={`${t.id}-${idx}`}
-                                className="rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-2.5 text-sm text-slate-800"
+                                className="flex items-start gap-2.5 rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm"
                               >
-                                {title}
+                                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-teal-600/90" aria-hidden />
+                                <span className="min-w-0 leading-relaxed">{title}</span>
                               </li>
                             ))}
                           </ul>
@@ -136,13 +153,17 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
               </section>
 
               <section className={`${cardClass} mb-6`}>
-                <h2 className="text-base font-semibold text-slate-800">급상승 · 하락</h2>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 shrink-0 text-teal-600" aria-hidden />
+                  <h2 className="text-base font-semibold text-slate-800">급상승 · 하락</h2>
+                </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  전일 대비 지표 차이 ±{10} 이상이면 상승/하락으로 분류합니다. 수치는 기간 내 상대 비율입니다.
+                  전일 대비 지표 차이 ±{10} 이상이면 상승/하락으로 분류합니다. 수치는 기간 내 상대 비율입니다. 해당하는 키워드를{" "}
+                  <strong className="font-medium text-slate-600">모두</strong> 표시합니다.
                 </p>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <BucketColumn title="상승" items={payload.rising} tone="text-emerald-800 bg-emerald-50/90 ring-emerald-100" />
-                  <BucketColumn title="하락" items={payload.falling} tone="text-rose-800 bg-rose-50/90 ring-rose-100" />
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <BucketColumn title="상승" items={payload.rising} variant="up" Icon={TrendingUp} />
+                  <BucketColumn title="하락" items={payload.falling} variant="down" Icon={TrendingDown} />
                 </div>
               </section>
 
@@ -163,9 +184,9 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
                   <li key={r.report_date}>
                     <Link
                       href={`/marketing-report/${r.report_date}`}
-                      className={`inline-block rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                      className={`inline-block rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                         r.report_date === date
-                          ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md"
+                          ? "bg-teal-600 text-white shadow-sm"
                           : "bg-white text-slate-700 ring-1 ring-slate-200/80 hover:bg-slate-50"
                       }`}
                     >
@@ -200,28 +221,68 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
 function BucketColumn({
   title,
   items,
-  tone,
+  variant,
+  Icon,
 }: {
   title: string;
-  items: { groupName: string; delta: number; latest: number }[];
-  tone: string;
+  items: GroupTrendRow[];
+  variant: "up" | "down";
+  Icon: typeof TrendingUp;
 }) {
+  const maxAbs = Math.max(1, ...items.map((x) => Math.abs(x.delta)));
+
+  const accent =
+    variant === "up"
+      ? "border-l-teal-500 bg-gradient-to-r from-teal-50/40 to-white"
+      : "border-l-rose-500 bg-gradient-to-r from-rose-50/40 to-white";
+
+  const barFill = variant === "up" ? "bg-teal-500" : "bg-rose-500";
+  const deltaClass = variant === "up" ? "text-teal-800" : "text-rose-800";
+  const headerTint = variant === "up" ? "bg-teal-50/80 text-teal-900" : "bg-rose-50/80 text-rose-900";
+
   return (
-    <div className={`rounded-xl p-4 ring-1 ${tone}`}>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">{title}</h3>
-      <ul className="mt-2 space-y-2">
+    <div
+      className={`flex max-h-[min(28rem,65vh)] flex-col overflow-hidden rounded-xl border border-slate-200/90 border-l-4 shadow-sm ${accent}`}
+    >
+      <div
+        className={`flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2.5 ${headerTint}`}
+      >
+        <div className="flex items-center gap-1.5">
+          <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+          <h3 className="text-sm font-semibold">{title}</h3>
+        </div>
+        <span className="text-xs font-medium tabular-nums text-slate-600">{items.length}건</span>
+      </div>
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         {items.length === 0 ? (
-          <li className="rounded-lg px-2 py-2 text-xs text-slate-500">없음</li>
+          <li className="px-3 py-8 text-center text-xs text-slate-500">없음</li>
         ) : (
-          items.map((x) => (
-            <li key={x.groupName} className="rounded-lg bg-white/70 px-2 py-2 text-xs shadow-sm">
-              <span className="font-medium text-slate-900">{x.groupName}</span>
-              <span className="ml-1 text-slate-600">
-                (Δ{x.delta >= 0 ? "+" : ""}
-                {x.delta.toFixed(1)})
-              </span>
-            </li>
-          ))
+          items.map((x, idx) => {
+            const w = (Math.abs(x.delta) / maxAbs) * 100;
+            return (
+              <li
+                key={`${x.id}-${idx}`}
+                className="border-b border-slate-100/90 last:border-b-0 hover:bg-white/70"
+              >
+                <div className="flex items-center gap-2 px-3 py-2 sm:gap-3 sm:py-2.5">
+                  <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-slate-400 sm:w-6">
+                    {idx + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-medium leading-snug text-slate-900">{x.groupName}</span>
+                  <span className={`w-[3.25rem] shrink-0 text-right text-sm font-semibold tabular-nums sm:w-16 ${deltaClass}`}>
+                    {x.delta >= 0 ? "+" : ""}
+                    {x.delta.toFixed(1)}
+                  </span>
+                  <div
+                    className="hidden h-2 w-14 shrink-0 overflow-hidden rounded-full bg-slate-100 sm:block md:w-20"
+                    title={`변동폭 상대 비율 (열 내 최대 대비)`}
+                  >
+                    <div className={`h-full rounded-full ${barFill} opacity-80`} style={{ width: `${w}%` }} />
+                  </div>
+                </div>
+              </li>
+            );
+          })
         )}
       </ul>
     </div>
