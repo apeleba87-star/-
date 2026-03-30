@@ -30,13 +30,12 @@ export default async function MarketingReportIndexPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-violet-50/40">
         <div className="page-shell py-10 lg:py-12">
           <div className="lg:text-center">
-            <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-              마케팅 리포트
-            </h1>
-            <p className="mb-6 text-sm text-red-600">목록을 불러오지 못했습니다.</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700/90">검색 트렌드</p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">마케팅 리포트</h1>
+            <p className="mt-4 text-sm font-medium text-red-600">목록을 불러오지 못했습니다.</p>
           </div>
         </div>
       </div>
@@ -45,21 +44,38 @@ export default async function MarketingReportIndexPage() {
 
   if (!rows?.length) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
-        <div className="page-shell py-10 lg:py-12">
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-violet-50/40">
+        <div
+          className="pointer-events-none absolute inset-x-0 -top-20 h-64 bg-gradient-to-b from-indigo-200/20 to-transparent blur-3xl"
+          aria-hidden
+        />
+        <div className="page-shell relative py-10 lg:py-12">
           <div className="lg:text-center">
-            <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-              마케팅 리포트
-            </h1>
-            <p className="mx-auto mb-6 max-w-md text-sm text-slate-600">
-              저장된 리포트가 없습니다. 관리자에서 네이버 트렌드 갱신을 실행해 주세요.
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700/90">검색 트렌드</p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">마케팅 리포트</h1>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+              저장된 리포트가 없습니다. 관리자에서 키워드를 등록하고 데이터랩 갱신을 실행해 주세요.
             </p>
           </div>
-          <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
-          <div className="mx-auto mt-8 max-w-lg rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
-            <Link href="/news?category=report" className="text-sm font-medium text-teal-700 hover:underline">
-              입찰 리포트(업계 소식)으로
-            </Link>
+          <div className="mt-6">
+            <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
+          </div>
+          <div className="mx-auto mt-10 max-w-lg rounded-3xl border border-slate-200/70 bg-white p-8 text-center shadow-md ring-1 ring-slate-100/80">
+            <p className="text-sm text-slate-600">다른 리포트 둘러보기</p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Link
+                href="/news?category=report"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                입찰 리포트
+              </Link>
+              <Link
+                href="/job-market-report"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:border-indigo-200"
+              >
+                일당 리포트
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -67,22 +83,33 @@ export default async function MarketingReportIndexPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
-      <div className="page-shell py-10 lg:py-12">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-violet-50/40">
+      <div
+        className="pointer-events-none absolute inset-x-0 -top-24 h-72 bg-gradient-to-b from-indigo-200/25 via-violet-100/15 to-transparent blur-3xl"
+        aria-hidden
+      />
+      <div className="page-shell relative py-10 lg:py-12">
         <div className="lg:text-center">
-          <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-            마케팅 리포트
-          </h1>
-          <p className="mx-auto mb-6 max-w-2xl text-sm text-slate-600">
-            네이버 데이터랩 통합검색 트렌드 기준 키워드 인사이트입니다. 날짜별 스냅샷을 열람할 수 있으며, 입찰 리포트(업계 소식)와 같은 톤으로 구성했습니다.
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700/90">검색 트렌드 스냅샷</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">마케팅 리포트</h1>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+            네이버 데이터랩 <strong className="font-semibold text-slate-800">통합검색</strong> 트렌드로 키워드·추천 제목·급상승/하락을 날짜별로 묶었습니다. 카드를 열면 그날의 인사이트 전체를 볼 수 있어요.
           </p>
         </div>
 
-        <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
+        <div className="mt-6">
+          <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
+        </div>
 
-        <p className="mx-auto mt-6 max-w-4xl text-center text-xs text-slate-500">최근 {rows.length}건 (최대 365일)</p>
+        <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200/80">
+            <span className="text-indigo-600">최근 스냅샷</span>
+            <span className="tabular-nums text-slate-900">{rows.length}건</span>
+          </span>
+          <span className="text-xs text-slate-500">표시 상한 365일</span>
+        </div>
 
-        <ul className="mt-8 grid w-full min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-10 grid w-full min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r) => (
             <li key={r.report_date}>
               <NewsCard

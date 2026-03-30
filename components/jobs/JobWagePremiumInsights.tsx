@@ -38,7 +38,7 @@ export default function JobWagePremiumInsights({
   const totalInBins = bins.reduce((s, b) => s + b.jobPostCount, 0);
 
   return (
-    <section className="rounded-3xl border-2 border-teal-200/70 bg-gradient-to-br from-teal-50/40 via-white to-emerald-50/30 p-6 shadow-md ring-1 ring-teal-100/80 sm:p-7">
+    <section className="rounded-3xl border border-teal-200/70 bg-gradient-to-br from-teal-50/50 via-white to-emerald-50/35 p-6 shadow-md ring-1 ring-teal-100/80 sm:p-7">
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-600/25">
           <BarChart3 className="h-6 w-6" aria-hidden />

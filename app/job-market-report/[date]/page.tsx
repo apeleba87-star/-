@@ -1,6 +1,16 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Briefcase, MapPin, TrendingDown, TrendingUp, Users } from "lucide-react";
+import {
+  Briefcase,
+  MapPin,
+  Sparkles,
+  Table2,
+  Tag,
+  TrendingDown,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import KoreaProvinceGeoMap from "@/components/jobs/KoreaProvinceGeoMap";
 import JobWagePremiumInsights from "@/components/jobs/JobWagePremiumInsights";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
@@ -35,6 +45,35 @@ const cardClass =
   "rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm ring-1 ring-slate-100/80 sm:p-7";
 const insightClass =
   "rounded-3xl border border-teal-200/80 bg-gradient-to-br from-teal-50/95 via-white to-emerald-50/40 p-6 shadow-md ring-1 ring-teal-100/60 sm:p-7";
+
+function SectionHeader({
+  icon: Icon,
+  kicker,
+  title,
+  description,
+  iconBg,
+}: {
+  icon: typeof MapPin;
+  kicker: string;
+  title: string;
+  description?: ReactNode;
+  iconBg: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-start gap-4">
+      <div
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${iconBg}`}
+      >
+        <Icon className="h-6 w-6" aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{kicker}</p>
+        <h2 className="mt-1 text-xl font-bold text-slate-900">{title}</h2>
+        {description ? <p className="mt-2 text-sm leading-relaxed text-slate-600">{description}</p> : null}
+      </div>
+    </div>
+  );
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params;
@@ -129,15 +168,27 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
       : `구인 일당 리포트 ${date}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50">
-      <div className="page-shell py-10 lg:py-12">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50">
+      <div
+        className="pointer-events-none absolute inset-x-0 -top-24 h-72 bg-gradient-to-b from-teal-200/25 via-emerald-100/20 to-transparent blur-3xl"
+        aria-hidden
+      />
+      <div className="page-shell relative py-10 lg:py-12">
         <div className="lg:text-center">
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
           <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
-          <p className="mx-auto mb-2 max-w-2xl text-lg font-semibold leading-snug text-slate-800">{report.headline}</p>
+          <p className="mx-auto mb-3 max-w-2xl text-lg font-semibold leading-snug text-slate-800">{report.headline}</p>
           <p className="mx-auto mb-6 inline-flex flex-wrap items-center justify-center gap-2 rounded-full bg-slate-100/90 px-4 py-1.5 text-sm text-slate-600 ring-1 ring-slate-200/80">
             <span className="font-medium text-slate-500">집계 구간</span>
+            <span className="hidden text-slate-300 sm:inline" aria-hidden>
+              ·
+            </span>
             <span className="font-semibold text-slate-800">{windowRangeLabel}</span>
+            <span className="hidden text-slate-300 sm:inline" aria-hidden>
+              ·
+            </span>
+            <span className="font-medium text-slate-500">스냅샷</span>
+            <span className="font-semibold text-slate-800">KST {date}</span>
           </p>
         </div>
 
@@ -145,12 +196,12 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
 
         <p className="mx-auto mt-4 max-w-3xl text-center text-sm">
           <Link href="/job-market-report" className="font-medium text-teal-700 hover:underline">
-            ← 목록으로
+            ← 전체 리포트 목록
           </Link>
         </p>
 
         {report.fetch_error && (
-          <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900">
+          <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 shadow-sm ring-1 ring-amber-100">
             참고: {report.fetch_error}
           </div>
         )}
@@ -161,8 +212,17 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
           ) : (
             <>
               <section className={insightClass}>
-                <h2 className="text-xl font-bold text-teal-950">이 페이지를 이렇게 쓰세요</h2>
-                <p className="mt-1 text-sm text-teal-900/70">숫자만 훑어도 되고, 아래 표에서 시·도별로 자세히 볼 수 있어요.</p>
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-600/25">
+                    <Sparkles className="h-6 w-6" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xl font-bold text-teal-950">이 페이지를 이렇게 쓰세요</h2>
+                    <p className="mt-1 text-sm text-teal-900/75">
+                      숫자만 훑어도 되고, 지도·표·심화 인사이트에서 시·도와 시장 전체를 같이 보면 됩니다.
+                    </p>
+                  </div>
+                </div>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-teal-100/80">
                     <div className="flex items-center gap-2 text-teal-800">
@@ -174,8 +234,8 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                       <strong className="text-slate-900">낮은 시·도</strong>는 반대로 이 직종 단가가 낮게 형성된 편이라는 신호입니다. 일할 지역을 고를 때 참고하세요. 실제 급여는 현장·계약마다 다릅니다.
                     </p>
                   </div>
-                  <div className="rounded-xl bg-white/80 p-4 ring-1 ring-teal-100">
-                    <div className="flex items-center gap-2 text-teal-800">
+                  <div className="rounded-2xl bg-white/80 p-5 ring-1 ring-emerald-100/90">
+                    <div className="flex items-center gap-2 text-emerald-900">
                       <Briefcase className="h-5 w-5 shrink-0" aria-hidden />
                       <span className="font-bold">구인자</span>
                     </div>
@@ -188,32 +248,46 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
 
               {payload.dominantCategory && (
                 <section className={cardClass}>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">대표 직종</p>
-                  <h2 className="mt-1 text-xl font-bold text-slate-900">지금 이 숫자가 말하는 직종</h2>
-                  <p className="mt-1 text-3xl font-extrabold tracking-tight text-teal-800 sm:text-4xl">
-                    {payload.dominantCategory.name}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-600">
-                    이 직종 신규 포지션 <strong>{payload.dominantCategory.positionCount.toLocaleString("ko-KR")}건</strong> · 전체
-                    신규 포지션 <strong>{payload.totalNewPositionCount.toLocaleString("ko-KR")}건</strong> 중 가장 많았습니다.
-                  </p>
-                  <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                    아래 평균·지도·최고·최저는 모두 이 직종만 골라 계산했습니다.
-                  </p>
+                  <SectionHeader
+                    icon={Tag}
+                    kicker="대표 직종"
+                    title="지금 이 숫자가 말하는 직종"
+                    description="아래 평균·지도·요약·표는 모두 이 직종의 신규 구인만 모아 계산했습니다."
+                    iconBg="bg-gradient-to-br from-teal-600 to-emerald-600 shadow-teal-500/30"
+                  />
+                  <div className="relative mt-6 overflow-hidden rounded-2xl border border-teal-100/90 bg-gradient-to-b from-white to-teal-50/40 p-5 shadow-sm ring-1 ring-teal-100/60 sm:p-6">
+                    <div
+                      className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500"
+                      aria-hidden
+                    />
+                    <p className="pt-1 text-3xl font-extrabold tracking-tight text-teal-900 sm:text-4xl">
+                      {payload.dominantCategory.name}
+                    </p>
+                    <p className="mt-3 text-sm text-slate-600">
+                      이 직종 신규 포지션 <strong className="text-slate-900">{payload.dominantCategory.positionCount.toLocaleString("ko-KR")}건</strong> · 전체
+                      신규 포지션 <strong className="text-slate-900">{payload.totalNewPositionCount.toLocaleString("ko-KR")}건</strong> 중 가장 많았습니다.
+                    </p>
+                  </div>
                 </section>
               )}
 
               {(topProvince || bottomProvince || payload.maxDailyWage || payload.minDailyWage) && (
-                <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-md ring-1 ring-slate-100 sm:p-6">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">요약</p>
-                  <h2 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">높음 · 낮음 한눈에</h2>
-                  <p className="mt-2 text-sm text-slate-600">
-                    가로로 <strong className="text-slate-800">왼쪽은 가장 높음</strong>,{" "}
-                    <strong className="text-slate-800">오른쪽은 가장 낮음</strong>입니다.
-                  </p>
+                <section className={cardClass}>
+                  <SectionHeader
+                    icon={TrendingUp}
+                    kicker="요약"
+                    title="높음 · 낮음 한눈에"
+                    description={
+                      <>
+                        가로로 <strong className="font-semibold text-slate-800">왼쪽은 평균이 가장 높은 시·도</strong>,{" "}
+                        <strong className="font-semibold text-slate-800">오른쪽은 가장 낮은 시·도</strong>입니다. 아래는 공고 한 건에 적힌 일당의 최고·최저입니다.
+                      </>
+                    }
+                    iconBg="bg-gradient-to-br from-amber-500 to-orange-500 shadow-amber-500/25"
+                  />
 
                   {(topProvince || bottomProvince) && (
-                    <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-4">
+                    <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-4">
                       <div className="min-w-0 rounded-2xl border-2 border-teal-500 bg-white p-3 shadow-sm sm:p-5">
                         <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-teal-700 sm:text-xs">
                           평균 일당 · 가장 높은 시·도
@@ -248,7 +322,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                   )}
 
                   {(payload.maxDailyWage || payload.minDailyWage) && (
-                    <div className="mt-5 border-t border-slate-200/90 pt-5">
+                    <div className="mt-6 border-t border-slate-200/90 pt-6">
                       <p className="text-sm font-semibold text-slate-700">한 공고에 적힌 대표 일당</p>
                       <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-4">
                         <div className="min-w-0 rounded-2xl border-2 border-emerald-400/90 bg-gradient-to-br from-emerald-50 to-white p-3 shadow-sm ring-1 ring-emerald-100 sm:p-5">
@@ -295,14 +369,19 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
 
               {provinces.length > 0 && (
                 <section className={cardClass}>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">지역</p>
-                  <h2 className="mt-1 text-xl font-bold text-slate-900">시·도별 평균 일당 · 지도</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                    상위 <strong className="text-slate-800">{JOB_WAGE_MAP_TOP_PROVINCES}곳</strong>은{" "}
-                    <strong className="text-slate-800">1위~5위마다 서로 다른 색</strong>으로 칠해져 있고, 금액은 바로 아래 카드에서 확인하세요.
-                    같은 직종·같은 집계 기간 안에서만 비교한 값입니다.
-                  </p>
-                  <div className="mt-6">
+                  <SectionHeader
+                    icon={MapPin}
+                    kicker="지역"
+                    title="시·도별 평균 일당 · 지도"
+                    description={
+                      <>
+                        상위 <strong className="font-semibold text-slate-800">{JOB_WAGE_MAP_TOP_PROVINCES}곳</strong>은{" "}
+                        <strong className="font-semibold text-slate-800">1위~5위마다 서로 다른 색</strong>으로 칠해져 있고, 표의 뱃지와 색이 맞습니다. 같은 직종·같은 집계 기간 안에서만 비교한 값입니다.
+                      </>
+                    }
+                    iconBg="bg-gradient-to-br from-cyan-600 to-teal-600 shadow-cyan-500/25"
+                  />
+                  <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/40 p-3 ring-1 ring-slate-100/80 sm:p-4">
                     <KoreaProvinceGeoMap provinceByName={provinceByName} highlightTopN={JOB_WAGE_MAP_TOP_PROVINCES} />
                   </div>
                   {provinces.some((p) => p.province === "기타" && p.jobPostCount > 0) && (
@@ -329,16 +408,22 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
               )}
 
               <section className={cardClass}>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">전체 목록</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-900">시·도 전체 표</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  공고 <strong className="text-slate-800">{payload.jobPostCount.toLocaleString("ko-KR")}곳</strong> 기준 · 평균 높은 순 · 상위
-                  5곳은 지도 색과 같은 표식
-                </p>
+                <SectionHeader
+                  icon={Table2}
+                  kicker="전체 목록"
+                  title="시·도 전체 표"
+                  description={
+                    <>
+                      공고 <strong className="font-semibold text-slate-900">{payload.jobPostCount.toLocaleString("ko-KR")}곳</strong> 기준 · 평균 높은 순 · 상위
+                      5곳은 지도와 같은 색 뱃지
+                    </>
+                  }
+                  iconBg="bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20"
+                />
                 {provinces.length === 0 ? (
                   <p className="mt-4 text-sm text-slate-500">표시할 데이터가 없습니다.</p>
                 ) : (
-                  <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200/90 shadow-inner">
+                  <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200/90 bg-white shadow-inner ring-1 ring-slate-100/80">
                     <table className="w-full min-w-[320px] text-left text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-100/90 text-xs font-bold uppercase tracking-wide text-slate-600">
@@ -388,25 +473,30 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                 )}
               </section>
 
-              <p className="text-xs leading-relaxed text-slate-500">{payload.methodologyNote}</p>
-              {payload.window && (
-                <p className="text-xs text-slate-400">
-                  집계 구간(UTC): {payload.window.startUtc} ~ {payload.window.endExclusiveUtc}
-                </p>
-              )}
+              <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 px-5 py-4 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-100">
+                <p>{payload.methodologyNote}</p>
+                {payload.window ? (
+                  <p className="mt-2 font-medium text-slate-500">
+                    집계 구간(UTC): {payload.window.startUtc} ~ {payload.window.endExclusiveUtc}
+                  </p>
+                ) : null}
+              </div>
             </>
           )}
 
           {recent && recent.length > 0 && (
-            <section className="border-t border-slate-200/80 pt-8">
-              <h2 className="text-sm font-semibold text-slate-700">다른 리포트</h2>
-              <ul className="mt-3 flex flex-wrap gap-2">
+            <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-sm ring-1 ring-slate-100/80 sm:p-7">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">최근 리포트</h2>
+              <p className="mt-1 text-xs text-slate-500">날짜를 눌러 다른 스냅샷으로 이동합니다.</p>
+              <ul className="mt-4 flex flex-wrap gap-2">
                 {recent.map((r) => (
                   <li key={r.report_date}>
                     <Link
                       href={`/job-market-report/${r.report_date}`}
-                      className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                        r.report_date === date ? "bg-teal-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200/80 hover:bg-slate-50"
+                      className={`inline-flex min-h-9 items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                        r.report_date === date
+                          ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-teal-500/20"
+                          : "bg-slate-50 text-slate-700 ring-1 ring-slate-200/90 hover:bg-white hover:ring-teal-200/80"
                       }`}
                     >
                       {r.report_date}
@@ -417,18 +507,24 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             </section>
           )}
 
-          <div className="flex flex-wrap gap-3 pb-4">
+          <div className="flex flex-wrap justify-center gap-3 pt-2 pb-4">
             <Link
               href="/jobs"
-              className="inline-flex min-h-[48px] min-w-[160px] flex-1 items-center justify-center rounded-xl bg-slate-900 px-6 text-base font-semibold text-white hover:bg-slate-800 sm:flex-none"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800"
             >
               구인 공고 보기
             </Link>
             <Link
               href="/marketing-report"
-              className="inline-flex min-h-[48px] min-w-[160px] flex-1 items-center justify-center rounded-xl border-2 border-slate-300 bg-white px-6 text-base font-semibold text-slate-800 hover:bg-slate-50 sm:flex-none"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border-2 border-slate-200 bg-white px-6 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-teal-200 hover:bg-teal-50/40"
             >
               마케팅 리포트
+            </Link>
+            <Link
+              href="/news?category=report"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              입찰 리포트
             </Link>
           </div>
         </div>

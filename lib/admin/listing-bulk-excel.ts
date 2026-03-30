@@ -131,6 +131,24 @@ function isUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s.trim());
 }
 
+function parseOptionalYmd(raw: string): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+function parseEstimateCheckRequired(raw: string): boolean {
+  const t = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!t) return false;
+  if (["y", "yes", "1", "true", "예", "필요", "o"].includes(t)) return true;
+  return false;
+}
+
 function parseNum(raw: string): number | null {
   const s = String(raw ?? "")
     .replace(/,/g, "")
@@ -387,7 +405,14 @@ export function buildListingBulkTemplateWorkbook(
   XLSX.utils.book_append_sheet(wb, dataSheet, LISTING_BULK_SHEET_DATA);
 
   const refSheetRows = [
-    ["id(UUID)", "이름", "상위", "slug", "구분", "※ 현장거래(usage=listing 등) 카테고리. category_main_id / category_sub_id 복사"],
+    [
+      "id(UUID)",
+      "이름",
+      "상위",
+      "slug",
+      "구분",
+      "※ 다운로드 시점 DB 기준 — categories(현장거래 usage=listing·default·활성). 추가·수정 후 템플릿을 다시 받으세요.",
+    ],
     ...refRows.map((r) => [r.id, r.name, r.parent_name, r.slug, r.kind, ""]),
   ];
   const refSheet = XLSX.utils.aoa_to_sheet(refSheetRows);

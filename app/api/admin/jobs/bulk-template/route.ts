@@ -1,6 +1,6 @@
 import {
   buildJobBulkTemplateWorkbook,
-  buildPresetAlignedTemplateRows,
+  buildJobTemplateCategorySheetRows,
   splitJobMainAndSubCategories,
 } from "@/lib/admin/job-bulk-excel";
 import { createServerSupabase } from "@/lib/supabase-server";
@@ -37,10 +37,9 @@ export async function GET() {
   const { mains, subs } = splitJobMainAndSubCategories(all ?? []);
   const mainById = new Map(mains.map((m) => [m.id, m.name]));
 
-  /** 구인 화면 JOB_TYPE_PRESETS 순서·라벨과 동일하게 (상가청소=office=사무실청소 등 구분 표시) */
-  const subsForTemplate = buildPresetAlignedTemplateRows(subs, mainById);
-
-  const wb = buildJobBulkTemplateWorkbook(subsForTemplate);
+  /** 프리셋 순 + DB에만 있는 소분류까지 기준표에 포함(추가 업종 반영) */
+  const { presetRows, dbExtraRows } = buildJobTemplateCategorySheetRows(subs, mains, mainById);
+  const wb = buildJobBulkTemplateWorkbook(presetRows, dbExtraRows);
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
 
   return new NextResponse(new Uint8Array(buffer), {
