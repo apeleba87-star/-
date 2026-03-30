@@ -12,6 +12,7 @@ import {
   formatReportCardListDate,
   heroMetricsFromJobWagePayload,
 } from "@/lib/news/parseReportCardHero";
+import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
 
 export const dynamic = "force-dynamic";
 
@@ -136,10 +137,7 @@ export default async function JobMarketReportIndexPage() {
                   kind: "job_wage",
                   reportDate: r.report_date,
                   shareTitle: formatJobWageListTitle(r.report_date),
-                  shareText:
-                    typeof r.headline === "string" && r.headline.trim()
-                      ? r.headline.trim()
-                      : `구인 일당 리포트 · ${r.report_date}`,
+                  shareText: jobWageTeamShareText(r.report_date),
                   loginNextPath: `/job-market-report/${r.report_date}`,
                 }}
               />
@@ -165,7 +163,7 @@ export default async function JobMarketReportIndexPage() {
             kind="job_wage"
             reportDate={rows[0].report_date}
             shareTitle={`일당 리포트 ${rows[0].report_date}`}
-            shareText={rows[0].headline?.trim() || `구인 일당 리포트 · ${rows[0].report_date}`}
+            shareText={jobWageTeamShareText(rows[0].report_date)}
             loginNextPath="/job-market-report"
             layout="full"
           />

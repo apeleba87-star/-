@@ -13,6 +13,7 @@ import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
 import { marketingTopRisingGroupName } from "@/lib/news/parseReportCardHero";
+import { MARKETING_TEAM_SHARE_TEXT } from "@/lib/report/team-share-messages";
 
 export const dynamic = "force-dynamic";
 
@@ -322,7 +323,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
               kind="marketing"
               reportDate={date}
               shareTitle={`마케팅 리포트 ${date}`}
-              shareText={report.headline?.trim() || `청소 키워드 트렌드 스냅샷 · ${date}`}
+              shareText={MARKETING_TEAM_SHARE_TEXT}
               loginNextPath={`/marketing-report/${date}`}
               layout="full"
             />

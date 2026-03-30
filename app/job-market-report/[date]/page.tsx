@@ -24,6 +24,7 @@ import {
   topProvinceFromProvinces,
 } from "@/lib/jobs/job-wage-report-display";
 import { hasSubscriptionAccess } from "@/lib/subscription-access";
+import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 
@@ -159,10 +160,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
   }
 
   const jobWageShareTitle = `일당 리포트 ${date}`;
-  const jobWageShareText =
-    hasPayload && payload?.dominantCategory
-      ? `「${payload.dominantCategory.name}」 일당 리포트 — 시·도별 평균 일당`
-      : `구인 일당 리포트 ${date}`;
+  const jobWageShareText = jobWageTeamShareText(date);
 
   const provinceTableTsv =
     hasPayload && payload

@@ -9,6 +9,7 @@ import {
   heroMetricsFromMarketingPayload,
   marketingTopRisingGroupName,
 } from "@/lib/news/parseReportCardHero";
+import { MARKETING_TEAM_SHARE_TEXT } from "@/lib/report/team-share-messages";
 
 export const dynamic = "force-dynamic";
 
@@ -131,10 +132,7 @@ export default async function MarketingReportIndexPage() {
                   kind: "marketing",
                   reportDate: r.report_date,
                   shareTitle: formatMarketingListTitle(r.report_date),
-                  shareText:
-                    typeof r.headline === "string" && r.headline.trim()
-                      ? r.headline.trim()
-                      : `청소 키워드 트렌드 스냅샷 · ${r.report_date}`,
+                  shareText: MARKETING_TEAM_SHARE_TEXT,
                   loginNextPath: `/marketing-report/${r.report_date}`,
                 }}
               />
@@ -164,7 +162,7 @@ export default async function MarketingReportIndexPage() {
             kind="marketing"
             reportDate={rows[0].report_date}
             shareTitle={`마케팅 리포트 ${rows[0].report_date}`}
-            shareText={rows[0].headline?.trim() || `청소 키워드 트렌드 스냅샷 · ${rows[0].report_date}`}
+            shareText={MARKETING_TEAM_SHARE_TEXT}
             loginNextPath="/marketing-report"
             layout="full"
           />
