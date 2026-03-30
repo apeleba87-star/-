@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { JOB_TYPE_PRESETS, JOB_TYPE_OTHER } from "./job-type-presets";
 
 export type ResolvedJobType = {
-  category_main_id: string;
+  category_main_id: string | null;
   category_sub_id: string | null;
   job_type_input: string;
   normalized_job_type_key: string | null;
@@ -16,13 +16,12 @@ export type ResolvedJobType = {
 export async function resolveJobType(
   supabase: SupabaseClient,
   jobTypeKey: string | null | undefined,
-  jobTypeInput: string | null | undefined,
-  fallbackMainCategoryId: string
+  jobTypeInput: string | null | undefined
 ): Promise<ResolvedJobType> {
   const inputText = (jobTypeInput ?? "").trim() || "기타";
   if (!jobTypeKey || jobTypeKey === JOB_TYPE_OTHER) {
     return {
-      category_main_id: fallbackMainCategoryId,
+      category_main_id: null,
       category_sub_id: null,
       job_type_input: inputText,
       normalized_job_type_key: null,
@@ -48,7 +47,7 @@ export async function resolveJobType(
   const preset = JOB_TYPE_PRESETS.find((x) => x.key === jobTypeKey);
   if (!preset) {
     return {
-      category_main_id: fallbackMainCategoryId,
+      category_main_id: null,
       category_sub_id: null,
       job_type_input: inputText,
       normalized_job_type_key: null,
@@ -65,7 +64,7 @@ export async function resolveJobType(
     .single();
   if (!subCat?.parent_id) {
     return {
-      category_main_id: fallbackMainCategoryId,
+      category_main_id: null,
       category_sub_id: null,
       job_type_input: preset.label,
       normalized_job_type_key: preset.key,

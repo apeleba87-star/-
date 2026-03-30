@@ -44,7 +44,7 @@ export type JobWageDailyReportPayload = {
 type PositionRow = {
   id: string;
   job_post_id: string;
-  category_main_id: string | null;
+  normalized_job_type_key: string | null;
   normalized_daily_wage: number | string | null;
 };
 
@@ -80,7 +80,7 @@ export async function runJobWage30DayReportJob(
 
   const { data: rawRows, error: qErr } = await supabase
     .from("job_post_positions")
-    .select("id, job_post_id, category_main_id, normalized_daily_wage, job_posts!inner(region)")
+    .select("id, job_post_id, normalized_job_type_key, normalized_daily_wage, job_posts!inner(region)")
     .gte("created_at", startUtc)
     .lt("created_at", endExclusiveUtc);
 
@@ -117,7 +117,7 @@ export async function runJobWage30DayReportJob(
   }
 
   const methodologyNote =
-    `KST 달력 ${windowStartKst} ~ ${windowEnd} (${JOB_WAGE_REPORT_WINDOW_DAYS}일) 동안 새로 생긴 구인 포지션만 봅니다. 그중 가장 많이 등록된 대분류 직종 하나만 골라, 공고(현장)마다 그 직종 일당 환산액 중 가장 큰 값만 대표 일당으로 씁니다. 시·도(서울·경기·충남 등)는 그 대표 일당을 다시 모아 산술평균을 냅니다. 최고·최저는 그 대표 일당이 가장 크거나 작았던 시·군·구(공고에 적힌 지역) 한 곳입니다.`;
+    `KST 달력 ${windowStartKst} ~ ${windowEnd} (${JOB_WAGE_REPORT_WINDOW_DAYS}일) 동안 새로 생긴 구인 포지션만 봅니다. 그중 가장 많이 등록된 프리셋 업종 하나를 골라, 공고(현장)마다 그 업종 일당 환산액 중 가장 큰 값만 대표 일당으로 씁니다. 시·도(서울·경기·충남 등)는 그 대표 일당을 다시 모아 산술평균을 냅니다. 최고·최저는 그 대표 일당이 가장 크거나 작았던 시·군·구(공고에 적힌 지역) 한 곳입니다.`;
 
   const emptyPayload = (extra: Partial<JobWageDailyReportPayload> = {}): JobWageDailyReportPayload => ({
     methodologyNote,
@@ -150,28 +150,33 @@ export async function runJobWage30DayReportJob(
     return { ok: true, report_date: windowEnd };
   }
 
-  const catCounts = new Map<string, number>();
+  const presetCounts = new Map<string, number>();
   for (const r of rows) {
-    const id = r.category_main_id;
-    if (!id) continue;
-    catCounts.set(id, (catCounts.get(id) ?? 0) + 1);
+    const key = (r.normalized_job_type_key ?? "").trim();
+    if (!key) continue;
+    presetCounts.set(key, (presetCounts.get(key) ?? 0) + 1);
   }
 
-  const sortedCats = [...catCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const dominantEntry = sortedCats[0];
-  const dominantId = dominantEntry ? dominantEntry[0] : null;
+  const sortedPresets = [...presetCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const dominantEntry = sortedPresets[0];
+  const dominantKey = dominantEntry ? dominantEntry[0] : null;
   const dominantCount = dominantEntry ? dominantEntry[1] : 0;
 
   let dominantName = "알 수 없음";
-  if (dominantId) {
-    const { data: cat } = await supabase.from("categories").select("name").eq("id", dominantId).maybeSingle();
-    if (cat?.name) dominantName = cat.name as string;
+  if (dominantKey) {
+    const { data: preset } = await supabase
+      .from("job_type_presets")
+      .select("label")
+      .eq("key", dominantKey)
+      .maybeSingle();
+    if (preset?.label) dominantName = String(preset.label);
+    else dominantName = dominantKey;
   }
 
   const dominantCategory =
-    dominantId != null ? { id: dominantId, name: dominantName, positionCount: dominantCount } : null;
+    dominantKey != null ? { id: dominantKey, name: dominantName, positionCount: dominantCount } : null;
 
-  const filtered = dominantId ? rows.filter((r) => r.category_main_id === dominantId) : [];
+  const filtered = dominantKey ? rows.filter((r) => (r.normalized_job_type_key ?? "") === dominantKey) : [];
 
   const byJob = new Map<string, { wage: number; region: string }>();
   for (const r of filtered) {

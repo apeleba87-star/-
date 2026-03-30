@@ -455,10 +455,6 @@ export async function updateJobPost(
     );
   }
 
-  const { data: mainCategories } = await supabase.from("categories").select("id").is("parent_id", null).eq("is_active", true).in("usage", ["job", "default"]).limit(1);
-  const fallbackMainId = mainCategories?.[0]?.id;
-  if (!fallbackMainId) return { ok: false, error: "카테고리가 없습니다." };
-
   const FAKE_PAY_DAILY_LIMIT = 2_000_000;
   for (const p of input.positions) {
     const jobTypeInput = (p.job_type_input ?? "").trim();
@@ -469,7 +465,7 @@ export async function updateJobPost(
     }
     const skillLevel = p.skill_level === "expert" || p.skill_level === "general" ? p.skill_level : "general";
 
-    const resolved = await resolveJobType(supabase, p.job_type_key ?? null, jobTypeInput || undefined, fallbackMainId);
+    const resolved = await resolveJobType(supabase, p.job_type_key ?? null, jobTypeInput || undefined);
 
     const { error: posErr } = await supabase
       .from("job_post_positions")

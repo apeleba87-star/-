@@ -1,6 +1,6 @@
 import {
   buildJobBulkTemplateWorkbook,
-  buildJobTemplateCategorySheetRows,
+  type JobBulkTemplateSubRow,
   splitJobMainAndSubCategories,
 } from "@/lib/admin/job-bulk-excel";
 import { createServerSupabase } from "@/lib/supabase-server";
@@ -36,10 +36,34 @@ export async function GET() {
 
   const { mains, subs } = splitJobMainAndSubCategories(all ?? []);
   const mainById = new Map(mains.map((m) => [m.id, m.name]));
+  const subById = new Map(subs.map((s) => [s.id, s]));
 
-  /** 프리셋 순 + DB에만 있는 소분류까지 기준표에 포함(추가 업종 반영) */
-  const { presetRows, dbExtraRows } = buildJobTemplateCategorySheetRows(subs, mains, mainById);
-  const wb = buildJobBulkTemplateWorkbook(presetRows, dbExtraRows);
+  const { data: presetRowsDb, error: presetErr } = await supabase
+    .from("job_type_presets")
+    .select("key, label, category_sub_id, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("label", { ascending: true });
+  if (presetErr) {
+    return NextResponse.json({ error: presetErr.message }, { status: 500 });
+  }
+
+  /** 구인 화면(job_type_presets)과 동일한 업종만 기준표에 표시 */
+  const presetRows: JobBulkTemplateSubRow[] = (presetRowsDb ?? []).map((p) => {
+    const sid = String(p.category_sub_id ?? "").trim();
+    const sub = sid ? subById.get(sid) : undefined;
+    return {
+      id: sid,
+      parent_id: sub?.parent_id ?? "",
+      name: sub?.name ?? "",
+      slug: sub?.slug ?? null,
+      sort_order: sub?.sort_order ?? null,
+      parent_name: sub ? (mainById.get(sub.parent_id) ?? "") : "",
+      screen_label: String(p.label ?? ""),
+      missing_in_db: !sub,
+    };
+  });
+  const wb = buildJobBulkTemplateWorkbook(presetRows);
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
 
   return new NextResponse(new Uint8Array(buffer), {

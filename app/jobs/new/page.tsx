@@ -36,19 +36,6 @@ export default async function NewJobPostPage() {
   const mainCategories = list.filter((c) => c.parent_id == null);
   const subCategories = list.filter((c) => c.parent_id != null);
 
-  if (mainCategories.length === 0) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        <p className="rounded-lg bg-amber-50 p-4 text-amber-800">
-          등록된 카테고리가 없습니다. 관리자 페이지에서 대분류를 먼저 추가해 주세요.
-        </p>
-        <a href="/admin/categories" className="mt-4 inline-block text-blue-600 hover:underline">
-          카테고리 관리 →
-        </a>
-      </div>
-    );
-  }
-
   const { data: company } = await authSupabase
     .from("company_profiles")
     .select("company_name, representative_name, business_number, contact_phone")

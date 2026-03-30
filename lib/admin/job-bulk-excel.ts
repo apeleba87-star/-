@@ -437,8 +437,6 @@ export type JobBulkTemplateSubRow = JobBulkSubMeta & {
   screen_label: string;
   /** DB에 해당 slug 소분류가 없을 때 */
   missing_in_db?: boolean;
-  /** 프리셋에 없고 DB categories에만 있는 소분류 */
-  is_db_extra?: boolean;
 };
 
 /**
@@ -485,60 +483,14 @@ export function buildPresetAlignedTemplateRows(
   return rows;
 }
 
-/**
- * 청소업종기준표: (1) 구인 화면 프리셋 순 — (2) 그 외 DB 소분류 전부(추가 업종 반영).
- * 예전에는 (2)가 빠져 엑셀에 새 소분류 UUID가 안 나왔습니다.
- */
-export function buildJobTemplateCategorySheetRows(
-  subs: JobBulkSubMeta[],
-  mains: JobBulkCategoryRow[],
-  mainNameById: Map<string, string>
-): { presetRows: JobBulkTemplateSubRow[]; dbExtraRows: JobBulkTemplateSubRow[] } {
-  const presetRows = buildPresetAlignedTemplateRows(subs, mainNameById);
-  const includedSubIds = new Set(
-    presetRows.filter((r) => r.id && !r.missing_in_db).map((r) => r.id as string)
-  );
-  const mainSort = new Map(mains.map((m) => [m.id.trim(), m.sort_order ?? 9999]));
-  const dbExtraRows: JobBulkTemplateSubRow[] = subs
-    .filter((s) => !includedSubIds.has(s.id))
-    .sort((a, b) => {
-      const ma = mainSort.get(a.parent_id.trim()) ?? 9999;
-      const mb = mainSort.get(b.parent_id.trim()) ?? 9999;
-      if (ma !== mb) return ma - mb;
-      const sa = a.sort_order ?? 9999;
-      const sb = b.sort_order ?? 9999;
-      if (sa !== sb) return sa - sb;
-      return a.name.localeCompare(b.name, "ko");
-    })
-    .map((s) => ({
-      ...s,
-      parent_name: mainNameById.get(s.parent_id) ?? "",
-      screen_label: s.name,
-      missing_in_db: false,
-      is_db_extra: true,
-    }));
-  return { presetRows, dbExtraRows };
-}
-
 function categoryTemplateRowToAoA(s: JobBulkTemplateSubRow): unknown[] {
-  const note = s.is_db_extra
-    ? "DB 추가 소분류(구인 화면 빠른 태그에 없을 수 있음) — category_sub_id 복사"
-    : s.missing_in_db
-      ? "DB에 이 slug 소분류 없음 — 카테고리 추가 후 템플릿 재다운로드"
-      : s.screen_label !== s.name && s.name
-        ? "화면 라벨과 DB 저장명이 다름(동일 UUID)"
-        : "";
-  return [s.id, s.screen_label, s.name || "(없음)", s.parent_name || "(없음)", s.slug ?? "", note];
+  return [s.id, s.screen_label, s.name || "(없음)"];
 }
 
-export function buildJobBulkTemplateWorkbook(
-  presetRows: JobBulkTemplateSubRow[],
-  dbExtraRows: JobBulkTemplateSubRow[]
-): XLSXNS.WorkBook {
+export function buildJobBulkTemplateWorkbook(presetRows: JobBulkTemplateSubRow[]): XLSXNS.WorkBook {
   const wb = XLSX.utils.book_new();
 
-  const allTemplateSubs = [...presetRows, ...dbExtraRows];
-  const firstWithId = allTemplateSubs.find((s) => s.id && !s.missing_in_db);
+  const firstWithId = presetRows.find((s) => s.id && !s.missing_in_db);
   const exampleSubId = firstWithId?.id ?? "";
 
   const exampleRow = [
@@ -564,30 +516,9 @@ export function buildJobBulkTemplateWorkbook(
   XLSX.utils.book_append_sheet(wb, dataSheet, JOB_BULK_SHEET_DATA);
 
   const catRows: unknown[][] = [
-    [
-      "category_sub_id(UUID)",
-      "구인화면명",
-      "DB카테고리명",
-      "상위업종",
-      "slug",
-      "비고",
-    ],
-    [
-      "※ 아래 (구인 화면 프리셋 순) + (DB 추가 소분류) = categories(job/default·활성) 전체 소분류입니다. 템플릿은 다운로드 시점 DB 기준입니다.",
-      "",
-      "",
-      "",
-      "",
-      "",
-    ],
-    ["", "— 구인 화면 빠른 태그 순(JOB_TYPE_PRESETS) —", "", "", "", ""],
+    ["uuid", "구인화면명", "db카테고리명"],
+    ["※ 구인 화면에서 선택 가능한 업종만 표시됩니다. category_sub_id에는 uuid를 사용하세요.", "", ""],
     ...presetRows.map(categoryTemplateRowToAoA),
-    ...(dbExtraRows.length > 0
-      ? [
-          ["", "— DB에만 있는 소분류(프리셋 외 추가 업종) —", "", "", "", ""],
-          ...dbExtraRows.map(categoryTemplateRowToAoA),
-        ]
-      : []),
   ];
   const catSheet = XLSX.utils.aoa_to_sheet(catRows);
   XLSX.utils.book_append_sheet(wb, catSheet, JOB_BULK_SHEET_CATEGORIES);

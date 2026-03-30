@@ -140,15 +140,6 @@ export async function createJobPost(input: CreateJobPostInput) {
     return { ok: false, error: "10분 내 구인글은 10개까지 등록할 수 있습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  const { data: mainCategories } = await supabase
-    .from("categories")
-    .select("id")
-    .is("parent_id", null)
-    .eq("is_active", true)
-    .limit(1);
-  const fallbackMainId = mainCategories?.[0]?.id;
-  if (!fallbackMainId) return { ok: false, error: "카테고리가 없습니다. 관리자에게 문의하세요." };
-
   const { data: jobPost, error: insertJobError } = await supabase
     .from("job_posts")
     .insert({
@@ -195,7 +186,7 @@ export async function createJobPost(input: CreateJobPostInput) {
     }
     const skillLevel = p.skill_level === "expert" || p.skill_level === "general" ? p.skill_level : "general";
 
-    const resolved = await resolveJobType(supabase, p.job_type_key ?? null, jobTypeInput || undefined, fallbackMainId);
+    const resolved = await resolveJobType(supabase, p.job_type_key ?? null, jobTypeInput || undefined);
 
     const { error: posError } = await supabase.from("job_post_positions").insert({
       job_post_id: jobPost.id,

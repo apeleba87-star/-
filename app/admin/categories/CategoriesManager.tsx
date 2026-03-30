@@ -74,6 +74,7 @@ export default function CategoriesManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editSort, setEditSort] = useState(0);
+  const [editParentId, setEditParentId] = useState("");
   const [editingListingTypesId, setEditingListingTypesId] = useState<string | null>(null);
   const [draftListingTypes, setDraftListingTypes] = useState<string[]>([]);
   const [quickJobName, setQuickJobName] = useState("");
@@ -162,18 +163,32 @@ export default function CategoriesManager({
     setEditingId(c.id);
     setEditName(c.name);
     setEditSort(c.sort_order);
+    setEditParentId(c.parent_id ?? "");
   }
 
   async function saveEdit() {
     if (!editingId) return;
+    const target = categories.find((c) => c.id === editingId);
+    const isSub = Boolean(target?.parent_id);
     setLoading(true);
     setMessage(null);
-    const res = await updateCategory(editingId, { name: editName, sort_order: editSort });
+    const res = await updateCategory(editingId, {
+      name: editName,
+      sort_order: editSort,
+      parent_id: isSub ? (editParentId || null) : undefined,
+    });
     setLoading(false);
     if (res.ok) {
       setCategories((prev) =>
         prev.map((c) =>
-          c.id === editingId ? { ...c, name: editName.trim(), sort_order: editSort } : c
+          c.id === editingId
+            ? {
+                ...c,
+                name: editName.trim(),
+                sort_order: editSort,
+                parent_id: isSub ? (editParentId || null) : c.parent_id,
+              }
+            : c
         )
       );
       setEditingId(null);
@@ -1143,6 +1158,17 @@ export default function CategoriesManager({
               >
                 {editingId === s.id ? (
                   <>
+                    <select
+                      value={editParentId}
+                      onChange={(e) => setEditParentId(e.target.value)}
+                      className="w-40 rounded border border-slate-200 px-2 py-1 text-sm"
+                    >
+                      {mainCategories.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="text"
                       value={editName}
