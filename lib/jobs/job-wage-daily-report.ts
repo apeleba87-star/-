@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { canonicalSidoFromRegion } from "@/lib/listings/regions";
-import { addDaysToDateString, getKstRollingWindowHalfOpenUtcRange, getKstTodayString, getKstYesterdayString } from "@/lib/jobs/kst-date";
+import {
+  addDaysToDateString,
+  getKstRollingWindowHalfOpenUtcRange,
+  getKstTodayString,
+  getKstYesterdayString,
+} from "@/lib/jobs/kst-date";
 
 /** 집계에 쓰는 KST 달력일 수(포함) */
 export const JOB_WAGE_REPORT_WINDOW_DAYS = 30;
@@ -67,16 +72,30 @@ async function replaceJobWageReportsWithSingleRow(
 
 export async function runJobWage30DayReportJob(
   supabase: SupabaseClient,
-  options?: { windowEndKst?: string; /** @deprecated */ reportDateKst?: string }
+  options?: {
+    windowEndKst?: string;
+    /** @deprecated */ reportDateKst?: string;
+    /** 기본 30. 1이면 KST 말일이 오늘인 달력 1일 구간만 집계 */
+    windowDays?: number;
+  }
 ): Promise<{ ok: boolean; report_date?: string; error?: string }> {
-  const windowEnd = options?.windowEndKst ?? options?.reportDateKst ?? getKstYesterdayString();
   const todayKst = getKstTodayString();
-  if (windowEnd >= todayKst) {
+  const windowDays = Math.max(1, Math.floor(options?.windowDays ?? JOB_WAGE_REPORT_WINDOW_DAYS));
+  const windowEnd =
+    options?.windowEndKst ??
+    options?.reportDateKst ??
+    (windowDays === 1 ? todayKst : getKstYesterdayString());
+
+  if (windowDays === 1) {
+    if (windowEnd !== todayKst) {
+      return { ok: false, error: "당일 리포트는 KST 오늘 날짜만 말일로 집계할 수 있습니다." };
+    }
+  } else if (windowEnd >= todayKst) {
     return { ok: false, error: "windowEndKst must be before KST today" };
   }
 
-  const windowStartKst = addDaysToDateString(windowEnd, -(JOB_WAGE_REPORT_WINDOW_DAYS - 1));
-  const [startUtc, endExclusiveUtc] = getKstRollingWindowHalfOpenUtcRange(windowEnd, JOB_WAGE_REPORT_WINDOW_DAYS);
+  const windowStartKst = addDaysToDateString(windowEnd, -(windowDays - 1));
+  const [startUtc, endExclusiveUtc] = getKstRollingWindowHalfOpenUtcRange(windowEnd, windowDays);
 
   const { data: rawRows, error: qErr } = await supabase
     .from("job_post_positions")
@@ -117,13 +136,15 @@ export async function runJobWage30DayReportJob(
   }
 
   const methodologyNote =
-    `KST 달력 ${windowStartKst} ~ ${windowEnd} (${JOB_WAGE_REPORT_WINDOW_DAYS}일) 동안 새로 생긴 구인 포지션만 봅니다. 그중 가장 많이 등록된 프리셋 업종 하나를 골라, 공고(현장)마다 그 업종 일당 환산액 중 가장 큰 값만 대표 일당으로 씁니다. 시·도(서울·경기·충남 등)는 그 대표 일당을 다시 모아 산술평균을 냅니다. 최고·최저는 그 대표 일당이 가장 크거나 작았던 시·군·구(공고에 적힌 지역) 한 곳입니다.`;
+    windowDays === 1
+      ? `KST 달력 ${windowEnd} 당일(해당 날 00:00~다음 날 00:00 직전)에 새로 생긴 구인 포지션만 봅니다. 그중 가장 많이 등록된 프리셋 업종 하나를 골라, 공고(현장)마다 그 업종 일당 환산액 중 가장 큰 값만 대표 일당으로 씁니다. 시·도(서울·경기·충남 등)는 그 대표 일당을 다시 모아 산술평균을 냅니다. 최고·최저는 그 대표 일당이 가장 크거나 작았던 시·군·구(공고에 적힌 지역) 한 곳입니다.`
+      : `KST 달력 ${windowStartKst} ~ ${windowEnd} (${windowDays}일) 동안 새로 생긴 구인 포지션만 봅니다. 그중 가장 많이 등록된 프리셋 업종 하나를 골라, 공고(현장)마다 그 업종 일당 환산액 중 가장 큰 값만 대표 일당으로 씁니다. 시·도(서울·경기·충남 등)는 그 대표 일당을 다시 모아 산술평균을 냅니다. 최고·최저는 그 대표 일당이 가장 크거나 작았던 시·군·구(공고에 적힌 지역) 한 곳입니다.`;
 
   const emptyPayload = (extra: Partial<JobWageDailyReportPayload> = {}): JobWageDailyReportPayload => ({
     methodologyNote,
     reportDateKst: windowEnd,
     windowStartKst,
-    windowDays: JOB_WAGE_REPORT_WINDOW_DAYS,
+    windowDays,
     window: { startUtc, endExclusiveUtc },
     totalNewPositionCount: 0,
     dominantCategory: null,
@@ -239,16 +260,21 @@ export async function runJobWage30DayReportJob(
   if (!dominantCategory) {
     headline = `${windowStartKst}~${windowEnd} 신규 포지션에서 직종을 특정하지 못했습니다.`;
   } else if (jobPostCount === 0) {
-    headline = `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다. (${JOB_WAGE_REPORT_WINDOW_DAYS}일 구간)`;
+    headline =
+      windowDays === 1
+        ? `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다. (${windowEnd} 당일)`
+        : `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다. (${windowDays}일 구간)`;
+  } else if (windowDays === 1) {
+    headline = `오늘(KST) 「${dominantCategory.name}」 신규 구인 — 시·도별 평균 일당 (${windowEnd})`;
   } else {
-    headline = `최근 ${JOB_WAGE_REPORT_WINDOW_DAYS}일 「${dominantCategory.name}」 신규 구인 — 시·도별 평균 일당 (${windowStartKst}~${windowEnd})`;
+    headline = `최근 ${windowDays}일 「${dominantCategory.name}」 신규 구인 — 시·도별 평균 일당 (${windowStartKst}~${windowEnd})`;
   }
 
   const payload: JobWageDailyReportPayload = {
     methodologyNote,
     reportDateKst: windowEnd,
     windowStartKst,
-    windowDays: JOB_WAGE_REPORT_WINDOW_DAYS,
+    windowDays,
     window: { startUtc, endExclusiveUtc },
     totalNewPositionCount,
     dominantCategory,

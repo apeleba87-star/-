@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 function formatJobWageListTitle(ymd: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
   const [, m, d] = ymd.split("-").map(Number);
-  return `${m}월 ${d}일 말일 · 30일 구간 일당 리포트`;
+  return `${m}월 ${d}일 · 일당 리포트`;
 }
 
 export default async function JobMarketReportIndexPage() {
@@ -54,7 +54,7 @@ export default async function JobMarketReportIndexPage() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
-              저장된 30일 구간 리포트가 없습니다. 관리자에서「30일 기준 리포트 생성」을 실행해 주세요.
+              저장된 일당 리포트가 없습니다. 관리자에서「30일 기준」또는「당일(KST)」리포트 생성을 실행해 주세요.
             </p>
           </div>
           <div className="mt-6">
@@ -93,7 +93,7 @@ export default async function JobMarketReportIndexPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
-            최근 30일 <strong className="font-semibold text-slate-800">신규 구인</strong>을 모아, 직종 1위 기준으로 시·도별 평균 일당·지도·표·심화 인사이트까지 한 번에 봅니다. 갱신할 때마다 당일 리포트는 1건으로 덮어씁니다.
+            저장된 구간의 <strong className="font-semibold text-slate-800">신규 구인</strong>(30일 누적 또는 당일 스냅샷)을 직종 1위 기준으로 시·도별 평균 일당·지도·표·심화 인사이트까지 한 번에 봅니다. 갱신할 때마다 저장 슬롯은 1건으로 덮어씁니다.
           </p>
         </div>
 
@@ -106,7 +106,7 @@ export default async function JobMarketReportIndexPage() {
             <span className="text-teal-600">저장된 리포트</span>
             <span className="tabular-nums text-slate-900">{rows.length}건</span>
           </span>
-          <span className="text-xs text-slate-500">30일 구간은 보통 1건 · 표시 상한 365일</span>
+          <span className="text-xs text-slate-500">저장은 최신 1건 · 표시 상한 365일</span>
         </div>
 
         <ul className="mx-auto mt-10 grid w-full max-w-6xl min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">

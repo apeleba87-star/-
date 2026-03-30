@@ -24,7 +24,7 @@ export default async function JobMarketReportEmptyPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
-            아직 30일 구간 리포트가 없습니다. 관리자 일당 리포트 화면에서「30일 기준 리포트 생성」을 실행해 주세요.
+            아직 일당 리포트가 없습니다. 관리자 일당 리포트 화면에서「30일 기준」또는「당일(KST)」리포트 생성을 실행해 주세요.
           </p>
         </div>
         <div className="mt-6">

@@ -80,7 +80,7 @@ export async function generateMetadata({ params }: { params: Promise<{ date: str
   if (!isYmd(date)) return { title: "구인 일당 리포트" };
   return {
     title: `구인 일당 리포트 ${date} | 일당 리포트`,
-    description: "최근 30일 신규 구인 기준 시·도별 평균 일당과 지역 안내",
+    description: "구인 신규 포지션 기준 시·도별 평균 일당과 지역 안내",
   };
 }
 
