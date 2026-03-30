@@ -95,6 +95,19 @@ export function parseSidoFromRegion(region: string): string {
   return firstSpace > 0 ? region.slice(0, firstSpace) : region;
 }
 
+/** DB region 문자열 → 표준 시·도 키 (합산·지도용). 미입력·인식 불가는 "기타". */
+export function canonicalSidoFromRegion(region: string): RegionSido | "기타" {
+  const t = region.trim();
+  if (!t || t === "미입력") return "기타";
+  const sido = parseSidoFromRegion(t);
+  if ((REGION_SIDO_LIST as readonly string[]).includes(sido)) return sido as RegionSido;
+  if ((REGION_SIDO_LIST as readonly string[]).includes(t)) return t as RegionSido;
+  for (const s of REGION_SIDO_LIST) {
+    if (t === s || t.startsWith(`${s} `)) return s;
+  }
+  return "기타";
+}
+
 /** 저장된 region 문자열에서 시/군/구 추출 (예: "경북 안동시" -> "안동시") */
 export function parseGugunFromRegion(region: string): string {
   const firstSpace = region.indexOf(" ");

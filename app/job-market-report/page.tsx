@@ -81,7 +81,7 @@ export default async function JobMarketReportIndexPage() {
             일당 리포트
           </h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">
-            KST 달력 30일 구간을 한 번에 집계한 시·도별 평균 일당·직종 요약입니다. 갱신할 때마다 리포트는 1건으로 덮어씁니다.
+            최근 30일 신규 구인을 모아, 직종 1위 기준으로 시·도별 평균 일당·간단 지도·표로 보여 줍니다. 갱신할 때마다 리포트는 1건으로 덮어씁니다.
           </p>
         </div>
 

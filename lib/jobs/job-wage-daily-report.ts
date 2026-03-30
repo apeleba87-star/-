@@ -1,24 +1,42 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { canonicalSidoFromRegion } from "@/lib/listings/regions";
 import { addDaysToDateString, getKstRollingWindowHalfOpenUtcRange, getKstTodayString, getKstYesterdayString } from "@/lib/jobs/kst-date";
 
 /** 집계에 쓰는 KST 달력일 수(포함) */
 export const JOB_WAGE_REPORT_WINDOW_DAYS = 30;
 
+/** 지도·요약에 쓰는 평균 일당 상위 시·도 개수 */
+export const JOB_WAGE_MAP_TOP_PROVINCES = 5;
+
+export type JobWageProvinceRow = {
+  province: string;
+  avgDailyWage: number;
+  jobPostCount: number;
+};
+
 export type JobWageDailyReportPayload = {
   methodologyNote: string;
-  /** 집계 구간의 마지막 날(KST 달력일, 포함) */
   reportDateKst: string;
-  /** 집계 구간의 첫 날(KST 달력일, 포함) */
   windowStartKst: string;
   windowDays: number;
   window: { startUtc: string; endExclusiveUtc: string };
-  /** 구간 내 신규 포지션 전체(직종 선정 전) */
   totalNewPositionCount: number;
   dominantCategory: { id: string; name: string; positionCount: number } | null;
-  /** 1위 직종만 남긴 뒤, 일당이 유효한 공고 수 */
   jobPostCount: number;
-  regions: { region: string; avgDailyWage: number; jobPostCount: number }[];
+  /** 시·도 단위 평균(공고당 대표 일당의 산술평균). 표는 보통 평균 높은 순 */
+  provinces: JobWageProvinceRow[];
+  /** 평균 일당 기준 상위 시·도(지도 강조용) */
+  mapTopProvincesByAvg: JobWageProvinceRow[];
+  /** 평균 일당이 가장 높은 시·도 */
+  topProvinceByAvgWage: JobWageProvinceRow | null;
+  /** 공고 1건 기준 대표 일당 최고(시·군·구 원문) */
   maxDailyWage: { amount: number; region: string } | null;
+  /** 공고 1건 기준 대표 일당 최저(시·군·구 원문) */
+  minDailyWage: { amount: number; region: string } | null;
+  /**
+   * @deprecated 구 스냅샷. `provinces`가 없을 때 UI에서 시·도만 추출해 사용.
+   */
+  regions?: { region: string; avgDailyWage: number; jobPostCount: number }[];
 };
 
 type PositionRow = {
@@ -45,11 +63,6 @@ async function replaceJobWageReportsWithSingleRow(
   return { error: null };
 }
 
-/**
- * KST 기준 [windowEnd - 29일, windowEnd] 달력 30일 동안 생성된 포지션을 한 번에 집계.
- * 1위 대분류 직종만 사용. 공고당 대표 일당 = 해당 직종 포지션의 normalized_daily_wage 최댓값.
- * 저장 시 기존 job_wage_daily_reports 행을 모두 지운 뒤 1건만 둡니다(report_date = 구간 말일).
- */
 export async function runJobWage30DayReportJob(
   supabase: SupabaseClient,
   options?: { windowEndKst?: string; /** @deprecated */ reportDateKst?: string }
@@ -102,21 +115,27 @@ export async function runJobWage30DayReportJob(
   }
 
   const methodologyNote =
-    `KST 달력 ${windowStartKst} ~ ${windowEnd} (${JOB_WAGE_REPORT_WINDOW_DAYS}일) 동안 새로 생성된 구인 포지션만 포함합니다. 그중 등록 건수가 가장 많은 대분류 직종 하나만 반영하며, 현장(공고)당 대표 일당은 해당 직종 포지션의 일당 환산액 중 최댓값입니다. 시·도별 숫자는 그 대표 일당의 산술평균이며, 노출되는 극단값은 최고 일당만 표시합니다.`;
+    `KST 달력 ${windowStartKst} ~ ${windowEnd} (${JOB_WAGE_REPORT_WINDOW_DAYS}일) 동안 새로 생긴 구인 포지션만 봅니다. 그중 가장 많이 등록된 대분류 직종 하나만 골라, 공고(현장)마다 그 직종 일당 환산액 중 가장 큰 값만 대표 일당으로 씁니다. 시·도(서울·경기·충남 등)는 그 대표 일당을 다시 모아 산술평균을 냅니다. 최고·최저는 그 대표 일당이 가장 크거나 작았던 시·군·구(공고에 적힌 지역) 한 곳입니다.`;
+
+  const emptyPayload = (extra: Partial<JobWageDailyReportPayload> = {}): JobWageDailyReportPayload => ({
+    methodologyNote,
+    reportDateKst: windowEnd,
+    windowStartKst,
+    windowDays: JOB_WAGE_REPORT_WINDOW_DAYS,
+    window: { startUtc, endExclusiveUtc },
+    totalNewPositionCount: 0,
+    dominantCategory: null,
+    jobPostCount: 0,
+    provinces: [],
+    mapTopProvincesByAvg: [],
+    topProvinceByAvgWage: null,
+    maxDailyWage: null,
+    minDailyWage: null,
+    ...extra,
+  });
 
   if (rows.length === 0) {
-    const payload: JobWageDailyReportPayload = {
-      methodologyNote,
-      reportDateKst: windowEnd,
-      windowStartKst,
-      windowDays: JOB_WAGE_REPORT_WINDOW_DAYS,
-      window: { startUtc, endExclusiveUtc },
-      totalNewPositionCount: 0,
-      dominantCategory: null,
-      jobPostCount: 0,
-      regions: [],
-      maxDailyWage: null,
-    };
+    const payload = emptyPayload();
     const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
       report_date: windowEnd,
       headline: `${windowStartKst} ~ ${windowEnd} (KST) 구간에 등록된 신규 구인 포지션이 없습니다.`,
@@ -162,31 +181,46 @@ export async function runJobWage30DayReportJob(
     }
   }
 
-  const byRegion = new Map<string, { sum: number; count: number }>();
+  const byProvince = new Map<string, { sum: number; count: number }>();
   let maxAmount = -Infinity;
   let maxRegion = "";
+  let minAmount = Infinity;
+  let minRegion = "";
 
   for (const { wage, region } of byJob.values()) {
-    const agg = byRegion.get(region) ?? { sum: 0, count: 0 };
+    const sido = canonicalSidoFromRegion(region);
+    const key = sido;
+    const agg = byProvince.get(key) ?? { sum: 0, count: 0 };
     agg.sum += wage;
     agg.count += 1;
-    byRegion.set(region, agg);
+    byProvince.set(key, agg);
+
     if (wage > maxAmount) {
       maxAmount = wage;
       maxRegion = region;
     }
+    if (wage < minAmount) {
+      minAmount = wage;
+      minRegion = region;
+    }
   }
 
-  const regions = [...byRegion.entries()]
-    .map(([region, { sum, count }]) => ({
-      region,
+  const provinces: JobWageProvinceRow[] = [...byProvince.entries()]
+    .map(([province, { sum, count }]) => ({
+      province,
       avgDailyWage: Math.round(sum / count),
       jobPostCount: count,
     }))
-    .sort((a, b) => a.region.localeCompare(b.region, "ko"));
+    .sort((a, b) => b.avgDailyWage - a.avgDailyWage || a.province.localeCompare(b.province, "ko"));
+
+  const mapTopProvincesByAvg = provinces.filter((p) => p.jobPostCount > 0).slice(0, JOB_WAGE_MAP_TOP_PROVINCES);
+
+  const topProvinceByAvgWage = mapTopProvincesByAvg[0] ?? null;
 
   const maxDailyWage =
     maxAmount > 0 && Number.isFinite(maxAmount) ? { amount: Math.round(maxAmount), region: maxRegion } : null;
+  const minDailyWage =
+    minAmount < Infinity && Number.isFinite(minAmount) ? { amount: Math.round(minAmount), region: minRegion } : null;
 
   const jobPostCount = byJob.size;
 
@@ -196,7 +230,7 @@ export async function runJobWage30DayReportJob(
   } else if (jobPostCount === 0) {
     headline = `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다. (${JOB_WAGE_REPORT_WINDOW_DAYS}일 구간)`;
   } else {
-    headline = `최근 ${JOB_WAGE_REPORT_WINDOW_DAYS}일(KST) 신규 구인 「${dominantCategory.name}」 기준 — 시·도별 평균 일당 (${windowStartKst}~${windowEnd})`;
+    headline = `최근 ${JOB_WAGE_REPORT_WINDOW_DAYS}일 「${dominantCategory.name}」 신규 구인 — 시·도별 평균 일당 (${windowStartKst}~${windowEnd})`;
   }
 
   const payload: JobWageDailyReportPayload = {
@@ -208,8 +242,11 @@ export async function runJobWage30DayReportJob(
     totalNewPositionCount,
     dominantCategory,
     jobPostCount,
-    regions,
+    provinces,
+    mapTopProvincesByAvg,
+    topProvinceByAvgWage,
     maxDailyWage,
+    minDailyWage,
   };
 
   const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
