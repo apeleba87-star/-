@@ -64,7 +64,7 @@ export function calcLowerPrice(
   return Math.floor(price * (rate / 100));
 }
 
-/** 전략 가격: 하한가, -1%, -2%, -3% (소수점 버림) */
+/** 전략 가격: 하한가, -1%, -2%, -3% (소수점 버림). 레거시·테스트용 */
 export function calcStrategyPrices(lowerPrice: number | null | undefined): {
   lower: number;
   pct1: number;
@@ -80,6 +80,22 @@ export function calcStrategyPrices(lowerPrice: number | null | undefined): {
     pct3: Math.floor(lower * 0.97),
   };
 }
+
+/** 낙찰 하한가(원) 정수화 */
+export function floorLowerPrice(lowerPrice: number | null | undefined): number | null {
+  if (lowerPrice == null || Number.isNaN(lowerPrice) || lowerPrice < 0) return null;
+  return Math.floor(lowerPrice);
+}
+
+/** 입찰 전략: 하한가 × (1 + Δ/100). Δ는 퍼센트 포인트 -3~+3 정수, 원 단위 버림 */
+export function calcStrategyPriceAtDeltaPercent(baseLower: number, deltaPercent: number): number {
+  const base = Math.floor(baseLower);
+  const d = Math.round(Number(deltaPercent));
+  const clamped = Math.min(3, Math.max(-3, d));
+  return Math.floor(base * (1 + clamped / 100));
+}
+
+export const STRATEGY_DELTA_PERCENTS = [-3, -2, -1, 0, 1, 2, 3] as const;
 
 /** raw 객체에서 기초금액 추출 (공공데이터 API 필드명) - 목록/상세 공통 */
 const BASE_AMT_KEYS = [

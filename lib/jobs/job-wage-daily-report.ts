@@ -29,6 +29,8 @@ export type JobWageDailyReportPayload = {
   mapTopProvincesByAvg: JobWageProvinceRow[];
   /** 평균 일당이 가장 높은 시·도 */
   topProvinceByAvgWage: JobWageProvinceRow | null;
+  /** 평균 일당이 가장 낮은 시·도(공고가 2곳 이상일 때만 의미 있음) */
+  bottomProvinceByAvgWage: JobWageProvinceRow | null;
   /** 공고 1건 기준 대표 일당 최고(시·군·구 원문) */
   maxDailyWage: { amount: number; region: string } | null;
   /** 공고 1건 기준 대표 일당 최저(시·군·구 원문) */
@@ -129,6 +131,7 @@ export async function runJobWage30DayReportJob(
     provinces: [],
     mapTopProvincesByAvg: [],
     topProvinceByAvgWage: null,
+    bottomProvinceByAvgWage: null,
     maxDailyWage: null,
     minDailyWage: null,
     ...extra,
@@ -213,9 +216,12 @@ export async function runJobWage30DayReportJob(
     }))
     .sort((a, b) => b.avgDailyWage - a.avgDailyWage || a.province.localeCompare(b.province, "ko"));
 
-  const mapTopProvincesByAvg = provinces.filter((p) => p.jobPostCount > 0).slice(0, JOB_WAGE_MAP_TOP_PROVINCES);
+  const provincesWithData = provinces.filter((p) => p.jobPostCount > 0);
+  const mapTopProvincesByAvg = provincesWithData.slice(0, JOB_WAGE_MAP_TOP_PROVINCES);
 
   const topProvinceByAvgWage = mapTopProvincesByAvg[0] ?? null;
+  const bottomProvinceByAvgWage =
+    provincesWithData.length >= 2 ? provincesWithData[provincesWithData.length - 1]! : null;
 
   const maxDailyWage =
     maxAmount > 0 && Number.isFinite(maxAmount) ? { amount: Math.round(maxAmount), region: maxRegion } : null;
@@ -245,6 +251,7 @@ export async function runJobWage30DayReportJob(
     provinces,
     mapTopProvincesByAvg,
     topProvinceByAvgWage,
+    bottomProvinceByAvgWage,
     maxDailyWage,
     minDailyWage,
   };

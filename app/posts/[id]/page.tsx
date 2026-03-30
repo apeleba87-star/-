@@ -183,10 +183,12 @@ async function getReportAccess(
     .eq("grant_date", todayKst)
     .maybeSingle();
 
-  if (todayGrant && todayGrant.post_id === post.id) {
+  // 오늘 KST 기준 1회 공유면 당일 게시되는 모든 리포트에 동일 revealed_panel_keys 적용
+  if (todayGrant) {
+    const firstPostId = (todayGrant as { post_id?: string }).post_id ?? post.id;
     const keys = ensureSharedRevealKeys(
       user.id,
-      post.id,
+      firstPostId,
       todayKst,
       (todayGrant as { revealed_panel_keys?: string[] | null }).revealed_panel_keys
     );

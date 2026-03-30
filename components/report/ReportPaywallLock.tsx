@@ -56,7 +56,7 @@ export default function ReportPaywallLock({ postId, loginReturnPath, title, exce
         <p className="mt-3 line-clamp-3 text-sm text-slate-600">{excerpt}</p>
       )}
       <p className="mt-6 text-slate-600">
-        이 콘텐츠는 구독 후 이용할 수 있습니다. 공유하기를 하시면 오늘 1회 열람이 가능합니다.
+        이 콘텐츠는 구독 후 이용할 수 있습니다. 오늘 첫 공유 1회로 당일 다른 리포트까지 같은 날 열람이 이어집니다.
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <button
@@ -66,7 +66,7 @@ export default function ReportPaywallLock({ postId, loginReturnPath, title, exce
           className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border-2 border-blue-600 bg-white px-6 py-3 font-semibold text-blue-600 transition hover:bg-blue-50 disabled:opacity-50"
         >
           <Share2 className="h-5 w-5" aria-hidden />
-          {loading ? "처리 중…" : "공유하기 (1회 열람)"}
+          {loading ? "처리 중…" : "공유하기 (오늘 첫 1회)"}
         </button>
         <Link
           href="/subscribe"

@@ -1,42 +1,35 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Share2 } from "lucide-react";
-import { SHARED_RANDOM_PANEL_COUNT } from "@/lib/report/share-unlock-panels";
 
-/** 견적 계산기 분석 모달과 동일한 복귀 후 대기(ms) — 필요 시 한곳에서 조정 */
-export const REPORT_SHARE_COMPLETE_DELAY_MS = 2000;
+/** 입찰 리포트 `ReportShareUnlockButton`과 동일한 지연(ms) */
+const COMPLETE_DELAY_MS = 2000;
 
 type Props = {
-  postId: string;
+  reportDate: string;
   shareTitle: string;
   shareText: string;
+  loginNextPath: string;
 };
 
-export default function ReportShareUnlockButton({ postId, shareTitle, shareText }: Props) {
+export default function JobWageInsightShareButton({ reportDate, shareTitle, shareText, loginNextPath }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function completeShareFlowWithRetry() {
-    let lastError: string | null = null;
+  async function completeWithRetry(): Promise<boolean> {
     for (let i = 0; i < 3; i += 1) {
       const res = await fetch("/api/report/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post_id: postId }),
+        body: JSON.stringify({ job_wage_report_date: reportDate }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (data.ok) return true;
-      lastError = data.error ?? null;
-      if (i < 2) {
-        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
-      }
-    }
-    // 공유 자체는 끝났을 가능성이 높으므로 hard error 대신 안내만 표기.
-    if (lastError) {
-      setError("공유는 완료되었습니다. 상태 반영이 지연되어 새로고침합니다.");
+      if (i < 2) await new Promise((r) => setTimeout(r, 400 * (i + 1)));
     }
     return false;
   }
@@ -69,35 +62,43 @@ export default function ReportShareUnlockButton({ postId, shareTitle, shareText 
       setLoading(false);
       return;
     }
-    await new Promise((r) => setTimeout(r, REPORT_SHARE_COMPLETE_DELAY_MS));
+    await new Promise((r) => setTimeout(r, COMPLETE_DELAY_MS));
     try {
-      // 낙관적으로 먼저 refresh해서 사용자는 즉시 패널 변화를 확인.
       router.refresh();
-      await completeShareFlowWithRetry();
+      await completeWithRetry();
       router.refresh();
     } catch {
-      setError("공유는 완료되었습니다. 상태 반영이 지연되어 새로고침합니다.");
+      setError("공유는 완료되었습니다. 잠시 후 새로고침 해 주세요.");
       router.refresh();
     }
     setLoading(false);
   }
 
   return (
-    <div className="rounded-2xl border border-violet-200/80 bg-white/80 p-4 shadow-inner backdrop-blur-sm">
+    <div className="rounded-2xl border border-teal-200/90 bg-white/90 p-4 shadow-inner ring-1 ring-teal-100/60">
       <p className="text-sm font-medium text-slate-800">
-        오늘 <strong className="text-slate-900">첫 공유 1회</strong>로{" "}
-        <span className="text-violet-700">심화 패널 {SHARED_RANDOM_PANEL_COUNT}종</span>이 무작위로 열리며, 같은 날 다른
-        리포트에서도 <strong className="text-slate-900">추가 공유 없이</strong> 동일하게 열려 있습니다.
+        오늘 <strong className="text-slate-900">첫 공유 1회</strong>로 전국 가중 평균·전일 대비·일당 구간 분포를 볼 수 있습니다. 입찰 리포트와{" "}
+        <strong className="text-slate-900">같은 날 열람권</strong>이 이어집니다.
       </p>
       <button
         type="button"
         onClick={handleClick}
         disabled={loading}
-        className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:from-violet-700 hover:to-indigo-700 disabled:opacity-60 sm:w-auto"
+        className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:from-teal-700 hover:to-emerald-700 disabled:opacity-60 sm:w-auto"
       >
         <Share2 className="h-4 w-4 shrink-0" aria-hidden />
-        {loading ? "처리 중…" : `공유하고 심화 ${SHARED_RANDOM_PANEL_COUNT}종 열기`}
+        {loading ? "처리 중…" : "공유하고 심화 인사이트 열기"}
       </button>
+      <p className="mt-2 text-xs text-slate-500">
+        <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className="font-medium text-teal-700 underline">
+          로그인
+        </Link>
+        이 필요합니다. 공유가 어렵다면{" "}
+        <Link href="/subscribe" className="font-medium text-teal-700 underline">
+          구독
+        </Link>
+        으로 전체를 열 수 있습니다.
+      </p>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );

@@ -32,3 +32,9 @@ export function mapTopFromProvinces(provinces: JobWageProvinceRow[]): JobWagePro
 export function topProvinceFromProvinces(provinces: JobWageProvinceRow[]): JobWageProvinceRow | null {
   return mapTopFromProvinces(provinces)[0] ?? null;
 }
+
+/** 평균 일당이 가장 낮은 시·도(데이터가 2곳 이상일 때만) */
+export function bottomProvinceFromProvinces(provinces: JobWageProvinceRow[]): JobWageProvinceRow | null {
+  const withData = provinces.filter((p) => p.jobPostCount > 0);
+  return withData.length >= 2 ? withData[withData.length - 1]! : null;
+}
