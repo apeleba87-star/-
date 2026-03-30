@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient, createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PayUnit, PositionStatus } from "@/lib/jobs/types";
@@ -15,6 +15,7 @@ import JobPostOwnerActions from "@/components/jobs/JobPostOwnerActions";
 import NoShowAppealBlock from "@/components/jobs/NoShowAppealBlock";
 import JobShareActions from "@/components/jobs/JobShareActions";
 import { insertJobShareEvent } from "@/lib/jobs/share-events";
+import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 
 export const revalidate = 60;
 
@@ -42,12 +43,9 @@ export default async function JobPostDetailPage({
 
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
-  if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/jobs/${id}`)}`);
-  }
-  const isOwner = post.user_id === user.id;
+  const isOwner = user ? post.user_id === user.id : false;
 
-  {
+  if (user) {
     const { error: viewErr } = await authSupabase.rpc("record_job_post_view", { p_job_post_id: id });
     if (viewErr) {
       // 조회 집계 실패는 상세 페이지 렌더를 막지 않음
@@ -55,7 +53,7 @@ export default async function JobPostDetailPage({
   }
   const ref = typeof query.ref === "string" ? query.ref : "";
   const shareChannel = typeof query.channel === "string" ? query.channel : "unknown";
-  if (!isOwner && ref === "job_share") {
+  if (!isOwner && ref === "job_share" && user) {
     void (async () => {
       try {
         const service = createServiceSupabase();
@@ -311,7 +309,7 @@ export default async function JobPostDetailPage({
               <dt className="text-slate-500">지역</dt>
               <dd className="font-medium text-slate-800">{regionDisplay}</dd>
             </div>
-            {post.address?.trim() && (
+            {user && post.address?.trim() && (
               <div className="w-full flex gap-1.5 sm:w-auto">
                 <dt className="text-slate-500 shrink-0">현장 주소</dt>
                 <dd className="font-medium text-slate-800">{post.address.trim()}</dd>
@@ -340,7 +338,7 @@ export default async function JobPostDetailPage({
               </div>
             )}
           </dl>
-          {!isOwner && (
+          {!isOwner && user && (
             <div className="mt-5">
               <ContactButtons
                 phone={post.contact_phone}
@@ -348,13 +346,18 @@ export default async function JobPostDetailPage({
               />
             </div>
           )}
+          {!isOwner && !user && (
+            <p className="mt-5 text-sm text-slate-600">
+              <Link
+                href={`/login?next=${encodeURIComponent(`/jobs/${id}`)}`}
+                className="font-semibold text-teal-800 underline decoration-teal-400/80 underline-offset-2 hover:text-teal-900"
+              >
+                로그인
+              </Link>
+              후 연락처·급여 상세·지원하기를 이용할 수 있어요.
+            </p>
+          )}
         </header>
-
-        {(post as { is_external?: boolean }).is_external && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
-            이 글은 외부 커뮤니티에서 가져온 정보입니다. 참여 전 반드시 <strong>직접 연락하여</strong> 내용을 확인하세요.
-          </div>
-        )}
 
         {isOwner && (
           <>
@@ -377,6 +380,13 @@ export default async function JobPostDetailPage({
             parkingInfo={privateDetails.parking_info}
             notes={privateDetails.notes}
           />
+        )}
+
+        <GuestPreviewGate isLoggedIn={!!user} loginNext={`/jobs/${id}`} tone="teal">
+        {(post as { is_external?: boolean }).is_external && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
+            이 글은 외부 커뮤니티에서 가져온 정보입니다. 참여 전 반드시 <strong>직접 연락하여</strong> 내용을 확인하세요.
+          </div>
         )}
 
         {post.description && (
@@ -515,6 +525,7 @@ export default async function JobPostDetailPage({
             })}
           </ul>
         </section>
+        </GuestPreviewGate>
       </article>
     </div>
   );

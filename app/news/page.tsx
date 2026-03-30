@@ -3,6 +3,7 @@ import { getKstDateString } from "@/lib/content/kst-utils";
 import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
+import ReportNextStep from "@/components/report/ReportNextStep";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -179,14 +180,17 @@ export default async function NewsPage({
   }
 
   // 입찰·리포트: source_type 있거나 slug가 일간/리포트 패턴인 발행 글 (비공개 제외)
-  const { data: posts } = await supabase
-    .from("posts")
-    .select("id, title, excerpt, published_at, slug, source_type, source_ref")
-    .not("published_at", "is", null)
-    .eq("is_private", false)
-    .or("source_type.not.is.null,slug.ilike.*daily-tender-digest*,slug.ilike.*report-*")
-    .order("published_at", { ascending: false })
-    .limit(50);
+  const [{ data: posts }, { data: marketingLatest }] = await Promise.all([
+    supabase
+      .from("posts")
+      .select("id, title, excerpt, published_at, slug, source_type, source_ref")
+      .not("published_at", "is", null)
+      .eq("is_private", false)
+      .or("source_type.not.is.null,slug.ilike.*daily-tender-digest*,slug.ilike.*report-*")
+      .order("published_at", { ascending: false })
+      .limit(50),
+    supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
@@ -217,12 +221,15 @@ export default async function NewsPage({
                   : formatReportDateLabel(sourceRef)
                 : post.title;
               const categoryTag = isDaily ? "입찰 리포트" : getReportTypeLabel(sourceType ?? "");
+              const postHref = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
+              const shareText =
+                typeof post.excerpt === "string" && post.excerpt.trim()
+                  ? post.excerpt.trim()
+                  : listTitle;
               return (
                 <li key={post.id}>
                   <NewsCard
-                    href={
-                      post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`
-                    }
+                    href={postHref}
                     title={listTitle}
                     excerpt={post.excerpt}
                     date={
@@ -235,12 +242,30 @@ export default async function NewsPage({
                     categoryTag={categoryTag}
                     reportHero
                     accentSeed={post.published_at ?? post.id}
+                    footerShare={{
+                      kind: "bid_post",
+                      postId: post.id,
+                      shareTitle: listTitle,
+                      shareText,
+                    }}
                   />
                 </li>
               );
             })}
           </ul>
         )}
+        <div className="mx-auto mt-10 max-w-2xl">
+          <ReportNextStep
+            variant="slate"
+            situation="입찰·발주 쪽 흐름을 봤다면, 같은 날 검색 수요 트렌드도 같이 보면 마케팅·단가 방향을 잡기 쉽습니다."
+            actionLabel="지금 뜨는 키워드 확인하기"
+            href={
+              marketingLatest?.report_date
+                ? `/marketing-report/${marketingLatest.report_date}`
+                : "/marketing-report"
+            }
+          />
+        </div>
       </div>
     </div>
   );

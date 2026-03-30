@@ -172,6 +172,16 @@ export default function DailyTenderReportDashboard({
   const deepOpen = (key: SharedRandomPanelKey) =>
     accessLevel === "premium" || (accessLevel === "shared" && sharedRevealSet.has(key));
 
+  const tenderTeamShareText = [
+    `입찰 ${count_total.toLocaleString()}건`,
+    "✔ 바로 지원 가능한 것만 선별",
+    "✔ 경쟁 낮은 건 포함",
+    "",
+    "오늘 안 보면 끝입니다",
+    "",
+    "👇 지금 확인",
+  ].join("\n");
+
   return (
     <div className="mx-auto min-w-0 max-w-[1400px] space-y-4 rounded-2xl bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-2 xs:p-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
       {/* 1. 헤더 (히어로 배너) */}
@@ -700,24 +710,12 @@ export default function DailyTenderReportDashboard({
               </p>
               {accessLevel === "free" && postId && (
                 <div className="mt-4 max-w-xl">
-                  {(() => {
-                    const shareMessage = [
-                      `입찰 ${count_total.toLocaleString()}건`,
-                      "✔ 바로 지원 가능한 것만 선별",
-                      "✔ 경쟁 낮은 건 포함",
-                      "",
-                      "오늘 안 보면 끝입니다",
-                      "",
-                      "👇 지금 확인",
-                    ].join("\n");
-                    return (
                   <ReportShareUnlockButton
                     postId={postId}
                     shareTitle={title}
-                    shareText={shareMessage}
+                    shareText={tenderTeamShareText}
+                    layout="full"
                   />
-                    );
-                  })()}
                 </div>
               )}
             </div>
@@ -1201,6 +1199,17 @@ export default function DailyTenderReportDashboard({
           </DecisionPanel>
         </div>
       </section>
+
+      {postId && (accessLevel === "shared" || accessLevel === "premium") && (
+        <div className="mx-auto max-w-xl px-1">
+          <ReportShareUnlockButton
+            postId={postId}
+            shareTitle={title}
+            shareText={tenderTeamShareText}
+            layout="compact"
+          />
+        </div>
+      )}
 
       {/* 7. 푸터 안내 */}
       {/* 뉴스레터 CTA(리포트 하단) */}

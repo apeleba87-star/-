@@ -1,6 +1,6 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Metadata } from "next";
@@ -15,6 +15,7 @@ import { getKstDateString } from "@/lib/content/kst-utils";
 import { hasSubscriptionAccess } from "@/lib/subscription-access";
 import { ensureSharedRevealKeys, kstCalendarMinusDays, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import ReportPaywallLock from "@/components/report/ReportPaywallLock";
+import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 
 const DailyTenderReportDashboard = dynamic(
   () => import("@/components/report/DailyTenderReportDashboard"),
@@ -67,9 +68,6 @@ export default async function PostPage({ params }: PostPageParams) {
   const { id } = await params;
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
-  if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/posts/${id}`)}`);
-  }
 
   const supabase = createClient();
   const [adsResult, { data: post, error }] = await Promise.all([
@@ -111,7 +109,8 @@ export default async function PostPage({ params }: PostPageParams) {
       .single();
     if (bySlug.error || !bySlug.data) notFound();
     const slugPost = bySlug.data;
-    await ensurePrivateAccess(slugPost, authSupabase, user.id);
+    if ((slugPost as { is_private?: boolean }).is_private && !user) notFound();
+    if (user) await ensurePrivateAccess(slugPost, authSupabase, user.id);
     if (isReportPost(slugPost) && !reportData) {
       const snapshot = (slugPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
       if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
@@ -132,14 +131,15 @@ export default async function PostPage({ params }: PostPageParams) {
       getReportAccess(slugPost, reportData, supabase),
       getPremiumInsights(reportData),
     ]);
-    return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights);
+    return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights, !user);
   }
-  await ensurePrivateAccess(post, authSupabase, user.id);
+  if ((post as { is_private?: boolean }).is_private && !user) notFound();
+  if (user) await ensurePrivateAccess(post, authSupabase, user.id);
   const [reportAccess, premiumInsights] = await Promise.all([
     getReportAccess(post!, reportData, supabase),
     getPremiumInsights(reportData),
   ]);
-  return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights);
+  return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights, !user);
 }
 
 type ReportAccessState = {
@@ -298,20 +298,18 @@ function renderPost(
   ads: PostDetailAds,
   reportData: ReportData | null,
   reportAccess: ReportAccessState,
-  premiumInsights: PremiumInsights
+  premiumInsights: PremiumInsights,
+  guestPreview: boolean
 ) {
   const isReport = isReportPost(post);
   const showTopAd = ads.post_top?.enabled && (ads.post_top.campaign || ads.post_top.script_content);
   const showBottomAd = ads.post_bottom?.enabled && (ads.post_bottom.campaign || ads.post_bottom.script_content);
   const useDashboard = isReport && reportData;
   const showLock = false;
+  const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
 
-  return (
-    <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-      <Link href="/categories" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
-        ← 카테고리
-      </Link>
-
+  const body = (
+    <>
       {showLock ? (
         <ReportPaywallLock
           postId={post.id}
@@ -402,6 +400,18 @@ function renderPost(
           )}
         </article>
       )}
+    </>
+  );
+
+  return (
+    <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+      <Link href="/categories" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
+        ← 카테고리
+      </Link>
+
+      <GuestPreviewGate isLoggedIn={!guestPreview} loginNext={loginNext} tone="violet">
+        {body}
+      </GuestPreviewGate>
     </div>
   );
 }

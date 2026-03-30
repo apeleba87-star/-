@@ -9,7 +9,7 @@ import {
 import type { JobWageDailyReportPayload } from "@/lib/jobs/job-wage-daily-report";
 import { provincesFromPayload } from "@/lib/jobs/job-wage-report-display";
 
-type Body = { post_id?: string; job_wage_report_date?: string };
+type Body = { post_id?: string; job_wage_report_date?: string; marketing_report_date?: string };
 
 function isYmd(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -23,6 +23,12 @@ function isUsableJobWagePayload(p: unknown): p is JobWageDailyReportPayload {
     typeof o.reportDateKst === "string" &&
     (Array.isArray(o.provinces) || Array.isArray(o.regions))
   );
+}
+
+function isUsableMarketingPayload(p: unknown): boolean {
+  if (!p || typeof p !== "object") return false;
+  const o = p as Record<string, unknown>;
+  return Array.isArray(o.topThree) || Array.isArray(o.groups);
 }
 
 export async function POST(req: Request) {
@@ -46,10 +52,12 @@ export async function POST(req: Request) {
 
   const postId = typeof body.post_id === "string" ? body.post_id.trim() : "";
   const jobWageDate = typeof body.job_wage_report_date === "string" ? body.job_wage_report_date.trim() : "";
+  const marketingDate = typeof body.marketing_report_date === "string" ? body.marketing_report_date.trim() : "";
 
-  if ((postId && jobWageDate) || (!postId && !jobWageDate)) {
+  const nProvided = [postId, jobWageDate, marketingDate].filter(Boolean).length;
+  if (nProvided !== 1) {
     return NextResponse.json(
-      { ok: false, error: "post_id 또는 job_wage_report_date 중 하나만 보내 주세요." },
+      { ok: false, error: "post_id, job_wage_report_date, marketing_report_date 중 하나만 보내 주세요." },
       { status: 400 }
     );
   }
@@ -73,6 +81,23 @@ export async function POST(req: Request) {
       );
     }
     seedPostIdForPanels = `job-wage-report:${jobWageDate}`;
+  } else if (marketingDate) {
+    if (!isYmd(marketingDate)) {
+      return NextResponse.json({ ok: false, error: "marketing_report_date 형식이 올바르지 않습니다." }, { status: 400 });
+    }
+    const { data: trendRow } = await supabase
+      .from("naver_trend_daily_reports")
+      .select("payload")
+      .eq("report_date", marketingDate)
+      .maybeSingle();
+    const mp = trendRow?.payload;
+    if (!isUsableMarketingPayload(mp)) {
+      return NextResponse.json(
+        { ok: false, error: "해당 일자 마케팅 리포트를 찾을 수 없습니다." },
+        { status: 400 }
+      );
+    }
+    seedPostIdForPanels = `marketing-report:${marketingDate}`;
   } else {
     const { data: post } = await supabase
       .from("posts")
@@ -163,7 +188,9 @@ export async function POST(req: Request) {
     ok: true,
     message: jobWageDate
       ? "공유가 완료되었습니다. 일당 리포트 심화 인사이트가 열렸습니다."
-      : "공유가 완료되었습니다. 심화 패널이 열렸습니다.",
+      : marketingDate
+        ? "공유가 완료되었습니다. 당일 열람이 적용되었습니다."
+        : "공유가 완료되었습니다. 심화 패널이 열렸습니다.",
     revealed_panel_keys,
   });
 }

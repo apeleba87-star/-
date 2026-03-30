@@ -1,18 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  Briefcase,
-  MapPin,
-  Sparkles,
-  Table2,
-  Tag,
-  TrendingDown,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { Lock, MapPin, Table2, Tag, TrendingDown, TrendingUp } from "lucide-react";
 import KoreaProvinceGeoMap from "@/components/jobs/KoreaProvinceGeoMap";
 import JobWagePremiumInsights from "@/components/jobs/JobWagePremiumInsights";
+import JobWageProvinceTableCopyButton from "@/components/jobs/JobWageProvinceTableCopyButton";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { getKstDateString } from "@/lib/content/kst-utils";
 import { addDaysToDateString } from "@/lib/jobs/kst-date";
@@ -23,6 +15,9 @@ import {
 } from "@/lib/jobs/job-wage-daily-report";
 import { compareWeightedNationalAvg, provinceWeightedWageBins } from "@/lib/jobs/job-wage-premium-insights";
 import { WAGE_MAP_RANK_META } from "@/lib/jobs/wage-map-rank-palette";
+import ReportNextStep from "@/components/report/ReportNextStep";
+import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import { formatJobWageDominantDisplayName, jobWageReportListExcerptFromPayload } from "@/lib/jobs/job-wage-dominant-label";
 import {
   bottomProvinceFromProvinces,
   provincesFromPayload,
@@ -30,6 +25,7 @@ import {
 } from "@/lib/jobs/job-wage-report-display";
 import { hasSubscriptionAccess } from "@/lib/subscription-access";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
+import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 
 export const dynamic = "force-dynamic";
 
@@ -98,11 +94,16 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const prevReportDate = addDaysToDateString(date, -1);
   const [{ data: report, error }, { data: recent }, { data: prevReportRow }] = await Promise.all([
     supabase.from("job_wage_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
-    supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(30),
-    supabase.from("job_wage_daily_reports").select("payload").eq("report_date", prevReportDate).maybeSingle(),
+    supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(365),
+    supabase
+      .from("job_wage_daily_reports")
+      .select("report_date, payload")
+      .lt("report_date", date)
+      .order("report_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (error || !report) notFound();
@@ -118,10 +119,6 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
   const windowStartKst =
     payload?.windowStartKst ??
     (payload?.reportDateKst ? addDaysToDateString(payload.reportDateKst, -(windowDays - 1)) : null);
-  const windowRangeLabel =
-    windowStartKst && payload?.reportDateKst
-      ? `${windowStartKst} ~ ${payload.reportDateKst} (KST, 최근 ${windowDays}일)`
-      : `${date} (KST)`;
 
   const provinces = hasPayload && payload ? provincesFromPayload(payload) : [];
   const topProvince = payload?.topProvinceByAvgWage ?? topProvinceFromProvinces(provinces);
@@ -167,6 +164,23 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
       ? `「${payload.dominantCategory.name}」 일당 리포트 — 시·도별 평균 일당`
       : `구인 일당 리포트 ${date}`;
 
+  const provinceTableTsv =
+    hasPayload && payload
+      ? [
+          ["지도", "시·도", "평균일당(원)", "공고수"].join("\t"),
+          ...provinces.map((r, idx) => {
+            const mapRank =
+              idx < JOB_WAGE_MAP_TOP_PROVINCES && r.jobPostCount > 0 ? String(idx + 1) : "—";
+            return [mapRank, r.province, String(r.avgDailyWage), String(r.jobPostCount)].join("\t");
+          }),
+        ].join("\n")
+      : "";
+
+  const jobWageDominantDisplay =
+    hasPayload && payload?.dominantCategory?.name?.trim()
+      ? formatJobWageDominantDisplayName(payload.dominantCategory.name.trim())
+      : "";
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50">
       <div
@@ -177,18 +191,8 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
         <div className="lg:text-center">
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
           <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
-          <p className="mx-auto mb-3 max-w-2xl text-lg font-semibold leading-snug text-slate-800">{report.headline}</p>
-          <p className="mx-auto mb-6 inline-flex flex-wrap items-center justify-center gap-2 rounded-full bg-slate-100/90 px-4 py-1.5 text-sm text-slate-600 ring-1 ring-slate-200/80">
-            <span className="font-medium text-slate-500">집계 구간</span>
-            <span className="hidden text-slate-300 sm:inline" aria-hidden>
-              ·
-            </span>
-            <span className="font-semibold text-slate-800">{windowRangeLabel}</span>
-            <span className="hidden text-slate-300 sm:inline" aria-hidden>
-              ·
-            </span>
-            <span className="font-medium text-slate-500">스냅샷</span>
-            <span className="font-semibold text-slate-800">KST {date}</span>
+          <p className="mx-auto mb-3 max-w-2xl text-lg font-semibold leading-snug text-slate-800">
+            {jobWageReportListExcerptFromPayload(report.payload, report.headline)}
           </p>
         </div>
 
@@ -206,46 +210,12 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
           </div>
         )}
 
+        <GuestPreviewGate isLoggedIn={!!user} loginNext={`/job-market-report/${date}`} tone="teal">
         <div className="mx-auto mt-8 max-w-4xl space-y-6">
           {!hasPayload || !payload ? (
             <div className={`${cardClass} text-center text-slate-600`}>리포트 데이터 형식을 읽을 수 없습니다.</div>
           ) : (
             <>
-              <section className={insightClass}>
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-600/25">
-                    <Sparkles className="h-6 w-6" aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-xl font-bold text-teal-950">이 페이지를 이렇게 쓰세요</h2>
-                    <p className="mt-1 text-sm text-teal-900/75">
-                      숫자만 훑어도 되고, 지도·표·심화 인사이트에서 시·도와 시장 전체를 같이 보면 됩니다.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-teal-100/80">
-                    <div className="flex items-center gap-2 text-teal-800">
-                      <Users className="h-5 w-5 shrink-0" aria-hidden />
-                      <span className="font-bold">구직자</span>
-                    </div>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                      <strong className="text-slate-900">평균 일당이 높은 시·도</strong>는 같은 직종이라도 대표 일당이 높게 잡힌 구인이 많다는 뜻이고,{" "}
-                      <strong className="text-slate-900">낮은 시·도</strong>는 반대로 이 직종 단가가 낮게 형성된 편이라는 신호입니다. 일할 지역을 고를 때 참고하세요. 실제 급여는 현장·계약마다 다릅니다.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-white/80 p-5 ring-1 ring-emerald-100/90">
-                    <div className="flex items-center gap-2 text-emerald-900">
-                      <Briefcase className="h-5 w-5 shrink-0" aria-hidden />
-                      <span className="font-bold">구인자</span>
-                    </div>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                      <strong className="text-slate-900">시·도별 평균</strong>은 최근 한 달, 가장 많이 올라온 직종 한 가지로만 모은 숫자입니다. 우리 공고 단가가 시장 중간쯤인지 가늠하는 데 쓰면 됩니다.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
               {payload.dominantCategory && (
                 <section className={cardClass}>
                   <SectionHeader
@@ -280,7 +250,15 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                     description={
                       <>
                         가로로 <strong className="font-semibold text-slate-800">왼쪽은 평균이 가장 높은 시·도</strong>,{" "}
-                        <strong className="font-semibold text-slate-800">오른쪽은 가장 낮은 시·도</strong>입니다. 아래는 공고 한 건에 적힌 일당의 최고·최저입니다.
+                        <strong className="font-semibold text-slate-800">오른쪽은 가장 낮은 시·도</strong>입니다.
+                        {(payload.maxDailyWage || payload.minDailyWage) && !jobWageInsightUnlocked ? (
+                          <>
+                            {" "}
+                            <strong className="font-semibold text-slate-800">공고 한 건 기준 최고·최저 일당과 지역</strong>은 우리 팀 공유 또는 구독 시 아래에 표시됩니다.
+                          </>
+                        ) : jobWageInsightUnlocked && (payload.maxDailyWage || payload.minDailyWage) ? (
+                          <> 아래는 공고 한 건에 적힌 일당의 최고·최저입니다.</>
+                        ) : null}
                       </>
                     }
                     iconBg="bg-gradient-to-br from-amber-500 to-orange-500 shadow-amber-500/25"
@@ -324,44 +302,55 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                   {(payload.maxDailyWage || payload.minDailyWage) && (
                     <div className="mt-6 border-t border-slate-200/90 pt-6">
                       <p className="text-sm font-semibold text-slate-700">한 공고에 적힌 대표 일당</p>
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-4">
-                        <div className="min-w-0 rounded-2xl border-2 border-emerald-400/90 bg-gradient-to-br from-emerald-50 to-white p-3 shadow-sm ring-1 ring-emerald-100 sm:p-5">
-                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-emerald-900 sm:text-xs">
-                            <TrendingUp className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                            가장 높은 일당
-                          </div>
-                          {payload.maxDailyWage ? (
-                            <>
-                              <p className="mt-2 text-lg font-bold tabular-nums text-emerald-800 sm:text-xl">{formatWon(payload.maxDailyWage.amount)}</p>
-                              <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
-                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700/80 sm:h-4 sm:w-4" aria-hidden />
-                                <span className="break-words">{payload.maxDailyWage.region}</span>
-                              </p>
-                            </>
-                          ) : (
-                            <p className="mt-3 text-xs text-slate-500 sm:text-sm">표시할 데이터가 없습니다.</p>
-                          )}
-                        </div>
-                        <div className="min-w-0 rounded-2xl border-2 border-rose-400/90 bg-gradient-to-br from-rose-50 to-white p-3 shadow-sm ring-1 ring-rose-100 sm:p-5">
-                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-rose-900 sm:text-xs">
-                            <TrendingDown className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                            가장 낮은 일당
-                          </div>
-                          {payload.minDailyWage ? (
-                            <>
-                              <p className="mt-2 text-lg font-bold tabular-nums text-rose-800 sm:text-xl">{formatWon(payload.minDailyWage.amount)}</p>
-                              <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
-                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-700/80 sm:h-4 sm:w-4" aria-hidden />
-                                <span className="break-words">{payload.minDailyWage.region}</span>
-                              </p>
-                            </>
-                          ) : (
-                            <p className="mt-3 text-xs leading-relaxed text-slate-600 sm:text-sm">
-                              이 구간에서 최저 일당을 골라 낼 수 없습니다.
+                      {!jobWageInsightUnlocked ? (
+                        <div className="mt-3 rounded-2xl border border-dashed border-amber-200/90 bg-amber-50/60 p-4 sm:p-5">
+                          <div className="flex items-start gap-2 text-sm text-amber-950">
+                            <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                            <p>
+                              금액·지역(시·군·구)은 <strong>심화 인사이트와 동일하게</strong> 우리 팀 공유 또는 구독 시에만 표시됩니다. 위쪽「심화 인사이트」에서 우리 팀 공유하면 이 구간도 함께 열립니다.
                             </p>
-                          )}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-4">
+                          <div className="min-w-0 rounded-2xl border-2 border-emerald-400/90 bg-gradient-to-br from-emerald-50 to-white p-3 shadow-sm ring-1 ring-emerald-100 sm:p-5">
+                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-emerald-900 sm:text-xs">
+                              <TrendingUp className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                              가장 높은 일당
+                            </div>
+                            {payload.maxDailyWage ? (
+                              <>
+                                <p className="mt-2 text-lg font-bold tabular-nums text-emerald-800 sm:text-xl">{formatWon(payload.maxDailyWage.amount)}</p>
+                                <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
+                                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700/80 sm:h-4 sm:w-4" aria-hidden />
+                                  <span className="break-words">{payload.maxDailyWage.region}</span>
+                                </p>
+                              </>
+                            ) : (
+                              <p className="mt-3 text-xs text-slate-500 sm:text-sm">표시할 데이터가 없습니다.</p>
+                            )}
+                          </div>
+                          <div className="min-w-0 rounded-2xl border-2 border-rose-400/90 bg-gradient-to-br from-rose-50 to-white p-3 shadow-sm ring-1 ring-rose-100 sm:p-5">
+                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-rose-900 sm:text-xs">
+                              <TrendingDown className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                              가장 낮은 일당
+                            </div>
+                            {payload.minDailyWage ? (
+                              <>
+                                <p className="mt-2 text-lg font-bold tabular-nums text-rose-800 sm:text-xl">{formatWon(payload.minDailyWage.amount)}</p>
+                                <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
+                                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-700/80 sm:h-4 sm:w-4" aria-hidden />
+                                  <span className="break-words">{payload.minDailyWage.region}</span>
+                                </p>
+                              </>
+                            ) : (
+                              <p className="mt-3 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                                이 구간에서 최저 일당을 골라 낼 수 없습니다.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </section>
@@ -407,19 +396,27 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                 />
               )}
 
-              <section className={cardClass}>
-                <SectionHeader
-                  icon={Table2}
-                  kicker="전체 목록"
-                  title="시·도 전체 표"
-                  description={
-                    <>
-                      공고 <strong className="font-semibold text-slate-900">{payload.jobPostCount.toLocaleString("ko-KR")}곳</strong> 기준 · 평균 높은 순 · 상위
-                      5곳은 지도와 같은 색 뱃지
-                    </>
-                  }
-                  iconBg="bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20"
-                />
+                <section className={cardClass}>
+                  <SectionHeader
+                    icon={Table2}
+                    kicker="전체 목록"
+                    title="시·도 전체 표"
+                    description={
+                      <>
+                        공고 <strong className="font-semibold text-slate-900">{payload.jobPostCount.toLocaleString("ko-KR")}곳</strong> 기준 · 평균 높은 순 · 상위
+                        5곳은 지도와 같은 색 뱃지
+                        {!jobWageInsightUnlocked ? (
+                          <> · 표 전체 복사는 우리 팀 공유 또는 구독 시 사용할 수 있습니다.</>
+                        ) : null}
+                      </>
+                    }
+                    iconBg="bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20"
+                  />
+                  {jobWageInsightUnlocked && provinces.length > 0 ? (
+                    <div className="mt-4 flex justify-end">
+                      <JobWageProvinceTableCopyButton tsv={provinceTableTsv} />
+                    </div>
+                  ) : null}
                 {provinces.length === 0 ? (
                   <p className="mt-4 text-sm text-slate-500">표시할 데이터가 없습니다.</p>
                 ) : (
@@ -472,15 +469,6 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                   </div>
                 )}
               </section>
-
-              <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 px-5 py-4 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-100">
-                <p>{payload.methodologyNote}</p>
-                {payload.window ? (
-                  <p className="mt-2 font-medium text-slate-500">
-                    집계 구간(UTC): {payload.window.startUtc} ~ {payload.window.endExclusiveUtc}
-                  </p>
-                ) : null}
-              </div>
             </>
           )}
 
@@ -507,6 +495,34 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             </section>
           )}
 
+          {hasPayload && payload ? (
+            <div className="mx-auto mt-6 max-w-2xl">
+              <ReportNextStep
+                variant="teal"
+                situation={
+                  jobWageDominantDisplay
+                    ? `「${jobWageDominantDisplay}」 기준으로 시장 단가 감을 잡았다면, 입찰 쪽 흐름과 맞춰 보는 것이 좋습니다.`
+                    : "일당 흐름을 본 뒤에는, 실제 입찰·예산 흐름과 비교해 보면 판단이 선명해집니다."
+                }
+                actionLabel="실제 입찰 가격 흐름 보기"
+                href="/news?category=report"
+              />
+            </div>
+          ) : null}
+
+          {hasPayload && payload ? (
+            <div className="mx-auto mt-6 max-w-2xl">
+              <ReportTeamShareButton
+                kind="job_wage"
+                reportDate={date}
+                shareTitle={jobWageShareTitle}
+                shareText={jobWageShareText}
+                loginNextPath={`/job-market-report/${date}`}
+                layout="full"
+              />
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap justify-center gap-3 pt-2 pb-4">
             <Link
               href="/jobs"
@@ -528,6 +544,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             </Link>
           </div>
         </div>
+        </GuestPreviewGate>
       </div>
     </div>
   );

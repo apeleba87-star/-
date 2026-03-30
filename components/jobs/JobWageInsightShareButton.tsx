@@ -13,9 +13,16 @@ type Props = {
   shareTitle: string;
   shareText: string;
   loginNextPath: string;
+  layout?: "full" | "compact";
 };
 
-export default function JobWageInsightShareButton({ reportDate, shareTitle, shareText, loginNextPath }: Props) {
+export default function JobWageInsightShareButton({
+  reportDate,
+  shareTitle,
+  shareText,
+  loginNextPath,
+  layout = "full",
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,10 +81,40 @@ export default function JobWageInsightShareButton({ reportDate, shareTitle, shar
     setLoading(false);
   }
 
+  if (layout === "compact") {
+    return (
+      <div className="rounded-2xl border border-teal-200/90 bg-white/90 p-4 shadow-inner ring-1 ring-teal-100/60">
+        <p className="text-sm text-slate-600">
+          이미 오늘 심화가 열려 있어도 <strong className="font-semibold text-slate-800">팀에 다시 알릴 수 있습니다.</strong>
+        </p>
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={loading}
+          className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:from-teal-700 hover:to-emerald-700 disabled:opacity-60 sm:w-auto"
+        >
+          <Share2 className="h-4 w-4 shrink-0" aria-hidden />
+          {loading ? "처리 중…" : "우리 팀 공유"}
+        </button>
+        <p className="mt-2 text-xs text-slate-500">
+          <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className="font-medium text-teal-700 underline">
+            로그인
+          </Link>
+          이 필요합니다.{" "}
+          <Link href="/subscribe" className="font-medium text-teal-700 underline">
+            구독
+          </Link>
+          으로 전체를 열 수 있습니다.
+        </p>
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-teal-200/90 bg-white/90 p-4 shadow-inner ring-1 ring-teal-100/60">
       <p className="text-sm font-medium text-slate-800">
-        오늘 <strong className="text-slate-900">첫 공유 1회</strong>로 전국 가중 평균·전일 대비·일당 구간 분포를 볼 수 있습니다. 입찰 리포트와{" "}
+        오늘 <strong className="text-slate-900">첫 우리 팀 공유 1회</strong>로 전국 가중 평균·전일 대비·일당 구간 분포를 볼 수 있습니다. 입찰 리포트와{" "}
         <strong className="text-slate-900">같은 날 열람권</strong>이 이어집니다.
       </p>
       <button
@@ -87,7 +124,7 @@ export default function JobWageInsightShareButton({ reportDate, shareTitle, shar
         className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:from-teal-700 hover:to-emerald-700 disabled:opacity-60 sm:w-auto"
       >
         <Share2 className="h-4 w-4 shrink-0" aria-hidden />
-        {loading ? "처리 중…" : "공유하고 심화 인사이트 열기"}
+        {loading ? "처리 중…" : "우리 팀 공유"}
       </button>
       <p className="mt-2 text-xs text-slate-500">
         <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className="font-medium text-teal-700 underline">

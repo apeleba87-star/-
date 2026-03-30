@@ -12,8 +12,8 @@ export default function JobWageReportManualSection() {
       <h2 className="text-sm font-semibold text-slate-800">일당 리포트 수동 갱신</h2>
       <p className="mt-1 text-xs text-slate-600">
         <strong>30일</strong>: KST <strong>어제</strong>를 말일로 하여 그날부터 <strong>30일(포함)</strong> 구간을 집계합니다.{" "}
-        <strong>당일</strong>: KST <strong>오늘</strong> 00:00~자정 직전에 생성된 포지션만 집계합니다. 두 경우 모두 저장 시 기존 일당 리포트는{" "}
-        <strong>모두 지우고 이번 결과 1건만</strong> 남습니다. 서버에{" "}
+        <strong>당일</strong>: KST <strong>오늘</strong> 00:00~자정 직전에 생성된 포지션만 집계합니다. 결과는 <code className="rounded bg-white px-1">report_date</code>{" "}
+        키로 <strong>날짜별로 쌓이며</strong>, 같은 날짜를 다시 실행하면 그날 행만 덮어씁니다. 서버에{" "}
         <code className="rounded bg-white px-1">SUPABASE_SERVICE_ROLE_KEY</code> 가 있어야 합니다.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -23,7 +23,7 @@ export default function JobWageReportManualSection() {
           onClick={() => {
             if (
               !confirm(
-                "KST 기준 최근 30일(어제 말일) 구간을 한 번에 집계하고, 저장된 일당 리포트를 모두 이 결과로 바꿉니다. 진행할까요?"
+                "KST 어제를 말일로 한 30일 구간을 집계해, report_date=어제 행을 저장(또는 덮어쓰기)합니다. 다른 날짜 리포트는 유지됩니다. 진행할까요?"
               )
             ) {
               return;
@@ -48,7 +48,7 @@ export default function JobWageReportManualSection() {
           onClick={() => {
             if (
               !confirm(
-                "KST 오늘 하루 동안 생성된 신규 구인 포지션만 집계하고, 저장된 일당 리포트를 모두 이 결과로 바꿉니다. 진행할까요?"
+                "KST 오늘 하루만 집계해 report_date=오늘 행을 저장(또는 덮어쓰기)합니다. 다른 날짜 리포트는 유지됩니다. 진행할까요?"
               )
             ) {
               return;

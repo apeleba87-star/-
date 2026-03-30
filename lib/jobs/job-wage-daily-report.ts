@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { formatJobWageDominantDisplayName } from "@/lib/jobs/job-wage-dominant-label";
 import { canonicalSidoFromRegion } from "@/lib/listings/regions";
 import {
   addDaysToDateString,
@@ -53,7 +54,8 @@ type PositionRow = {
   normalized_daily_wage: number | string | null;
 };
 
-async function replaceJobWageReportsWithSingleRow(
+/** 같은 report_date는 덮어쓰고, 다른 날짜 행은 그대로 둡니다. */
+async function upsertJobWageReportForDate(
   supabase: SupabaseClient,
   row: {
     report_date: string;
@@ -63,10 +65,8 @@ async function replaceJobWageReportsWithSingleRow(
     computed_at: string;
   }
 ): Promise<{ error: Error | null }> {
-  const { error: delErr } = await supabase.from("job_wage_daily_reports").delete().not("report_date", "is", null);
-  if (delErr) return { error: new Error(delErr.message) };
-  const { error: insErr } = await supabase.from("job_wage_daily_reports").insert(row);
-  if (insErr) return { error: new Error(insErr.message) };
+  const { error } = await supabase.from("job_wage_daily_reports").upsert(row, { onConflict: "report_date" });
+  if (error) return { error: new Error(error.message) };
   return { error: null };
 }
 
@@ -104,7 +104,7 @@ export async function runJobWage30DayReportJob(
     .lt("created_at", endExclusiveUtc);
 
   if (qErr) {
-    const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
+    const { error: upErr } = await upsertJobWageReportForDate(supabase, {
       report_date: windowEnd,
       headline: "집계에 실패했습니다.",
       payload: { error: qErr.message } as Record<string, unknown>,
@@ -160,7 +160,7 @@ export async function runJobWage30DayReportJob(
 
   if (rows.length === 0) {
     const payload = emptyPayload();
-    const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
+    const { error: upErr } = await upsertJobWageReportForDate(supabase, {
       report_date: windowEnd,
       headline: `${windowStartKst} ~ ${windowEnd} (KST) 구간에 등록된 신규 구인 포지션이 없습니다.`,
       payload: payload as unknown as Record<string, unknown>,
@@ -264,10 +264,10 @@ export async function runJobWage30DayReportJob(
       windowDays === 1
         ? `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다. (${windowEnd} 당일)`
         : `「${dominantCategory.name}」 신규 포지션은 있으나, 일당 환산값이 있는 공고가 없습니다. (${windowDays}일 구간)`;
-  } else if (windowDays === 1) {
-    headline = `오늘(KST) 「${dominantCategory.name}」 신규 구인 — 시·도별 평균 일당 (${windowEnd})`;
   } else {
-    headline = `최근 ${windowDays}일 「${dominantCategory.name}」 신규 구인 — 시·도별 평균 일당 (${windowStartKst}~${windowEnd})`;
+    const display = formatJobWageDominantDisplayName(dominantCategory.name);
+    headline =
+      windowDays === 1 ? `${display}가 가장 많았어요` : `최근 ${windowDays}일, ${display}가 가장 많았어요`;
   }
 
   const payload: JobWageDailyReportPayload = {
@@ -287,7 +287,7 @@ export async function runJobWage30DayReportJob(
     minDailyWage,
   };
 
-  const { error: upErr } = await replaceJobWageReportsWithSingleRow(supabase, {
+  const { error: upErr } = await upsertJobWageReportForDate(supabase, {
     report_date: windowEnd,
     headline,
     payload: payload as unknown as Record<string, unknown>,

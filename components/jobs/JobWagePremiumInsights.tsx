@@ -57,12 +57,14 @@ export default function JobWagePremiumInsights({
         <div className="mt-6 rounded-2xl border border-dashed border-teal-300/80 bg-white/70 p-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Lock className="h-4 w-4 text-teal-700" aria-hidden />
-            공유 또는 구독 시 아래 수치가 표시됩니다
+            우리 팀 공유 또는 구독 시 아래 수치가 표시됩니다
           </div>
           <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
             <li>이날 직종 기준 전국 가중 평균 일당</li>
             <li>전일 리포트 대비 증감(원·%)</li>
             <li>시·도 평균을 2만원 단위로 묶은 공고 수 분포</li>
+            <li>공고 한 건 기준 최고·최저 일당과 적힌 지역(시·군·구)</li>
+            <li>시·도 전체 표 복사(스프레드시트 붙여넣기)</li>
           </ul>
           <div className="mt-4">
             <JobWageInsightShareButton
@@ -136,11 +138,21 @@ export default function JobWagePremiumInsights({
           </div>
 
           <p className="text-center text-xs text-slate-500">
-            입찰 리포트 심화 패널과 동일하게, 오늘 한 번 공유하면 당일 다른 화면에도 적용됩니다.{" "}
+            입찰 리포트 심화 패널과 동일하게, 오늘 한 번 우리 팀 공유하면 당일 다른 화면에도 적용됩니다.{" "}
             <Link href="/subscribe" className="font-medium text-teal-700 underline">
               구독
             </Link>
           </p>
+
+          <div className="mt-5 border-t border-teal-100/80 pt-5">
+            <JobWageInsightShareButton
+              layout="compact"
+              reportDate={reportDate}
+              shareTitle={shareTitle}
+              shareText={shareText}
+              loginNextPath={loginNextPath}
+            />
+          </div>
         </div>
       )}
     </section>

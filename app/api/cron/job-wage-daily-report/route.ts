@@ -4,7 +4,7 @@ import { runJobWageDailyReportJob } from "@/lib/jobs/job-wage-daily-report";
 
 export const dynamic = "force-dynamic";
 
-/** KST 어제 말일 기준 달력 30일 신규 포지션 일당 리포트(단일 행). 스케줄 없이 쓰려면 관리자 /admin/job-wage-report 수동 실행. */
+/** KST 어제 말일 기준 달력 30일 일당 리포트를 report_date=어제에 upsert. 스케줄 없으면 /admin/job-wage-report 수동 실행. */
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
   if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {

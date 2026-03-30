@@ -18,7 +18,7 @@ async function requireAdmin() {
   return { ok: true as const };
 }
 
-/** KST 어제를 말일로 하는 달력 30일 구간을 한 번에 집계해 단일 리포트로 저장 */
+/** KST 어제를 말일로 하는 달력 30일 구간을 집계해 report_date=어제 행을 저장(동일 날짜는 덮어쓰기) */
 export async function runJobWage30DayReportManual() {
   const auth = await requireAdmin();
   if (!auth.ok) return { ok: false, error: auth.error };
@@ -38,7 +38,7 @@ export async function runJobWage30DayReportManual() {
   }
 }
 
-/** KST 오늘 하루(00:00~다음날 00:00 직전) 신규 포지션만 집계해 단일 리포트로 저장 */
+/** KST 오늘 하루만 집계해 report_date=오늘 행을 저장(동일 날짜는 덮어쓰기) */
 export async function runJobWageTodayReportManual() {
   const auth = await requireAdmin();
   if (!auth.ok) return { ok: false, error: auth.error };

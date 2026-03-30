@@ -2,6 +2,16 @@ import Link from "next/link";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
+import ReportNextStep from "@/components/report/ReportNextStep";
+import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import {
+  formatJobWageDominantDisplayName,
+  jobWageReportListExcerptFromPayload,
+} from "@/lib/jobs/job-wage-dominant-label";
+import {
+  formatReportCardListDate,
+  heroMetricsFromJobWagePayload,
+} from "@/lib/news/parseReportCardHero";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +34,7 @@ export default async function JobMarketReportIndexPage() {
   const supabase = createClient();
   const { data: rows, error } = await supabase
     .from("job_wage_daily_reports")
-    .select("report_date, headline")
+    .select("report_date, headline, payload")
     .order("report_date", { ascending: false })
     .limit(365);
 
@@ -53,9 +63,7 @@ export default async function JobMarketReportIndexPage() {
           <div className="lg:text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
-              저장된 일당 리포트가 없습니다. 관리자에서「30일 기준」또는「당일(KST)」리포트 생성을 실행해 주세요.
-            </p>
+            <p className="mx-auto mt-3 max-w-md text-sm text-slate-600">저장된 리포트가 없습니다.</p>
           </div>
           <div className="mt-6">
             <NewsCategoryTabs current="job_wage" showPrivateTab={isAdmin} />
@@ -82,6 +90,14 @@ export default async function JobMarketReportIndexPage() {
     );
   }
 
+  const firstPayload = rows[0] as { payload?: unknown };
+  const p0 = firstPayload?.payload;
+  const rawDominant =
+    p0 && typeof p0 === "object"
+      ? String((p0 as { dominantCategory?: { name?: string } }).dominantCategory?.name ?? "").trim()
+      : "";
+  const dominantDisplay = rawDominant ? formatJobWageDominantDisplayName(rawDominant) : "";
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50">
       <div
@@ -92,38 +108,68 @@ export default async function JobMarketReportIndexPage() {
         <div className="lg:text-center">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
-            저장된 구간의 <strong className="font-semibold text-slate-800">신규 구인</strong>(30일 누적 또는 당일 스냅샷)을 직종 1위 기준으로 시·도별 평균 일당·지도·표·심화 인사이트까지 한 번에 봅니다. 갱신할 때마다 저장 슬롯은 1건으로 덮어씁니다.
-          </p>
         </div>
 
         <div className="mt-6">
           <NewsCategoryTabs current="job_wage" showPrivateTab={isAdmin} />
         </div>
 
-        <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200/80">
-            <span className="text-teal-600">저장된 리포트</span>
-            <span className="tabular-nums text-slate-900">{rows.length}건</span>
-          </span>
-          <span className="text-xs text-slate-500">저장은 최신 1건 · 표시 상한 365일</span>
-        </div>
-
-        <ul className="mx-auto mt-10 grid w-full max-w-6xl min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((r) => (
+        <ul className="mx-auto mt-8 grid w-full max-w-6xl min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((r, i) => (
             <li key={r.report_date}>
               <NewsCard
                 href={`/job-market-report/${r.report_date}`}
                 title={formatJobWageListTitle(r.report_date)}
-                excerpt={r.headline}
-                date={r.report_date}
+                excerpt={jobWageReportListExcerptFromPayload(
+                  (r as { payload?: unknown }).payload,
+                  r.headline
+                )}
+                date={formatReportCardListDate(r.report_date)}
                 categoryTag="일당 리포트"
                 reportHero
+                heroMetrics={heroMetricsFromJobWagePayload(
+                  (r as { payload?: unknown }).payload,
+                  rows[i + 1]?.payload
+                )}
                 accentSeed={r.report_date}
+                footerShare={{
+                  kind: "job_wage",
+                  reportDate: r.report_date,
+                  shareTitle: formatJobWageListTitle(r.report_date),
+                  shareText:
+                    typeof r.headline === "string" && r.headline.trim()
+                      ? r.headline.trim()
+                      : `구인 일당 리포트 · ${r.report_date}`,
+                  loginNextPath: `/job-market-report/${r.report_date}`,
+                }}
               />
             </li>
           ))}
         </ul>
+
+        <div className="mx-auto mt-10 max-w-2xl">
+          <ReportNextStep
+            variant="teal"
+            situation={
+              dominantDisplay
+                ? `「${dominantDisplay}」 기준으로 시장 단가 감을 잡았다면, 입찰 쪽 흐름과 맞춰 보는 것이 좋습니다.`
+                : "일당 흐름을 본 뒤에는, 실제 입찰·예산 흐름과 비교해 보면 판단이 선명해집니다."
+            }
+            actionLabel="실제 입찰 가격 흐름 보기"
+            href="/news?category=report"
+          />
+        </div>
+
+        <div className="mx-auto mt-8 max-w-2xl">
+          <ReportTeamShareButton
+            kind="job_wage"
+            reportDate={rows[0].report_date}
+            shareTitle={`일당 리포트 ${rows[0].report_date}`}
+            shareText={rows[0].headline?.trim() || `구인 일당 리포트 · ${rows[0].report_date}`}
+            loginNextPath="/job-market-report"
+            layout="full"
+          />
+        </div>
       </div>
     </div>
   );

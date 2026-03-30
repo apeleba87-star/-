@@ -12,9 +12,16 @@ type Props = {
   postId: string;
   shareTitle: string;
   shareText: string;
+  /** full: 잠금 해제 안내, compact: 이미 열람된 뒤에도 팀 공유 재실행, inline: 카드 푸터 한 줄 */
+  layout?: "full" | "compact" | "inline";
 };
 
-export default function ReportShareUnlockButton({ postId, shareTitle, shareText }: Props) {
+export default function ReportShareUnlockButton({
+  postId,
+  shareTitle,
+  shareText,
+  layout = "full",
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,10 +89,45 @@ export default function ReportShareUnlockButton({ postId, shareTitle, shareText 
     setLoading(false);
   }
 
+  if (layout === "inline") {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className="inline-flex min-h-9 max-w-full shrink-0 items-center gap-1 rounded-lg border border-violet-200/90 bg-white px-2.5 py-1.5 text-xs font-semibold text-violet-800 shadow-sm transition hover:bg-violet-50/80 disabled:opacity-60"
+        aria-label={loading ? "처리 중" : "우리 팀 공유"}
+      >
+        <Share2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{loading ? "처리 중…" : "우리 팀 공유"}</span>
+      </button>
+    );
+  }
+
+  if (layout === "compact") {
+    return (
+      <div className="rounded-2xl border border-violet-200/80 bg-white/80 p-4 shadow-inner backdrop-blur-sm">
+        <p className="text-sm text-slate-600">
+          이미 패널이 열려 있어도 <strong className="font-semibold text-slate-800">팀에 링크를 보내려면</strong> 아래를 누르세요.
+        </p>
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={loading}
+          className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:from-violet-700 hover:to-indigo-700 disabled:opacity-60 sm:w-auto"
+        >
+          <Share2 className="h-4 w-4 shrink-0" aria-hidden />
+          {loading ? "처리 중…" : "우리 팀 공유"}
+        </button>
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-violet-200/80 bg-white/80 p-4 shadow-inner backdrop-blur-sm">
       <p className="text-sm font-medium text-slate-800">
-        오늘 <strong className="text-slate-900">첫 공유 1회</strong>로{" "}
+        오늘 <strong className="text-slate-900">첫 우리 팀 공유 1회</strong>로{" "}
         <span className="text-violet-700">심화 패널 {SHARED_RANDOM_PANEL_COUNT}종</span>이 무작위로 열리며, 같은 날 다른
         리포트에서도 <strong className="text-slate-900">추가 공유 없이</strong> 동일하게 열려 있습니다.
       </p>
@@ -96,7 +138,7 @@ export default function ReportShareUnlockButton({ postId, shareTitle, shareText 
         className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:from-violet-700 hover:to-indigo-700 disabled:opacity-60 sm:w-auto"
       >
         <Share2 className="h-4 w-4 shrink-0" aria-hidden />
-        {loading ? "처리 중…" : `공유하고 심화 ${SHARED_RANDOM_PANEL_COUNT}종 열기`}
+        {loading ? "처리 중…" : "우리 팀 공유"}
       </button>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>

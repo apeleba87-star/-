@@ -9,6 +9,10 @@ import {
   type GroupTrendRow,
 } from "@/lib/naver/trend-report";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
+import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
+import ReportNextStep from "@/components/report/ReportNextStep";
+import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import { marketingTopRisingGroupName } from "@/lib/news/parseReportCardHero";
 
 export const dynamic = "force-dynamic";
 
@@ -79,15 +83,17 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }] = await Promise.all([
+  const [{ data: report, error }, { data: recent }, { data: jobWageLatest }] = await Promise.all([
     supabase.from("naver_trend_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
     supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(14),
+    supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
   if (error || !report) notFound();
 
   const payload = report.payload as unknown as DailyReportPayload | null;
   const hasPayload = payload && "topThree" in payload && Array.isArray(payload.topThree);
+  const topKwThis = marketingTopRisingGroupName(report.payload);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-violet-50/40">
@@ -123,6 +129,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
           </div>
         )}
 
+        <GuestPreviewGate isLoggedIn={!!user} loginNext={`/marketing-report/${date}`} tone="indigo">
         <div className="mx-auto mt-8 max-w-5xl space-y-6 px-0">
           <section className={insightClass}>
             <div className="flex flex-wrap items-start gap-3">
@@ -293,6 +300,34 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
             </section>
           )}
 
+          <div className="mx-auto mt-6 max-w-2xl">
+            <ReportNextStep
+              variant="indigo"
+              situation={
+                topKwThis
+                  ? `「${topKwThis}」 키워드 쪽 검색 관심이 두드러집니다.`
+                  : "검색 트렌드를 본 뒤에는, 같은 맥락의 실제 일당을 확인하면 수요와 단가를 함께 볼 수 있습니다."
+              }
+              actionLabel="이 키워드에 맞는 실제 일당 구간 확인하기"
+              href={
+                jobWageLatest?.report_date
+                  ? `/job-market-report/${jobWageLatest.report_date}`
+                  : "/job-market-report"
+              }
+            />
+          </div>
+
+          <div className="mx-auto mt-6 max-w-2xl">
+            <ReportTeamShareButton
+              kind="marketing"
+              reportDate={date}
+              shareTitle={`마케팅 리포트 ${date}`}
+              shareText={report.headline?.trim() || `청소 키워드 트렌드 스냅샷 · ${date}`}
+              loginNextPath={`/marketing-report/${date}`}
+              layout="full"
+            />
+          </div>
+
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Link
               href="/news?category=report"
@@ -314,6 +349,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
             </Link>
           </div>
         </div>
+        </GuestPreviewGate>
       </div>
     </div>
   );

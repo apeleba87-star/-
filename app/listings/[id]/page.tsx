@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PayUnit } from "@/lib/listings/types";
@@ -10,6 +10,7 @@ import ContactButtons from "@/components/listings/ContactButtons";
 import SellerCard from "@/components/listings/SellerCard";
 import ReportDealCompletedButton from "@/components/listings/ReportDealCompletedButton";
 import ListingDetailBackground from "@/components/listings/ListingDetailBackground";
+import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 import { MapPin, Tag, Calendar, AlertTriangle, Sparkles } from "lucide-react";
 
 export const revalidate = 60;
@@ -30,10 +31,6 @@ export default async function ListingDetailPage({
   const supabase = createClient();
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
-
-  if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/listings/${id}`)}`);
-  }
 
   const { data: listing, error } = await supabase
     .from("listings")
@@ -201,8 +198,21 @@ export default async function ListingDetailPage({
             </div>
           )}
 
-          <ContactButtons phone={listing.contact_phone} variant="listingDetail" />
+          {user ? (
+            <ContactButtons phone={listing.contact_phone} variant="listingDetail" />
+          ) : (
+            <p className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-3 text-sm text-slate-700">
+              <Link
+                href={`/login?next=${encodeURIComponent(`/listings/${id}`)}`}
+                className="font-semibold text-emerald-800 underline decoration-emerald-400/80 underline-offset-2 hover:text-emerald-900"
+              >
+                로그인
+              </Link>
+              후 전화·문자와 금액·거래 상세를 확인할 수 있어요.
+            </p>
+          )}
 
+        <GuestPreviewGate isLoggedIn={!!user} loginNext={`/listings/${id}`} tone="teal">
         {isMonthly && (() => {
           const L = listing as {
             pay_amount?: number | null;
@@ -364,6 +374,7 @@ export default async function ListingDetailPage({
           completedSalesCount={completedSalesCount}
           incidentReportCount={metrics?.incident_report_count ?? 0}
         />
+        </GuestPreviewGate>
       </article>
       </div>
     </ListingDetailBackground>
