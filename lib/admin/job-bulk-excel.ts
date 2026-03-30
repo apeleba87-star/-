@@ -171,7 +171,10 @@ export function buildSubCategoryLookup(subs: JobBulkSubMeta[]): Map<string, JobB
   return m;
 }
 
-function resolveJobTypeFromSub(meta: JobBulkSubMeta): {
+function resolveJobTypeFromSub(
+  meta: JobBulkSubMeta,
+  presetBySubId?: Map<string, { key: string; label: string }>
+): {
   position_job_type_input: string;
   normalized_job_type_key: string | null;
   normalization_status: "auto_mapped" | "manual_review";
@@ -187,6 +190,14 @@ function resolveJobTypeFromSub(meta: JobBulkSubMeta): {
       };
     }
   }
+  const fromDb = presetBySubId?.get(meta.id.toLowerCase());
+  if (fromDb?.key) {
+    return {
+      position_job_type_input: fromDb.label || meta.name,
+      normalized_job_type_key: fromDb.key,
+      normalization_status: "auto_mapped",
+    };
+  }
   return {
     position_job_type_input: meta.name,
     normalized_job_type_key: null,
@@ -199,16 +210,22 @@ export type JobBulkCategoryContext = {
   /** canon main id → 표시명 */
   mainNameById: Map<string, string>;
   subByLower: Map<string, JobBulkSubMeta>;
+  /** 소분류 UUID → DB job_type_presets (신규 업종은 코드 프리셋 slug 매칭 없이 키를 채울 때 사용) */
+  presetBySubId?: Map<string, { key: string; label: string }>;
 };
 
-export function buildJobBulkCategoryContext(mains: JobBulkCategoryRow[], subs: JobBulkSubMeta[]): JobBulkCategoryContext {
+export function buildJobBulkCategoryContext(
+  mains: JobBulkCategoryRow[],
+  subs: JobBulkSubMeta[],
+  presetBySubId?: Map<string, { key: string; label: string }>
+): JobBulkCategoryContext {
   const mainIdByLower = buildCategoryIdLookup(mains);
   const mainNameById = new Map<string, string>();
   for (const m of mains) {
     mainNameById.set(m.id.trim(), m.name);
   }
   const subByLower = buildSubCategoryLookup(subs);
-  return { mainIdByLower, mainNameById, subByLower };
+  return { mainIdByLower, mainNameById, subByLower, presetBySubId };
 }
 
 export function parseJobBulkWorkbook(
@@ -338,7 +355,7 @@ export function parseJobBulkWorkbook(
       }
       category_main_id = meta.parent_id;
       category_sub_id = meta.id;
-      const resolved = resolveJobTypeFromSub(meta);
+      const resolved = resolveJobTypeFromSub(meta, ctx.presetBySubId);
       position_job_type_input = resolved.position_job_type_input;
       normalized_job_type_key = resolved.normalized_job_type_key;
       normalization_status = resolved.normalization_status;
@@ -435,6 +452,8 @@ export type JobBulkTemplateSubRow = JobBulkSubMeta & {
   parent_name: string;
   /** 구인 등록 화면 태그 텍스트(유리청소, 상가청소 …) */
   screen_label: string;
+  /** job_type_presets.key (업로드양식에는 category_sub_id UUID만 사용) */
+  preset_key?: string;
   /** DB에 해당 slug 소분류가 없을 때 */
   missing_in_db?: boolean;
 };
@@ -465,6 +484,7 @@ export function buildPresetAlignedTemplateRows(
         ...sub,
         parent_name: mainNameById.get(sub.parent_id) ?? "",
         screen_label: preset.label,
+        preset_key: preset.key,
         missing_in_db: false,
       });
     } else {
@@ -476,6 +496,7 @@ export function buildPresetAlignedTemplateRows(
         sort_order: null,
         parent_name: "",
         screen_label: preset.label,
+        preset_key: preset.key,
         missing_in_db: true,
       });
     }
@@ -484,7 +505,7 @@ export function buildPresetAlignedTemplateRows(
 }
 
 function categoryTemplateRowToAoA(s: JobBulkTemplateSubRow): unknown[] {
-  return [s.id, s.screen_label, s.name || "(없음)"];
+  return [s.id, s.screen_label, s.name || "(없음)", s.preset_key ?? ""];
 }
 
 export function buildJobBulkTemplateWorkbook(presetRows: JobBulkTemplateSubRow[]): XLSXNS.WorkBook {
@@ -516,8 +537,13 @@ export function buildJobBulkTemplateWorkbook(presetRows: JobBulkTemplateSubRow[]
   XLSX.utils.book_append_sheet(wb, dataSheet, JOB_BULK_SHEET_DATA);
 
   const catRows: unknown[][] = [
-    ["uuid", "구인화면명", "db카테고리명"],
-    ["※ 구인 화면에서 선택 가능한 업종만 표시됩니다. category_sub_id에는 uuid를 사용하세요.", "", ""],
+    ["uuid(category_sub_id)", "구인화면명", "db카테고리명", "preset_key(참고)"],
+    [
+      "※ 업로드양식의 category_sub_id에는 왼쪽 uuid만 넣습니다. preset_key는 화면·리포트용 식별자입니다.",
+      "",
+      "",
+      "",
+    ],
     ...presetRows.map(categoryTemplateRowToAoA),
   ];
   const catSheet = XLSX.utils.aoa_to_sheet(catRows);

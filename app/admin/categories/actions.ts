@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerSupabase } from "@/lib/supabase-server";
+import { createJobSubcategoryForPresetLabel } from "@/lib/jobs/ensure-preset-linked-subcategory";
 import { revalidatePath } from "next/cache";
 
 export type CategoryUsage = "default" | "listing" | "job";
@@ -106,9 +107,12 @@ export async function addJobTypePreset(input: {
         row: null,
       };
     } else {
-      // 프리셋 단독 운영 모드: 카테고리 매핑 없이도 생성 허용
-      categorySubId = null;
-      categoryMainId = null;
+      const created = await createJobSubcategoryForPresetLabel(supabase, label);
+      if ("error" in created) {
+        return { ok: false, error: created.error, row: null };
+      }
+      categorySubId = created.category_sub_id;
+      categoryMainId = created.category_main_id;
     }
   }
   const key = (input.key ?? "").trim() || (await generateUniqueJobTypePresetKey(supabase, label));

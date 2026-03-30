@@ -57,7 +57,22 @@ export async function POST(req: Request) {
   }
 
   const { mains, subs } = splitJobMainAndSubCategories(all ?? []);
-  const ctx = buildJobBulkCategoryContext(mains, subs);
+
+  const { data: presetLinkRows, error: presetLinkErr } = await supabase
+    .from("job_type_presets")
+    .select("key, label, category_sub_id")
+    .eq("is_active", true);
+  if (presetLinkErr) {
+    return NextResponse.json({ error: presetLinkErr.message }, { status: 500 });
+  }
+  const presetBySubId = new Map<string, { key: string; label: string }>();
+  for (const pr of presetLinkRows ?? []) {
+    const sid = String(pr.category_sub_id ?? "").trim().toLowerCase();
+    if (!sid) continue;
+    presetBySubId.set(sid, { key: String(pr.key ?? ""), label: String(pr.label ?? "") });
+  }
+
+  const ctx = buildJobBulkCategoryContext(mains, subs, presetBySubId);
   const { ok: validRows, errors: parseErrors } = parseJobBulkWorkbook(workbook, ctx);
 
   if (validRows.length === 0) {
