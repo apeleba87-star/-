@@ -132,6 +132,8 @@ function buildEditInitialData(
     stairsParking,
     stairsWindow,
     contactPhone: (listing.contact_phone as string) ?? "",
+    isPrivate: Boolean(listing.is_private),
+    expiresAt: listing.expires_at ? String(listing.expires_at).slice(0, 10) : "",
   };
 }
 

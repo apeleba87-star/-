@@ -86,6 +86,8 @@ export default async function ListingsPage({ searchParams }: PageProps) {
     .from("listings")
     .select("id, user_id, title, status, region, listing_type, category_main_id, category_sub_id, custom_subcategory_text, category_main, category_sub, pay_amount, pay_unit, normalized_daily_wage, monthly_amount, deal_amount, sale_multiplier, visits_per_week, created_at")
     .in("listing_type", fieldDealTypes)
+    .eq("is_private", false)
+    .is("deleted_at", null)
     .limit(50);
 
   if (statusFilter === "open") query = query.eq("status", "open");
@@ -102,6 +104,7 @@ export default async function ListingsPage({ searchParams }: PageProps) {
     query = query.or(`category_main_id.eq.${categoryFilter},category_sub_id.eq.${categoryFilter}`);
   }
   if (visitsFilter != null) query = query.eq("visits_per_week", visitsFilter);
+  query = query.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
   if (sort === "newest") query = query.order("created_at", { ascending: false });
 

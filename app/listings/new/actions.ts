@@ -42,6 +42,8 @@ type CreateListingInput = {
   stairs_elevator?: boolean;
   stairs_parking?: boolean;
   stairs_window?: boolean;
+  is_private?: boolean;
+  expires_at?: string | null;
 };
 
 export async function createListing(input: CreateListingInput) {
@@ -143,6 +145,9 @@ export async function createListing(input: CreateListingInput) {
     stairs_elevator: input.stairs_elevator ?? false,
     stairs_parking: input.stairs_parking ?? false,
     stairs_window: input.stairs_window ?? false,
+    is_private: input.is_private ?? false,
+    deleted_at: null,
+    expires_at: input.expires_at?.trim() || null,
   });
 
   if (error) return { ok: false, error: error.message };
@@ -265,6 +270,8 @@ export async function updateListing(listingId: string, input: CreateListingInput
       stairs_elevator: input.stairs_elevator ?? false,
       stairs_parking: input.stairs_parking ?? false,
       stairs_window: input.stairs_window ?? false,
+      is_private: input.is_private ?? false,
+      expires_at: input.expires_at?.trim() || null,
     })
     .eq("id", listingId)
     .eq("user_id", user.id);

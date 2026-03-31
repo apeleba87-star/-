@@ -125,6 +125,8 @@ export type EditInitialData = {
   stairsParking: boolean;
   stairsWindow: boolean;
   contactPhone: string;
+  isPrivate: boolean;
+  expiresAt: string;
 };
 
 type CategoryMain = { id: string; name: string };
@@ -226,6 +228,8 @@ export default function NewListingForm({ mainCategories, subCategories, category
   const [stairsParking, setStairsParking] = useState(initialData?.stairsParking ?? false);
   const [stairsWindow, setStairsWindow] = useState(initialData?.stairsWindow ?? false);
   const [contactPhone, setContactPhone] = useState(initialData?.contactPhone ?? "");
+  const [isPrivate, setIsPrivate] = useState(initialData?.isPrivate ?? false);
+  const [expiresAt, setExpiresAt] = useState(initialData?.expiresAt ?? "");
   const [benchmarks, setBenchmarks] = useState<ListingBenchmarkRow[]>([]);
   const [showSummary, setShowSummary] = useState(false);
 
@@ -452,6 +456,8 @@ export default function NewListingForm({ mainCategories, subCategories, category
       stairs_elevator: isStairs ? stairsElevator : undefined,
       stairs_parking: isStairs ? stairsParking : undefined,
       stairs_window: isStairs ? stairsWindow : undefined,
+      is_private: isPrivate,
+      expires_at: expiresAt.trim() || null,
     };
     const result = isEdit && listingId
       ? await updateListing(listingId, payload)
@@ -1239,6 +1245,37 @@ export default function NewListingForm({ mainCategories, subCategories, category
                 onChange={(e) => setWorkDate(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
               />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">공개 설정</label>
+                <button
+                  type="button"
+                  onClick={() => setIsPrivate((v) => !v)}
+                  className={`mt-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    isPrivate
+                      ? "border-amber-300 bg-amber-50 text-amber-800"
+                      : "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  }`}
+                >
+                  {isPrivate ? "비공개" : "공개"}
+                </button>
+                <p className="mt-1 text-xs text-slate-500">
+                  비공개 글은 공유 링크와 목록에서 노출되지 않습니다.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">만료일 (선택)</label>
+                <input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  만료일 이후 공유 접근 시 거래 종료 안내가 표시됩니다.
+                </p>
+              </div>
             </div>
           </div>
         </CollapsibleStepSection>

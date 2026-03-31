@@ -10,6 +10,8 @@ import ContactButtons from "@/components/listings/ContactButtons";
 import SellerCard from "@/components/listings/SellerCard";
 import ReportDealCompletedButton from "@/components/listings/ReportDealCompletedButton";
 import ListingDetailBackground from "@/components/listings/ListingDetailBackground";
+import ListingShareActions from "@/components/listings/ListingShareActions";
+import ListingOwnerStatusControls from "@/components/listings/ListingOwnerStatusControls";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 import { MapPin, Tag, Calendar, AlertTriangle, Sparkles } from "lucide-react";
 
@@ -210,6 +212,14 @@ export default async function ListingDetailPage({
               </Link>
               후 전화·문자와 금액·거래 상세를 확인할 수 있어요.
             </p>
+          )}
+          <ListingShareActions listingId={listing.id} title={displayTitle} regionLabel={listing.region} />
+          {isOwner && (
+            <ListingOwnerStatusControls
+              listingId={listing.id}
+              initialPrivate={Boolean((listing as { is_private?: boolean }).is_private)}
+              initialExpiresAt={(listing as { expires_at?: string | null }).expires_at ?? null}
+            />
           )}
 
         <GuestPreviewGate isLoggedIn={!!user} loginNext={`/listings/${id}`} tone="teal">
