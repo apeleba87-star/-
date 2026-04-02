@@ -1,4 +1,5 @@
-import { createServerSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { formatAuthProvidersForAdmin } from "@/lib/admin/auth-provider-labels";
 import Link from "next/link";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -19,6 +20,41 @@ function parsePage(raw: Record<string, string | string[] | undefined>): number {
   if (!p) return 1;
   const n = parseInt(p, 10);
   return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+/** 현재 페이지 프로필 id들에 대해 Auth identities → 가입 방식 라벨 (service role 필요) */
+async function loadProviderLabelsForUserIds(userIds: string[]): Promise<Record<string, string>> {
+  const fallback = () => Object.fromEntries(userIds.map((id) => [id, "—"]));
+  if (userIds.length === 0) return {};
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return fallback();
+  try {
+    const service = createServiceSupabase();
+    const needed = new Set(userIds);
+    const map: Record<string, string> = {};
+    let page = 1;
+    const perPage = 200;
+    for (;;) {
+      const { data, error } = await service.auth.admin.listUsers({ page, perPage });
+      if (error) {
+        console.error("[admin/users] auth.admin.listUsers:", error.message);
+        return fallback();
+      }
+      for (const u of data.users) {
+        if (!needed.has(u.id)) continue;
+        map[u.id] = formatAuthProvidersForAdmin(u.identities);
+      }
+      if (data.users.length < perPage) break;
+      if (Object.keys(map).length >= needed.size) break;
+      page += 1;
+      if (page > 100) break;
+    }
+    for (const id of userIds) {
+      if (!(id in map)) map[id] = "—";
+    }
+    return map;
+  } catch {
+    return fallback();
+  }
 }
 
 export default async function AdminUsersPage({
@@ -56,12 +92,13 @@ export default async function AdminUsersPage({
   }
 
   const list = profiles ?? [];
+  const providerByUserId = await loadProviderLabelsForUserIds(list.map((p) => p.id));
 
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold text-slate-900">사용자 관리</h1>
       <p className="mb-6 text-sm text-slate-600">
-        가입된 회원 목록입니다. 이메일·닉네임·역할·가입일 등을 확인할 수 있습니다. (총 {total}명)
+        가입된 회원 목록입니다. 이메일·가입 방식·닉네임·역할·가입일 등을 확인할 수 있습니다. (총 {total}명)
       </p>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -70,6 +107,7 @@ export default async function AdminUsersPage({
             <tr className="border-b border-slate-200 bg-slate-50">
               <th className="px-4 py-3 font-semibold text-slate-700">가입일</th>
               <th className="px-4 py-3 font-semibold text-slate-700">이메일</th>
+              <th className="px-4 py-3 font-semibold text-slate-700">가입 방식</th>
               <th className="px-4 py-3 font-semibold text-slate-700">닉네임</th>
               <th className="px-4 py-3 font-semibold text-slate-700">역할</th>
               <th className="px-4 py-3 font-semibold text-slate-700">구독</th>
@@ -80,7 +118,7 @@ export default async function AdminUsersPage({
           <tbody>
             {list.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                   등록된 사용자가 없습니다.
                 </td>
               </tr>
@@ -90,6 +128,7 @@ export default async function AdminUsersPage({
                   <td className="whitespace-nowrap px-4 py-2.5 text-slate-600">
                     {p.created_at
                       ? new Date(p.created_at).toLocaleString("ko-KR", {
+                          timeZone: "Asia/Seoul",
                           year: "numeric",
                           month: "2-digit",
                           day: "2-digit",
@@ -100,6 +139,11 @@ export default async function AdminUsersPage({
                   </td>
                   <td className="max-w-[200px] truncate px-4 py-2.5 text-slate-800" title={p.email ?? ""}>
                     {p.email ?? "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-slate-600">
+                    <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                      {providerByUserId[p.id] ?? "—"}
+                    </span>
                   </td>
                   <td className="px-4 py-2.5 text-slate-800">{p.display_name ?? "—"}</td>
                   <td className="px-4 py-2.5">

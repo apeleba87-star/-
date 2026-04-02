@@ -18,13 +18,16 @@ function buildShareUrl(listingId: string, channel: string): string {
   return url.toString();
 }
 
+const LISTING_SHARE_CTA = "매매 현장 구경 하기";
+
 export default function ListingShareActions({ listingId, title, regionLabel, className = "" }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const shareText = useMemo(() => {
+  /** 네이티브 공유는 title·text를 합쳐 보여주는 앱이 많아, text에 제목을 넣으면 한 줄이 두 번 붙는다. */
+  const clipboardBlock = useMemo(() => {
     const meta = regionLabel?.trim() ? `\n지역: ${regionLabel.trim()}` : "";
-    return `${title}${meta}\n현장거래 바로가기`;
+    return `${title}${meta}\n${LISTING_SHARE_CTA}`;
   }, [title, regionLabel]);
 
   async function handleNativeShare() {
@@ -33,11 +36,11 @@ export default function ListingShareActions({ listingId, title, regionLabel, cla
     const url = buildShareUrl(listingId, "native");
     try {
       if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({ title, text: shareText, url });
+        await navigator.share({ title, text: LISTING_SHARE_CTA, url });
         setMessage("공유가 완료되었습니다.");
         return;
       }
-      await navigator.clipboard.writeText(`${shareText}\n${url}`);
+      await navigator.clipboard.writeText(`${clipboardBlock}\n${url}`);
       setMessage("공유 링크를 복사했습니다.");
     } catch {
       setError("공유를 완료하지 못했습니다.");
@@ -49,7 +52,7 @@ export default function ListingShareActions({ listingId, title, regionLabel, cla
     setError(null);
     try {
       const url = buildShareUrl(listingId, "copy");
-      await navigator.clipboard.writeText(`${shareText}\n${url}`);
+      await navigator.clipboard.writeText(`${clipboardBlock}\n${url}`);
       setMessage("링크를 복사했습니다.");
     } catch {
       setError("복사에 실패했습니다.");

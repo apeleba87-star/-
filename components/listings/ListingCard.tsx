@@ -9,6 +9,8 @@ import { PAY_UNIT_LABELS } from "@/lib/listings/wage";
 import type { PayUnit } from "@/lib/listings/types";
 import { useState } from "react";
 
+const LISTING_SHARE_CTA = "매매 현장 구경 하기";
+
 const LISTING_TYPE_LABELS: Record<string, string> = {
   sale_regular: "정기 매매",
   referral_regular: "정기 소개",
@@ -219,17 +221,28 @@ export default function ListingCard({
     </>
   );
 
-  async function handleShareCopy() {
+  async function handleShare() {
     setShareMessage(null);
     try {
+      const isNativeShareAvailable = typeof navigator !== "undefined" && typeof navigator.share === "function";
+      const channel = isNativeShareAvailable ? "card_native" : "card_copy";
       const url = typeof window === "undefined"
         ? `/s/listings/${id}`
-        : new URL(`/s/listings/${id}?ref=listing_share&ch=card_copy`, window.location.origin).toString();
-      await navigator.clipboard.writeText(`${title}\n${url}`);
-      setShareMessage("링크를 복사했습니다.");
+        : new URL(`/s/listings/${id}?ref=listing_share&ch=${channel}`, window.location.origin).toString();
+      if (isNativeShareAvailable) {
+        await navigator.share({
+          title,
+          text: LISTING_SHARE_CTA,
+          url,
+        });
+        setShareMessage("공유가 완료되었습니다.");
+      } else {
+        await navigator.clipboard.writeText(`${title}\n${LISTING_SHARE_CTA}\n${url}`);
+        setShareMessage("링크를 복사했습니다.");
+      }
       window.setTimeout(() => setShareMessage(null), 2000);
     } catch {
-      setShareMessage("복사에 실패했습니다.");
+      setShareMessage("공유를 완료하지 못했습니다.");
     }
   }
 
@@ -260,7 +273,7 @@ export default function ListingCard({
           </Link>
           <button
             type="button"
-            onClick={handleShareCopy}
+            onClick={handleShare}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             공유하기
