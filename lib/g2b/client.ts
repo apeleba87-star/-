@@ -2,7 +2,7 @@
  * 공공데이터포털 나라장터 입찰공고정보서비스 API 클라이언트
  * Base: https://apis.data.go.kr/1230000/ad/BidPublicInfoService
  * (API는 returnType=json 요청 시에도 XML을 반환할 수 있음 → XML 파싱 처리)
- * SSRF 방지: safeFetch + 허용 host, 타임아웃 5초
+ * SSRF 방지: safeFetch + 허용 host. 공공 API가 자주 5초 이상 지연되어 기본 45초(대량 응답은 60초).
  */
 
 import { XMLParser } from "fast-xml-parser";
@@ -10,7 +10,7 @@ import { safeFetch, G2B_ALLOWED_HOSTS } from "@/lib/safe-fetch";
 
 const G2B_FETCH_OPTIONS: { allowedHosts: string[]; timeoutMs: number; next?: { revalidate: number } } = {
   allowedHosts: G2B_ALLOWED_HOSTS,
-  timeoutMs: 5000,
+  timeoutMs: 45_000,
   next: { revalidate: 0 },
 };
 
@@ -200,7 +200,7 @@ export async function getBidPblancListInfoServcPPSSrch(
     intrntnlDivCd: params.intrntnlDivCd,
     dtilPrdctClsfcNo: params.dtilPrdctClsfcNo,
   });
-  const res = await safeFetch(url, { ...G2B_FETCH_OPTIONS, timeoutMs: 20000 });
+  const res = await safeFetch(url, { ...G2B_FETCH_OPTIONS, timeoutMs: 60_000 });
   const text = await res.text();
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
@@ -463,8 +463,8 @@ export async function getBidPblancListInfoLicenseLimitByRange(
     inqryBgnDt: params.inqryBgnDt,
     inqryEndDt: params.inqryEndDt,
   });
-  // 1000건 페이지는 응답이 느릴 수 있으므로 20초 타임아웃 사용
-  const res = await safeFetch(url, { ...G2B_FETCH_OPTIONS, timeoutMs: 20000 });
+  // 1000건 페이지는 응답이 느릴 수 있으므로 60초 타임아웃 사용
+  const res = await safeFetch(url, { ...G2B_FETCH_OPTIONS, timeoutMs: 60_000 });
   const text = await res.text();
   if (!res.ok) {
     if (res.status === 429) {
