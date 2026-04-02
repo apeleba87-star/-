@@ -1,5 +1,5 @@
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
-import { formatAuthProvidersForAdmin } from "@/lib/admin/auth-provider-labels";
+import { providerLabelFromAuthUser } from "@/lib/admin/auth-provider-labels";
 import Link from "next/link";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -22,37 +22,32 @@ function parsePage(raw: Record<string, string | string[] | undefined>): number {
   return Number.isFinite(n) && n >= 1 ? n : 1;
 }
 
-/** 현재 페이지 프로필 id들에 대해 Auth identities → 가입 방식 라벨 (service role 필요) */
+/** 현재 페이지 사용자만 getUserById (listUsers 는 identities 가 비는 경우가 많음). service role 필요. */
 async function loadProviderLabelsForUserIds(userIds: string[]): Promise<Record<string, string>> {
   const fallback = () => Object.fromEntries(userIds.map((id) => [id, "—"]));
   if (userIds.length === 0) return {};
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return fallback();
   try {
     const service = createServiceSupabase();
-    const needed = new Set(userIds);
     const map: Record<string, string> = {};
-    let page = 1;
-    const perPage = 200;
-    for (;;) {
-      const { data, error } = await service.auth.admin.listUsers({ page, perPage });
-      if (error) {
-        console.error("[admin/users] auth.admin.listUsers:", error.message);
-        return fallback();
-      }
-      for (const u of data.users) {
-        if (!needed.has(u.id)) continue;
-        map[u.id] = formatAuthProvidersForAdmin(u.identities);
-      }
-      if (data.users.length < perPage) break;
-      if (Object.keys(map).length >= needed.size) break;
-      page += 1;
-      if (page > 100) break;
-    }
-    for (const id of userIds) {
-      if (!(id in map)) map[id] = "—";
+    const chunkSize = 8;
+    for (let i = 0; i < userIds.length; i += chunkSize) {
+      const chunk = userIds.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map(async (id) => {
+          const { data, error } = await service.auth.admin.getUserById(id);
+          if (error) {
+            console.error("[admin/users] getUserById", id, error.message);
+            map[id] = "—";
+            return;
+          }
+          map[id] = providerLabelFromAuthUser(data.user);
+        })
+      );
     }
     return map;
-  } catch {
+  } catch (e) {
+    console.error("[admin/users] loadProviderLabelsForUserIds:", e);
     return fallback();
   }
 }
