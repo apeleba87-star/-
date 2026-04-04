@@ -1,26 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceSupabase } from "@/lib/supabase-server";
-import { runTenderFetch } from "@/lib/g2b/fetch-tenders";
+import { verifyCronSecret } from "@/lib/cron-auth";
+import { runTenderFetch, G2B_CRON_LOOKBACK_MINUTES } from "@/lib/g2b/fetch-tenders";
+import { getG2bCronSkipReason } from "@/lib/g2b/g2b-cron-window";
 import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
 
 export const dynamic = "force-dynamic";
+/** 수집이 오래 걸릴 수 있음 (Vercel Pro 등) */
+export const maxDuration = 300;
 
-/**
- * 나라장터(G2B) 입찰공고 수집
- * - DATA_GO_KR_SERVICE_KEY 있으면: 공공데이터포털 API 호출 → tenders upsert
- * - 수집 성공 시 home_tender_stats 갱신 (홈 입찰 숫자 캐시 무효화)
- * - 없으면: 스텁 1건 insert (개발용)
- */
-export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+async function handleCronFetch(): Promise<NextResponse> {
+  const skipReason = getG2bCronSkipReason();
+  if (skipReason) {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: skipReason,
+      lookbackMinutes: G2B_CRON_LOOKBACK_MINUTES,
+    });
   }
 
   if (process.env.DATA_GO_KR_SERVICE_KEY) {
     try {
-      const result = await runTenderFetch({ daysBack: 1 });
+      const result = await runTenderFetch({ lookbackMinutes: G2B_CRON_LOOKBACK_MINUTES });
       if (result.ok) {
         revalidatePath("/tenders");
         revalidatePath("/");
@@ -45,10 +48,12 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({
         ok: result.ok,
+        skipped: false,
         tenders: result.tenders,
         inserted: result.inserted,
         updated: result.updated,
         error: result.error,
+        lookbackMinutes: G2B_CRON_LOOKBACK_MINUTES,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -69,5 +74,30 @@ export async function POST(req: NextRequest) {
     { onConflict: "bid_ntce_no,bid_ntce_ord" }
   );
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, message: "스텁 1건 저장. DATA_GO_KR_SERVICE_KEY 설정 후 실제 수집.", tenders: 1 });
+  return NextResponse.json({
+    ok: true,
+    skipped: false,
+    message: "스텁 1건 저장. DATA_GO_KR_SERVICE_KEY 설정 후 실제 수집.",
+    tenders: 1,
+  });
+}
+
+/**
+ * Vercel Cron: GET + Authorization: Bearer CRON_SECRET
+ */
+export async function GET(req: NextRequest) {
+  if (!verifyCronSecret(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return handleCronFetch();
+}
+
+/**
+ * 수동/외부 스케줄러: POST + x-cron-secret (또는 동일 Bearer)
+ */
+export async function POST(req: NextRequest) {
+  if (!verifyCronSecret(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return handleCronFetch();
 }

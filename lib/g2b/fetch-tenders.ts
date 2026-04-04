@@ -1,6 +1,6 @@
 /**
  * 나라장터 입찰 목록 수집 → tenders upsert + tender_industries(업종) 매핑.
- * - 수집 구간: 지금 시각 기준 최근 24시간만.
+ * - 수집 구간: 기본은 KST 기준 최근 24시간. `lookbackMinutes` 주면 그 분만큼만(크론용).
  * - 용역(Servc)만 수집. 공사/물품 미수집.
  * - 업종: (1) 목록 API 텍스트 매칭 (2) 면허제한 API 14일치 → 공고번호로 DB 매칭
  *   (3) ServcPPSSrch(업종코드별)로 건물위생관리업(1162) 등 정확 반영.
@@ -43,15 +43,26 @@ function toYmdHmKst(utcDate: Date): string {
 
 /** 지금 시각 기준 최근 24시간 구간 — KST 기준 (API 게시일자가 KST이므로 서버가 UTC여도 오늘 18일 전체 포함) */
 function getDateRangeLast24HoursKst(): { inqryBgnDt: string; inqryEndDt: string } {
+  return getDateRangeLookbackKst(24 * 60 * 60 * 1000);
+}
+
+/** 지금 시각 기준 최근 lookbackMs 구간 — KST YYYYMMDDHHmm (게시일자 조회용) */
+function getDateRangeLookbackKst(lookbackMs: number): { inqryBgnDt: string; inqryEndDt: string } {
   const now = new Date();
   const endKst = toYmdHmKst(now);
-  const startUtc = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const startUtc = new Date(now.getTime() - lookbackMs);
   const startKst = toYmdHmKst(startUtc);
   return {
     inqryBgnDt: startKst,
     inqryEndDt: endKst,
   };
 }
+
+/**
+ * Vercel Cron 등 자동 수집: 4시간마다 돌릴 때 슬롯 사이 빈틈을 줄이기 위한 10분 겹침.
+ * KST 기준 (inqryBgnDt ~ inqryEndDt) ≈ 최근 4시간 10분.
+ */
+export const G2B_CRON_LOOKBACK_MINUTES = 4 * 60 + 10;
 
 /** 조회 당일 00:00 ~ 23:59 (면허제한 API용) */
 function getDateRangeToday(): { inqryBgnDt: string; inqryEndDt: string } {
@@ -159,7 +170,10 @@ async function fetchOperation(
 }
 
 export async function runTenderFetch(options?: {
+  /** @deprecated 옵션만 전달되며, 구간은 lookbackMinutes/기본 24h로만 결정됨 */
   daysBack?: number;
+  /** KST 게시일자 조회 구간 = 지금 − 이 분 ~ 지금. 미지정 시 최근 24시간 */
+  lookbackMinutes?: number;
   onProgress?: (p: FetchProgress) => void;
 }): Promise<{
   ok: boolean;
@@ -185,7 +199,10 @@ export async function runTenderFetch(options?: {
   /** 기초금액 상세 API로 채운 base_amt 건수 */
   baseAmtFilled?: number;
 }> {
-  const range = getDateRangeLast24HoursKst();
+  const range =
+    options?.lookbackMinutes != null && options.lookbackMinutes > 0
+      ? getDateRangeLookbackKst(options.lookbackMinutes * 60 * 1000)
+      : getDateRangeLast24HoursKst();
   const supabase = getSupabase();
   const keywordsEnabled = await getTenderKeywordsEnabled(supabase);
   const byCategory = keywordsEnabled ? await getTenderKeywordOptionsByCategory() : EMPTY_KEYWORD_OPTIONS;

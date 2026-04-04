@@ -1,20 +1,33 @@
 /**
  * 자동 콘텐츠 생성 cron.
  * GET/POST: type=daily | weekly | monthly, force=true (선택)
- * 1단계: daily만 구현.
+ * - Vercel Cron: GET + Authorization Bearer CRON_SECRET
+ * - 평일(KST)만 일간 리포트 실행, 주말은 skipped
+ * - 일간: 생성 후 posts.published_at 설정(자동 발행)
  */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createServiceSupabase } from "@/lib/supabase-server";
+import { verifyCronSecret } from "@/lib/cron-auth";
 import { getRunKey, getRunTypeFromApi, GENERATOR_VERSION } from "@/lib/content/content-generation-runs";
+import { getDailyReportCronSkipReason } from "@/lib/content/daily-report-cron-window";
 import { buildDailyTenderReport } from "@/lib/content/build-daily-tender-report";
 import { buildReportSnapshots } from "@/lib/content/build-report-snapshots";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
+export async function GET(req: NextRequest) {
+  return handleGenerateContent(req);
+}
 
 export async function POST(req: NextRequest) {
+  return handleGenerateContent(req);
+}
+
+async function handleGenerateContent(req: NextRequest): Promise<NextResponse> {
   try {
-    const secret = req.headers.get("x-cron-secret");
-    if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+    if (!verifyCronSecret(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -28,6 +41,15 @@ export async function POST(req: NextRequest) {
     }
     if (runType !== "daily_tender_digest") {
       return NextResponse.json({ error: "Only type=daily is implemented." }, { status: 400 });
+    }
+
+    const reportSkip = getDailyReportCronSkipReason();
+    if (reportSkip) {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: reportSkip,
+      });
     }
 
     const supabase = createServiceSupabase();
@@ -62,7 +84,7 @@ export async function POST(req: NextRequest) {
       { onConflict: "run_type,run_key", ignoreDuplicates: false }
     );
 
-    const result = await buildDailyTenderReport(supabase, { force });
+    const result = await buildDailyTenderReport(supabase, { force, autoPublish: true });
 
     if (!result.ok) {
       await supabase
@@ -95,12 +117,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    revalidatePath("/");
+    revalidatePath("/news");
+
     return NextResponse.json({
       ok: true,
       skipped: false,
       post_id: result.postId,
       run_id: result.runId,
       run_key: runKey,
+      auto_published: true,
       snapshots: snapshots.ok ? { created: snapshots.created, skipped: snapshots.skipped } : undefined,
     });
   } catch (err) {

@@ -39,9 +39,11 @@ export default function NaverTrendKeywordsManager({ initialRows }: Props) {
         <h2 className="text-sm font-semibold text-slate-800">리포트 수동 갱신</h2>
         <p className="mt-1 text-xs text-slate-600">
           서버 환경에 <code className="rounded bg-white px-1">NAVER_CLIENT_ID</code> /{" "}
-          <code className="rounded bg-white px-1">NAVER_CLIENT_SECRET</code> 가 있어야 합니다. Cron:{" "}
-          <code className="rounded bg-white px-1">POST /api/cron/naver-trend-report</code> +{" "}
-          <code className="rounded bg-white px-1">x-cron-secret</code>
+          <code className="rounded bg-white px-1">NAVER_CLIENT_SECRET</code> 가 있어야 합니다.           Vercel Cron: 매일 <strong>한국시간 03:00</strong>(UTC 18:00){" "}
+          <code className="rounded bg-white px-1">GET/POST /api/cron/naver-trend-report</code> +{" "}
+          <code className="rounded bg-white px-1">Bearer CRON_SECRET</code> 또는{" "}
+          <code className="rounded bg-white px-1">x-cron-secret</code>. 리포트는 KST 기준 전일까지
+          집계입니다.
         </p>
         <button
           type="button"

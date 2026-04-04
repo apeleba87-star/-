@@ -23,9 +23,9 @@ export type BuildDailyResult =
 
 export async function buildDailyTenderReport(
   supabase: SupabaseClient,
-  options: { date?: Date; force?: boolean } = {}
+  options: { date?: Date; force?: boolean; autoPublish?: boolean } = {}
 ): Promise<BuildDailyResult> {
-  const { date, force = false } = options;
+  const { date, force = false, autoPublish } = options;
   const runKey = getKstDateString(date);
   const startedAt = new Date().toISOString();
 
@@ -63,8 +63,10 @@ export async function buildDailyTenderReport(
     return { ok: false, reason: validation.reason };
   }
 
-  const autoPublish = process.env.CONTENT_AUTO_PUBLISH === "true";
-  const publishedAt = autoPublish ? new Date().toISOString() : null;
+  const shouldPublish =
+    autoPublish === true ||
+    (autoPublish !== false && process.env.CONTENT_AUTO_PUBLISH === "true");
+  const publishedAt = shouldPublish ? new Date().toISOString() : null;
 
   const postPayload = {
     title,

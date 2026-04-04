@@ -223,7 +223,8 @@ export default function G2bFetchButton() {
     <div className="card block">
       <h3 className="text-sm font-medium text-slate-500">나라장터 수집</h3>
       <p className="mt-1 text-sm text-slate-600">
-        최근 1일치 입찰 공고를 수집합니다. 추후 cron으로 자동 실행 예정입니다.
+        최근 1일치(KST 24시간) 입찰 공고를 수집합니다. Vercel Cron은{" "}
+        <strong>평일 한국시간 7·11·15·19·23시</strong>에 최근 4시간 10분 구간을 자동 수집합니다(주말·새벽은 서버에서 스킵).
       </p>
       <button
         type="button"
