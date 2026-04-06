@@ -50,5 +50,8 @@ export async function safeFetch(
 /** G2B 공공데이터포털 API 허용 host */
 export const G2B_ALLOWED_HOSTS = ["apis.data.go.kr"];
 
+/** 서울 열린데이터광장 OpenAPI (예: GetJobInfo) */
+export const SEOUL_OPENAPI_ALLOWED_HOSTS = ["openapi.seoul.go.kr"];
+
 /** Bootpay API 허용 host (백엔드 SDK가 호출하는 도메인) */
 export const BOOTPAY_ALLOWED_HOSTS = ["api.bootpay.co.kr"];
