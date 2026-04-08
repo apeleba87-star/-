@@ -53,11 +53,15 @@
 
 | Key | 설명 |
 |-----|------|
-| `DATA_GO_KR_SERVICE_KEY` | 공공데이터포털에서 발급한 나라장터 입찰공고 API 인증키(Encoding) |
+| `DATA_GO_KR_SERVICE_KEY` | 공공데이터포털에서 발급한 나라장터 **입찰공고** API 인증키(Encoding) |
+| `DATA_GO_KR_SCSBID_SERVICE_KEY` | 나라장터 **낙찰정보(ScsbidInfo)** API 인증키(Encoding). 입찰공고 키와 별도 활용신청일 수 있음 |
 
-- 없으면: 입찰 수집 Cron·상세 보강 API는 동작하지 않음.  
+- `DATA_GO_KR_SERVICE_KEY` 없으면: 입찰 수집 Cron·상세 보강 API는 동작하지 않음.  
 - 있으면: `POST /api/cron/fetch-g2b` 로 입찰 수집 가능.  
 - 발급: [공공데이터포털 - 조달청 나라장터 입찰공고정보서비스](https://www.data.go.kr/data/15129394/openapi.do) 활용신청 후 인증키 발급.
+
+- `DATA_GO_KR_SCSBID_SERVICE_KEY` 없으면: 낙찰 원천 Cron `/api/cron/fetch-scsbid-award-raw` 는 스킵.  
+- 낙찰정보서비스(ScsbidInfoService)는 포털에서 별도 데이터셋으로 신청·키가 다를 수 있습니다.
 
 ---
 

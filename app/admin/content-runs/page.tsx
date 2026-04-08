@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 import GenerateContentButton from "@/components/admin/GenerateContentButton";
+import GenerateAwardReportButton from "@/components/admin/GenerateAwardReportButton";
 
 export default async function AdminContentRunsPage() {
   const supabase = await createServerSupabase();
   const { data: runs } = await supabase
     .from("content_generation_runs")
-    .select("id, run_type, run_key, status, source_count, generated_post_id, error_message, attempt_count, started_at, finished_at, created_at")
+    .select("id, run_type, run_key, status, source_count, generated_post_id, payload, error_message, attempt_count, started_at, finished_at, created_at")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -38,6 +39,13 @@ export default async function AdminContentRunsPage() {
           버튼을 누르면 그 시점 기준으로 오늘 회차 일간 입찰 리포트를 생성합니다. 이미 생성된 회차가 있으면 건너뜀(재생성 체크 시 덮어쓰기).
         </p>
         <GenerateContentButton />
+        <div className="mt-4 border-t border-slate-200 pt-4">
+          <p className="mb-2 text-sm font-medium text-slate-700">낙찰 리포트</p>
+          <p className="mb-2 text-sm text-slate-600">
+            낙찰 데이터 집계를 바탕으로 오늘 회차 낙찰 리포트 스냅샷을 생성합니다. 수집과 분리되어 관리자 버튼으로만 실행됩니다.
+          </p>
+          <GenerateAwardReportButton />
+        </div>
       </div>
 
       <p className="mb-4 text-sm text-slate-600">
@@ -95,6 +103,16 @@ export default async function AdminContentRunsPage() {
                       >
                         글 보기
                       </Link>
+                    ) : run.run_type === "award_market_digest" ? (
+                      <div className="space-y-1">
+                        <span className="text-xs text-slate-500">낙찰 리포트는 스냅샷에서 발행</span>
+                        <Link
+                          href="/admin/report-snapshots"
+                          className="block text-blue-600 hover:underline"
+                        >
+                          스냅샷 발행하기
+                        </Link>
+                      </div>
                     ) : (
                       "—"
                     )}

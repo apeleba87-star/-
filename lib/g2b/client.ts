@@ -36,7 +36,7 @@ const EMPTY_RESPONSE: G2BListResponse<Record<string, unknown>> = {
   },
 };
 
-function parseResponse(text: string): G2BListResponse<Record<string, unknown>> {
+export function parseG2bApiResponseText(text: string): G2BListResponse<Record<string, unknown>> {
   const trim = text.trim();
   if (!trim) return EMPTY_RESPONSE;
   if (trim.startsWith("<")) {
@@ -141,7 +141,7 @@ export async function getBidPblancListInfoServc(
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -150,7 +150,7 @@ export async function getBidPblancListInfoServc(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** 나라장터검색조건에 의한 입찰공고 용역조회. 업종코드(indstrytyCd)·업종명(indstrytyNm)으로 필터 가능. */
@@ -205,7 +205,7 @@ export async function getBidPblancListInfoServcPPSSrch(
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -214,7 +214,7 @@ export async function getBidPblancListInfoServcPPSSrch(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** 공사 입찰 목록 */
@@ -233,7 +233,7 @@ export async function getBidPblancListInfoCnstwk(
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -242,7 +242,7 @@ export async function getBidPblancListInfoCnstwk(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** 물품 입찰 목록 */
@@ -261,7 +261,7 @@ export async function getBidPblancListInfoThng(
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -270,7 +270,7 @@ export async function getBidPblancListInfoThng(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** e발주 첨부파일 목록 (공고차수 3자리, 404 시 대체 base URL 재시도) */
@@ -288,7 +288,7 @@ export async function getBidPblancListInfoEorderAtchFileInfo(
     const url = buildUrl("getBidPblancListInfoEorderAtchFileInfo", opParams, baseUrl);
     const res = await safeFetch(url, G2B_FETCH_OPTIONS);
     const text = await res.text();
-    if (res.ok) return parseResponse(text) as G2BListResponse<Record<string, unknown>>;
+    if (res.ok) return parseG2bApiResponseText(text) as G2BListResponse<Record<string, unknown>>;
     lastError = new Error(
       `G2B API ${res.status}${text ? ` - ${text.slice(0, 100)}` : ""}`
     );
@@ -317,7 +317,7 @@ export async function getBidPblancListInfoEorderAtchFileInfoRaw(
     const url = buildUrl("getBidPblancListInfoEorderAtchFileInfo", opParams, baseUrl);
     const res = await safeFetch(url, G2B_FETCH_OPTIONS);
     const raw = await res.text();
-    const parsed = parseResponse(raw);
+    const parsed = parseG2bApiResponseText(raw);
     last = { raw, parsed, httpStatus: res.status, baseUrlUsed: baseUrl };
     if (res.status === 200) return last;
   }
@@ -340,7 +340,7 @@ export async function getBidPblancListInfoServcBsisAmount(
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -349,7 +349,7 @@ export async function getBidPblancListInfoServcBsisAmount(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** 용역 기초금액 조회 (기간+페이지). 문서상 inqryBgnDt·inqryEndDt로 기초금액 등록일시 구간 조회 가능. */
@@ -368,7 +368,7 @@ export async function getBidPblancListInfoServcBsisAmountByRange(
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -377,7 +377,7 @@ export async function getBidPblancListInfoServcBsisAmountByRange(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** 참가가능지역 (공고번호·차수 기준) */
@@ -395,7 +395,7 @@ export async function getBidPblancListInfoPrtcptPsblRgn(
   if (!res.ok) {
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -404,7 +404,7 @@ export async function getBidPblancListInfoPrtcptPsblRgn(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** 면허제한정보 (공고번호·차수 기준). 문서 기준 필수: inqryDiv, bidNtceOrd, inqryBgnDt, inqryEndDt.
@@ -436,7 +436,7 @@ export async function getBidPblancListInfoLicenseLimit(
     }
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -445,7 +445,7 @@ export async function getBidPblancListInfoLicenseLimit(
     }
     throw new Error(errMsg);
   }
-  return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+  return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
 }
 
 /** 면허제한정보 (등록일시범위만). 기간으로 한 번에 조회해 수집 속도·비용 절감.
@@ -472,7 +472,7 @@ export async function getBidPblancListInfoLicenseLimitByRange(
     }
     let errMsg = `G2B API error: ${res.status}`;
     try {
-      const parsed = parseResponse(text);
+      const parsed = parseG2bApiResponseText(text);
       const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
       const msg = header?.resultMsg ?? header?.resultCode;
       if (msg) errMsg += ` - ${msg}`;
@@ -481,7 +481,7 @@ export async function getBidPblancListInfoLicenseLimitByRange(
     }
     throw new Error(errMsg);
   }
-  const parsed = parseResponse(text);
+  const parsed = parseG2bApiResponseText(text);
   // G2B는 HTTP 200 이면서 body에 에러를 담는 경우 있음
   // resultCode는 "00"/"0"/0 등 포맷 불일치가 있어 resultMsg로만 rate-limit 감지
   const header = parsed.response?.header as { resultCode?: string; resultMsg?: string } | undefined;
@@ -510,10 +510,10 @@ export async function getBidPblancListInfoServcDtlInfo(
         const url = buildUrl("getBidPblancListInfoServcDtlInfo", { ...opts, bidNtceOrd }, baseUrl);
         const res = await safeFetch(url, G2B_FETCH_OPTIONS);
         const text = await res.text();
-        if (res.ok) return parseResponse(text) as Promise<G2BListResponse<Record<string, unknown>>>;
+        if (res.ok) return parseG2bApiResponseText(text) as Promise<G2BListResponse<Record<string, unknown>>>;
         let errMsg = `G2B API ${res.status}`;
         try {
-          const parsed = parseResponse(text);
+          const parsed = parseG2bApiResponseText(text);
           const header = parsed.response?.header as { resultMsg?: string; resultCode?: string } | undefined;
           const msg = header?.resultMsg ?? header?.resultCode;
           if (msg) errMsg += ` - ${msg}`;

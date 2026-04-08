@@ -9,6 +9,7 @@ export const REPORT_TYPE_OPENING_SCHEDULED = "opening_scheduled";
 export const REPORT_TYPE_LARGE_TENDER_TOP = "large_tender_top";
 export const REPORT_TYPE_PREP_SHORT = "prep_short";
 export const REPORT_TYPE_LISTING_MARKET_INTEL = "listing_market_intel";
+export const REPORT_TYPE_AWARD_MARKET_INTEL = "award_market_intel";
 
 export type ReportTheme = {
   /** 헤더 그라디언트 (Tailwind from-X via-Y to-Z) */
@@ -184,6 +185,31 @@ const themes: Record<string, ReportTheme> = {
     ctaGradient: "from-teal-600 to-cyan-600",
     ctaPrimary: "bg-white text-teal-600 hover:bg-teal-50",
     headerBadge: "현장거래 시장",
+  },
+  [REPORT_TYPE_AWARD_MARKET_INTEL]: {
+    headerGradient: "from-emerald-600 via-teal-600 to-cyan-600",
+    pageBg: "from-slate-50 via-emerald-50/20 to-teal-50/20",
+    alertBorder: "border-l-4 border-emerald-500",
+    alertBg: "bg-gradient-to-r from-emerald-50 to-teal-50",
+    kpiGradients: [
+      "from-emerald-500 to-teal-600",
+      "from-teal-500 to-cyan-600",
+      "from-cyan-500 to-sky-600",
+    ],
+    chartAccent: "emerald",
+    rankBadges: [
+      "from-emerald-400 to-teal-500",
+      "from-slate-300 to-slate-400",
+      "from-amber-600 to-amber-700",
+    ],
+    infoGradients: [
+      "from-emerald-500 to-teal-500",
+      "from-teal-500 to-cyan-500",
+      "from-sky-500 to-blue-500",
+    ],
+    ctaGradient: "from-emerald-600 to-teal-600",
+    ctaPrimary: "bg-white text-emerald-700 hover:bg-emerald-50",
+    headerBadge: "낙찰 시장",
   },
 };
 

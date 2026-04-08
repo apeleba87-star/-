@@ -19,6 +19,7 @@ const CATEGORY_PRIVATE = "private";
 const CONTENT_CATEGORY_SLUGS = ["chemical", "equipment", "labor", "industry"] as const;
 export type NewsCategoryKey =
   | typeof CATEGORY_REPORT
+  | "award_report"
   | "marketing"
   | "job_wage"
   | (typeof CONTENT_CATEGORY_SLUGS)[number]
@@ -50,7 +51,9 @@ export default async function NewsPage({
   if (rawCategory === "job_wage") {
     redirect("/job-market-report");
   }
-  if (rawCategory === CATEGORY_PRIVATE) {
+  if (rawCategory === "award_report") {
+    category = "award_report";
+  } else if (rawCategory === CATEGORY_PRIVATE) {
     if (!isAdmin) redirect("/news");
     category = CATEGORY_PRIVATE;
   } else if (rawCategory && CONTENT_CATEGORY_SLUGS.includes(rawCategory as (typeof CONTENT_CATEGORY_SLUGS)[number])) {
@@ -112,7 +115,7 @@ export default async function NewsPage({
     );
   }
 
-  if (category !== CATEGORY_REPORT) {
+  if (category !== CATEGORY_REPORT && category !== "award_report") {
     const { data: contentCat } = await supabase
       .from("content_categories")
       .select("id")
@@ -179,16 +182,25 @@ export default async function NewsPage({
     );
   }
 
-  // 입찰·리포트: source_type 있거나 slug가 일간/리포트 패턴인 발행 글 (비공개 제외)
+  const isAwardReportCategory = category === "award_report";
   const [{ data: posts }, { data: marketingLatest }] = await Promise.all([
-    supabase
-      .from("posts")
-      .select("id, title, excerpt, published_at, slug, source_type, source_ref")
-      .not("published_at", "is", null)
-      .eq("is_private", false)
-      .or("source_type.not.is.null,slug.ilike.*daily-tender-digest*,slug.ilike.*report-*")
-      .order("published_at", { ascending: false })
-      .limit(50),
+    isAwardReportCategory
+      ? supabase
+          .from("posts")
+          .select("id, title, excerpt, published_at, slug, source_type, source_ref")
+          .not("published_at", "is", null)
+          .eq("is_private", false)
+          .eq("source_type", "award_market_intel")
+          .order("published_at", { ascending: false })
+          .limit(50)
+      : supabase
+          .from("posts")
+          .select("id, title, excerpt, published_at, slug, source_type, source_ref")
+          .not("published_at", "is", null)
+          .eq("is_private", false)
+          .or("source_type.eq.auto_tender_daily,slug.ilike.*daily-tender-digest*")
+          .order("published_at", { ascending: false })
+          .limit(50),
     supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
@@ -200,7 +212,9 @@ export default async function NewsPage({
             업계 소식
           </h1>
           <p className="mb-6 text-sm text-slate-600">
-            청소·소독·방역 입찰 리포트와 업계 소식입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다.
+            {isAwardReportCategory
+              ? "청소·소독·방역 낙찰 리포트 모음입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다."
+              : "청소·소독·방역 입찰 리포트와 업계 소식입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다."}
           </p>
         </div>
         <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
@@ -220,7 +234,7 @@ export default async function NewsPage({
                   ? "오늘 청소 입찰 리포트"
                   : formatReportDateLabel(sourceRef)
                 : post.title;
-              const categoryTag = isDaily ? "입찰 리포트" : getReportTypeLabel(sourceType ?? "");
+              const categoryTag = isDaily ? "입찰 리포트" : isAwardReportCategory ? "낙찰 리포트" : getReportTypeLabel(sourceType ?? "");
               const postHref = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
               const shareText =
                 typeof post.excerpt === "string" && post.excerpt.trim()
@@ -255,16 +269,25 @@ export default async function NewsPage({
           </ul>
         )}
         <div className="mx-auto mt-10 max-w-2xl">
-          <ReportNextStep
-            variant="slate"
-            situation="입찰·발주 쪽 흐름을 봤다면, 같은 날 검색 수요 트렌드도 같이 보면 마케팅·단가 방향을 잡기 쉽습니다."
-            actionLabel="지금 뜨는 키워드 확인하기"
-            href={
-              marketingLatest?.report_date
-                ? `/marketing-report/${marketingLatest.report_date}`
-                : "/marketing-report"
-            }
-          />
+          {isAwardReportCategory ? (
+            <ReportNextStep
+              variant="teal"
+              situation="낙찰 흐름을 봤다면, 같은 조건의 유사 입찰 목록을 열어 바로 내 관심 조건으로 저장해 다음 공고에도 반복 적용해 보세요."
+              actionLabel="유사 입찰 목록으로 이동"
+              href="/tenders"
+            />
+          ) : (
+            <ReportNextStep
+              variant="slate"
+              situation="입찰·발주 쪽 흐름을 봤다면, 같은 날 검색 수요 트렌드도 같이 보면 마케팅·단가 방향을 잡기 쉽습니다."
+              actionLabel="지금 뜨는 키워드 확인하기"
+              href={
+                marketingLatest?.report_date
+                  ? `/marketing-report/${marketingLatest.report_date}`
+                  : "/marketing-report"
+              }
+            />
+          )}
         </div>
       </div>
     </div>

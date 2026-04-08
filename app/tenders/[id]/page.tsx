@@ -14,6 +14,13 @@ import TenderBidStrategy from "@/components/tender/TenderBidStrategy";
 import TenderBidSchedule from "@/components/tender/TenderBidSchedule";
 import TenderBidExtraInfo from "@/components/tender/TenderBidExtraInfo";
 import TenderDetailActionsWrapper from "@/components/tender/TenderDetailActionsWrapper";
+import TenderDetailAwardBanner from "@/components/tender/TenderDetailAwardBanner";
+import TenderRecommendationActions from "@/components/tender/TenderRecommendationActions";
+import {
+  fetchTenderAwardSummaryForDetail,
+  resolveTenderDetailAwardBannerState,
+} from "@/lib/tenders/tender-detail-award";
+import { isValidSido } from "@/lib/tenders/user-focus";
 
 export const revalidate = 60;
 
@@ -127,6 +134,25 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
   const { data: tender, error } = await supabase.from("tenders").select("*").eq("id", id).single();
   if (error || !tender) notFound();
 
+  const awardRow = await fetchTenderAwardSummaryForDetail(
+    supabase,
+    id,
+    String(tender.bid_ntce_no ?? ""),
+    String(tender.bid_ntce_ord ?? "00")
+  );
+  const awardBannerState = resolveTenderDetailAwardBannerState(
+    {
+      bid_clse_dt: (tender.bid_clse_dt as string | null) ?? null,
+      openg_dt: (tender.openg_dt as string | null) ?? null,
+      raw: tender.raw,
+    },
+    awardRow
+  );
+  const { data: tenderIndustryRows } = await supabase
+    .from("tender_industries")
+    .select("industry_code")
+    .eq("tender_id", id);
+
   const { data: detail } = await supabase.from("tender_details").select("*").eq("tender_id", id).single();
 
   let attachFiles = (detail?.attach_files ?? null) as unknown;
@@ -203,6 +229,15 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
   const organ = (tender.ntce_instt_nm as string) || "—";
   const region = shortRegion(regionText);
   const categoryLabelText = categoryLabel(tender.categories as string[]);
+  const recommendationIndustryCodes = [
+    ...new Set((tenderIndustryRows ?? []).map((r) => String(r.industry_code ?? "").trim()).filter(Boolean)),
+  ];
+  const rawSidoList = Array.isArray((tender as { region_sido_list?: unknown }).region_sido_list)
+    ? ((tender as { region_sido_list: unknown[] }).region_sido_list ?? [])
+    : [];
+  const recommendationRegionSido = rawSidoList.find((v) => isValidSido(typeof v === "string" ? v : null)) as
+    | string
+    | undefined;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/20">
@@ -214,6 +249,13 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           목록
         </Link>
+
+        <TenderDetailAwardBanner state={awardBannerState} />
+        <TenderRecommendationActions
+          industryCodes={recommendationIndustryCodes}
+          regionSido={recommendationRegionSido ?? null}
+          regionGugun={null}
+        />
 
         {/* [1] 핵심 요약 카드 */}
         <TenderBidSummary

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 export type NewsCategoryKey =
   | "report"
+  | "award_report"
   | "marketing"
   | "job_wage"
   | "chemical"
@@ -12,6 +13,7 @@ export type NewsCategoryKey =
 
 const TABS: { key: Exclude<NewsCategoryKey, "private">; label: string; href: string }[] = [
   { key: "report", label: "입찰 리포트", href: "/news?category=report" },
+  { key: "award_report", label: "낙찰 리포트", href: "/news?category=award_report" },
   { key: "marketing", label: "마케팅 리포트", href: "/marketing-report" },
   { key: "job_wage", label: "일당 리포트", href: "/job-market-report" },
   { key: "chemical", label: "약품", href: "/news?category=chemical" },

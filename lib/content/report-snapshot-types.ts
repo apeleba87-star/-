@@ -16,6 +16,7 @@ export const REPORT_TYPE_NATIONWIDE_VS_REGIONAL = "nationwide_vs_regional";
 export const REPORT_TYPE_REPEAT_ORDERING = "repeat_ordering";
 export const REPORT_TYPE_REGION_INSTITUTION = "region_institution";
 export const REPORT_TYPE_LISTING_MARKET_INTEL = "listing_market_intel";
+export const REPORT_TYPE_AWARD_MARKET_INTEL = "award_market_intel";
 
 export type ReportType =
   | typeof REPORT_TYPE_WEEKLY_MARKET_SUMMARY
@@ -30,7 +31,8 @@ export type ReportType =
   | typeof REPORT_TYPE_NATIONWIDE_VS_REGIONAL
   | typeof REPORT_TYPE_REPEAT_ORDERING
   | typeof REPORT_TYPE_REGION_INSTITUTION
-  | typeof REPORT_TYPE_LISTING_MARKET_INTEL;
+  | typeof REPORT_TYPE_LISTING_MARKET_INTEL
+  | typeof REPORT_TYPE_AWARD_MARKET_INTEL;
 
 /** 화면/글 목록에 표시할 리포트 유형 라벨 (입찰리포트가 아닌 유형명) */
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
@@ -47,6 +49,7 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   [REPORT_TYPE_REPEAT_ORDERING]: "반복 발주 기관 리포트",
   [REPORT_TYPE_REGION_INSTITUTION]: "지역·기관 결합 리포트",
   [REPORT_TYPE_LISTING_MARKET_INTEL]: "현장거래 시장 인텔리전스",
+  [REPORT_TYPE_AWARD_MARKET_INTEL]: "낙찰 시장 인텔리전스",
 };
 
 /** posts.source_type 에 저장할 값 (글 발행 시) */

@@ -16,6 +16,7 @@ import { hasSubscriptionAccess } from "@/lib/subscription-access";
 import { ensureSharedRevealKeys, kstCalendarMinusDays, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import ReportPaywallLock from "@/components/report/ReportPaywallLock";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
+import { REPORT_TYPE_AWARD_MARKET_INTEL } from "@/lib/content/report-snapshot-types";
 
 const DailyTenderReportDashboard = dynamic(
   () => import("@/components/report/DailyTenderReportDashboard"),
@@ -28,6 +29,7 @@ const DailyTenderReportDashboard = dynamic(
   }
 );
 import ReportSnapshotView from "@/components/report/ReportSnapshotView";
+import AwardReportSnapshotView from "@/components/report/AwardReportSnapshotView";
 
 export const revalidate = 60;
 
@@ -50,6 +52,13 @@ function getReportDate(post: { source_ref?: string | null; slug?: string | null 
   const slug = typeof post.slug === "string" ? post.slug : "";
   const m = /-(\d{4}-\d{2}-\d{2})-daily-tender-digest$/.exec(slug);
   return m ? m[1] : null;
+}
+
+/** 일간 입찰 리포트(post) 여부: auto_tender_daily 또는 daily slug 패턴 */
+function isDailyTenderReportPost(post: { source_type?: string | null; slug?: string | null }): boolean {
+  if (post.source_type === "auto_tender_daily") return true;
+  const slug = typeof post.slug === "string" ? post.slug : "";
+  return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
 }
 
 /** 비공개 글은 관리자·에디터만 접근. 아니면 notFound */
@@ -83,7 +92,7 @@ export default async function PostPage({ params }: PostPageParams) {
   let reportData: { payload: DailyTenderPayload; insightSentence: string } | null = null;
   const resolvedPost = (error || !post ? null : post) ?? null;
 
-  if (resolvedPost && isReportPost(resolvedPost)) {
+  if (resolvedPost && isDailyTenderReportPost(resolvedPost)) {
     const snapshot = (resolvedPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
     if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
       reportData = { payload: snapshot as DailyTenderPayload, insightSentence: buildInsightSentence(snapshot as DailyTenderPayload) };
@@ -111,7 +120,7 @@ export default async function PostPage({ params }: PostPageParams) {
     const slugPost = bySlug.data;
     if ((slugPost as { is_private?: boolean }).is_private && !user) notFound();
     if (user) await ensurePrivateAccess(slugPost, authSupabase, user.id);
-    if (isReportPost(slugPost) && !reportData) {
+    if (isDailyTenderReportPost(slugPost) && !reportData) {
       const snapshot = (slugPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
       if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
         reportData = { payload: snapshot as DailyTenderPayload, insightSentence: buildInsightSentence(snapshot as DailyTenderPayload) };
@@ -304,7 +313,7 @@ function renderPost(
   const isReport = isReportPost(post);
   const showTopAd = ads.post_top?.enabled && (ads.post_top.campaign || ads.post_top.script_content);
   const showBottomAd = ads.post_bottom?.enabled && (ads.post_bottom.campaign || ads.post_bottom.script_content);
-  const useDashboard = isReport && reportData;
+  const useDashboard = isDailyTenderReportPost(post) && reportData;
   const showLock = false;
   const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
 
@@ -336,6 +345,29 @@ function renderPost(
             accessLevel={reportAccess.level}
             sharedRevealKeys={reportAccess.sharedRevealKeys}
             premiumInsights={premiumInsights}
+          />
+          {showBottomAd && ads.post_bottom && (
+            <div className="mt-8">
+              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+            </div>
+          )}
+        </>
+      ) : isReport &&
+        isSnapshotReport(post) &&
+        post.source_type === REPORT_TYPE_AWARD_MARKET_INTEL &&
+        post.report_snapshot &&
+        typeof post.report_snapshot === "object" ? (
+        <>
+          {showTopAd && ads.post_top && (
+            <div className="mb-6">
+              <AdSlotRenderer slot={ads.post_top} variant="card" />
+            </div>
+          )}
+          <AwardReportSnapshotView
+            title={post.title}
+            excerpt={post.excerpt}
+            content={post.report_snapshot as Parameters<typeof AwardReportSnapshotView>[0]["content"]}
+            updatedAt={post.updated_at ?? null}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
