@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Metadata } from "next";
@@ -66,6 +66,25 @@ function isDailyTenderReportPost(post: { source_type?: string | null; slug?: str
   return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
 }
 
+/** 낙찰 시장 스냅샷 상세: 로그인한 사용자만 열람(게스트 프리뷰 없음) */
+function isAwardMarketIntelGatedPost(post: {
+  source_type?: string | null;
+  slug?: string | null;
+  report_snapshot?: unknown;
+}): boolean {
+  if (!isReportPostKind(post)) return false;
+  if (post.source_type !== REPORT_TYPE_AWARD_MARKET_INTEL) return false;
+  const snap = post.report_snapshot;
+  if (!snap || typeof snap !== "object") return false;
+  const o = snap as Record<string, unknown>;
+  return Array.isArray(o.key_metrics) || typeof o.headline === "string";
+}
+
+function redirectToLoginForPost(post: { id: string; slug?: string | null }): never {
+  const nextPath = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
+  redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+}
+
 /** 비공개 글은 관리자·에디터만 접근. 아니면 notFound */
 async function ensurePrivateAccess(
   post: { is_private?: boolean },
@@ -125,6 +144,9 @@ export default async function PostPage({ params }: PostPageParams) {
     const slugPost = bySlug.data;
     if ((slugPost as { is_private?: boolean }).is_private && !user) notFound();
     if (user) await ensurePrivateAccess(slugPost, authSupabase, user.id);
+    if (!user && isAwardMarketIntelGatedPost(slugPost)) {
+      redirectToLoginForPost(slugPost);
+    }
     if (isDailyTenderReportPost(slugPost) && !reportData) {
       const snapshot = (slugPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
       if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
@@ -150,6 +172,9 @@ export default async function PostPage({ params }: PostPageParams) {
   }
   if ((post as { is_private?: boolean }).is_private && !user) notFound();
   if (user) await ensurePrivateAccess(post, authSupabase, user.id);
+  if (!user && isAwardMarketIntelGatedPost(post!)) {
+    redirectToLoginForPost(post!);
+  }
   const [reportAccess, premiumInsights, relatedReports] = await Promise.all([
     getReportAccess(post!, reportData, supabase),
     getPremiumInsights(reportData),
