@@ -27,6 +27,8 @@ import { getReportTheme } from "./report-snapshot-theme";
 import DataTrust3Pack from "@/components/DataTrust3Pack";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
+import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredInline";
+import { isGuestLockedCount, isGuestLockedMetricText } from "@/lib/report/guest-teaser-redact";
 
 type Top3Item = {
   title?: string;
@@ -45,6 +47,8 @@ type Props = {
   content: ReportContentBlock & { region_top3?: { name: string; count: number }[] };
   updatedAt?: string | null;
   relatedReports?: RelatedReportPostRow[];
+  guestTeaser?: boolean;
+  loginNext?: string;
 };
 
 function cell(s: unknown): string {
@@ -102,6 +106,8 @@ export default function ReportSnapshotView({
   content,
   updatedAt,
   relatedReports = [],
+  guestTeaser = false,
+  loginNext = "",
 }: Props) {
   const {
     headline,
@@ -118,7 +124,10 @@ export default function ReportSnapshotView({
   const theme = getReportTheme(sourceType);
   const sampleCount = data_trust?.sample_count ?? parseSampleCountFromKeyMetrics(key_metrics);
   const maxRegionCount = region_top3?.length
-    ? Math.max(...region_top3.map((r) => r.count), 1)
+    ? Math.max(
+        ...region_top3.map((r) => (guestTeaser && isGuestLockedCount(r.count) ? 0 : r.count)),
+        1
+      )
     : 1;
 
   return (
@@ -215,6 +224,7 @@ export default function ReportSnapshotView({
             {key_metrics.slice(0, 3).map((m, i) => {
               const { highlight, rest } = splitMetric(m);
               const grad = theme.kpiGradients[i];
+              const locked = guestTeaser && isGuestLockedMetricText(m);
               return (
                 <motion.div
                   key={i}
@@ -225,7 +235,11 @@ export default function ReportSnapshotView({
                     {i + 1}
                   </span>
                   <div className="relative">
-                    {highlight ? (
+                    {locked ? (
+                      <div className="text-white [&_a]:text-white [&_span]:text-white">
+                        <ReportLoginRequiredInline loginNext={loginNext} />
+                      </div>
+                    ) : highlight ? (
                       <>
                         <p className="text-2xl font-bold tabular-nums sm:text-3xl">{highlight}</p>
                         {rest && <p className="mt-0.5 text-sm font-medium text-white/90">{rest}</p>}
@@ -246,7 +260,11 @@ export default function ReportSnapshotView({
                   variants={item}
                   className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-slate-700 transition hover:bg-slate-100"
                 >
-                  {m}
+                  {guestTeaser && isGuestLockedMetricText(m) ? (
+                    <ReportLoginRequiredInline loginNext={loginNext} />
+                  ) : (
+                    m
+                  )}
                 </motion.div>
               ))}
             </div>
@@ -349,12 +367,20 @@ export default function ReportSnapshotView({
                 >
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-slate-800">{cell(r.name)}</span>
-                    <span className="font-semibold tabular-nums text-slate-600">{r.count}건</span>
+                    <span className="font-semibold tabular-nums text-slate-600">
+                      {guestTeaser && isGuestLockedCount(r.count) ? (
+                        <ReportLoginRequiredInline loginNext={loginNext} className="font-semibold" />
+                      ) : (
+                        `${r.count}건`
+                      )}
+                    </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${(r.count / maxRegionCount) * 100}%` }}
+                      animate={{
+                        width: `${((guestTeaser && isGuestLockedCount(r.count) ? 0 : r.count) / maxRegionCount) * 100}%`,
+                      }}
                       transition={{ duration: 0.8, delay: 0.2 + i * 0.1 }}
                       className="h-full rounded-full"
                       style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
@@ -366,7 +392,10 @@ export default function ReportSnapshotView({
             <div className="h-48 w-full min-w-0 sm:h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={region_top3.map((r) => ({ name: r.name, count: r.count }))}
+                  data={region_top3.map((r) => ({
+                    name: r.name,
+                    count: guestTeaser && isGuestLockedCount(r.count) ? 0 : r.count,
+                  }))}
                   margin={{ top: 8, right: 8, left: 0, bottom: 24 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -419,33 +448,47 @@ export default function ReportSnapshotView({
                 </tr>
               </thead>
               <tbody>
-                {(top3 as Top3Item[]).map((t, i) => (
-                  <motion.tr
-                    key={i}
-                    variants={item}
-                    className="border-t border-slate-200 transition-colors hover:bg-slate-50/80"
-                  >
-                    <td className="px-3 py-3">
-                      <span
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${theme.rankBadges[i]} text-xs font-bold text-white shadow-sm`}
-                      >
-                        {i + 1}
-                      </span>
-                    </td>
-                    <td className="max-w-[200px] truncate px-3 py-3 font-medium text-slate-800 sm:max-w-xs">
-                      {cell(t.title)}
-                    </td>
-                    <td className="max-w-[120px] truncate px-3 py-3 text-slate-600 sm:max-w-[180px]">
-                      {cell(t.agency)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-slate-800">
-                      {cell(t.budgetLabel ?? (t.budget != null ? String(t.budget) : ""))}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-slate-600">
-                      {cell(t.deadlineLabel ?? t.deadline)}
-                    </td>
-                  </motion.tr>
-                ))}
+                {(top3 as Top3Item[]).map((t, i) => {
+                  const rowLocked =
+                    guestTeaser &&
+                    (!String(t.title ?? "").trim() ||
+                      (typeof t.budget === "number" && isGuestLockedCount(t.budget)));
+                  return (
+                    <motion.tr
+                      key={i}
+                      variants={item}
+                      className="border-t border-slate-200 transition-colors hover:bg-slate-50/80"
+                    >
+                      <td className="px-3 py-3">
+                        <span
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${theme.rankBadges[i]} text-xs font-bold text-white shadow-sm`}
+                        >
+                          {i + 1}
+                        </span>
+                      </td>
+                      <td className="max-w-[200px] truncate px-3 py-3 font-medium text-slate-800 sm:max-w-xs" colSpan={rowLocked ? 4 : 1}>
+                        {rowLocked ? (
+                          <ReportLoginRequiredInline loginNext={loginNext} />
+                        ) : (
+                          cell(t.title)
+                        )}
+                      </td>
+                      {!rowLocked ? (
+                        <>
+                          <td className="max-w-[120px] truncate px-3 py-3 text-slate-600 sm:max-w-[180px]">
+                            {cell(t.agency)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-slate-800">
+                            {cell(t.budgetLabel ?? (t.budget != null ? String(t.budget) : ""))}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-slate-600">
+                            {cell(t.deadlineLabel ?? t.deadline)}
+                          </td>
+                        </>
+                      ) : null}
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

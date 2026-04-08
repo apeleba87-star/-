@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
+import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredInline";
+import { isGuestLockedCount, isGuestLockedMetricText } from "@/lib/report/guest-teaser-redact";
 
 /** 막대·차트 — 초록 일색을 피하고 인디고·바이올렛·앰버·스카이 등을 교차 */
 const CHART_COLORS = [
@@ -105,6 +107,8 @@ type Props = {
   };
   updatedAt?: string | null;
   relatedReports?: RelatedReportPostRow[];
+  guestTeaser?: boolean;
+  loginNext?: string;
 };
 
 function parseMetricValue(metrics: string[] | undefined, matcher: RegExp): string {
@@ -122,16 +126,20 @@ function AwardCountBarRow({
   max,
   colorIndex,
   total,
+  loginNext = "",
 }: {
   label: string;
   count: number;
   max: number;
   colorIndex: number;
   total?: number;
+  loginNext?: string;
 }) {
-  const pct = max > 0 ? Math.min(100, Math.round((count / max) * 100)) : 0;
+  const locked = isGuestLockedCount(count);
+  const effCount = locked ? 0 : count;
+  const pct = max > 0 ? Math.min(100, Math.round((effCount / max) * 100)) : 0;
   const share =
-    total != null && total > 0 ? ((count / total) * 100).toFixed(1) : null;
+    !locked && total != null && total > 0 ? ((count / total) * 100).toFixed(1) : null;
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-2 text-sm">
@@ -139,9 +147,15 @@ function AwardCountBarRow({
           {label}
         </span>
         <span className="shrink-0 tabular-nums text-slate-600">
-          <span className="font-semibold text-slate-800">{count.toLocaleString("ko-KR")}</span>
-          <span className="text-slate-400">건</span>
-          {share != null && <span className="ml-1.5 text-xs text-slate-400">({share}%)</span>}
+          {locked ? (
+            <ReportLoginRequiredInline loginNext={loginNext} className="text-sm font-medium" />
+          ) : (
+            <>
+              <span className="font-semibold text-slate-800">{count.toLocaleString("ko-KR")}</span>
+              <span className="text-slate-400">건</span>
+              {share != null && <span className="ml-1.5 text-xs text-slate-400">({share}%)</span>}
+            </>
+          )}
         </span>
       </div>
       <div className="h-2.5 w-full min-w-0 overflow-hidden rounded-full bg-slate-100">
@@ -194,15 +208,26 @@ function CountBadge({ n }: { n: number }) {
 /** 표·막대 비교에서는 제외하고 건수만 별도 표기 */
 const OUT_OF_SCOPE_INDUSTRY_NAME = "청소관련 업종 외";
 
-export default function AwardReportSnapshotView({ title, excerpt, content, updatedAt, relatedReports = [] }: Props) {
+export default function AwardReportSnapshotView({
+  title,
+  excerpt,
+  content,
+  updatedAt,
+  relatedReports = [],
+  guestTeaser = false,
+  loginNext = "",
+}: Props) {
   const metrics = content.key_metrics ?? [];
   const sample = content.data_trust?.sample_count ?? null;
+  const lineOrLock = (regex: RegExp): boolean =>
+    guestTeaser && (!!metrics.find((m) => regex.test(m) && isGuestLockedMetricText(m)));
   const avgRate = parseMetricValue(metrics, /평균\s*낙찰률/);
   const avgParticipants = parseMetricValue(metrics, /평균\s*참여\s*업체수/);
   const avgAward = parseMetricValue(metrics, /평균\s*낙찰금액/);
   const dominantBand = (() => {
     const row = metrics.find((m) => /최다\s*낙찰률\s*구간/.test(m));
     if (!row) return "—";
+    if (guestTeaser && isGuestLockedMetricText(row)) return "__LOCK__";
     return row.replace(/^.*최다\s*낙찰률\s*구간\s*/, "").trim() || "—";
   })();
   const reco = content.recommendation;
@@ -214,15 +239,27 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
   const outScope = content.out_of_scope_summary;
   const fmtMoney = (v: number | null) => (v == null ? "—" : `${Math.round(v).toLocaleString("ko-KR")}원`);
 
-  const industryMax = industryRowsRegistered.reduce((m, r) => Math.max(m, r.award_count), 0);
-  const industryTotal = industryRowsRegistered.reduce((s, r) => s + r.award_count, 0);
-  const regionMax = regionRows.reduce((m, r) => Math.max(m, r.award_count), 0);
-  const regionTotal = regionRows.reduce((s, r) => s + r.award_count, 0);
+  const industryMax = industryRowsRegistered.reduce(
+    (m, r) => (isGuestLockedCount(r.award_count) ? m : Math.max(m, r.award_count)),
+    0
+  );
+  const industryTotal = industryRowsRegistered.reduce(
+    (s, r) => (isGuestLockedCount(r.award_count) ? s : s + r.award_count),
+    0
+  );
+  const regionMax = regionRows.reduce(
+    (m, r) => (isGuestLockedCount(r.award_count) ? m : Math.max(m, r.award_count)),
+    0
+  );
+  const regionTotal = regionRows.reduce(
+    (s, r) => (isGuestLockedCount(r.award_count) ? s : s + r.award_count),
+    0
+  );
   const regionChartData = regionRows.slice(0, 10).map((r) => ({
     name: r.region.length > 5 ? `${r.region.slice(0, 4)}…` : r.region,
     fullName: r.region,
-    count: r.award_count,
-    pct: r.share_pct,
+    count: isGuestLockedCount(r.award_count) ? 0 : r.award_count,
+    pct: isGuestLockedCount(r.award_count) ? 0 : r.share_pct,
   }));
 
   return (
@@ -289,28 +326,36 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
               <Percent className="h-3.5 w-3.5 text-violet-600" aria-hidden />
               평균 낙찰률
             </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-violet-800 sm:text-3xl">{avgRate}</p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-violet-800 sm:text-3xl">
+              {lineOrLock(/평균\s*낙찰률/) ? <ReportLoginRequiredInline loginNext={loginNext} /> : avgRate}
+            </p>
           </div>
           <div className="flex flex-col rounded-xl border border-slate-100 bg-gradient-to-br from-sky-50/90 to-white p-3.5 sm:p-4">
             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
               <Users className="h-3.5 w-3.5 text-sky-600" aria-hidden />
               평균 참여 업체
             </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-sky-900 sm:text-3xl">{avgParticipants}</p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-sky-900 sm:text-3xl">
+              {lineOrLock(/평균\s*참여\s*업체수/) ? <ReportLoginRequiredInline loginNext={loginNext} /> : avgParticipants}
+            </p>
           </div>
           <div className="flex flex-col rounded-xl border border-slate-100 bg-gradient-to-br from-amber-50/90 to-white p-3.5 sm:p-4">
             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
               <Wallet className="h-3.5 w-3.5 text-amber-600" aria-hidden />
               평균 낙찰금액
             </div>
-            <p className="mt-2 text-lg font-bold tabular-nums leading-tight text-amber-900 sm:text-2xl">{avgAward}</p>
+            <p className="mt-2 text-lg font-bold tabular-nums leading-tight text-amber-900 sm:text-2xl">
+              {lineOrLock(/평균\s*낙찰금액/) ? <ReportLoginRequiredInline loginNext={loginNext} /> : avgAward}
+            </p>
           </div>
           <div className="flex flex-col rounded-xl border border-slate-100 bg-gradient-to-br from-slate-50/90 to-white p-3.5 sm:p-4">
             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
               <Target className="h-3.5 w-3.5 text-slate-600" aria-hidden />
               최다 낙찰률 구간
             </div>
-            <p className="mt-2 line-clamp-2 text-lg font-bold leading-snug text-slate-900 sm:text-xl">{dominantBand}</p>
+            <p className="mt-2 line-clamp-2 text-lg font-bold leading-snug text-slate-900 sm:text-xl">
+              {dominantBand === "__LOCK__" ? <ReportLoginRequiredInline loginNext={loginNext} /> : dominantBand}
+            </p>
           </div>
         </div>
       </section>
@@ -362,9 +407,13 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
           <h2 className="text-base font-bold text-slate-900">실무 참고</h2>
         </div>
         <p className="text-sm leading-relaxed text-slate-700">
-          {content.practical_note ?? "집계 지표를 참고해 공고 조건과 함께 최종 판단하세요."}
+          {content.practical_note?.trim()
+            ? content.practical_note
+            : guestTeaser
+              ? "실무 해석·다음 행동은 로그인 후 확인할 수 있습니다."
+              : "집계 지표를 참고해 공고 조건과 함께 최종 판단하세요."}
         </p>
-        {content.next_action ? (
+        {content.next_action?.trim() && !guestTeaser ? (
           <p className="mt-3 rounded-lg border border-violet-100 bg-violet-50/90 px-3 py-2 text-sm font-medium text-violet-900">
             {content.next_action}
           </p>
@@ -391,6 +440,7 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
                   max={regionMax}
                   colorIndex={i}
                   total={regionTotal > 0 ? regionTotal : undefined}
+                  loginNext={loginNext}
                 />
               ))}
             </div>
@@ -443,6 +493,7 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
                     max={industryMax}
                     colorIndex={i}
                     total={industryTotal > 0 ? industryTotal : undefined}
+                    loginNext={loginNext}
                   />
                 ))}
               </div>
@@ -483,18 +534,32 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
                           {r.industry_name}
                         </td>
                         <td className="px-4 py-3.5 text-right tabular-nums">
-                          <CountBadge n={r.award_count} />
+                          {isGuestLockedCount(r.award_count) ? (
+                            <ReportLoginRequiredInline loginNext={loginNext} />
+                          ) : (
+                            <CountBadge n={r.award_count} />
+                          )}
                         </td>
                         <td className="px-4 py-3.5 text-right tabular-nums text-slate-800">
-                          {fmtMoney(r.avg_award_amt)}
+                          {isGuestLockedCount(r.award_count) ? (
+                            <ReportLoginRequiredInline loginNext={loginNext} />
+                          ) : (
+                            fmtMoney(r.avg_award_amt)
+                          )}
                         </td>
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex justify-end">
-                            <RateCell rate={r.avg_rate} />
+                            {isGuestLockedCount(r.award_count) ? (
+                              <ReportLoginRequiredInline loginNext={loginNext} />
+                            ) : (
+                              <RateCell rate={r.avg_rate} />
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
-                          {r.avg_participants != null ? (
+                          {isGuestLockedCount(r.award_count) ? (
+                            <ReportLoginRequiredInline loginNext={loginNext} />
+                          ) : r.avg_participants != null ? (
                             <>
                               <span className="font-medium">{r.avg_participants.toFixed(1)}</span>
                               <span className="text-xs text-slate-400">개</span>
@@ -504,7 +569,9 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
                           )}
                         </td>
                         <td className="px-4 py-3.5 pr-5 text-slate-600">
-                          {r.top_region?.trim() ? (
+                          {isGuestLockedCount(r.award_count) ? (
+                            <ReportLoginRequiredInline loginNext={loginNext} />
+                          ) : r.top_region?.trim() ? (
                             <span className="inline-flex max-w-full items-center rounded-md bg-slate-100/90 px-2 py-0.5 text-xs font-medium text-slate-700 shadow-sm ring-1 ring-slate-200/60">
                               {r.top_region}
                             </span>
@@ -545,53 +612,64 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
         ) : (
           <>
             <ul className="mt-4 space-y-3 md:hidden">
-              {topAwards.map((r) => (
-                <li
-                  key={`${r.rank}-${r.bid_ntce_nm}`}
-                  className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] transition-shadow hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex min-w-[2rem] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
-                      {r.rank}
-                    </span>
-                    <span className="text-right text-xs text-slate-500">
-                      {r.openg_dt ? new Date(r.openg_dt).toLocaleDateString("ko-KR") : "—"}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold leading-snug text-slate-900">{r.bid_ntce_nm}</p>
-                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600">
-                    <span className="truncate" title={r.region}>
-                      {r.region}
-                    </span>
-                    <span className="truncate text-right" title={r.agency_name}>
-                      {r.agency_name}
-                    </span>
-                    <span className="col-span-2 truncate text-slate-500">{r.industry_name}</span>
-                  </div>
-                  <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200/80 pt-3 text-xs">
-                    <div>
-                      <dt className="text-slate-500">낙찰가</dt>
-                      <dd className="font-semibold text-indigo-700">{fmtMoney(r.award_amt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-500">낙찰률</dt>
-                      <dd className="mt-0.5">
-                        <RateCell rate={r.bid_rate_pct} />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-500">기초금액</dt>
-                      <dd className="tabular-nums text-slate-700">{fmtMoney(r.base_amt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-500">참여</dt>
-                      <dd className="tabular-nums text-slate-700">
-                        {r.participants != null ? `${r.participants}개` : "—"}
-                      </dd>
-                    </div>
-                  </dl>
-                </li>
-              ))}
+              {topAwards.map((r) => {
+                const rowLocked = !String(r.bid_ntce_nm ?? "").trim();
+                return (
+                  <li
+                    key={`${r.rank}-${r.bid_ntce_nm || "x"}`}
+                    className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] transition-shadow hover:shadow-md"
+                  >
+                    {rowLocked ? (
+                      <div className="flex min-h-[4rem] items-center justify-center py-4">
+                        <ReportLoginRequiredInline loginNext={loginNext} />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="inline-flex min-w-[2rem] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
+                            {r.rank}
+                          </span>
+                          <span className="text-right text-xs text-slate-500">
+                            {r.openg_dt ? new Date(r.openg_dt).toLocaleDateString("ko-KR") : "—"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm font-semibold leading-snug text-slate-900">{r.bid_ntce_nm}</p>
+                        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600">
+                          <span className="truncate" title={r.region}>
+                            {r.region}
+                          </span>
+                          <span className="truncate text-right" title={r.agency_name}>
+                            {r.agency_name}
+                          </span>
+                          <span className="col-span-2 truncate text-slate-500">{r.industry_name}</span>
+                        </div>
+                        <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200/80 pt-3 text-xs">
+                          <div>
+                            <dt className="text-slate-500">낙찰가</dt>
+                            <dd className="font-semibold text-indigo-700">{fmtMoney(r.award_amt)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-slate-500">낙찰률</dt>
+                            <dd className="mt-0.5">
+                              <RateCell rate={r.bid_rate_pct} />
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-slate-500">기초금액</dt>
+                            <dd className="tabular-nums text-slate-700">{fmtMoney(r.base_amt)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-slate-500">참여</dt>
+                            <dd className="tabular-nums text-slate-700">
+                              {r.participants != null ? `${r.participants}개` : "—"}
+                            </dd>
+                          </div>
+                        </dl>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
             <div className={`mt-6 hidden md:block ${reportTableShell}`}>
               <div className="overflow-x-auto">
@@ -631,56 +709,67 @@ export default function AwardReportSnapshotView({ title, excerpt, content, updat
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/90">
-                    {topAwards.map((r) => (
-                      <tr
-                        key={`${r.rank}-${r.bid_ntce_nm}`}
-                        className="transition-colors hover:bg-gradient-to-r hover:from-indigo-50/40 hover:to-transparent"
-                      >
-                        <td className="px-4 py-3.5 pl-5">
-                          <span className="inline-flex min-w-[2rem] items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-2 py-0.5 text-xs font-bold tabular-nums text-white shadow-sm">
-                            {r.rank}
-                          </span>
-                        </td>
-                        <td className="max-w-[18rem] px-4 py-3.5 font-medium text-slate-900">
-                          <span className="line-clamp-2" title={r.bid_ntce_nm}>
-                            {r.bid_ntce_nm}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-600">{r.region}</td>
-                        <td className="max-w-[10rem] px-4 py-3.5 text-sm text-slate-600">
-                          <span className="line-clamp-2" title={r.agency_name}>
-                            {r.agency_name}
-                          </span>
-                        </td>
-                        <td className="max-w-[10rem] px-4 py-3.5 text-sm text-slate-600">
-                          <span className="line-clamp-2" title={r.industry_name}>
-                            {r.industry_name}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">{fmtMoney(r.base_amt)}</td>
-                        <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-indigo-700">
-                          {fmtMoney(r.award_amt)}
-                        </td>
-                        <td className="px-4 py-3.5 text-right">
-                          <div className="flex justify-end">
-                            <RateCell rate={r.bid_rate_pct} />
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
-                          {r.participants != null ? (
-                            <>
-                              <span className="font-medium">{r.participants}</span>
-                              <span className="text-xs text-slate-400">개</span>
-                            </>
+                    {topAwards.map((r) => {
+                      const rowLocked = !String(r.bid_ntce_nm ?? "").trim();
+                      return (
+                        <tr
+                          key={`${r.rank}-${r.bid_ntce_nm || "x"}`}
+                          className="transition-colors hover:bg-gradient-to-r hover:from-indigo-50/40 hover:to-transparent"
+                        >
+                          <td className="px-4 py-3.5 pl-5">
+                            <span className="inline-flex min-w-[2rem] items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-2 py-0.5 text-xs font-bold tabular-nums text-white shadow-sm">
+                              {r.rank}
+                            </span>
+                          </td>
+                          {rowLocked ? (
+                            <td className="px-4 py-3.5" colSpan={9}>
+                              <ReportLoginRequiredInline loginNext={loginNext} />
+                            </td>
                           ) : (
-                            "—"
+                            <>
+                              <td className="max-w-[18rem] px-4 py-3.5 font-medium text-slate-900">
+                                <span className="line-clamp-2" title={r.bid_ntce_nm}>
+                                  {r.bid_ntce_nm}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-slate-600">{r.region}</td>
+                              <td className="max-w-[10rem] px-4 py-3.5 text-sm text-slate-600">
+                                <span className="line-clamp-2" title={r.agency_name}>
+                                  {r.agency_name}
+                                </span>
+                              </td>
+                              <td className="max-w-[10rem] px-4 py-3.5 text-sm text-slate-600">
+                                <span className="line-clamp-2" title={r.industry_name}>
+                                  {r.industry_name}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">{fmtMoney(r.base_amt)}</td>
+                              <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-indigo-700">
+                                {fmtMoney(r.award_amt)}
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                <div className="flex justify-end">
+                                  <RateCell rate={r.bid_rate_pct} />
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
+                                {r.participants != null ? (
+                                  <>
+                                    <span className="font-medium">{r.participants}</span>
+                                    <span className="text-xs text-slate-400">개</span>
+                                  </>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3.5 pr-5 text-slate-600 tabular-nums">
+                                {r.openg_dt ? new Date(r.openg_dt).toLocaleDateString("ko-KR") : "—"}
+                              </td>
+                            </>
                           )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3.5 pr-5 text-slate-600 tabular-nums">
-                          {r.openg_dt ? new Date(r.openg_dt).toLocaleDateString("ko-KR") : "—"}
-                        </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

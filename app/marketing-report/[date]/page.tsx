@@ -16,6 +16,8 @@ import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import { marketingTopRisingGroupName } from "@/lib/news/parseReportCardHero";
 import { getCrossReportDiscoveryPosts } from "@/lib/content/related-report-posts";
 import { MARKETING_TEAM_SHARE_TEXT } from "@/lib/report/team-share-messages";
+import { isGuestLockedTrendMetric, redactMarketingPayloadForGuest } from "@/lib/report/guest-teaser-redact";
+import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredInline";
 
 export const dynamic = "force-dynamic";
 
@@ -95,9 +97,12 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
 
   if (error || !report) notFound();
 
-  const payload = report.payload as unknown as DailyReportPayload | null;
+  const rawPayload = report.payload as unknown as DailyReportPayload | null;
+  const payload = rawPayload && user ? rawPayload : rawPayload ? redactMarketingPayloadForGuest(rawPayload) : null;
   const hasPayload = payload && "topThree" in payload && Array.isArray(payload.topThree);
-  const topKwThis = marketingTopRisingGroupName(report.payload);
+  const topKwThis = marketingTopRisingGroupName((payload ?? rawPayload) as unknown as Parameters<
+    typeof marketingTopRisingGroupName
+  >[0]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-violet-50/40">
@@ -127,7 +132,12 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
           </div>
         )}
 
-        <GuestPreviewGate isLoggedIn={!!user} loginNext={`/marketing-report/${date}`} tone="indigo">
+        <GuestPreviewGate
+          isLoggedIn={!!user}
+          loginNext={`/marketing-report/${date}`}
+          tone="indigo"
+          layout={user ? "crop" : "full"}
+        >
         <div className="mx-auto mt-8 max-w-5xl space-y-6 px-0">
           <section className={insightClass}>
             <div className="flex flex-wrap items-start gap-3">
@@ -259,8 +269,20 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
                   iconBg="bg-gradient-to-br from-teal-500 to-emerald-600 shadow-teal-500/25"
                 />
                 <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                  <BucketColumn title="상승" items={payload.rising} variant="up" Icon={TrendingUp} />
-                  <BucketColumn title="하락" items={payload.falling} variant="down" Icon={TrendingDown} />
+                  <BucketColumn
+                    title="상승"
+                    items={payload.rising}
+                    variant="up"
+                    Icon={TrendingUp}
+                    loginNext={`/marketing-report/${date}`}
+                  />
+                  <BucketColumn
+                    title="하락"
+                    items={payload.falling}
+                    variant="down"
+                    Icon={TrendingDown}
+                    loginNext={`/marketing-report/${date}`}
+                  />
                 </div>
               </section>
 
@@ -367,13 +389,18 @@ function BucketColumn({
   items,
   variant,
   Icon,
+  loginNext = "",
 }: {
   title: string;
   items: GroupTrendRow[];
   variant: "up" | "down";
   Icon: typeof TrendingUp;
+  loginNext?: string;
 }) {
-  const maxAbs = Math.max(1, ...items.map((x) => Math.abs(x.delta)));
+  const maxAbs = Math.max(
+    1,
+    ...items.map((x) => (isGuestLockedTrendMetric(x.delta) ? 0 : Math.abs(x.delta)))
+  );
 
   const accent =
     variant === "up"
@@ -402,7 +429,8 @@ function BucketColumn({
           <li className="px-3 py-8 text-center text-xs text-slate-500">없음</li>
         ) : (
           items.map((x, idx) => {
-            const w = (Math.abs(x.delta) / maxAbs) * 100;
+            const locked = isGuestLockedTrendMetric(x.delta);
+            const w = locked ? 0 : (Math.abs(x.delta) / maxAbs) * 100;
             return (
               <li
                 key={`${x.id}-${idx}`}
@@ -414,8 +442,14 @@ function BucketColumn({
                   </span>
                   <span className="min-w-0 flex-1 text-sm font-medium leading-snug text-slate-900">{x.groupName}</span>
                   <span className={`w-[3.25rem] shrink-0 text-right text-sm font-semibold tabular-nums sm:w-16 ${deltaClass}`}>
-                    {x.delta >= 0 ? "+" : ""}
-                    {x.delta.toFixed(1)}
+                    {locked ? (
+                      <ReportLoginRequiredInline loginNext={loginNext} className="justify-end text-xs" />
+                    ) : (
+                      <>
+                        {x.delta >= 0 ? "+" : ""}
+                        {x.delta.toFixed(1)}
+                      </>
+                    )}
                   </span>
                   <div
                     className="hidden h-2 w-14 shrink-0 overflow-hidden rounded-full bg-slate-100 sm:block md:w-20"

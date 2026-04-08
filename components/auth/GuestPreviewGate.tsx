@@ -20,11 +20,19 @@ type Props = {
   isLoggedIn: boolean;
   loginNext: string;
   tone?: Tone;
+  /** crop: 기존 높이 제한. full: 전체 스크롤(리포트 티저+락 UI용). */
+  layout?: "crop" | "full";
   children: React.ReactNode;
 };
 
 /** 비로그인 시 본문 일부만 보이게 하고, 로그인 CTA를 붙입니다. */
-export default function GuestPreviewGate({ isLoggedIn, loginNext, tone = "slate", children }: Props) {
+export default function GuestPreviewGate({
+  isLoggedIn,
+  loginNext,
+  tone = "slate",
+  layout = "crop",
+  children,
+}: Props) {
   if (isLoggedIn) return <>{children}</>;
 
   const ring = TONE_RING[tone];
@@ -33,11 +41,17 @@ export default function GuestPreviewGate({ isLoggedIn, loginNext, tone = "slate"
   return (
     <>
       <div className="relative">
-        <div className="max-h-[min(68vh,580px)] overflow-hidden">{children}</div>
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/92 to-transparent"
-          aria-hidden
-        />
+        {layout === "full" ? (
+          <div>{children}</div>
+        ) : (
+          <>
+            <div className="max-h-[min(68vh,580px)] overflow-hidden">{children}</div>
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/92 to-transparent"
+              aria-hidden
+            />
+          </>
+        )}
       </div>
       <div
         className={`mx-auto mt-8 max-w-lg rounded-2xl border bg-white px-5 py-5 text-center shadow-md ring-1 ${ring}`}

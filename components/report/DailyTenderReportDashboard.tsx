@@ -42,6 +42,8 @@ import DataTrust3Pack from "@/components/DataTrust3Pack";
 import ReportShareUnlockButton from "@/components/report/ReportShareUnlockButton";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
+import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredInline";
+import { isGuestLockedCount } from "@/lib/report/guest-teaser-redact";
 
 const CHART_COLORS = [
   "#3b82f6",
@@ -129,6 +131,9 @@ type Props = {
   } | null;
   /** 글 하단 우리 팀 공유(컴팩트) 카드 바로 위 */
   relatedReports?: RelatedReportPostRow[];
+  /** 비로그인 티저: 서버에서 마스킹된 payload + 일부 칸만 락 */
+  guestTeaser?: boolean;
+  loginNext?: string;
 };
 
 export default function DailyTenderReportDashboard({
@@ -143,6 +148,8 @@ export default function DailyTenderReportDashboard({
   sharedRevealKeys = null,
   premiumInsights = null,
   relatedReports = [],
+  guestTeaser = false,
+  loginNext = "",
 }: Props) {
   const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
 
@@ -156,11 +163,11 @@ export default function DailyTenderReportDashboard({
       ? Math.round((top_industry.count / count_total) * 1000) / 10
       : 0;
 
-  const regionChartData = region_breakdown.slice(0, 12).map((r) => ({
-    name: r.name,
-    count: r.count,
-    pct: count_total > 0 ? Math.round((r.count / count_total) * 1000) / 10 : 0,
-  }));
+  const regionChartData = region_breakdown.slice(0, 12).map((r) => {
+    const c = isGuestLockedCount(r.count) ? 0 : r.count;
+    const pct = count_total > 0 && !isGuestLockedCount(r.count) ? Math.round((r.count / count_total) * 1000) / 10 : 0;
+    return { name: r.name, count: c, pct, locked: isGuestLockedCount(r.count) };
+  });
   const averageBudget = count_total > 0 ? Math.round(payload.budget_total / count_total) : 0;
   const highBudgetCount = top_budget_tenders.filter((t) => t.budget > averageBudget * 1.5).length;
   const deadlinePressure = Math.min(100, deadline_soon_tenders.length * 18 + (payload.has_budget_unknown ? 10 : 0));
@@ -248,7 +255,11 @@ export default function DailyTenderReportDashboard({
               <MapPin className="h-3.5 w-3.5 text-violet-600" aria-hidden />
               1위 지역
             </div>
-            {topRegionShare > 0 && region_breakdown[0] ? (
+            {guestTeaser ? (
+              <div className="mt-2">
+                <ReportLoginRequiredInline loginNext={loginNext} />
+              </div>
+            ) : topRegionShare > 0 && region_breakdown[0] ? (
               <>
                 <p className="mt-2 line-clamp-2 text-base font-bold leading-snug text-slate-900 sm:text-lg">
                   {region_breakdown[0].name}
@@ -267,7 +278,11 @@ export default function DailyTenderReportDashboard({
               <BarChart2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
               {isIndustryPayload ? "1위 업종" : "예산 합계"}
             </div>
-            {isIndustryPayload && top_industry && top_industry.count > 0 ? (
+            {guestTeaser ? (
+              <div className="mt-2">
+                <ReportLoginRequiredInline loginNext={loginNext} />
+              </div>
+            ) : isIndustryPayload && top_industry && top_industry.count > 0 ? (
               <>
                 <p className="mt-2 line-clamp-2 text-base font-bold leading-snug text-slate-900 sm:text-lg">
                   {top_industry.name}
@@ -290,10 +305,18 @@ export default function DailyTenderReportDashboard({
               <Clock className="h-3.5 w-3.5 text-amber-600" aria-hidden />
               마감 임박
             </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl">
-              {deadline_soon_tenders.length}
-            </p>
-            <p className="text-xs text-slate-500">건 (상위 표시 구간)</p>
+            {guestTeaser ? (
+              <div className="mt-2">
+                <ReportLoginRequiredInline loginNext={loginNext} />
+              </div>
+            ) : (
+              <>
+                <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl">
+                  {deadline_soon_tenders.length}
+                </p>
+                <p className="text-xs text-slate-500">건 (상위 표시 구간)</p>
+              </>
+            )}
           </div>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-slate-500">
@@ -328,7 +351,14 @@ export default function DailyTenderReportDashboard({
             {isIndustryPayload ? "등록된 업종에 해당하는 공고" : "청소·소독·방역 분류 공고"}
           </p>
         </div>
-        {isIndustryPayload && top_industry ? (
+        {guestTeaser ? (
+          <div className="flex min-h-[140px] flex-col justify-center rounded-xl border-0 bg-white p-4 shadow-lg sm:p-6">
+            <p className="text-xs text-slate-500 sm:text-sm">상세 분포</p>
+            <div className="mt-3">
+              <ReportLoginRequiredInline loginNext={loginNext} />
+            </div>
+          </div>
+        ) : isIndustryPayload && top_industry ? (
           <div className="rounded-xl border-0 bg-white p-4 shadow-lg transition-shadow duration-300 hover:shadow-xl sm:p-6">
             <div className="mb-3 flex items-center justify-between space-y-0 sm:mb-4">
               <span className="text-xs text-slate-500 sm:text-sm">1위 업종</span>
@@ -375,7 +405,12 @@ export default function DailyTenderReportDashboard({
             <div className="h-64 w-full min-w-0 sm:h-80">
               {(() => {
                 const industryChartData = industry_breakdown
-                  .map((r, i) => ({ name: r.industry_name, value: r.count, index: i, count: r.count }))
+                  .map((r, i) => ({
+                    name: r.industry_name,
+                    value: isGuestLockedCount(r.count) ? 0 : r.count,
+                    index: i,
+                    count: r.count,
+                  }))
                   .filter((d) => d.value > 0);
                 if (industryChartData.length === 0) {
                   return (
@@ -477,14 +512,20 @@ export default function DailyTenderReportDashboard({
                           <span className="truncate">{r.industry_name}</span>
                         </Link>
                         <span className="shrink-0 text-slate-600">
-                          {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
+                          {isGuestLockedCount(r.count) ? (
+                            <ReportLoginRequiredInline loginNext={loginNext} className="text-xs" />
+                          ) : (
+                            <>
+                              {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
+                            </>
+                          )}
                         </span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
                         <div
                           className="h-full rounded-full transition-all duration-300"
                           style={{
-                            width: `${pct}%`,
+                            width: `${isGuestLockedCount(r.count) ? 0 : pct}%`,
                             backgroundColor: CHART_COLORS[colorIndex],
                           }}
                         />
@@ -513,7 +554,9 @@ export default function DailyTenderReportDashboard({
           <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">지역별 분포</h2>
             <p className="mt-0.5 text-xs text-slate-500 sm:text-sm leading-snug">
-              {buildRegionSummarySentence(region_breakdown)}
+              {guestTeaser
+                ? "지역·건수는 일부만 공개됩니다. 로그인하면 차트·목록 전체를 볼 수 있습니다."
+                : buildRegionSummarySentence(region_breakdown)}
             </p>
           </div>
         </div>
@@ -545,7 +588,8 @@ export default function DailyTenderReportDashboard({
           </div>
           <div className="space-y-2.5 sm:space-y-3">
             {region_breakdown.slice(0, 10).map((r, i) => {
-              const pct = count_total > 0 ? (r.count / count_total) * 100 : 0;
+              const pct =
+                count_total > 0 && !isGuestLockedCount(r.count) ? (r.count / count_total) * 100 : 0;
               return (
                 <div key={r.name} className="space-y-1">
                   <div className="flex items-center justify-between text-xs sm:text-sm">
@@ -557,7 +601,13 @@ export default function DailyTenderReportDashboard({
                       <span className="truncate">{r.name}</span>
                     </span>
                     <span className="shrink-0 text-slate-600">
-                      {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
+                      {isGuestLockedCount(r.count) ? (
+                        <ReportLoginRequiredInline loginNext={loginNext} className="text-xs" />
+                      ) : (
+                        <>
+                          {pct.toFixed(1)}% · <span className="font-medium">{r.count}건</span>
+                        </>
+                      )}
                     </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 sm:h-2">
@@ -598,35 +648,49 @@ export default function DailyTenderReportDashboard({
                 : "등록된 공고가 없습니다."}
             </p>
           ) : (
-            top_budget_tenders.map((t, i) => (
-              <div
-                key={i}
-                className="flex min-w-0 gap-3 rounded-xl border-2 border-slate-200 bg-gradient-to-r from-white to-slate-50/50 p-4 transition-all duration-300 hover:border-blue-300 hover:shadow-md active:border-blue-400 sm:gap-4 sm:p-5"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-base font-bold text-white shadow-lg sm:h-12 sm:w-12 sm:text-lg">
-                  {i + 1}
-                </div>
-                <div className="min-w-0 flex-1 space-y-1.5 sm:space-y-2">
-                  <h3 className="text-sm font-bold leading-snug text-slate-900 line-clamp-2 transition-colors duration-300 hover:text-blue-600 sm:text-lg">
-                    {t.title}
-                  </h3>
-                  <div className="flex flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:text-sm">
-                    <span className="flex items-center gap-1 truncate">
-                      <Building2 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                      <span className="truncate">{t.agency}</span>
-                    </span>
-                    <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                      <Banknote className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                      {t.budgetLabel}
-                    </span>
-                    <span className="flex items-center gap-1 text-amber-600">
-                      <Clock className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                      {t.deadlineLabel}
-                    </span>
+            top_budget_tenders.map((t, i) =>
+              guestTeaser && (!String(t.title).trim() || isGuestLockedCount(t.budget)) ? (
+                <div
+                  key={i}
+                  className="flex min-h-[100px] min-w-0 items-center gap-3 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4 sm:gap-4 sm:p-5"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-base font-bold text-slate-600 sm:h-12 sm:w-12">
+                    {i + 1}
+                  </div>
+                  <div className="flex flex-1 items-center justify-center py-2">
+                    <ReportLoginRequiredInline loginNext={loginNext} />
                   </div>
                 </div>
-              </div>
-            ))
+              ) : (
+                <div
+                  key={i}
+                  className="flex min-w-0 gap-3 rounded-xl border-2 border-slate-200 bg-gradient-to-r from-white to-slate-50/50 p-4 transition-all duration-300 hover:border-blue-300 hover:shadow-md active:border-blue-400 sm:gap-4 sm:p-5"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-base font-bold text-white shadow-lg sm:h-12 sm:w-12 sm:text-lg">
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1.5 sm:space-y-2">
+                    <h3 className="text-sm font-bold leading-snug text-slate-900 line-clamp-2 transition-colors duration-300 hover:text-blue-600 sm:text-lg">
+                      {t.title}
+                    </h3>
+                    <div className="flex flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:text-sm">
+                      <span className="flex items-center gap-1 truncate">
+                        <Building2 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                        <span className="truncate">{t.agency}</span>
+                      </span>
+                      <span className="flex items-center gap-1 font-semibold text-emerald-600">
+                        <Banknote className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                        {t.budgetLabel}
+                      </span>
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <Clock className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                        {t.deadlineLabel}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            )
           )}
         </div>
       </section>
@@ -653,21 +717,30 @@ export default function DailyTenderReportDashboard({
                 : "해당 일자 기준 마감 임박 공고가 없습니다."}
             </p>
           ) : (
-            deadline_soon_tenders.map((t, i) => (
-              <div
-                key={i}
-                className="relative min-w-0 rounded-xl border-2 border-red-200 bg-gradient-to-br from-red-50/80 to-amber-50/80 p-3.5 active:shadow-xl sm:p-4"
-              >
-                <span className="absolute right-2.5 top-2.5 flex min-h-[28px] min-w-[44px] items-center justify-center rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white sm:right-3 sm:top-3 sm:py-1">
-                  D-Day
-                </span>
-                <h3 className="pr-14 text-sm font-semibold leading-snug text-slate-900 line-clamp-2 sm:pr-16 sm:text-base">
-                  {t.title}
-                </h3>
-                <p className="mt-1 truncate text-xs text-slate-600 sm:text-sm">{t.agency}</p>
-                <p className="mt-2 text-xs font-medium text-red-600 sm:text-sm">{t.deadlineLabel}</p>
-              </div>
-            ))
+            deadline_soon_tenders.map((t, i) =>
+              guestTeaser && !String(t.title).trim() ? (
+                <div
+                  key={i}
+                  className="relative flex min-h-[120px] min-w-0 items-center justify-center rounded-xl border-2 border-dashed border-red-200/80 bg-red-50/30 p-3.5 sm:p-4"
+                >
+                  <ReportLoginRequiredInline loginNext={loginNext} />
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className="relative min-w-0 rounded-xl border-2 border-red-200 bg-gradient-to-br from-red-50/80 to-amber-50/80 p-3.5 active:shadow-xl sm:p-4"
+                >
+                  <span className="absolute right-2.5 top-2.5 flex min-h-[28px] min-w-[44px] items-center justify-center rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white sm:right-3 sm:top-3 sm:py-1">
+                    D-Day
+                  </span>
+                  <h3 className="pr-14 text-sm font-semibold leading-snug text-slate-900 line-clamp-2 sm:pr-16 sm:text-base">
+                    {t.title}
+                  </h3>
+                  <p className="mt-1 truncate text-xs text-slate-600 sm:text-sm">{t.agency}</p>
+                  <p className="mt-2 text-xs font-medium text-red-600 sm:text-sm">{t.deadlineLabel}</p>
+                </div>
+              )
+            )
           )}
         </div>
       </section>

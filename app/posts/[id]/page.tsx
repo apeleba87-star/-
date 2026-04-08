@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Metadata } from "next";
@@ -22,6 +22,14 @@ import {
   type RelatedReportPostRow,
 } from "@/lib/content/related-report-posts";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import {
+  guestDailyInsightTeaserLine,
+  redactAwardMarketSnapshotForGuest,
+  redactDailyTenderPayloadForGuest,
+  redactGenericReportSnapshotForGuest,
+  type AwardMarketSnapshotContent,
+  type ReportSnapshotGuestContent,
+} from "@/lib/report/guest-teaser-redact";
 
 const DailyTenderReportDashboard = dynamic(
   () => import("@/components/report/DailyTenderReportDashboard"),
@@ -64,25 +72,6 @@ function isDailyTenderReportPost(post: { source_type?: string | null; slug?: str
   if (post.source_type === "auto_tender_daily") return true;
   const slug = typeof post.slug === "string" ? post.slug : "";
   return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
-}
-
-/** 낙찰 시장 스냅샷 상세: 로그인한 사용자만 열람(게스트 프리뷰 없음) */
-function isAwardMarketIntelGatedPost(post: {
-  source_type?: string | null;
-  slug?: string | null;
-  report_snapshot?: unknown;
-}): boolean {
-  if (!isReportPostKind(post)) return false;
-  if (post.source_type !== REPORT_TYPE_AWARD_MARKET_INTEL) return false;
-  const snap = post.report_snapshot;
-  if (!snap || typeof snap !== "object") return false;
-  const o = snap as Record<string, unknown>;
-  return Array.isArray(o.key_metrics) || typeof o.headline === "string";
-}
-
-function redirectToLoginForPost(post: { id: string; slug?: string | null }): never {
-  const nextPath = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
-  redirect(`/login?next=${encodeURIComponent(nextPath)}`);
 }
 
 /** 비공개 글은 관리자·에디터만 접근. 아니면 notFound */
@@ -144,9 +133,6 @@ export default async function PostPage({ params }: PostPageParams) {
     const slugPost = bySlug.data;
     if ((slugPost as { is_private?: boolean }).is_private && !user) notFound();
     if (user) await ensurePrivateAccess(slugPost, authSupabase, user.id);
-    if (!user && isAwardMarketIntelGatedPost(slugPost)) {
-      redirectToLoginForPost(slugPost);
-    }
     if (isDailyTenderReportPost(slugPost) && !reportData) {
       const snapshot = (slugPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
       if (snapshot && typeof snapshot === "object" && typeof snapshot.count_total === "number") {
@@ -165,19 +151,16 @@ export default async function PostPage({ params }: PostPageParams) {
     }
     const [reportAccess, premiumInsights, relatedReports] = await Promise.all([
       getReportAccess(slugPost, reportData, supabase),
-      getPremiumInsights(reportData),
+      getPremiumInsights(reportData, !user),
       isReportPostKind(slugPost) ? getRelatedReportPosts(supabase, slugPost) : Promise.resolve([] as RelatedReportPostRow[]),
     ]);
     return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
   }
   if ((post as { is_private?: boolean }).is_private && !user) notFound();
   if (user) await ensurePrivateAccess(post, authSupabase, user.id);
-  if (!user && isAwardMarketIntelGatedPost(post!)) {
-    redirectToLoginForPost(post!);
-  }
   const [reportAccess, premiumInsights, relatedReports] = await Promise.all([
     getReportAccess(post!, reportData, supabase),
-    getPremiumInsights(reportData),
+    getPremiumInsights(reportData, !user),
     isReportPostKind(post!) ? getRelatedReportPosts(supabase, post!) : Promise.resolve([] as RelatedReportPostRow[]),
   ]);
   return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
@@ -263,8 +246,8 @@ type PremiumInsights = {
   anomalies: string[];
 } | null;
 
-async function getPremiumInsights(reportData: ReportData | null): Promise<PremiumInsights> {
-  if (!reportData) return null;
+async function getPremiumInsights(reportData: ReportData | null, forGuest: boolean): Promise<PremiumInsights> {
+  if (!reportData || forGuest) return null;
   const baseDate = reportData.payload.date ? new Date(`${reportData.payload.date}T12:00:00Z`) : new Date();
   const baseYmd =
     reportData.payload.date && /^\d{4}-\d{2}-\d{2}$/.test(reportData.payload.date)
@@ -346,6 +329,42 @@ function renderPost(
   const useDashboard = isDailyTenderReportPost(post) && reportData;
   const showLock = false;
   const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
+  const reportGuestLayout = guestPreview && isReport;
+
+  const dailyPayload =
+    useDashboard && reportData
+      ? guestPreview
+        ? redactDailyTenderPayloadForGuest(reportData.payload)
+        : reportData.payload
+      : null;
+  const dailyInsight =
+    useDashboard && reportData
+      ? guestPreview
+        ? guestDailyInsightTeaserLine(reportData.payload)
+        : reportData.insightSentence
+      : "";
+
+  const awardSnapshotContent =
+    isReport &&
+    isSnapshotReport(post) &&
+    post.source_type === REPORT_TYPE_AWARD_MARKET_INTEL &&
+    post.report_snapshot &&
+    typeof post.report_snapshot === "object"
+      ? guestPreview
+        ? redactAwardMarketSnapshotForGuest(post.report_snapshot as AwardMarketSnapshotContent)
+        : (post.report_snapshot as AwardMarketSnapshotContent)
+      : null;
+
+  const genericSnapshotContent =
+    isReport &&
+    isSnapshotReport(post) &&
+    post.source_type !== REPORT_TYPE_AWARD_MARKET_INTEL &&
+    post.report_snapshot &&
+    typeof post.report_snapshot === "object"
+      ? guestPreview
+        ? redactGenericReportSnapshotForGuest(post.report_snapshot as ReportSnapshotGuestContent)
+        : (post.report_snapshot as ReportSnapshotGuestContent)
+      : null;
 
   const body = (
     <>
@@ -366,16 +385,18 @@ function renderPost(
           )}
           <DailyTenderReportDashboard
             postId={post.id}
-            payload={reportData!.payload}
+            payload={dailyPayload!}
             title={post.title}
-            dateLabel={reportData!.payload.dateLabel}
-            insightSentence={reportData!.insightSentence}
+            dateLabel={dailyPayload!.dateLabel}
+            insightSentence={dailyInsight}
             excerpt={post.excerpt}
             updatedAt={post.updated_at ?? null}
             accessLevel={reportAccess.level}
             sharedRevealKeys={reportAccess.sharedRevealKeys}
             premiumInsights={premiumInsights}
             relatedReports={relatedReports}
+            guestTeaser={guestPreview}
+            loginNext={loginNext}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
@@ -383,11 +404,7 @@ function renderPost(
             </div>
           )}
         </>
-      ) : isReport &&
-        isSnapshotReport(post) &&
-        post.source_type === REPORT_TYPE_AWARD_MARKET_INTEL &&
-        post.report_snapshot &&
-        typeof post.report_snapshot === "object" ? (
+      ) : awardSnapshotContent ? (
         <>
           {showTopAd && ads.post_top && (
             <div className="mb-6">
@@ -397,9 +414,11 @@ function renderPost(
           <AwardReportSnapshotView
             title={post.title}
             excerpt={post.excerpt}
-            content={post.report_snapshot as Parameters<typeof AwardReportSnapshotView>[0]["content"]}
+            content={awardSnapshotContent as Parameters<typeof AwardReportSnapshotView>[0]["content"]}
             updatedAt={post.updated_at ?? null}
             relatedReports={relatedReports}
+            guestTeaser={guestPreview}
+            loginNext={loginNext}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
@@ -407,7 +426,7 @@ function renderPost(
             </div>
           )}
         </>
-      ) : isReport && isSnapshotReport(post) && post.report_snapshot && typeof post.report_snapshot === "object" ? (
+      ) : genericSnapshotContent ? (
         <>
           {showTopAd && ads.post_top && (
             <div className="mb-6">
@@ -418,9 +437,11 @@ function renderPost(
             title={post.title}
             excerpt={post.excerpt}
             sourceType={post.source_type ?? ""}
-            content={post.report_snapshot as Parameters<typeof ReportSnapshotView>[0]["content"]}
+            content={genericSnapshotContent as Parameters<typeof ReportSnapshotView>[0]["content"]}
             updatedAt={post.updated_at ?? null}
             relatedReports={relatedReports}
+            guestTeaser={guestPreview}
+            loginNext={loginNext}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
@@ -448,7 +469,12 @@ function renderPost(
               </div>
             )}
 
-            {post.body &&
+            {post.body && guestPreview && isReport ? (
+              <p className="mt-6 text-sm leading-relaxed text-slate-600">
+                이 리포트의 본문·표는 로그인 후 전체를 확인할 수 있습니다.
+              </p>
+            ) : null}
+            {post.body && (!guestPreview || !isReport) &&
               (isReport ? (
                 <div className={`prose prose-slate mt-6 max-w-none post-report`}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.body}</ReactMarkdown>
@@ -477,7 +503,12 @@ function renderPost(
 
   return (
     <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-      <GuestPreviewGate isLoggedIn={!guestPreview} loginNext={loginNext} tone="violet">
+      <GuestPreviewGate
+        isLoggedIn={!guestPreview}
+        loginNext={loginNext}
+        tone="violet"
+        layout={reportGuestLayout ? "full" : "crop"}
+      >
         {body}
       </GuestPreviewGate>
     </div>

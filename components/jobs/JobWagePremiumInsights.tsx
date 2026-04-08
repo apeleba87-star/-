@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BarChart3, Lock } from "lucide-react";
 import JobWageInsightShareButton from "@/components/jobs/JobWageInsightShareButton";
+import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredInline";
 import type { NationalCompare } from "@/lib/jobs/job-wage-premium-insights";
 
 function formatWon(n: number): string {
@@ -11,6 +12,8 @@ type Props = {
   reportDate: string;
   loginNextPath: string;
   unlocked: boolean;
+  /** 비로그인: 레이아웃은 구독자와 동일하게 두고 수치만 락 처리 */
+  guestTeaser?: boolean;
   shareTitle: string;
   shareText: string;
   compare: NationalCompare;
@@ -24,6 +27,7 @@ export default function JobWagePremiumInsights({
   reportDate,
   loginNextPath,
   unlocked,
+  guestTeaser = false,
   shareTitle,
   shareText,
   compare,
@@ -53,7 +57,50 @@ export default function JobWagePremiumInsights({
         </div>
       </div>
 
-      {!unlocked ? (
+      {guestTeaser ? (
+        <div className="mt-6 space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-teal-100 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">전국 가중 평균 일당</p>
+              <div className="mt-2">
+                <ReportLoginRequiredInline loginNext={loginNextPath} />
+              </div>
+              <p className="mt-1 text-xs text-slate-500">시·도별 (평균×공고 수) 합 / 공고 수 합</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">전일 대비</p>
+              <div className="mt-3">
+                <ReportLoginRequiredInline loginNext={loginNextPath} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">시·도 평균 일당 구간별 공고 수</p>
+            <p className="mt-1 text-xs text-slate-500">
+              각 시·도의 평균 일당이 속한 구간에 그 시·도 공고 수를 더했습니다.
+            </p>
+            <ul className="mt-4 space-y-3">
+              {bins.map((b) => (
+                <li key={b.label}>
+                  <div className="mb-1 flex justify-between gap-2 text-sm">
+                    <span className="font-medium text-slate-800">{b.label}</span>
+                    <span className="flex shrink-0 justify-end">
+                      <ReportLoginRequiredInline loginNext={loginNextPath} className="text-xs" />
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full w-0 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"
+                      aria-hidden
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : !unlocked ? (
         <div className="mt-6 rounded-2xl border border-dashed border-teal-300/80 bg-white/70 p-5">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Lock className="h-4 w-4 text-teal-700" aria-hidden />
