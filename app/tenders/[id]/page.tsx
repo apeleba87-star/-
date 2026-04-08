@@ -2,12 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, FileText, Download } from "lucide-react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import {
-  extractItems,
-  getBidPblancListInfoEorderAtchFileInfo,
-  getBidPblancListInfoServcBsisAmount,
-  getBidPblancListInfoPrtcptPsblRgn,
-} from "@/lib/g2b/client";
 import { getLowerRateFromRaw, calcLowerPrice, categoryLabel, shortRegion } from "@/lib/tender-utils";
 import TenderBidSummary from "@/components/tender/TenderBidSummary";
 import TenderBidStrategy from "@/components/tender/TenderBidStrategy";
@@ -15,7 +9,8 @@ import TenderBidSchedule from "@/components/tender/TenderBidSchedule";
 import TenderBidExtraInfo from "@/components/tender/TenderBidExtraInfo";
 import TenderDetailActionsWrapper from "@/components/tender/TenderDetailActionsWrapper";
 import TenderDetailAwardBanner from "@/components/tender/TenderDetailAwardBanner";
-import TenderRecommendationActions from "@/components/tender/TenderRecommendationActions";
+import SimilarTendersList from "@/components/tender/SimilarTendersList";
+import { fetchSimilarOpenTenders } from "@/lib/tenders/similar-tenders-for-detail";
 import {
   fetchTenderAwardSummaryForDetail,
   resolveTenderDetailAwardBannerState,
@@ -155,29 +150,9 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
 
   const { data: detail } = await supabase.from("tender_details").select("*").eq("tender_id", id).single();
 
-  let attachFiles = (detail?.attach_files ?? null) as unknown;
-  if (!attachFiles && process.env.DATA_GO_KR_SERVICE_KEY) {
-    try {
-      const data = await getBidPblancListInfoEorderAtchFileInfo({
-        bidNtceNo: String(tender.bid_ntce_no ?? ""),
-        bidNtceOrd: String(tender.bid_ntce_ord ?? "00"),
-        pageNo: 1,
-        numOfRows: 200,
-      });
-      const items = extractItems(data);
-      attachFiles = items;
-      await supabase.from("tender_details").upsert(
-        { tender_id: id, attach_files: items, updated_at: new Date().toISOString() },
-        { onConflict: "tender_id" }
-      );
-    } catch {
-      // ignore
-    }
-  }
+  const attachFiles = (detail?.attach_files ?? null) as unknown;
 
   const tenderNumber = getTenderNumber(tender.bid_ntce_no as string | null, tender.bid_ntce_ord as string | null);
-  const bidNo = String(tender.bid_ntce_no ?? "");
-  const bidOrd = String(tender.bid_ntce_ord ?? "00");
 
   const awardMethod =
     pickRawText(tender.raw, ["sucsfbidMthdNm", "sucsBidMthdNm", "sucs_bid_mthd_nm", "낙찰방법명", "낙찰방법"]) ?? "—";
@@ -191,33 +166,6 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
   let baseAmt: number | null =
     tender.base_amt != null ? Number(tender.base_amt) : pickRawNumber(tender.raw, baseAmtKeys);
 
-  if (process.env.DATA_GO_KR_SERVICE_KEY && (regionText === "—" || baseAmt == null)) {
-    try {
-      const [bsisRes, rgnRes] = await Promise.all([
-        baseAmt == null ? getBidPblancListInfoServcBsisAmount({ bidNtceNo: bidNo, bidNtceOrd: bidOrd }) : null,
-        regionText === "—" ? getBidPblancListInfoPrtcptPsblRgn({ bidNtceNo: bidNo, bidNtceOrd: bidOrd }) : null,
-      ]);
-      if (baseAmt == null && bsisRes) {
-        const bsisItems = extractItems(bsisRes);
-        const first = bsisItems[0] as Record<string, unknown> | undefined;
-        if (first) {
-          const amt = pickRawNumber(first, baseAmtKeys) ?? (typeof first.bsisAmt === "number" ? first.bsisAmt : null);
-          if (amt != null) baseAmt = amt;
-        }
-      }
-      if (regionText === "—" && rgnRes) {
-        const rgnItems = extractItems(rgnRes) as Record<string, unknown>[];
-        const names = rgnItems
-          .map((r) =>
-            pickRawText(r, ["prtcptPsblRgnNm", "prtcpt_psbl_rgn_nm", "regionNm", "region_nm", "지역명", "참가가능지역명", "지역"])
-          )
-          .filter(Boolean) as string[];
-        if (names.length) regionText = [...new Set(names)].join(", ");
-      }
-    } catch {
-      // ignore
-    }
-  }
   if (regionText === "—" && (tender.ntce_instt_nm as string)?.trim()) {
     regionText = (tender.ntce_instt_nm as string).trim();
   }
@@ -239,6 +187,12 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
     | string
     | undefined;
 
+  const similarTenders = await fetchSimilarOpenTenders(supabase, {
+    excludeTenderId: id,
+    industryCodes: recommendationIndustryCodes,
+    regionSido: recommendationRegionSido ?? null,
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/20">
       <div className="mx-auto max-w-4xl px-4 py-6 md:py-12">
@@ -250,26 +204,32 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
           목록
         </Link>
 
+        {/* [1] 입찰 공고 핵심 — 페이지 톤의 주축(블루) */}
+        <TenderBidSummary
+          title={(tender.bid_ntce_nm as string) || "(제목 없음)"}
+          organ={organ}
+          region={region}
+          categoryLabelText={categoryLabelText}
+          basePrice={baseAmt}
+          raw={tender.raw}
+        />
+
         <TenderDetailAwardBanner state={awardBannerState} />
-        <TenderRecommendationActions
+        <SimilarTendersList
+          items={similarTenders}
           industryCodes={recommendationIndustryCodes}
           regionSido={recommendationRegionSido ?? null}
           regionGugun={null}
         />
 
-        {/* [1] 핵심 요약 카드 */}
-        <TenderBidSummary
-        title={(tender.bid_ntce_nm as string) || "(제목 없음)"}
-        organ={organ}
-        region={region}
-        categoryLabelText={categoryLabelText}
-        basePrice={baseAmt}
-        raw={tender.raw}
-      />
-
-        {/* [2] 행동 버튼 (CTA) */}
+        {/* [2] 행동 버튼 — 유사 입찰 직후: 나라장터·공고번호 복사는 숨김 (첨부만) */}
         <div className="mt-6">
-          <TenderDetailActionsWrapper tenderNumber={tenderNumber} hasAttachments={normalized.length > 0} />
+          <TenderDetailActionsWrapper
+            tenderNumber={tenderNumber}
+            hasAttachments={normalized.length > 0}
+            showG2bLink={false}
+            showCopyButton={false}
+          />
         </div>
 
         {/* [3] 입찰 전략 가격 */}

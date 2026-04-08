@@ -1,4 +1,3 @@
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -17,6 +16,12 @@ import { ensureSharedRevealKeys, kstCalendarMinusDays, type SharedRandomPanelKey
 import ReportPaywallLock from "@/components/report/ReportPaywallLock";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 import { REPORT_TYPE_AWARD_MARKET_INTEL } from "@/lib/content/report-snapshot-types";
+import {
+  getRelatedReportPosts,
+  isReportPost as isReportPostKind,
+  type RelatedReportPostRow,
+} from "@/lib/content/related-report-posts";
+import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 
 const DailyTenderReportDashboard = dynamic(
   () => import("@/components/report/DailyTenderReportDashboard"),
@@ -136,19 +141,21 @@ export default async function PostPage({ params }: PostPageParams) {
         }
       }
     }
-    const [reportAccess, premiumInsights] = await Promise.all([
+    const [reportAccess, premiumInsights, relatedReports] = await Promise.all([
       getReportAccess(slugPost, reportData, supabase),
       getPremiumInsights(reportData),
+      isReportPostKind(slugPost) ? getRelatedReportPosts(supabase, slugPost) : Promise.resolve([] as RelatedReportPostRow[]),
     ]);
-    return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights, !user);
+    return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
   }
   if ((post as { is_private?: boolean }).is_private && !user) notFound();
   if (user) await ensurePrivateAccess(post, authSupabase, user.id);
-  const [reportAccess, premiumInsights] = await Promise.all([
+  const [reportAccess, premiumInsights, relatedReports] = await Promise.all([
     getReportAccess(post!, reportData, supabase),
     getPremiumInsights(reportData),
+    isReportPostKind(post!) ? getRelatedReportPosts(supabase, post!) : Promise.resolve([] as RelatedReportPostRow[]),
   ]);
-  return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights, !user);
+  return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
 }
 
 type ReportAccessState = {
@@ -286,11 +293,8 @@ async function getPremiumInsights(reportData: ReportData | null): Promise<Premiu
   };
 }
 
-/** 자동 생성 입찰 리포트 여부: source_type 있거나 slug가 일간 디제스트 패턴이면 리포트 */
 function isReportPost(post: PostForRender): boolean {
-  if (post.source_type) return true;
-  const slug = typeof post.slug === "string" ? post.slug : "";
-  return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
+  return isReportPostKind(post);
 }
 
 /** 스냅샷 리포트(주간 시장 요약, 마감 임박 등) 여부: report_snapshot 구조화 콘텐츠 있음 */
@@ -308,7 +312,8 @@ function renderPost(
   reportData: ReportData | null,
   reportAccess: ReportAccessState,
   premiumInsights: PremiumInsights,
-  guestPreview: boolean
+  guestPreview: boolean,
+  relatedReports: RelatedReportPostRow[]
 ) {
   const isReport = isReportPost(post);
   const showTopAd = ads.post_top?.enabled && (ads.post_top.campaign || ads.post_top.script_content);
@@ -345,6 +350,7 @@ function renderPost(
             accessLevel={reportAccess.level}
             sharedRevealKeys={reportAccess.sharedRevealKeys}
             premiumInsights={premiumInsights}
+            relatedReports={relatedReports}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
@@ -368,6 +374,7 @@ function renderPost(
             excerpt={post.excerpt}
             content={post.report_snapshot as Parameters<typeof AwardReportSnapshotView>[0]["content"]}
             updatedAt={post.updated_at ?? null}
+            relatedReports={relatedReports}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
@@ -388,6 +395,7 @@ function renderPost(
             sourceType={post.source_type ?? ""}
             content={post.report_snapshot as Parameters<typeof ReportSnapshotView>[0]["content"]}
             updatedAt={post.updated_at ?? null}
+            relatedReports={relatedReports}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
@@ -396,51 +404,54 @@ function renderPost(
           )}
         </>
       ) : (
-        <article className="card max-w-3xl">
-          {post.category && (
-            <span className="text-sm font-medium text-blue-600">{post.category.name}</span>
-          )}
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">{post.title}</h1>
-          <time className="mt-2 block text-sm text-slate-500">
-            {post.published_at
-              ? new Date(post.published_at).toLocaleDateString("ko-KR")
-              : ""}
-          </time>
-          {post.excerpt && <p className="mt-4 text-slate-600">{post.excerpt}</p>}
+        <>
+          <article className="card max-w-3xl">
+            {post.category && (
+              <span className="text-sm font-medium text-blue-600">{post.category.name}</span>
+            )}
+            <h1 className="mt-2 text-2xl font-bold text-slate-900">{post.title}</h1>
+            <time className="mt-2 block text-sm text-slate-500">
+              {post.published_at
+                ? new Date(post.published_at).toLocaleDateString("ko-KR")
+                : ""}
+            </time>
+            {post.excerpt && <p className="mt-4 text-slate-600">{post.excerpt}</p>}
 
-          {showTopAd && ads.post_top && (
-            <div className="mt-6">
-              <AdSlotRenderer slot={ads.post_top} variant="card" />
-            </div>
-          )}
-
-          {post.body &&
-            (isReport ? (
-              <div className={`prose prose-slate mt-6 max-w-none post-report`}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.body}</ReactMarkdown>
+            {showTopAd && ads.post_top && (
+              <div className="mt-6">
+                <AdSlotRenderer slot={ads.post_top} variant="card" />
               </div>
-            ) : (
-              <div className="prose prose-slate mt-6 max-w-none whitespace-pre-wrap">
-                {post.body}
-              </div>
-            ))}
+            )}
 
-          {showBottomAd && ads.post_bottom && (
-            <div className="mt-8">
-              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+            {post.body &&
+              (isReport ? (
+                <div className={`prose prose-slate mt-6 max-w-none post-report`}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.body}</ReactMarkdown>
+                </div>
+              ) : (
+                <div className="prose prose-slate mt-6 max-w-none whitespace-pre-wrap">
+                  {post.body}
+                </div>
+              ))}
+
+            {showBottomAd && ads.post_bottom && (
+              <div className="mt-8">
+                <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+              </div>
+            )}
+          </article>
+          {isReport && relatedReports.length > 0 ? (
+            <div className="mt-8 max-w-3xl">
+              <RelatedReportsSection posts={relatedReports} />
             </div>
-          )}
-        </article>
+          ) : null}
+        </>
       )}
     </>
   );
 
   return (
     <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-      <Link href="/categories" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
-        ← 카테고리
-      </Link>
-
       <GuestPreviewGate isLoggedIn={!guestPreview} loginNext={loginNext} tone="violet">
         {body}
       </GuestPreviewGate>

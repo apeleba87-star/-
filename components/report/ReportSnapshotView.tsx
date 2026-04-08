@@ -25,6 +25,8 @@ import type { ReportContentBlock } from "@/lib/content/report-snapshot-types";
 import { getReportTypeLabel, REPORT_TYPE_LISTING_MARKET_INTEL } from "@/lib/content/report-snapshot-types";
 import { getReportTheme } from "./report-snapshot-theme";
 import DataTrust3Pack from "@/components/DataTrust3Pack";
+import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
 
 type Top3Item = {
   title?: string;
@@ -42,6 +44,7 @@ type Props = {
   sourceType: string;
   content: ReportContentBlock & { region_top3?: { name: string; count: number }[] };
   updatedAt?: string | null;
+  relatedReports?: RelatedReportPostRow[];
 };
 
 function cell(s: unknown): string {
@@ -98,6 +101,7 @@ export default function ReportSnapshotView({
   sourceType,
   content,
   updatedAt,
+  relatedReports = [],
 }: Props) {
   const {
     headline,
@@ -453,6 +457,8 @@ export default function ReportSnapshotView({
           </p>
         </motion.section>
       )}
+
+      {relatedReports.length > 0 ? <RelatedReportsSection posts={relatedReports} /> : null}
 
       {/* CTA: 인디고→보라 그라디언트, 주/보조 버튼 */}
       <motion.section

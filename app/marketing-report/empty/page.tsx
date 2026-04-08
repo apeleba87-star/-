@@ -28,7 +28,7 @@ export default async function MarketingReportEmptyPage() {
           </p>
         </div>
         <div className="mt-6">
-          <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
+          <NewsCategoryTabs section="report" current="marketing" showPrivateTab={isAdmin} />
         </div>
 
         <div className="mx-auto mt-10 max-w-lg">
@@ -53,7 +53,7 @@ export default async function MarketingReportEmptyPage() {
           <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-6 text-center shadow-sm ring-1 ring-slate-100">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">다른 리포트</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-center sm:gap-3">
-              <Link href="/news?category=report" className="text-sm font-semibold text-indigo-700 hover:underline">
+              <Link href="/news?section=report&category=report" className="text-sm font-semibold text-indigo-700 hover:underline">
                 입찰 리포트
               </Link>
               <span className="hidden text-slate-300 sm:inline">·</span>

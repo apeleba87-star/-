@@ -4,6 +4,8 @@ import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import { getCrossReportDiscoveryPosts } from "@/lib/content/related-report-posts";
 import {
   formatReportCardListDate,
   heroMetricsFromMarketingPayload,
@@ -30,13 +32,14 @@ export default async function MarketingReportIndexPage() {
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: rows, error }, { data: jobWageLatest }] = await Promise.all([
+  const [{ data: rows, error }, { data: jobWageLatest }, crossPosts] = await Promise.all([
     supabase
       .from("naver_trend_daily_reports")
       .select("report_date, headline, payload")
       .order("report_date", { ascending: false })
       .limit(365),
     supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
+    getCrossReportDiscoveryPosts(supabase, 4),
   ]);
 
   if (error) {
@@ -69,13 +72,13 @@ export default async function MarketingReportIndexPage() {
             </p>
           </div>
           <div className="mt-6">
-            <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
+            <NewsCategoryTabs section="report" current="marketing" showPrivateTab={isAdmin} />
           </div>
           <div className="mx-auto mt-10 max-w-lg rounded-3xl border border-slate-200/70 bg-white p-8 text-center shadow-md ring-1 ring-slate-100/80">
             <p className="text-sm text-slate-600">다른 리포트 둘러보기</p>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Link
-                href="/news?category=report"
+                href="/news?section=report&category=report"
                 className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 입찰 리포트
@@ -111,7 +114,7 @@ export default async function MarketingReportIndexPage() {
         </div>
 
         <div className="mt-6">
-          <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
+          <NewsCategoryTabs section="report" current="marketing" showPrivateTab={isAdmin} />
         </div>
 
         <ul className="mt-8 grid w-full min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -139,6 +142,17 @@ export default async function MarketingReportIndexPage() {
             </li>
           ))}
         </ul>
+
+        {crossPosts.length > 0 ? (
+          <div className="mx-auto mt-10 max-w-5xl">
+            <RelatedReportsSection
+              posts={crossPosts}
+              title="입찰·낙찰 등 최근 업계 리포트"
+              description="마케팅 스냅샷과 함께 보면 검색 수요와 공고·낙찰 흐름을 같이 짚기 쉽습니다."
+              sectionHeadingId="marketing-index-cross-reports"
+            />
+          </div>
+        ) : null}
 
         <div className="mx-auto mt-10 max-w-2xl">
           <ReportNextStep

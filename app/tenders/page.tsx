@@ -61,7 +61,9 @@ export default async function TendersPage({ searchParams }: PageProps) {
   } else {
     let q = supabase
       .from("tenders")
-      .select("id, bid_ntce_no, bid_ntce_ord, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_ntce_dt, bid_clse_dt, categories, raw, primary_industry_code, region_sido_list, tender_industries(industry_code)");
+      .select(
+        "id, bid_ntce_no, bid_ntce_ord, bid_ntce_nm, ntce_instt_nm, bsns_dstr_nm, base_amt, bid_ntce_dt, bid_clse_dt, categories, primary_industry_code, region_sido_list, tender_industries(industry_code)"
+      );
     if (tenderIds != null && tenderIds.length > 0) q = q.in("id", tenderIds);
     if (region) {
       q = q.contains("region_sido_list", [region]);

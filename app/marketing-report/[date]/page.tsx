@@ -12,7 +12,9 @@ import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import { marketingTopRisingGroupName } from "@/lib/news/parseReportCardHero";
+import { getCrossReportDiscoveryPosts } from "@/lib/content/related-report-posts";
 import { MARKETING_TEAM_SHARE_TEXT } from "@/lib/report/team-share-messages";
 
 export const dynamic = "force-dynamic";
@@ -84,10 +86,11 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }, { data: jobWageLatest }] = await Promise.all([
+  const [{ data: report, error }, { data: recent }, { data: jobWageLatest }, crossPosts] = await Promise.all([
     supabase.from("naver_trend_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
     supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(14),
     supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
+    getCrossReportDiscoveryPosts(supabase, 4),
   ]);
 
   if (error || !report) notFound();
@@ -116,13 +119,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
           </p>
         </div>
 
-        <NewsCategoryTabs current="marketing" showPrivateTab={isAdmin} />
-
-        <p className="mx-auto mt-4 max-w-3xl text-center text-sm">
-          <Link href="/marketing-report" className="font-medium text-indigo-700 hover:underline">
-            ← 전체 리포트 목록
-          </Link>
-        </p>
+        <NewsCategoryTabs section="report" current="marketing" showPrivateTab={isAdmin} />
 
         {report.fetch_error && (
           <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 shadow-sm ring-1 ring-amber-100">
@@ -278,11 +275,20 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
             </>
           )}
 
-          {recent && recent.length > 0 && (
-            <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-sm ring-1 ring-slate-100/80 sm:p-7">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">최근 리포트</h2>
-              <p className="mt-1 text-xs text-slate-500">날짜를 눌러 다른 날 스냅샷으로 이동합니다.</p>
-              <ul className="mt-4 flex flex-wrap gap-2">
+          {crossPosts.length > 0 ? (
+            <RelatedReportsSection
+              posts={crossPosts}
+              title="입찰·낙찰 등 업계 리포트"
+              description="업계 소식에 발행된 최근 글입니다. 유형이 섞여 있도록 골랐습니다."
+              sectionHeadingId="marketing-date-cross-reports"
+            />
+          ) : null}
+
+          {recent && recent.length > 0 ? (
+            <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-5 shadow-sm ring-1 ring-slate-100/80 sm:p-6">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">다른 날 · 키워드 트렌드</h2>
+              <p className="mt-1 text-xs text-slate-500">날짜를 눌러 해당일 마케팅 스냅샷으로 이동합니다.</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
                 {recent.map((r) => (
                   <li key={r.report_date}>
                     <Link
@@ -299,7 +305,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
                 ))}
               </ul>
             </section>
-          )}
+          ) : null}
 
           <div className="mx-auto mt-6 max-w-2xl">
             <ReportNextStep
@@ -331,7 +337,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
 
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Link
-              href="/news?category=report"
+              href="/news?section=report&category=report"
               className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800"
             >
               입찰 리포트(업계 소식)

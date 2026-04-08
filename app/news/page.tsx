@@ -3,6 +3,7 @@ import { getKstDateString } from "@/lib/content/kst-utils";
 import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
+import { heroMetricsFromAwardExcerpt } from "@/lib/news/parseReportCardHero";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -31,12 +32,19 @@ function formatReportDateLabel(sourceRef: string | null): string {
   return `${m}월 ${d}일 리포트`;
 }
 
+function newsSectionFromCategory(cat: NewsCategoryKey): "report" | "industry" {
+  if (cat === CATEGORY_PRIVATE || CONTENT_CATEGORY_SLUGS.includes(cat as (typeof CONTENT_CATEGORY_SLUGS)[number])) {
+    return "industry";
+  }
+  return "report";
+}
+
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; section?: string }>;
 }) {
-  const { category: rawCategory } = await searchParams;
+  const { category: rawCategory, section: rawSection } = await searchParams;
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
   const { data: profile } = user
@@ -58,8 +66,18 @@ export default async function NewsPage({
     category = CATEGORY_PRIVATE;
   } else if (rawCategory && CONTENT_CATEGORY_SLUGS.includes(rawCategory as (typeof CONTENT_CATEGORY_SLUGS)[number])) {
     category = rawCategory as NewsCategoryKey;
+  } else if (rawSection === "industry" && !rawCategory) {
+    category = "chemical";
   } else {
     category = CATEGORY_REPORT;
+  }
+
+  const derivedSection = newsSectionFromCategory(category);
+  if (rawSection === "report" && derivedSection === "industry") {
+    redirect(`/news?section=industry&category=${category}`);
+  }
+  if (rawSection === "industry" && derivedSection === "report") {
+    redirect(`/news?section=report&category=${category}`);
   }
 
   const supabase = createClient();
@@ -86,7 +104,7 @@ export default async function NewsPage({
               사용자에게 비공개로 설정된 글입니다. 관리자만 열람할 수 있습니다.
             </p>
           </div>
-          <NewsCategoryTabs current={category} showPrivateTab={true} />
+          <NewsCategoryTabs section="industry" current={category} showPrivateTab={true} />
           {!privatePosts?.length ? (
             <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
               <p className="text-slate-500">비공개 글이 없습니다.</p>
@@ -153,7 +171,7 @@ export default async function NewsPage({
               청소·소독·방역 관련 약품, 장비, 근로, 업계이슈 소식입니다.
             </p>
           </div>
-          <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
+          <NewsCategoryTabs section="industry" current={category} showPrivateTab={isAdmin} />
           {!posts?.length ? (
             <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
               <p className="text-slate-500">아직 올라온 글이 없습니다.</p>
@@ -217,7 +235,7 @@ export default async function NewsPage({
               : "청소·소독·방역 입찰 리포트와 업계 소식입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다."}
           </p>
         </div>
-        <NewsCategoryTabs current={category} showPrivateTab={isAdmin} />
+        <NewsCategoryTabs section="report" current={category} showPrivateTab={isAdmin} />
         {!posts?.length ? (
           <div className="mt-8 rounded-2xl border border-slate-200/80 bg-white/80 p-8 text-center shadow-sm">
             <p className="text-slate-500">아직 올라온 소식이 없습니다.</p>
@@ -233,13 +251,27 @@ export default async function NewsPage({
                 ? isToday
                   ? "오늘 청소 입찰 리포트"
                   : formatReportDateLabel(sourceRef)
-                : post.title;
+                : isAwardReportCategory &&
+                    sourceRef &&
+                    /^\d{4}-\d{2}-\d{2}$/.test(sourceRef)
+                  ? (() => {
+                      const [y, m, d] = sourceRef.split("-").map(Number);
+                      return `${m}월 ${d}일 낙찰 리포트`;
+                    })()
+                  : post.title;
               const categoryTag = isDaily ? "입찰 리포트" : isAwardReportCategory ? "낙찰 리포트" : getReportTypeLabel(sourceType ?? "");
               const postHref = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
               const shareText =
                 typeof post.excerpt === "string" && post.excerpt.trim()
                   ? post.excerpt.trim()
                   : listTitle;
+              const awardHero =
+                isAwardReportCategory && !isDaily ? heroMetricsFromAwardExcerpt(post.excerpt) : null;
+              const reportBadgeKind = isDaily
+                ? "daily"
+                : sourceType === "award_market_intel"
+                  ? "award"
+                  : "snapshot";
               return (
                 <li key={post.id}>
                   <NewsCard
@@ -254,7 +286,11 @@ export default async function NewsPage({
                         : ""
                     }
                     categoryTag={categoryTag}
+                    reportBadgeKind={reportBadgeKind}
                     reportHero
+                    heroMetrics={awardHero}
+                    reportHeroFallbackTitle={isAwardReportCategory && !isDaily ? "한눈에 보기" : undefined}
+                    suppressBodyExcerpt={isAwardReportCategory && !isDaily}
                     accentSeed={post.published_at ?? post.id}
                     footerShare={{
                       kind: "bid_post",

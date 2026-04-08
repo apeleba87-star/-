@@ -40,6 +40,8 @@ import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatte
 import { SHARED_RANDOM_PANEL_COUNT, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import DataTrust3Pack from "@/components/DataTrust3Pack";
 import ReportShareUnlockButton from "@/components/report/ReportShareUnlockButton";
+import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
 
 const CHART_COLORS = [
   "#3b82f6",
@@ -125,6 +127,8 @@ type Props = {
     budgetBands: { label: string; count: number }[];
     anomalies: string[];
   } | null;
+  /** 글 하단 우리 팀 공유(컴팩트) 카드 바로 위 */
+  relatedReports?: RelatedReportPostRow[];
 };
 
 export default function DailyTenderReportDashboard({
@@ -138,6 +142,7 @@ export default function DailyTenderReportDashboard({
   accessLevel = "free",
   sharedRevealKeys = null,
   premiumInsights = null,
+  relatedReports = [],
 }: Props) {
   const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
 
@@ -1199,6 +1204,8 @@ export default function DailyTenderReportDashboard({
           </DecisionPanel>
         </div>
       </section>
+
+      {relatedReports.length > 0 ? <RelatedReportsSection posts={relatedReports} /> : null}
 
       {postId && (accessLevel === "shared" || accessLevel === "premium") && (
         <div className="mx-auto max-w-xl px-1">

@@ -125,7 +125,7 @@ export function resolveTenderDetailAwardBannerState(
   return {
     kind: "no_summary_closed",
     message:
-      "이 공고에 연결된 낙찰·개찰 요약이 없습니다. 수집 구간에 없었거나, 유찰·취소이거나, 아직 매칭되지 않았을 수 있습니다.",
+      "이 공고에 연결된 낙찰공고가 없습니다. 수집 구간에 없었거나, 유찰·취소이거나, 아직 매칭되지 않았을 수 있습니다.",
   };
 }
 

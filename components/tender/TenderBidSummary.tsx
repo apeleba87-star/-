@@ -29,7 +29,7 @@ export default function TenderBidSummary({
   const lowerPrice = calcLowerPrice(basePrice, lowerRate);
 
   return (
-    <section className="rounded-3xl border border-blue-200/60 bg-gradient-to-br from-blue-50 via-indigo-50/50 to-blue-50/80 p-5 shadow-sm sm:p-6">
+    <section className="mb-6 rounded-3xl border border-blue-200/70 bg-gradient-to-br from-blue-50 via-indigo-50/50 to-blue-50/80 p-5 shadow-md ring-1 ring-blue-100/80 sm:p-6">
       <h1 className="text-xl font-bold text-slate-900 md:text-2xl">{title}</h1>
       <p className="mt-2 text-sm text-slate-600">
         {organ} · {region} · {categoryLabelText}

@@ -1,8 +1,11 @@
 /** 크론·수집 기본 lookback(분). `SCSBID_AWARD_CRON_LOOKBACK_MINUTES` 환경변수 없을 때 사용. */
 export const SCSBID_AWARD_DEFAULT_LOOKBACK_MINUTES = 4 * 60 + 10;
 
-/** 관리자 POST `/api/admin/ingest-scsbid-award-raw` 에서 허용하는 lookback 상한(분). 크론 환경변수 상한(14일)과 별개. */
+/** 관리자 POST `/api/admin/ingest-scsbid-award-raw` 에서 `lookbackMinutes` 쿼리로 허용하는 상한(분). 크론 환경변수 상한(14일)과 별개. */
 export const SCSBID_AWARD_ADMIN_MAX_LOOKBACK_MINUTES = 60 * 24 * 60;
+
+/** 관리자 UI 「24시간치 한번에 수집」 버튼용 lookback(분). 개찰일시 기준 최근 24시간 구간 1회 조회. */
+export const SCSBID_AWARD_ADMIN_BATCH_LOOKBACK_MINUTES = 24 * 60;
 
 /** Vercel/로컬 환경변수로 크론 기본 lookback(분) 오버라이드 (상한 14일) */
 export function getScsbidAwardDefaultLookbackMinutes(): number {

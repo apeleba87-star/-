@@ -2,9 +2,9 @@ import Link from "next/link";
 import { formatMoney, formatMoneyMan, formatDate } from "@/lib/tender-utils";
 import type { TenderDetailAwardBannerState } from "@/lib/tenders/tender-detail-award";
 
-/** 입찰 공고 `TenderBidSummary` 내부 카드와 동일 톤 */
+/** 보조 정보 카드 — 무채·밝은 배경 (낙찰 블록은 입찰 히어로보다 한 단계 낮게) */
 const bidStyleCard =
-  "rounded-2xl border border-slate-200/80 bg-white/60 px-4 py-3 backdrop-blur-sm";
+  "rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-sm";
 
 function moneyOrNull(v: unknown): number | null {
   if (v == null || v === "") return null;
@@ -88,19 +88,19 @@ export default function TenderDetailAwardBanner({ state }: { state: TenderDetail
 
     return (
       <section
-        className="mb-6 rounded-3xl border border-emerald-200/60 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-emerald-50/80 p-5 shadow-sm sm:p-6"
-        aria-label="낙찰·개찰 요약"
+        className="mb-6 rounded-3xl border border-slate-200/90 border-l-[5px] border-l-teal-500 bg-white p-5 shadow-sm sm:p-6"
+        aria-label="낙찰공고"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">낙찰·개찰 요약</h2>
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">낙찰공고</h2>
           {badge ? (
-            <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-sm ${badge.className}`}>
+            <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>
               {badge.label}
             </span>
           ) : null}
         </div>
 
-        <div className="my-4 h-px bg-gradient-to-r from-emerald-200 via-teal-200 to-emerald-200" />
+        <div className="my-4 h-px bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200" />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className={bidStyleCard}>
@@ -116,50 +116,44 @@ export default function TenderDetailAwardBanner({ state }: { state: TenderDetail
             </p>
             {presmptAmt != null ? <p className="text-xs text-slate-500">{formatMoney(presmptAmt)}</p> : null}
           </div>
-          <div className="rounded-2xl border-2 border-emerald-700 bg-gradient-to-br from-emerald-600 to-teal-600 px-4 py-3 shadow-lg">
-            <p className="text-xs font-medium text-emerald-100">낙찰금액</p>
-            <p className="mt-0.5 text-xl font-bold text-white md:text-2xl">
+          <div className="rounded-2xl border border-teal-200/90 bg-teal-50/40 px-4 py-3 shadow-sm ring-1 ring-teal-100/60">
+            <p className="text-xs font-semibold uppercase tracking-wide text-teal-800/90">낙찰금액</p>
+            <p className="mt-0.5 text-xl font-bold tabular-nums text-slate-900 md:text-2xl">
               {awardAmt != null ? formatMoneyMan(awardAmt) : "—"}
             </p>
-            {awardAmt != null ? <p className="text-xs text-emerald-100/90">{formatMoney(awardAmt)}</p> : null}
+            {awardAmt != null ? <p className="text-xs text-slate-600">{formatMoney(awardAmt)}</p> : null}
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className={bidStyleCard}>
             <p className="text-xs font-medium text-slate-500">낙찰률</p>
-            <p className="mt-0.5 text-2xl font-bold tabular-nums tracking-tight text-emerald-700 md:text-[1.75rem]">
+            <p className="mt-0.5 text-2xl font-bold tabular-nums tracking-tight text-slate-900 md:text-[1.75rem]">
               {pct != null ? `${pct.toFixed(2)}%` : "—"}
             </p>
             <p className="mt-1 text-[11px] leading-snug text-slate-500">
               {pct != null ? "낙찰액 ÷ 예정·추정가" : "산출 불가 시 표시 없음"}
             </p>
           </div>
-          <div
-            className={`${bidStyleCard} border-teal-200/70 bg-gradient-to-br from-teal-50/50 to-white/70`}
-          >
+          <div className={`${bidStyleCard} border-l-[3px] border-l-teal-400/80`}>
             <p className="text-xs font-medium text-slate-500">참여 업체수</p>
             <p className="mt-0.5 flex flex-wrap items-baseline gap-1 tabular-nums">
-              <span className="text-2xl font-bold tracking-tight text-teal-800 md:text-[1.75rem]">
+              <span className="text-2xl font-bold tracking-tight text-slate-900 md:text-[1.75rem]">
                 {prtcpt != null ? prtcpt : "—"}
               </span>
-              {prtcpt != null ? (
-                <span className="text-base font-bold text-teal-700">개사</span>
-              ) : null}
+              {prtcpt != null ? <span className="text-base font-bold text-slate-700">개사</span> : null}
             </p>
             <p className="mt-1 text-[11px] leading-snug text-slate-600">개찰 시 유효 투찰 업체 수</p>
           </div>
-          <div
-            className={`${bidStyleCard} border-indigo-200/60 bg-gradient-to-br from-indigo-50/40 to-white/70`}
-          >
+          <div className={bidStyleCard}>
             <p className="text-xs font-medium text-slate-500">낙찰률 구간</p>
             {bandRange ? (
               <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1 gap-y-0 tabular-nums">
-                <span className="text-2xl font-bold tracking-tight text-indigo-900 md:text-[1.85rem]">
+                <span className="text-2xl font-bold tracking-tight text-slate-900 md:text-[1.85rem]">
                   {bandRange.primary}
                 </span>
                 {bandRange.suffix ? (
-                  <span className="text-lg font-bold text-indigo-700 md:text-xl">{bandRange.suffix}</span>
+                  <span className="text-lg font-bold text-slate-700 md:text-xl">{bandRange.suffix}</span>
                 ) : null}
               </p>
             ) : (
@@ -179,12 +173,12 @@ export default function TenderDetailAwardBanner({ state }: { state: TenderDetail
         <p className="mt-4 text-xs leading-relaxed text-slate-600">
           수집 시점 API·매칭 결과이며, 원문은 나라장터에서 확인하세요.
         </p>
-        <div className="mt-4 border-t border-emerald-200/60 pt-4">
+        <div className="mt-4 border-t border-slate-200 pt-4">
           <Link
             href="/tender-awards"
             className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 hover:underline"
           >
-            낙찰·개찰 목록 →
+            낙찰공고 목록 →
           </Link>
         </div>
       </section>
@@ -193,16 +187,16 @@ export default function TenderDetailAwardBanner({ state }: { state: TenderDetail
 
   const tone =
     state.kind === "before_close"
-      ? "border-sky-200/60 bg-gradient-to-br from-sky-50 via-sky-50/80 to-sky-100/40 text-sky-950"
+      ? "border-slate-200/90 bg-white border-l-[5px] border-l-sky-500"
       : state.kind === "before_openg"
-        ? "border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-indigo-50/50 to-indigo-100/40 text-indigo-950"
+        ? "border-slate-200/90 bg-white border-l-[5px] border-l-indigo-500"
         : state.kind === "outcome_hint"
           ? state.outcome === "failed"
-            ? "border-amber-200/60 bg-gradient-to-br from-amber-50 via-amber-50/50 to-amber-100/40 text-amber-950"
+            ? "border-slate-200/90 bg-white border-l-[5px] border-l-amber-500"
             : state.outcome === "cancelled"
-              ? "border-slate-200/60 bg-gradient-to-br from-slate-50 via-slate-50/80 to-slate-100/60 text-slate-900"
-              : "border-violet-200/60 bg-gradient-to-br from-violet-50 via-violet-50/50 to-violet-100/40 text-violet-950"
-          : "border-slate-200/60 bg-gradient-to-br from-slate-50 via-slate-50/80 to-slate-100/50 text-slate-800";
+              ? "border-slate-200/90 bg-white border-l-[5px] border-l-slate-500"
+              : "border-slate-200/90 bg-white border-l-[5px] border-l-violet-500"
+          : "border-slate-200/90 bg-white border-l-[5px] border-l-slate-400";
 
   const title =
     state.kind === "before_close"
@@ -215,28 +209,20 @@ export default function TenderDetailAwardBanner({ state }: { state: TenderDetail
             : state.outcome === "cancelled"
               ? "취소·변경 가능성"
               : "재공고·재입찰 가능성"
-          : "낙찰 요약 없음";
+          : "낙찰공고 없음";
 
   return (
     <section
       className={`mb-6 rounded-3xl border p-5 shadow-sm sm:p-6 ${tone}`}
-      aria-label="낙찰·개찰 상태"
+      aria-label="낙찰공고 상태"
     >
-      <h2 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">{title}</h2>
-      <div className="my-4 h-px bg-gradient-to-r from-slate-200/80 via-slate-300/60 to-slate-200/80" />
-      <div className={`${bidStyleCard} border-slate-200/70 bg-white/70`}>
+      <h2 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">{title}</h2>
+      <div className="my-4 h-px bg-gradient-to-r from-slate-200/80 via-slate-100 to-slate-200/80" />
+      <div className={`${bidStyleCard} bg-slate-50/50`}>
         <p className="text-sm leading-relaxed text-slate-700">{state.message}</p>
         {state.kind === "outcome_hint" && state.detail ? (
           <p className="mt-2 text-xs text-slate-500">참고: {state.detail}</p>
         ) : null}
-      </div>
-      <div className="mt-4 border-t border-slate-200/50 pt-4">
-        <Link
-          href="/tender-awards"
-          className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-        >
-          낙찰·개찰 목록에서 유사 건 보기 →
-        </Link>
       </div>
     </section>
   );

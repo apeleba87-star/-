@@ -2,17 +2,20 @@
 
 import { Database, Clock3, BarChart3 } from "lucide-react";
 
+/** Node/브라우저 ICU 차이로 12시간제(오후 vs PM)가 달라질 수 있어 24시간·Asia/Seoul로 통일 */
 function formatUpdatedAt(updatedAt?: string | null): string {
   if (!updatedAt) return "—";
   const d = new Date(updatedAt);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("ko-KR", {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  });
+    hour12: false,
+  }).format(d);
 }
 
 type Props = {

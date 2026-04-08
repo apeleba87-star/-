@@ -27,6 +27,8 @@ import { hasSubscriptionAccess } from "@/lib/subscription-access";
 import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
+import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import { getCrossReportDiscoveryPosts } from "@/lib/content/related-report-posts";
 
 export const dynamic = "force-dynamic";
 
@@ -95,7 +97,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }, { data: prevReportRow }] = await Promise.all([
+  const [{ data: report, error }, { data: recent }, { data: prevReportRow }, crossPosts] = await Promise.all([
     supabase.from("job_wage_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
     supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(365),
     supabase
@@ -105,6 +107,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
       .order("report_date", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    getCrossReportDiscoveryPosts(supabase, 4),
   ]);
 
   if (error || !report) notFound();
@@ -194,13 +197,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
           </p>
         </div>
 
-        <NewsCategoryTabs current="job_wage" showPrivateTab={isAdmin} />
-
-        <p className="mx-auto mt-4 max-w-3xl text-center text-sm">
-          <Link href="/job-market-report" className="font-medium text-teal-700 hover:underline">
-            ← 전체 리포트 목록
-          </Link>
-        </p>
+        <NewsCategoryTabs section="report" current="job_wage" showPrivateTab={isAdmin} />
 
         {report.fetch_error && (
           <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 shadow-sm ring-1 ring-amber-100">
@@ -470,11 +467,20 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             </>
           )}
 
-          {recent && recent.length > 0 && (
-            <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-sm ring-1 ring-slate-100/80 sm:p-7">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">최근 리포트</h2>
-              <p className="mt-1 text-xs text-slate-500">날짜를 눌러 다른 스냅샷으로 이동합니다.</p>
-              <ul className="mt-4 flex flex-wrap gap-2">
+          {crossPosts.length > 0 ? (
+            <RelatedReportsSection
+              posts={crossPosts}
+              title="입찰·낙찰 등 업계 리포트"
+              description="업계 소식에 발행된 최근 글입니다. 유형이 섞여 있도록 골랐습니다."
+              sectionHeadingId="job-wage-date-cross-reports"
+            />
+          ) : null}
+
+          {recent && recent.length > 0 ? (
+            <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-5 shadow-sm ring-1 ring-slate-100/80 sm:p-6">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">다른 날짜 · 일당 스냅샷</h2>
+              <p className="mt-1 text-xs text-slate-500">날짜를 눌러 해당일 일당 리포트로 이동합니다.</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
                 {recent.map((r) => (
                   <li key={r.report_date}>
                     <Link
@@ -491,7 +497,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                 ))}
               </ul>
             </section>
-          )}
+          ) : null}
 
           {hasPayload && payload ? (
             <div className="mx-auto mt-6 max-w-2xl">
@@ -503,7 +509,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                     : "일당 흐름을 본 뒤에는, 실제 입찰·예산 흐름과 비교해 보면 판단이 선명해집니다."
                 }
                 actionLabel="실제 입찰 가격 흐름 보기"
-                href="/news?category=report"
+                href="/news?section=report&category=report"
               />
             </div>
           ) : null}
@@ -535,7 +541,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
               마케팅 리포트
             </Link>
             <Link
-              href="/news?category=report"
+              href="/news?section=report&category=report"
               className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               입찰 리포트

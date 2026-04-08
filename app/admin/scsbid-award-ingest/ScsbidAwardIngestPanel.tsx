@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   formatScsbidInqryRangeKstLabel,
-  SCSBID_AWARD_ADMIN_MAX_LOOKBACK_MINUTES,
+  SCSBID_AWARD_ADMIN_BATCH_LOOKBACK_MINUTES,
 } from "@/lib/g2b/scsbid-ingest-window";
 
 type Stats =
@@ -87,7 +87,7 @@ export default function ScsbidAwardIngestPanel() {
           <code className="text-xs">DATA_GO_KR_SCSBID_SERVICE_KEY</code>·크론 시크릿 필요. 입찰공고 키와 별도). 실행
           시점(KST) 기준 개찰일시 조회 슬라이딩 구간은{" "}
           <code className="text-xs">SCSBID_AWARD_CRON_LOOKBACK_MINUTES</code>로 조정합니다(기본 약 4시간 10분, 이
-          환경변수 상한은 14일). 아래 「60일치」는 관리자 전용으로 최대 60일 구간을 한 번에 조회합니다.
+          환경변수 상한은 14일). 아래 「24시간치」는 관리자 전용으로 개찰일시 기준 최근 24시간 구간을 한 번에 조회합니다.
         </p>
       </div>
 
@@ -104,13 +104,13 @@ export default function ScsbidAwardIngestPanel() {
           type="button"
           onClick={() =>
             void runIngest(
-              `?lookbackMinutes=${SCSBID_AWARD_ADMIN_MAX_LOOKBACK_MINUTES}&maxRows=20000&pageSize=100`
+              `?lookbackMinutes=${SCSBID_AWARD_ADMIN_BATCH_LOOKBACK_MINUTES}&maxRows=20000&pageSize=100`
             )
           }
           disabled={running}
           className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-50"
         >
-          {running ? "수집 중…" : "60일치 한번에 수집"}
+          {running ? "수집 중…" : "24시간치 한번에 수집"}
         </button>
         <button
           type="button"
@@ -121,7 +121,7 @@ export default function ScsbidAwardIngestPanel() {
           통계 새로고침
         </button>
         <p className="w-full text-xs text-slate-500">
-          60일치는 한 번에 최대 약 2만 건(내부 페이지 상한)까지이며, 그보다 많으면 같은 버튼을 반복해 이어 받을 수
+          24시간치도 한 번에 최대 약 2만 건(내부 페이지 상한)까지이며, 그보다 많으면 같은 버튼을 반복해 이어 받을 수
           있습니다.
         </p>
       </div>

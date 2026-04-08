@@ -33,6 +33,30 @@ export function parseReportCardHeroFromExcerpt(
   return { count, subtitle };
 }
 
+/**
+ * 낙찰 시장 리포트 excerpt → 카드 히어로 (평균 낙찰률·참여 업체 수 등).
+ * 문구 예: "최근 90일 … 평균 낙찰률은 88.46%, 평균 참여 업체수는 11.7개입니다."
+ */
+export function heroMetricsFromAwardExcerpt(excerpt: string | null | undefined): ReportCardHeroMetrics | null {
+  if (!excerpt?.trim()) return null;
+  const t = excerpt.replace(/\s+/g, " ").trim();
+  const rateM = t.match(/평균\s*낙찰률(?:은)?\s*([\d.]+%)/);
+  const partM = t.match(/평균\s*참여\s*업체수(?:는)?\s*([\d.]+)\s*개/);
+  if (rateM && partM) {
+    return {
+      primaryLine: `평균 낙찰률 ${rateM[1]}`,
+      subtitle: `참여 업체 평균 ${partM[1]}곳`,
+    };
+  }
+  if (rateM) {
+    return { primaryLine: `평균 낙찰률 ${rateM[1]}`, subtitle: null };
+  }
+  if (partM) {
+    return { primaryLine: `참여 업체 평균 ${partM[1]}곳`, subtitle: null };
+  }
+  return null;
+}
+
 /** published_at 또는 id로 카드별 그라데이션 톤 인덱스 (0~4) */
 export function reportCardGradientIndex(seed: string): number {
   let h = 0;

@@ -32,12 +32,24 @@ type Props = {
   categoryTag?: string | null;
   /** 입찰·리포트 탭: excerpt 기반 상단 미니 요약 */
   reportHero?: boolean;
+  /** 지표가 없을 때 히어로 제목 (기본: 당일 요약). 낙찰 리포트 등은 "한눈에 보기" 권장 */
+  reportHeroFallbackTitle?: string;
+  /** 본문(h2 아래) excerpt 숨김 — 히어로에만 요약 표시 */
+  suppressBodyExcerpt?: boolean;
   /** 마케팅·일당 등: payload에서 뽑은 지표(지정 시 excerpt 파싱보다 우선) */
   heroMetrics?: ReportCardHeroMetrics | null;
   /** 그라데이션 구분용 (보통 published_at ISO) */
   accentSeed?: string | null;
+  /** 리포트 탭: 배지 색 구분(입찰·낙찰·기타 스냅샷). 없으면 기존 흰 배지 */
+  reportBadgeKind?: "daily" | "award" | "snapshot" | null;
   /** 카드 푸터 왼쪽: 우리 팀 공유(리포트·입찰 글) */
   footerShare?: NewsCardFooterShareConfig | null;
+};
+
+const REPORT_BADGE_TONE: Record<"daily" | "award" | "snapshot", string> = {
+  daily: "bg-teal-50/95 text-teal-800 ring-1 ring-teal-200/75",
+  award: "bg-violet-50/95 text-violet-800 ring-1 ring-violet-200/75",
+  snapshot: "bg-amber-50/95 text-amber-900 ring-1 ring-amber-200/70",
 };
 
 export default function NewsCard({
@@ -47,11 +59,15 @@ export default function NewsCard({
   date,
   categoryTag = null,
   reportHero = false,
+  reportHeroFallbackTitle = "당일 요약",
+  suppressBodyExcerpt = false,
   heroMetrics = null,
   accentSeed = null,
+  reportBadgeKind = null,
   footerShare = null,
 }: Props) {
-  const fromExcerpt = reportHero ? parseReportCardHeroFromExcerpt(excerpt) : null;
+  const fromExcerpt =
+    reportHero && heroMetrics == null ? parseReportCardHeroFromExcerpt(excerpt) : null;
   const hasMarketingTwoLine =
     Boolean(heroMetrics?.primaryKeywordLine && heroMetrics?.primaryStatusLine);
   const hero =
@@ -161,7 +177,7 @@ export default function NewsCard({
                     <span className="mb-1 text-base font-bold tracking-tight text-slate-600">{hero!.countSuffix}</span>
                   </div>
                 ) : (
-                  <p className="mt-4 text-lg font-bold leading-snug text-slate-800">당일 요약</p>
+                  <p className="mt-4 text-lg font-bold leading-snug text-slate-800">{reportHeroFallbackTitle}</p>
                 )}
 
                 {hero!.trendSummary ? (
@@ -197,7 +213,13 @@ export default function NewsCard({
               </div>
 
               {categoryTag && (
-                <span className="mt-3 inline-flex max-w-full self-start rounded-xl bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-white/60 backdrop-blur-sm">
+                <span
+                  className={
+                    reportBadgeKind
+                      ? `mt-3 inline-flex max-w-full self-start rounded-xl px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm ${REPORT_BADGE_TONE[reportBadgeKind]}`
+                      : "mt-3 inline-flex max-w-full self-start rounded-xl bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-white/60 backdrop-blur-sm"
+                  }
+                >
                   {categoryTag}
                 </span>
               )}
@@ -210,7 +232,13 @@ export default function NewsCard({
               aria-hidden
             />
             {categoryTag && (
-              <span className="absolute bottom-3 left-3 rounded-lg bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm backdrop-blur-sm">
+              <span
+                className={
+                  reportBadgeKind
+                    ? `absolute bottom-3 left-3 rounded-lg px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur-sm ${REPORT_BADGE_TONE[reportBadgeKind]}`
+                    : "absolute bottom-3 left-3 rounded-lg bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm backdrop-blur-sm"
+                }
+              >
                 {categoryTag}
               </span>
             )}
@@ -221,7 +249,7 @@ export default function NewsCard({
           <h2 className="line-clamp-2 font-bold text-slate-800 transition-colors duration-300 group-hover:text-teal-700">
             {title}
           </h2>
-          {excerpt && (
+          {excerpt && !suppressBodyExcerpt && (
             <p className="mt-1.5 line-clamp-2 text-sm text-slate-500">
               {excerpt}
             </p>

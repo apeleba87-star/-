@@ -9,8 +9,6 @@ import {
   parseGugunParam,
   isValidSido,
 } from "@/lib/tenders/user-focus";
-import TenderAwardsCollectNote from "./TenderAwardsCollectNote";
-
 export const revalidate = 60;
 
 const PAGE_SIZE = 50;
@@ -110,7 +108,7 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/20">
         <div className="page-shell py-10 lg:py-12">
-          <h1 className="mb-4 text-3xl font-bold text-slate-900">낙찰·개찰 요약</h1>
+          <h1 className="mb-4 text-3xl font-bold text-slate-900">낙찰공고</h1>
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{msg}</div>
         </div>
       </div>
@@ -122,12 +120,10 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/20">
         <div className="page-shell py-10 lg:py-12">
           <header className="mb-8">
-            <h1 className="mb-2 text-3xl font-bold text-slate-900">낙찰·개찰 요약</h1>
-            <p className="max-w-2xl text-slate-600">
-              나라장터 낙찰정보(용역)를 바탕으로 한 개찰·낙찰 요약입니다. 입찰 공고 목록과는 별도로, 마감된 건의 결과를
-              빠르게 훑을 수 있습니다.
+            <h1 className="mb-2 text-3xl font-bold text-slate-900">낙찰공고</h1>
+            <p className="max-w-2xl text-sm text-slate-600">
+              나라장터 용역 낙찰정보를 업종·지역으로 확인할 수 있습니다. 목록은 주기적으로 갱신됩니다.
             </p>
-            <TenderAwardsCollectNote />
           </header>
           <TenderAwardsFilters
             industries={industries}
@@ -137,7 +133,7 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
             initialSort={sort}
           />
           <p className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
-            선택한 업종·지역에 해당하는 입찰 공고가 없어 낙찰 요약을 표시할 수 없습니다.
+            선택한 업종·지역에 해당하는 입찰 공고가 없어 낙찰공고를 표시할 수 없습니다.
           </p>
           <p className="mt-10 text-center text-sm text-slate-500">
             <Link href="/tenders" className="font-medium text-blue-600 hover:underline">
@@ -163,7 +159,7 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/20">
         <div className="page-shell py-10 lg:py-12">
-          <h1 className="mb-4 text-3xl font-bold text-slate-900">낙찰·개찰 요약</h1>
+          <h1 className="mb-4 text-3xl font-bold text-slate-900">낙찰공고</h1>
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             목록을 불러오지 못했습니다. 마이그레이션 적용 여부를 확인하세요. ({countError.message})
           </div>
@@ -213,12 +209,10 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/20">
       <div className="page-shell py-10 lg:py-12">
         <header className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-slate-900">낙찰·개찰 요약</h1>
-          <p className="max-w-2xl text-slate-600">
-            나라장터 낙찰정보(용역)를 바탕으로 한 개찰·낙찰 요약입니다. 입찰 공고와 같은 업종·지역 필터로 좁힐 수
-            있습니다. 마감된 건의 낙찰금액·개찰일 등은 수집 시점 API 필드와 연결된 공고 정보를 함께 반영합니다.
+          <h1 className="mb-2 text-3xl font-bold text-slate-900">낙찰공고</h1>
+          <p className="max-w-2xl text-sm text-slate-600">
+            나라장터 용역 낙찰정보를 업종·지역으로 확인할 수 있습니다. 목록은 주기적으로 갱신됩니다.
           </p>
-          <TenderAwardsCollectNote />
         </header>
 
         <TenderAwardsFilters
@@ -235,7 +229,7 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
           </div>
         ) : rows.length === 0 ? (
           <p className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
-            표시할 낙찰 요약이 없습니다. 수집 크론 실행 후 다시 확인하거나, 필터를 넓혀 보세요.
+            표시할 낙찰공고가 없습니다. 수집이 완료되면 다시 확인하거나 필터를 넓혀 보세요.
           </p>
         ) : (
           <>
@@ -243,7 +237,7 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
               총 <strong className="text-slate-800">{total.toLocaleString("ko-KR")}</strong>건 중{" "}
               {from + 1}–{Math.min(to + 1, total)}번째
             </p>
-            <ul className="space-y-4">
+            <ul className="space-y-6">
               {rows.map((row) => (
                 <li key={row.id}>
                   <TenderAwardListCard row={row} />

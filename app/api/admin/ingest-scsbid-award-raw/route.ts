@@ -76,7 +76,7 @@ export async function GET() {
 /**
  * POST: Scsbid 용역 낙찰 원천 수집.
  * 쿼리: maxRows (기본 2500, 최대 20000), pageSize (기본 100, 최대 999),
- * lookbackMinutes (기본 환경/250분, 최대 60일 = SCSBID_AWARD_ADMIN_MAX_LOOKBACK_MINUTES)
+ * lookbackMinutes (기본 환경/250분, 상한 60일 = SCSBID_AWARD_ADMIN_MAX_LOOKBACK_MINUTES; 관리자 UI 배치 버튼은 24시간)
  */
 export async function POST(req: NextRequest) {
   const gate = await requireAdminEditor();

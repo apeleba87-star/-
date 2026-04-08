@@ -72,7 +72,7 @@ export async function countOpenTenders(
 
   let q = supabase
     .from("tenders")
-    .select("id", { count: "exact", head: true })
+    .select("id", { count: "estimated", head: true })
     .gte("bid_clse_dt", nowIso);
 
   if (tenderIds != null) q = q.in("id", tenderIds);

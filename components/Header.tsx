@@ -17,6 +17,8 @@ import {
   Calculator,
   Newspaper,
   Shield,
+  Landmark,
+  ChevronDown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import HeaderAuth from "./HeaderAuth";
@@ -31,15 +33,38 @@ type NavItem = {
   shortLabel?: string;
 };
 
+type NavGroup = {
+  kind: "group";
+  label: string;
+  Icon: typeof Home;
+  items: { href: string; label: string; Icon: typeof Home }[];
+};
+
+type PrimaryNavEntry =
+  | ({ kind: "link" } & NavItem)
+  | NavGroup;
+
+type MobileDrawerRow =
+  | ({ kind: "link" } & NavItem)
+  | { kind: "groupHeader"; label: string; Icon: typeof Home }
+  | ({ kind: "groupItem" } & { href: string; label: string; Icon: typeof Home });
+
 /** 데스크톱 가운데: 공개 메뉴만 (한 줄 유지) */
-const primaryNavItems: NavItem[] = [
-  { href: "/", label: "홈", Icon: Home },
-  { href: "/news", label: "업계 소식", Icon: Newspaper },
-  { href: "/tenders", label: "입찰 공고", Icon: Gavel },
-  { href: "/tender-awards", label: "낙찰·개찰", Icon: Trophy },
-  { href: "/listings", label: "현장 거래", Icon: Briefcase },
-  { href: "/jobs", label: "인력 구인", Icon: UserPlus },
-  { href: "/estimate", label: "견적 계산기", Icon: Calculator },
+const primaryNavItems: PrimaryNavEntry[] = [
+  { kind: "link", href: "/", label: "홈", Icon: Home },
+  { kind: "link", href: "/news", label: "업계 소식", Icon: Newspaper },
+  {
+    kind: "group",
+    label: "나라장터 공고",
+    Icon: Landmark,
+    items: [
+      { href: "/tenders", label: "입찰공고", Icon: Gavel },
+      { href: "/tender-awards", label: "낙찰공고", Icon: Trophy },
+    ],
+  },
+  { kind: "link", href: "/listings", label: "현장 거래", Icon: Briefcase },
+  { kind: "link", href: "/jobs", label: "인력 구인", Icon: UserPlus },
+  { kind: "link", href: "/estimate", label: "견적 계산기", Icon: Calculator },
 ];
 
 /** 모바일 드로어 + 데스크톱 오른쪽 (관리자만) */
@@ -55,6 +80,13 @@ function navLinkActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
+function navGroupActive(
+  pathname: string,
+  items: { href: string }[],
+) {
+  return items.some((i) => navLinkActive(pathname, i.href));
+}
+
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
@@ -63,9 +95,25 @@ export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
-  const mobileDrawerItems = [
-    ...primaryNavItems,
-    ...(showAdminNav ? adminNavItems : []),
+  const mobileDrawerItems: MobileDrawerRow[] = [
+    ...primaryNavItems.flatMap((entry): MobileDrawerRow[] =>
+      entry.kind === "link"
+        ? [entry]
+        : [
+            { kind: "groupHeader", label: entry.label, Icon: entry.Icon },
+            ...entry.items.map(
+              (item): MobileDrawerRow => ({
+                kind: "groupItem",
+                ...item,
+              }),
+            ),
+          ],
+    ),
+    ...(showAdminNav
+      ? adminNavItems.map(
+          (item): MobileDrawerRow => ({ kind: "link", ...item }),
+        )
+      : []),
   ];
 
   useEffect(() => {
@@ -158,28 +206,80 @@ export default function Header() {
           >
             {/* PC: 가로 스크롤 없음 — 중앙 열 전체 너비를 쓰고, 매우 좁을 때만 줄바꿈(xl↑ 한 줄 고정) */}
             <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 xl:flex-nowrap xl:gap-x-1">
-              {primaryNavItems.map((item) => {
-                const isActive = navLinkActive(pathname, item.href);
+              {primaryNavItems.map((entry) => {
+                if (entry.kind === "link") {
+                  const isActive = navLinkActive(pathname, entry.href);
+                  return (
+                    <Link
+                      key={entry.href}
+                      href={entry.href}
+                      className="inline-flex shrink-0 cursor-pointer items-center"
+                      prefetch={true}
+                    >
+                      <motion.span
+                        className={`flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-[0.8125rem] font-medium xl:gap-1.5 xl:px-2.5 xl:text-sm ${
+                          isActive
+                            ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <entry.Icon className="h-3.5 w-3.5 shrink-0 xl:h-4 xl:w-4" />
+                        {entry.label}
+                      </motion.span>
+                    </Link>
+                  );
+                }
+                const groupActive = navGroupActive(pathname, entry.items);
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="inline-flex shrink-0 cursor-pointer items-center"
-                    prefetch={true}
+                  <div
+                    key={entry.label}
+                    className="group/item relative inline-flex shrink-0"
                   >
-                    <motion.span
-                      className={`flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-[0.8125rem] font-medium xl:gap-1.5 xl:px-2.5 xl:text-sm ${
-                        isActive
+                    <div
+                      className={`flex cursor-default items-center gap-0.5 whitespace-nowrap rounded-lg px-1.5 py-2 text-[0.8125rem] font-medium xl:gap-1.5 xl:px-2.5 xl:text-sm ${
+                        groupActive
                           ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
+                      role="presentation"
                     >
-                      <item.Icon className="h-3.5 w-3.5 shrink-0 xl:h-4 xl:w-4" />
-                      {item.label}
-                    </motion.span>
-                  </Link>
+                      <entry.Icon className="h-3.5 w-3.5 shrink-0 xl:h-4 xl:w-4" />
+                      <span>{entry.label}</span>
+                      <ChevronDown
+                        className={`h-3 w-3 shrink-0 opacity-70 xl:h-3.5 xl:w-3.5 ${
+                          groupActive ? "text-white" : ""
+                        }`}
+                        aria-hidden
+                      />
+                    </div>
+                    <div
+                      className="invisible absolute left-1/2 top-full z-[60] mt-1 hidden min-w-[11rem] -translate-x-1/2 flex-col rounded-xl border border-slate-200/90 bg-white py-1 shadow-lg opacity-0 transition-[opacity,visibility] duration-150 group-hover/item:visible group-hover/item:flex group-hover/item:opacity-100 group-focus-within/item:visible group-focus-within/item:flex group-focus-within/item:opacity-100"
+                      role="menu"
+                      aria-label={entry.label}
+                    >
+                      {entry.items.map((sub) => {
+                        const subActive = navLinkActive(pathname, sub.href);
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            prefetch={true}
+                            role="menuitem"
+                            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
+                              subActive
+                                ? "bg-teal-50 text-teal-800"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            <sub.Icon className="h-4 w-4 shrink-0 text-slate-500" />
+                            {sub.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -273,12 +373,26 @@ export default function Header() {
               </div>
               <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-4" aria-label="모바일 메뉴">
                 {mobileDrawerItems.map((item) => {
+                  if (item.kind === "groupHeader") {
+                    return (
+                      <div
+                        key={`head-${item.label}`}
+                        className="flex min-h-[40px] items-center gap-2 px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      >
+                        <item.Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                        {item.label}
+                      </div>
+                    );
+                  }
                   const isActive = navLinkActive(pathname, item.href);
+                  const padClass =
+                    item.kind === "groupItem" ? "pl-10" : "px-4";
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 touch-manipulation ${
+                      prefetch={true}
+                      className={`flex min-h-[48px] items-center gap-3 rounded-xl py-3 touch-manipulation ${padClass} ${
                         isActive
                           ? "bg-gradient-to-r from-teal-500/90 to-emerald-600/90 text-white"
                           : "text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"

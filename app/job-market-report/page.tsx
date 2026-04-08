@@ -4,6 +4,8 @@ import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import { getCrossReportDiscoveryPosts } from "@/lib/content/related-report-posts";
 import {
   formatJobWageDominantDisplayName,
   jobWageReportListExcerptFromPayload,
@@ -33,11 +35,14 @@ export default async function JobMarketReportIndexPage() {
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const { data: rows, error } = await supabase
-    .from("job_wage_daily_reports")
-    .select("report_date, headline, payload")
-    .order("report_date", { ascending: false })
-    .limit(365);
+  const [{ data: rows, error }, crossPosts] = await Promise.all([
+    supabase
+      .from("job_wage_daily_reports")
+      .select("report_date, headline, payload")
+      .order("report_date", { ascending: false })
+      .limit(365),
+    getCrossReportDiscoveryPosts(supabase, 4),
+  ]);
 
   if (error) {
     return (
@@ -67,7 +72,7 @@ export default async function JobMarketReportIndexPage() {
             <p className="mx-auto mt-3 max-w-md text-sm text-slate-600">저장된 리포트가 없습니다.</p>
           </div>
           <div className="mt-6">
-            <NewsCategoryTabs current="job_wage" showPrivateTab={isAdmin} />
+            <NewsCategoryTabs section="report" current="job_wage" showPrivateTab={isAdmin} />
           </div>
           <div className="mx-auto mt-10 max-w-lg rounded-3xl border border-slate-200/70 bg-white p-8 text-center shadow-md ring-1 ring-slate-100/80">
             <p className="text-sm text-slate-600">다음으로 이동</p>
@@ -112,7 +117,7 @@ export default async function JobMarketReportIndexPage() {
         </div>
 
         <div className="mt-6">
-          <NewsCategoryTabs current="job_wage" showPrivateTab={isAdmin} />
+          <NewsCategoryTabs section="report" current="job_wage" showPrivateTab={isAdmin} />
         </div>
 
         <ul className="mx-auto mt-8 grid w-full max-w-6xl min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -145,6 +150,17 @@ export default async function JobMarketReportIndexPage() {
           ))}
         </ul>
 
+        {crossPosts.length > 0 ? (
+          <div className="mx-auto mt-10 max-w-5xl">
+            <RelatedReportsSection
+              posts={crossPosts}
+              title="입찰·낙찰 등 최근 업계 리포트"
+              description="일당 스냅샷과 함께 보면 인건비 감과 공고·낙찰 흐름을 같이 짚기 쉽습니다."
+              sectionHeadingId="job-wage-index-cross-reports"
+            />
+          </div>
+        ) : null}
+
         <div className="mx-auto mt-10 max-w-2xl">
           <ReportNextStep
             variant="teal"
@@ -154,7 +170,7 @@ export default async function JobMarketReportIndexPage() {
                 : "일당 흐름을 본 뒤에는, 실제 입찰·예산 흐름과 비교해 보면 판단이 선명해집니다."
             }
             actionLabel="실제 입찰 가격 흐름 보기"
-            href="/news?category=report"
+            href="/news?section=report&category=report"
           />
         </div>
 

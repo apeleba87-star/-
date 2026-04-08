@@ -43,7 +43,7 @@ export default async function HomePage() {
     supabase.from("home_tender_stats").select("open_count, today_count, industry_breakdown, recent_tender_ids, updated_at").maybeSingle(),
     supabase
       .from("posts")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "estimated", head: true })
       .gte("published_at", newsTodayStart)
       .lte("published_at", newsTodayEnd)
       .eq("is_private", false),

@@ -28,7 +28,7 @@ export default async function JobMarketReportEmptyPage() {
           </p>
         </div>
         <div className="mt-6">
-          <NewsCategoryTabs current="job_wage" showPrivateTab={isAdmin} />
+          <NewsCategoryTabs section="report" current="job_wage" showPrivateTab={isAdmin} />
         </div>
 
         <div className="mx-auto mt-10 max-w-lg">
