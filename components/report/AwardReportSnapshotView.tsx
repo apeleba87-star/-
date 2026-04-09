@@ -84,6 +84,7 @@ type Props = {
     }[];
     top_awards?: {
       rank: number;
+      tender_id?: string | null;
       bid_ntce_nm: string;
       region: string;
       agency_name: string;
@@ -238,6 +239,8 @@ export default function AwardReportSnapshotView({
   const topAwards = content.top_awards ?? [];
   const outScope = content.out_of_scope_summary;
   const fmtMoney = (v: number | null) => (v == null ? "—" : `${Math.round(v).toLocaleString("ko-KR")}원`);
+  const getTopAwardHref = (row: { tender_id?: string | null }) =>
+    row.tender_id ? `/tenders/${row.tender_id}` : null;
 
   const industryMax = industryRowsRegistered.reduce(
     (m, r) => (isGuestLockedCount(r.award_count) ? m : Math.max(m, r.award_count)),
@@ -633,7 +636,18 @@ export default function AwardReportSnapshotView({
                             {r.openg_dt ? new Date(r.openg_dt).toLocaleDateString("ko-KR") : "—"}
                           </span>
                         </div>
-                        <p className="mt-2 text-sm font-semibold leading-snug text-slate-900">{r.bid_ntce_nm}</p>
+                        <div className="mt-2">
+                          {getTopAwardHref(r) ? (
+                            <Link
+                              href={getTopAwardHref(r)!}
+                              className="text-sm font-semibold leading-snug text-slate-900 underline decoration-slate-300 underline-offset-2 hover:text-indigo-700 hover:decoration-indigo-300"
+                            >
+                              {r.bid_ntce_nm}
+                            </Link>
+                          ) : (
+                            <p className="text-sm font-semibold leading-snug text-slate-900">{r.bid_ntce_nm}</p>
+                          )}
+                        </div>
                         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600">
                           <span className="truncate" title={r.region}>
                             {r.region}
@@ -728,9 +742,19 @@ export default function AwardReportSnapshotView({
                           ) : (
                             <>
                               <td className="max-w-[18rem] px-4 py-3.5 font-medium text-slate-900">
-                                <span className="line-clamp-2" title={r.bid_ntce_nm}>
-                                  {r.bid_ntce_nm}
-                                </span>
+                                {getTopAwardHref(r) ? (
+                                  <Link
+                                    href={getTopAwardHref(r)!}
+                                    className="line-clamp-2 underline decoration-slate-300 underline-offset-2 hover:text-indigo-700 hover:decoration-indigo-300"
+                                    title={r.bid_ntce_nm}
+                                  >
+                                    {r.bid_ntce_nm}
+                                  </Link>
+                                ) : (
+                                  <span className="line-clamp-2" title={r.bid_ntce_nm}>
+                                    {r.bid_ntce_nm}
+                                  </span>
+                                )}
                               </td>
                               <td className="px-4 py-3.5 text-slate-600">{r.region}</td>
                               <td className="max-w-[10rem] px-4 py-3.5 text-sm text-slate-600">

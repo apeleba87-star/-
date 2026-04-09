@@ -57,6 +57,7 @@ type AwardReportContent = ReportContentBlock & {
   }[];
   top_awards?: {
     rank: number;
+    tender_id?: string | null;
     bid_ntce_nm: string;
     region: string;
     agency_name: string;
@@ -325,6 +326,7 @@ export function buildAwardMarketSnapshot(rows: AwardRow[], now = new Date()): Aw
     .slice(0, 15)
     .map((r, i) => ({
       rank: i + 1,
+      tender_id: r.tender_id ?? null,
       bid_ntce_nm: r.bid_ntce_nm?.trim() || "공고명 없음",
       region: r.region_sido?.trim() || "기타",
       agency_name: r.agency_name?.trim() || "—",

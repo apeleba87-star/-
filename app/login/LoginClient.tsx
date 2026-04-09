@@ -12,14 +12,8 @@ function isValidNext(path: string | null): path is string {
   return p.startsWith("/") && !p.startsWith("//");
 }
 
-type SocialProvider = "google" | "kakao";
+type SocialProvider = "kakao";
 const SOCIAL_PROVIDERS: { provider: SocialProvider; label: string; className?: string; sizeClass?: string }[] = [
-  {
-    provider: "google",
-    label: "Google로 로그인",
-    className: "border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-    sizeClass: "min-h-[48px] py-3 text-sm sm:text-base",
-  },
   {
     provider: "kakao",
     label: "카카오로 로그인",

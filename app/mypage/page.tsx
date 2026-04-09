@@ -89,6 +89,11 @@ export default async function MypagePage() {
               인력 구인 목록
             </Link>
           </li>
+          <li>
+            <Link href="/partners/performance" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50">
+              협력센터 광고 성과
+            </Link>
+          </li>
         </ul>
       </section>
 

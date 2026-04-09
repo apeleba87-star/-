@@ -7,19 +7,12 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 /**
  * 매 요청마다 Supabase 세션을 갱신하고 쿠키를 응답에 반영.
  * 서버 컴포넌트와 클라이언트가 동일한 세션을 보도록 함 (로그인 직후 메뉴 이동 시 재로그인 요구 방지).
+ * OAuth 직후 첫 요청에서 sb- 쿠키가 아직 안 붙은 레이스가 있어, 쿠키 유무와 관계없이 getUser()를 호출합니다.
  */
-function hasSupabaseAuthCookie(req: NextRequest): boolean {
-  return req.cookies.getAll().some((c) => c.name.startsWith("sb-"));
-}
-
 async function updateSession(req: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request: req });
 
   if (!url || !key) return response;
-
-  if (!hasSupabaseAuthCookie(req)) {
-    return response;
-  }
 
   const supabase = createServerClient(url, key, {
     cookies: {

@@ -40,11 +40,14 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // 쿠키 스토리지에 세션이 완전히 반영되도록 한 번 더 읽기 (OAuth 직후 RSC/middleware와 타이밍 맞춤)
+      await supabase.auth.getUser();
       return response;
     }
   } else if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     if (!error) {
+      await supabase.auth.getUser();
       return response;
     }
   }

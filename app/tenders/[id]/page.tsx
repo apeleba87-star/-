@@ -187,7 +187,7 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
     | string
     | undefined;
 
-  const similarTenders = await fetchSimilarOpenTenders(supabase, {
+  const similarTendersResult = await fetchSimilarOpenTenders(supabase, {
     excludeTenderId: id,
     industryCodes: recommendationIndustryCodes,
     regionSido: recommendationRegionSido ?? null,
@@ -216,7 +216,8 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
 
         <TenderDetailAwardBanner state={awardBannerState} />
         <SimilarTendersList
-          items={similarTenders}
+          items={similarTendersResult.items}
+          mode={similarTendersResult.mode}
           industryCodes={recommendationIndustryCodes}
           regionSido={recommendationRegionSido ?? null}
           regionGugun={null}

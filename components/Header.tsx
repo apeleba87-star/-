@@ -24,6 +24,7 @@ import {
   BookOpen,
   Sparkles,
   HelpCircle,
+  Handshake,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import HeaderAuth from "./HeaderAuth";
@@ -104,7 +105,8 @@ const primaryNavItems: PrimaryNavEntry[] = [
     label: "서비스",
     Icon: Layers,
     items: [
-      { href: "/listings", label: "협력 센터", Icon: Briefcase },
+      { href: "/listings", label: "현장 마켓", Icon: Briefcase },
+      { href: "/partners", label: "협력 센터", Icon: Handshake },
       { href: "/jobs", label: "인력 센터", Icon: UserPlus },
     ],
   },

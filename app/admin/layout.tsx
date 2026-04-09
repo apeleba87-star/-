@@ -100,6 +100,9 @@ export default async function AdminLayout({
         <Link href="/admin/listings/external" className="font-medium text-slate-700 hover:text-slate-900">
           현장거래 등록(외부)
         </Link>
+        <Link href="/admin/partners" className="font-medium text-slate-700 hover:text-slate-900">
+          협력센터 관리
+        </Link>
         <Link href="/admin/listings/deal-completions" className="font-medium text-slate-700 hover:text-slate-900">
           거래 완료 신고 확인
         </Link>

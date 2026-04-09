@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ListTree } from "lucide-react";
-import type { SimilarTenderBrief } from "@/lib/tenders/similar-tenders-for-detail";
+import type { SimilarTenderBrief, SimilarTendersMode } from "@/lib/tenders/similar-tenders-for-detail";
 import { buildTendersSearchParams } from "@/lib/tenders/user-focus";
 import { formatMoneyMan, shortRegion, ddayNumber } from "@/lib/tender-utils";
 
@@ -29,17 +29,34 @@ function formatMetaLine(t: SimilarTenderBrief): string {
 
 export default function SimilarTendersList(props: {
   items: SimilarTenderBrief[];
+  mode: SimilarTendersMode;
   industryCodes: string[];
   regionSido: string | null;
   regionGugun: string | null;
 }) {
-  const { items, industryCodes, regionSido, regionGugun } = props;
+  const { items, mode, industryCodes, regionSido, regionGugun } = props;
+  const headerDesc =
+    mode === "industry_region"
+      ? "같은 업종·지역의 진행 중 공고"
+      : mode === "region_only"
+        ? "같은 지역의 진행 중 공고 (업종 완화)"
+        : mode === "industry_only"
+          ? "같은 업종의 진행 중 공고 (지역 완화)"
+          : "조건과 무관한 최신 진행 중 공고";
+  const ctaLabel =
+    mode === "industry_region"
+      ? "전체 목록"
+      : mode === "region_only"
+        ? "지역 전체 보기"
+        : mode === "industry_only"
+          ? "업종 전체 보기"
+          : "최신 공고 전체";
   const fullListHref =
     "/tenders" +
     buildTendersSearchParams({
-      industryCodes,
-      regionSido,
-      regionGugun,
+      industryCodes: mode === "industry_only" || mode === "industry_region" ? industryCodes : [],
+      regionSido: mode === "region_only" || mode === "industry_region" ? regionSido : null,
+      regionGugun: mode === "region_only" || mode === "industry_region" ? regionGugun : null,
       sort: "posted",
     });
 
@@ -52,7 +69,7 @@ export default function SimilarTendersList(props: {
           </span>
           <div className="min-w-0">
             <h2 className="text-base font-bold tracking-tight text-slate-900 md:text-lg">유사 입찰</h2>
-            <p className="mt-0.5 text-xs text-slate-500 md:text-sm">같은 업종·지역의 진행 중 공고</p>
+            <p className="mt-0.5 text-xs text-slate-500 md:text-sm">{headerDesc}</p>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -65,7 +82,7 @@ export default function SimilarTendersList(props: {
             href={fullListHref}
             className="inline-flex min-h-[40px] items-center gap-1 rounded-xl border-2 border-teal-600 bg-white px-3.5 py-2 text-sm font-bold text-teal-700 shadow-sm hover:bg-teal-50"
           >
-            전체 목록
+            {ctaLabel}
             <ArrowRight className="size-4 shrink-0" aria-hidden />
           </Link>
         </div>
@@ -74,7 +91,7 @@ export default function SimilarTendersList(props: {
       <div className="p-3 md:p-4">
         {items.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm leading-relaxed text-slate-600">
-            추출된 업종·지역이 없거나, 조건에 맞는 진행 중 공고가 없습니다.
+            조건에 맞는 진행 중 공고가 없습니다.
             <Link href="/tenders" className="mt-2 inline-block font-semibold text-blue-600 hover:underline">
               입찰 목록으로 이동
             </Link>

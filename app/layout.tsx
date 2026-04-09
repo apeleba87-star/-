@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
 import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -75,6 +76,7 @@ function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-JXV9GMLMEZ');`}
         </Script>
+        <SupabaseSessionRefresh />
         <Header />
         <main className="flex min-h-0 min-w-0 w-full max-w-[100vw] flex-1 flex-col items-stretch pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)] lg:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
           {children}
