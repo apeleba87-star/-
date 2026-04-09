@@ -15,6 +15,18 @@ export function formatMoneyMan(value: number | null | undefined): string {
   return man >= 10000 ? `${(man / 10000).toFixed(1)}억원` : `${man.toLocaleString("ko-KR")}만원`;
 }
 
+/** 홈 히어로 등: `3억 5,000만 원` (정수 원 기준, 억·만 분해) */
+export function formatBudgetEokManWon(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value) || value < 0) return "—";
+  const rounded = Math.round(Number(value));
+  const eok = Math.floor(rounded / 100_000_000);
+  const man = Math.floor((rounded % 100_000_000) / 10_000);
+  if (eok > 0 && man > 0) return `${eok}억 ${man.toLocaleString("ko-KR")}만 원`;
+  if (eok > 0) return `${eok}억 원`;
+  if (man > 0) return `${man.toLocaleString("ko-KR")}만 원`;
+  return `${rounded.toLocaleString("ko-KR")}원`;
+}
+
 /** 날짜 포맷 (서버/클라이언트 동일 출력으로 hydration 오류 방지) */
 export function formatDate(iso: string | null | undefined, options?: { withTime?: boolean }): string {
   if (!iso) return "—";

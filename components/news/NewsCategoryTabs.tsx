@@ -45,7 +45,7 @@ export default function NewsCategoryTabs({ section, current, showPrivateTab }: P
     <div className="space-y-3">
       <nav
         className="flex justify-center gap-2"
-        aria-label="리포트 또는 업계 소식"
+        aria-label="리포트 또는 데이터랩"
       >
         <Link
           href="/news?section=report&category=report"
@@ -65,7 +65,7 @@ export default function NewsCategoryTabs({ section, current, showPrivateTab }: P
               : "bg-white text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-50"
           }`}
         >
-          업계 소식
+          데이터랩
         </Link>
       </nav>
 
@@ -91,7 +91,7 @@ export default function NewsCategoryTabs({ section, current, showPrivateTab }: P
       ) : (
         <nav
           className="flex gap-1.5 rounded-xl border border-slate-200/80 bg-white/60 p-1.5 scrollbar-thin max-md:flex-nowrap max-md:overflow-x-auto md:flex-wrap md:justify-center"
-          aria-label="업계 소식 카테고리"
+          aria-label="데이터랩 카테고리"
         >
           {industryTabs.map((tab) => (
             <Link

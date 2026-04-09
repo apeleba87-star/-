@@ -1,17 +1,19 @@
-import { Suspense } from "react";
 import { createClient, createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { getActiveHomeAds } from "@/lib/ads";
 import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import { getKstTodayString, getKstTodayUtcRange } from "@/lib/jobs/kst-date";
 import { buildOpenVisibleJobsOrFilter } from "@/lib/jobs/visibility";
-import HomeDashboard from "@/components/home/HomeDashboard";
+import { fetchHomeSpotlightTender, formatDataSyncedLabel } from "@/lib/home/home-spotlight";
+import HomeCleanIndexHero from "@/components/home/HomeCleanIndexHero";
+import HomeLandingSection from "@/components/home/HomeLandingSection";
+import HomeValuePropositionGrid from "@/components/home/HomeValuePropositionGrid";
+import HomeTrustStrip from "@/components/home/HomeTrustStrip";
+import HomeBottomCta from "@/components/home/HomeBottomCta";
 import TenderSection from "@/components/home/TenderSection";
 import NewsSection from "@/components/home/NewsSection";
 import DataInsightSection from "@/components/home/DataInsightSection";
-import HomeUserStatsSection from "@/components/home/HomeUserStatsSection";
-import HomeUserStatsSkeleton from "@/components/home/HomeUserStatsSkeleton";
-import HomeUserStatsGuestPlaceholder from "@/components/home/HomeUserStatsGuestPlaceholder";
+import { HOME_LANDING } from "@/lib/copy/home-landing";
 
 /** 홈은 집계 테이블·크론 갱신 위주라 30초 ISR로 원본 부하 완화 */
 export const revalidate = 30;
@@ -19,7 +21,7 @@ export const revalidate = 30;
 const LISTING_DEAL_TYPES = ["referral_regular", "referral_one_time", "sale_regular", "subcontract"];
 
 /**
- * 홈 첫 렌더: 집계 테이블 + 얕은 최신 목록만. 개인화(userStats)는 Suspense로 후속 스트리밍.
+ * 홈 첫 렌더: 집계 테이블 + 얕은 최신 목록만.
  * getHomeTenderStats() 호출 제거 — 홈은 home_tender_stats만 읽고, 갱신은 크론이 담당.
  */
 export default async function HomePage() {
@@ -27,6 +29,7 @@ export default async function HomePage() {
   const authSupabase = await createServerSupabase();
   const todayKst = getKstTodayString();
   const [newsTodayStart, newsTodayEnd] = getKstTodayUtcRange();
+  const openVisibleFilter = buildOpenVisibleJobsOrFilter(todayKst);
 
   const [
     jobPostStatsRow,
@@ -34,9 +37,8 @@ export default async function HomePage() {
     homeTenderStatsRow,
     newsCountRes,
     newsPostsRes,
-    recentListingsRes,
-    latestNewsletterRes,
     userRes,
+    spotlightTender,
   ] = await Promise.all([
     supabase.from("job_post_stats").select("open_count").maybeSingle(),
     supabase.from("listing_stats").select("total_count").maybeSingle(),
@@ -54,21 +56,8 @@ export default async function HomePage() {
       .eq("is_private", false)
       .order("published_at", { ascending: false })
       .limit(5),
-    supabase
-      .from("listings")
-      .select("id, title")
-      .eq("status", "open")
-      .in("listing_type", LISTING_DEAL_TYPES)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase
-      .from("newsletter_issues")
-      .select("id, subject, sent_at")
-      .not("sent_at", "is", null)
-      .order("sent_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
     authSupabase.auth.getUser(),
+    fetchHomeSpotlightTender(supabase),
   ]);
 
   const newsCount = newsCountRes.count ?? 0;
@@ -80,7 +69,6 @@ export default async function HomePage() {
   let listingsCount = listingStats?.total_count ?? 0;
   // 인력 구인 건수: service role로 직접 집계해 RLS/캐시와 무관하게 실제 건수 표시 (등록 직후 반영)
   let jobsOpenCount = jobPostStats?.open_count ?? 0;
-  const openVisibleFilter = buildOpenVisibleJobsOrFilter(todayKst);
   try {
     const service = createServiceSupabase();
     const directJobsRes = await service
@@ -107,8 +95,6 @@ export default async function HomePage() {
       if (!fallbackRes.error && (fallbackRes.count ?? 0) > 0) jobsOpenCount = fallbackRes.count ?? 0;
     }
   }
-  const recentListings = recentListingsRes.data ?? [];
-  const latestNewsletter = latestNewsletterRes.data;
   const user = userRes.data.user;
 
   // 등록 업종(업종관리 사용 ON) 기준 건수만 사용. fallback 시에도 getHomeTenderStats로 동일 기준 적용.
@@ -195,57 +181,61 @@ export default async function HomePage() {
 
   const ads = await getActiveHomeAds();
 
-  const userStatsSlot =
-    user != null ? (
-      <Suspense fallback={<HomeUserStatsSkeleton />}>
-        <HomeUserStatsSection userId={user.id} todayKst={todayKst} />
-      </Suspense>
-    ) : (
-      <HomeUserStatsGuestPlaceholder />
-    );
+  const tenderSyncedLabel = formatDataSyncedLabel(homeTenderStats?.updated_at ?? null);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
-      <div className="page-shell py-8 sm:py-10 lg:py-12">
-        <div className="mx-auto w-full max-w-3xl sm:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
-        <HomeDashboard
-          tenderCount={tenderStats.tenderCount}
-          tenderTodayCount={tenderStats.tenderTodayCount}
-          newsCount={newsCount}
-          listingsCount={listingsCount}
-          recentListings={recentListings}
-          jobsOpenCount={jobsOpenCount}
-          latestNewsletter={latestNewsletter}
+    <div className="min-h-screen bg-zinc-100 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(120,113,198,0.08),transparent_50%),radial-gradient(ellipse_80%_50%_at_100%_50%,rgba(14,165,233,0.05),transparent_45%)]">
+      <div className="page-shell py-6 sm:py-10 lg:py-12">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 sm:max-w-4xl sm:gap-12 lg:gap-14 xl:max-w-5xl 2xl:max-w-6xl">
+        <HomeCleanIndexHero
+          tender={spotlightTender}
+          syncedLabel={tenderSyncedLabel}
           isLoggedIn={!!user}
-          userStatsSlot={userStatsSlot}
         />
 
-        <div className="mt-10 space-y-10 sm:mt-12">
-          {(ads.premium_banner?.enabled && (ads.premium_banner.campaign || ads.premium_banner.script_content)) ? (
-            <AdSlotRenderer slot={ads.premium_banner} variant="banner" />
-          ) : null}
+        <HomeLandingSection
+          id="services"
+          title={HOME_LANDING.valueTitle}
+          subtitle={HOME_LANDING.valueSubtitle}
+        >
+          <HomeValuePropositionGrid isLoggedIn={!!user} />
+          <div className="mt-8 sm:mt-10">
+            <HomeTrustStrip
+              tenderCount={tenderStats.tenderCount}
+              tenderTodayCount={tenderStats.tenderTodayCount}
+              newsCount={newsCount}
+              listingsCount={listingsCount}
+              jobsOpenCount={jobsOpenCount}
+              syncedLabel={tenderSyncedLabel}
+            />
+          </div>
+        </HomeLandingSection>
 
-          <TenderSection
-            tenders={tenderStats.recentTenders}
-            relatedCount={tenderStats.tenderCount}
-            todayCount={tenderStats.tenderTodayCount}
-            industryBreakdown={tenderStats.industryBreakdown}
-            isLoggedIn={!!user}
-          />
-          <NewsSection posts={news} isLoggedIn={!!user} />
+        {(ads.premium_banner?.enabled && (ads.premium_banner.campaign || ads.premium_banner.script_content)) ? (
+          <AdSlotRenderer slot={ads.premium_banner} variant="banner" />
+        ) : null}
 
-          {(ads.native_card?.enabled && (ads.native_card.campaign || ads.native_card.script_content)) ? (
-            <AdSlotRenderer slot={ads.native_card} variant="card" />
-          ) : null}
+        <TenderSection
+          tenders={tenderStats.recentTenders}
+          relatedCount={tenderStats.tenderCount}
+          todayCount={tenderStats.tenderTodayCount}
+          industryBreakdown={tenderStats.industryBreakdown}
+          isLoggedIn={!!user}
+        />
+        <NewsSection posts={news} isLoggedIn={!!user} />
 
-          {(ads.home_bottom?.enabled && (ads.home_bottom.campaign || ads.home_bottom.script_content)) ? (
-            <div>
-              <AdSlotRenderer slot={ads.home_bottom} variant="card" />
-            </div>
-          ) : null}
+        {(ads.native_card?.enabled && (ads.native_card.campaign || ads.native_card.script_content)) ? (
+          <AdSlotRenderer slot={ads.native_card} variant="card" />
+        ) : null}
 
-          <DataInsightSection />
-        </div>
+        {(ads.home_bottom?.enabled && (ads.home_bottom.campaign || ads.home_bottom.script_content)) ? (
+          <div>
+            <AdSlotRenderer slot={ads.home_bottom} variant="card" />
+          </div>
+        ) : null}
+
+        <DataInsightSection />
+        <HomeBottomCta isLoggedIn={!!user} />
         </div>
       </div>
     </div>

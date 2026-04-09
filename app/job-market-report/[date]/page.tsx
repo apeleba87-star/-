@@ -566,7 +566,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             <RelatedReportsSection
               posts={crossPosts}
               title="입찰·낙찰 등 업계 리포트"
-              description="업계 소식에 발행된 최근 글입니다. 유형이 섞여 있도록 골랐습니다."
+              description="데이터랩에 발행된 최근 글입니다. 유형이 섞여 있도록 골랐습니다."
               sectionHeadingId="job-wage-date-cross-reports"
             />
           ) : null}

@@ -573,14 +573,14 @@ export default function TendersListWithFilters({
               매주 청소 입찰 시장 요약을 받아보세요
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              입찰 리포트와 업계 소식을 한곳에서 확인할 수 있습니다.
+              입찰 리포트와 데이터랩을 한곳에서 확인할 수 있습니다.
             </p>
             <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/news"
                 className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
               >
-                리포트·업계 소식 보기
+                리포트·데이터랩 보기
               </Link>
               <Link
                 href="/archive"
@@ -638,14 +638,14 @@ export default function TendersListWithFilters({
               매주 청소 입찰 시장 요약을 받아보세요
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              입찰 리포트와 업계 소식을 한곳에서 확인할 수 있습니다.
+              입찰 리포트와 데이터랩을 한곳에서 확인할 수 있습니다.
             </p>
             <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/news"
                 className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
               >
-                리포트·업계 소식 보기
+                리포트·데이터랩 보기
               </Link>
               <Link
                 href="/archive"

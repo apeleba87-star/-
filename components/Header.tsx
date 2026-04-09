@@ -115,7 +115,7 @@ const primaryNavItems: PrimaryNavEntry[] = [
     label: "콘텐츠",
     Icon: BookOpen,
     items: [
-      { label: "업계 소식", Icon: Newspaper, disabled: true },
+      { href: "/news", label: "데이터랩", Icon: Newspaper },
       { href: "/estimate", label: "견적 계산기", Icon: Calculator },
       { label: "청소 기술", Icon: FileText, disabled: true },
       { label: "이용 안내", Icon: HelpCircle, disabled: true },

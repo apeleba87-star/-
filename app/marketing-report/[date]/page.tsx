@@ -301,7 +301,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
             <RelatedReportsSection
               posts={crossPosts}
               title="입찰·낙찰 등 업계 리포트"
-              description="업계 소식에 발행된 최근 글입니다. 유형이 섞여 있도록 골랐습니다."
+              description="데이터랩에 발행된 최근 글입니다. 유형이 섞여 있도록 골랐습니다."
               sectionHeadingId="marketing-date-cross-reports"
             />
           ) : null}
@@ -362,7 +362,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
               href="/news?section=report&category=report"
               className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800"
             >
-              입찰 리포트(업계 소식)
+              입찰 리포트(데이터랩)
             </Link>
             <Link
               href="/job-market-report"

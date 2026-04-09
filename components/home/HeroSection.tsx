@@ -31,7 +31,7 @@ export default function HeroSection({
       href: "/categories/industry",
       count: newsCount,
       subCount: undefined,
-      label: "업계 소식",
+      label: "데이터랩",
       subLabel: undefined,
       color: "#7c3aed",
       Icon: Newspaper,

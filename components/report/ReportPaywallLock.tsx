@@ -91,7 +91,7 @@ export default function ReportPaywallLock({ postId, loginReturnPath, title, exce
       )}
       <p className="mt-4 text-xs text-slate-500">
         <Link href="/news" className="underline hover:text-slate-700">
-          업계 소식 목록
+          데이터랩 목록
         </Link>
         으로 돌아가기
       </p>

@@ -515,7 +515,7 @@ export default function ReportSnapshotView({
             매주 청소 입찰 시장 요약을 받아보세요
           </p>
           <p className="text-xs text-white/80 sm:text-sm">
-            리포트와 업계 소식을 한곳에서 이메일로 정리해드립니다.
+            리포트와 데이터랩을 한곳에서 이메일로 정리해드립니다.
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
             <Link

@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         </p>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-700">
           <li>회원 가입·관리: 회원제 서비스 제공, 본인 확인, 부정 이용 방지</li>
-          <li>뉴스레터·업계 소식: 구독 및 콘텐츠 제공</li>
+          <li>뉴스레터·데이터랩: 구독 및 콘텐츠 제공</li>
           <li>인력 구인·현장 거래: 구인·구직·매칭, 연락처 등 제공(확정 시에 한함)</li>
           <li>입찰 공고·견적 계산기: 서비스 이용 및 통계</li>
           <li>고객 문의·민원 처리</li>

@@ -11,8 +11,8 @@ import { redirect } from "next/navigation";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "뉴스·리포트",
-  description: "청소·방역 입찰 리포트와 업계 뉴스. 클린아이덱스에서 입찰 요약, 마감 임박, 개찰 예정 공고와 업계 정보를 확인하세요.",
+  title: "데이터랩",
+  description: "청소·방역 입찰 리포트와 데이터랩. 클린아이덱스에서 입찰 요약, 마감 임박, 개찰 예정 공고와 업계 정보를 확인하세요.",
 };
 
 const CATEGORY_REPORT = "report";
@@ -98,7 +98,7 @@ export default async function NewsPage({
         <div className="page-shell py-10 lg:py-12">
           <div className="lg:text-center">
             <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-              업계 소식
+              데이터랩
             </h1>
             <p className="mb-6 text-sm text-slate-600">
               사용자에게 비공개로 설정된 글입니다. 관리자만 열람할 수 있습니다.
@@ -165,7 +165,7 @@ export default async function NewsPage({
         <div className="page-shell py-10 lg:py-12">
           <div className="lg:text-center">
             <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-              업계 소식
+              데이터랩
             </h1>
             <p className="mb-6 text-sm text-slate-600">
               청소·소독·방역 관련 약품, 장비, 근로, 업계이슈 소식입니다.
@@ -227,12 +227,12 @@ export default async function NewsPage({
       <div className="page-shell py-10 lg:py-12">
         <div className="lg:text-center">
           <h1 className="mb-2 bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-            업계 소식
+            데이터랩
           </h1>
           <p className="mb-6 text-sm text-slate-600">
             {isAwardReportCategory
               ? "청소·소독·방역 낙찰 리포트 모음입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다."
-              : "청소·소독·방역 입찰 리포트와 업계 소식입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다."}
+              : "청소·소독·방역 입찰 리포트와 데이터랩 콘텐츠입니다. 리포트별 열람 조건은 글 상단에서 안내됩니다."}
           </p>
         </div>
         <NewsCategoryTabs section="report" current={category} showPrivateTab={isAdmin} />
