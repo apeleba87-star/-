@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,6 +19,11 @@ import {
   Shield,
   Landmark,
   ChevronDown,
+  BarChart3,
+  Layers,
+  BookOpen,
+  Sparkles,
+  HelpCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import HeaderAuth from "./HeaderAuth";
@@ -33,38 +38,87 @@ type NavItem = {
   shortLabel?: string;
 };
 
+type NavSubItem = {
+  href?: string;
+  label: string;
+  Icon: typeof Home;
+  disabled?: boolean;
+};
+
+type NavColumn = { title: string; items: NavSubItem[] };
+
 type NavGroup = {
   kind: "group";
   label: string;
   Icon: typeof Home;
-  items: { href: string; label: string; Icon: typeof Home }[];
+  items: NavSubItem[];
+};
+
+type NavMegaGroup = {
+  kind: "mega";
+  label: string;
+  Icon: typeof Home;
+  columns: NavColumn[];
 };
 
 type PrimaryNavEntry =
   | ({ kind: "link" } & NavItem)
-  | NavGroup;
+  | NavGroup
+  | NavMegaGroup;
 
 type MobileDrawerRow =
   | ({ kind: "link" } & NavItem)
   | { kind: "groupHeader"; label: string; Icon: typeof Home }
-  | ({ kind: "groupItem" } & { href: string; label: string; Icon: typeof Home });
+  | { kind: "subHeader"; label: string }
+  | ({ kind: "groupItem" } & { href: string; label: string; Icon: typeof Home })
+  | { kind: "disabledItem"; label: string; Icon: typeof Home };
 
-/** 데스크톱 가운데: 공개 메뉴만 (한 줄 유지) */
+/** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "홈", Icon: Home },
-  { kind: "link", href: "/news", label: "업계 소식", Icon: Newspaper },
   {
-    kind: "group",
-    label: "나라장터 공고",
-    Icon: Landmark,
-    items: [
-      { href: "/tenders", label: "입찰공고", Icon: Gavel },
-      { href: "/tender-awards", label: "낙찰공고", Icon: Trophy },
+    kind: "mega",
+    label: "데이터 분석",
+    Icon: BarChart3,
+    columns: [
+      {
+        title: "나라장터 공고",
+        items: [
+          { href: "/tenders", label: "입찰", Icon: Gavel },
+          { href: "/tender-awards", label: "낙찰", Icon: Trophy },
+        ],
+      },
+      {
+        title: "일간 리포트",
+        items: [
+          { href: "/news?section=report&category=report", label: "입찰", Icon: Gavel },
+          { href: "/news?section=report&category=award_report", label: "낙찰", Icon: Trophy },
+          { href: "/marketing-report", label: "마케팅", Icon: Sparkles },
+          { href: "/job-market-report", label: "일당", Icon: Landmark },
+        ],
+      },
     ],
   },
-  { kind: "link", href: "/listings", label: "현장 거래", Icon: Briefcase },
-  { kind: "link", href: "/jobs", label: "인력 구인", Icon: UserPlus },
-  { kind: "link", href: "/estimate", label: "견적 계산기", Icon: Calculator },
+  {
+    kind: "group",
+    label: "서비스",
+    Icon: Layers,
+    items: [
+      { href: "/listings", label: "협력 센터", Icon: Briefcase },
+      { href: "/jobs", label: "인력 센터", Icon: UserPlus },
+    ],
+  },
+  {
+    kind: "group",
+    label: "콘텐츠",
+    Icon: BookOpen,
+    items: [
+      { label: "업계 소식", Icon: Newspaper, disabled: true },
+      { href: "/estimate", label: "견적 계산기", Icon: Calculator },
+      { label: "청소 기술", Icon: FileText, disabled: true },
+      { label: "이용 안내", Icon: HelpCircle, disabled: true },
+    ],
+  },
 ];
 
 /** 모바일 드로어 + 데스크톱 오른쪽 (관리자만) */
@@ -76,39 +130,94 @@ const adminNavItems: NavItem[] = [
 const iconBtnClass =
   "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-white/60 hover:text-slate-900 touch-manipulation";
 
-function navLinkActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+function navLinkActive(
+  pathname: string,
+  searchParams: URLSearchParams | null,
+  href: string,
+) {
+  if (!href.includes("?")) {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
+  const sp = searchParams ?? new URLSearchParams();
+  const [path, query] = href.split("?");
+  if (pathname !== path) return false;
+  const want = new URLSearchParams(query);
+  for (const key of want.keys()) {
+    if (sp.get(key) !== want.get(key)) return false;
+  }
+  return true;
 }
 
-function navGroupActive(
+function navSubItemActive(
   pathname: string,
-  items: { href: string }[],
+  searchParams: URLSearchParams | null,
+  item: NavSubItem,
 ) {
-  return items.some((i) => navLinkActive(pathname, i.href));
+  if (item.disabled || !item.href) return false;
+  return navLinkActive(pathname, searchParams, item.href);
+}
+
+function navEntryActive(
+  pathname: string,
+  searchParams: URLSearchParams | null,
+  entry: NavGroup | NavMegaGroup,
+) {
+  if (entry.kind === "group") {
+    return entry.items.some((i) =>
+      navSubItemActive(pathname, searchParams, i),
+    );
+  }
+  return entry.columns.some((col) =>
+    col.items.some((i) => navSubItemActive(pathname, searchParams, i)),
+  );
+}
+
+function primaryToMobileRows(entry: PrimaryNavEntry): MobileDrawerRow[] {
+  if (entry.kind === "link") return [entry];
+  if (entry.kind === "mega") {
+    return [
+      { kind: "groupHeader", label: entry.label, Icon: entry.Icon },
+      ...entry.columns.flatMap((col) => [
+        { kind: "subHeader" as const, label: col.title },
+        ...col.items.map((item): MobileDrawerRow =>
+          item.disabled || !item.href
+            ? { kind: "disabledItem", label: item.label, Icon: item.Icon }
+            : {
+                kind: "groupItem",
+                href: item.href,
+                label: item.label,
+                Icon: item.Icon,
+              },
+        ),
+      ]),
+    ];
+  }
+  return [
+    { kind: "groupHeader", label: entry.label, Icon: entry.Icon },
+    ...entry.items.map((item): MobileDrawerRow =>
+      item.disabled || !item.href
+        ? { kind: "disabledItem", label: item.label, Icon: item.Icon }
+        : {
+            kind: "groupItem",
+            href: item.href,
+            label: item.label,
+            Icon: item.Icon,
+          },
+    ),
+  ];
 }
 
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdminNav, setShowAdminNav] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
   const mobileDrawerItems: MobileDrawerRow[] = [
-    ...primaryNavItems.flatMap((entry): MobileDrawerRow[] =>
-      entry.kind === "link"
-        ? [entry]
-        : [
-            { kind: "groupHeader", label: entry.label, Icon: entry.Icon },
-            ...entry.items.map(
-              (item): MobileDrawerRow => ({
-                kind: "groupItem",
-                ...item,
-              }),
-            ),
-          ],
-    ),
+    ...primaryNavItems.flatMap(primaryToMobileRows),
     ...(showAdminNav
       ? adminNavItems.map(
           (item): MobileDrawerRow => ({ kind: "link", ...item }),
@@ -208,7 +317,11 @@ export default function Header() {
             <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 xl:flex-nowrap xl:gap-x-1">
               {primaryNavItems.map((entry) => {
                 if (entry.kind === "link") {
-                  const isActive = navLinkActive(pathname, entry.href);
+                  const isActive = navLinkActive(
+                    pathname,
+                    searchParams,
+                    entry.href,
+                  );
                   return (
                     <Link
                       key={entry.href}
@@ -231,7 +344,12 @@ export default function Header() {
                     </Link>
                   );
                 }
-                const groupActive = navGroupActive(pathname, entry.items);
+                const groupActive = navEntryActive(
+                  pathname,
+                  searchParams,
+                  entry,
+                );
+                const isMega = entry.kind === "mega";
                 return (
                   <div
                     key={entry.label}
@@ -255,29 +373,105 @@ export default function Header() {
                       />
                     </div>
                     <div
-                      className="invisible absolute left-1/2 top-full z-[60] mt-1 hidden min-w-[11rem] -translate-x-1/2 flex-col rounded-xl border border-slate-200/90 bg-white py-1 shadow-lg opacity-0 transition-[opacity,visibility] duration-150 group-hover/item:visible group-hover/item:flex group-hover/item:opacity-100 group-focus-within/item:visible group-focus-within/item:flex group-focus-within/item:opacity-100"
+                      className={`invisible absolute left-1/2 top-full z-[60] mt-1 hidden -translate-x-1/2 rounded-xl border border-slate-200/90 bg-white py-2 shadow-lg opacity-0 transition-[opacity,visibility] duration-150 group-hover/item:visible group-hover/item:flex group-hover/item:opacity-100 group-focus-within/item:visible group-focus-within/item:flex group-focus-within/item:opacity-100 ${
+                        isMega
+                          ? "min-w-[20rem] flex-row gap-0 px-0"
+                          : "min-w-[11rem] flex-col py-1"
+                      }`}
                       role="menu"
                       aria-label={entry.label}
                     >
-                      {entry.items.map((sub) => {
-                        const subActive = navLinkActive(pathname, sub.href);
-                        return (
-                          <Link
-                            key={sub.href}
-                            href={sub.href}
-                            prefetch={true}
-                            role="menuitem"
-                            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
-                              subActive
-                                ? "bg-teal-50 text-teal-800"
-                                : "text-slate-700 hover:bg-slate-50"
-                            }`}
-                          >
-                            <sub.Icon className="h-4 w-4 shrink-0 text-slate-500" />
-                            {sub.label}
-                          </Link>
-                        );
-                      })}
+                      {isMega
+                        ? entry.columns.map((col) => (
+                            <div
+                              key={col.title}
+                              className="min-w-[9.5rem] border-slate-100 px-3 first:border-r first:pr-4"
+                            >
+                              <p className="px-1 pb-1.5 pt-0.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-400">
+                                {col.title}
+                              </p>
+                              <div className="flex flex-col">
+                                {col.items.map((sub) => {
+                                  const subActive = navSubItemActive(
+                                    pathname,
+                                    searchParams,
+                                    sub,
+                                  );
+                                  const key =
+                                    sub.href ??
+                                    `${col.title}-${sub.label}-disabled`;
+                                  if (sub.disabled || !sub.href) {
+                                    return (
+                                      <span
+                                        key={key}
+                                        role="menuitem"
+                                        aria-disabled="true"
+                                        className="pointer-events-none flex cursor-not-allowed items-center gap-2 px-3 py-2 text-sm font-medium text-slate-400"
+                                      >
+                                        <sub.Icon className="h-4 w-4 shrink-0 text-slate-300" />
+                                        {sub.label}
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <Link
+                                      key={key}
+                                      href={sub.href}
+                                      prefetch={true}
+                                      role="menuitem"
+                                      className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
+                                        subActive
+                                          ? "bg-teal-50 text-teal-800"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <sub.Icon className="h-4 w-4 shrink-0 text-slate-500" />
+                                      {sub.label}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))
+                        : entry.items.map((sub) => {
+                            const subActive = navSubItemActive(
+                              pathname,
+                              searchParams,
+                              sub,
+                            );
+                            const key =
+                              sub.href ??
+                              `${entry.label}-${sub.label}-disabled`;
+                            if (sub.disabled || !sub.href) {
+                              return (
+                                <span
+                                  key={key}
+                                  role="menuitem"
+                                  aria-disabled="true"
+                                  className="pointer-events-none flex cursor-not-allowed items-center gap-2 px-3 py-2 text-sm font-medium text-slate-400"
+                                >
+                                  <sub.Icon className="h-4 w-4 shrink-0 text-slate-300" />
+                                  {sub.label}
+                                </span>
+                              );
+                            }
+                            return (
+                              <Link
+                                key={key}
+                                href={sub.href}
+                                prefetch={true}
+                                role="menuitem"
+                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${
+                                  subActive
+                                    ? "bg-teal-50 text-teal-800"
+                                    : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                              >
+                                <sub.Icon className="h-4 w-4 shrink-0 text-slate-500" />
+                                {sub.label}
+                              </Link>
+                            );
+                          })}
                     </div>
                   </div>
                 );
@@ -290,7 +484,11 @@ export default function Header() {
             {showAdminNav ? (
               <div className="hidden items-center gap-0.5 border-r border-slate-200/80 pr-2 lg:flex">
                 {adminNavItems.map((item) => {
-                  const isActive = navLinkActive(pathname, item.href);
+                  const isActive = navLinkActive(
+                    pathname,
+                    searchParams,
+                    item.href,
+                  );
                   const label = item.shortLabel ?? item.label;
                   return (
                     <Link key={item.href} href={item.href} prefetch={true} className="shrink-0">
@@ -372,11 +570,11 @@ export default function Header() {
                 </motion.button>
               </div>
               <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-4" aria-label="모바일 메뉴">
-                {mobileDrawerItems.map((item) => {
+                {mobileDrawerItems.map((item, idx) => {
                   if (item.kind === "groupHeader") {
                     return (
                       <div
-                        key={`head-${item.label}`}
+                        key={`head-${item.label}-${idx}`}
                         className="flex min-h-[40px] items-center gap-2 px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500"
                       >
                         <item.Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
@@ -384,12 +582,38 @@ export default function Header() {
                       </div>
                     );
                   }
-                  const isActive = navLinkActive(pathname, item.href);
+                  if (item.kind === "subHeader") {
+                    return (
+                      <div
+                        key={`sub-${item.label}-${idx}`}
+                        className="min-h-[36px] px-4 pb-0.5 pl-8 pt-2 text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-400"
+                      >
+                        {item.label}
+                      </div>
+                    );
+                  }
+                  if (item.kind === "disabledItem") {
+                    return (
+                      <div
+                        key={`dis-${item.label}-${idx}`}
+                        className="pointer-events-none flex min-h-[48px] cursor-not-allowed items-center gap-3 rounded-xl py-3 pl-10 pr-4 text-slate-400"
+                        aria-disabled="true"
+                      >
+                        <item.Icon className="h-5 w-5 shrink-0 text-slate-300" aria-hidden />
+                        <span className="font-medium">{item.label}</span>
+                      </div>
+                    );
+                  }
+                  const isActive = navLinkActive(
+                    pathname,
+                    searchParams,
+                    item.href,
+                  );
                   const padClass =
                     item.kind === "groupItem" ? "pl-10" : "px-4";
                   return (
                     <Link
-                      key={item.href}
+                      key={`${item.href}-${idx}`}
                       href={item.href}
                       prefetch={true}
                       className={`flex min-h-[48px] items-center gap-3 rounded-xl py-3 touch-manipulation ${padClass} ${
