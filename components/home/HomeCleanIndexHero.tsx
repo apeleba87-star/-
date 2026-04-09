@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, ChevronsDown } from "lucide-react";
+import { ChevronsDown } from "lucide-react";
 import { formatBudgetEokManWon, formatMoneyMan } from "@/lib/tender-utils";
 import { HOME_CLEAN_INDEX } from "@/lib/copy/home-clean-index";
 import type { HomeSpotlightTender } from "@/lib/home/home-spotlight";
@@ -100,28 +100,24 @@ export default function HomeCleanIndexHero({ tender, syncedLabel, isLoggedIn }: 
           </span>
         </div>
 
-        <div className="mx-auto mt-9 w-full max-w-md">
-          <HomeReportTeaserButton
-            variant="block"
-            isLoggedIn={isLoggedIn}
-            tenderTitle={title}
-            amountLine={amountLine}
-            regionLine={region}
-            ddayLine={ddayLabel}
-          />
+        <div className="mx-auto mt-9 flex w-full max-w-md flex-col items-stretch gap-3">
+          <Link
+            href={detailHref}
+            className="flex min-h-[56px] w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 px-5 text-[1.0625rem] font-bold text-white shadow-lg shadow-violet-500/25 transition hover:from-blue-500 hover:via-violet-500 hover:to-purple-500 hover:shadow-xl active:scale-[0.99] sm:min-h-[58px] sm:text-lg"
+          >
+            {HOME_CLEAN_INDEX.tenderDetailCta}
+          </Link>
+          <div className="flex justify-center">
+            <HomeReportTeaserButton
+              variant="heroSecondary"
+              isLoggedIn={isLoggedIn}
+              tenderTitle={title}
+              amountLine={amountLine}
+              regionLine={region}
+              ddayLine={ddayLabel}
+            />
+          </div>
         </div>
-
-        <Link
-          href={detailHref}
-          className="group mt-5 inline-flex items-center gap-1.5 text-base font-medium text-zinc-500 underline-offset-4 transition hover:text-zinc-800"
-        >
-          공고 상세 보기
-          <ChevronRight
-            className="h-5 w-5 text-zinc-400 transition group-hover:translate-x-0.5 group-hover:text-zinc-600"
-            strokeWidth={2}
-            aria-hidden
-          />
-        </Link>
 
         <div className="mt-10 flex flex-col items-center gap-1 text-zinc-300" aria-hidden>
           <ChevronsDown className="h-7 w-7 animate-bounce" strokeWidth={1.5} />

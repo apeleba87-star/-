@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getHomeSpotlightTenderRowFromActiveIndustries } from "@/lib/content/home-tender-stats";
+import {
+  getHomeSpotlightTenderRowFromActiveIndustries,
+  type HomeSpotlightTenderRow,
+} from "@/lib/content/home-tender-stats";
 import { getBaseAmtFromRaw, dday, parseRegionSido, shortRegion } from "@/lib/tender-utils";
 
 export type HomeSpotlightTender = {
@@ -101,16 +104,9 @@ function tenderRegionLabel(row: {
   return "—";
 }
 
-/**
- * 등록 업종(is_active + tender_industries / primary)에 매칭된 진행 중 공고만 대상으로,
- * 기초금액(또는 raw 추출)이 가장 큰 1건.
- */
-export async function fetchHomeSpotlightTender(
-  supabase: SupabaseClient
-): Promise<HomeSpotlightTender | null> {
-  const row = await getHomeSpotlightTenderRowFromActiveIndustries(supabase);
+/** DB 행 → 히어로 스포트라이트 (홈에서 집계 결과와 재사용) */
+export function homeSpotlightTenderFromRow(row: HomeSpotlightTenderRow | null): HomeSpotlightTender | null {
   if (!row) return null;
-
   const amountWon = resolveTenderAmount(row);
   return {
     id: row.id,
@@ -119,6 +115,17 @@ export async function fetchHomeSpotlightTender(
     ddayLabel: dday(row.bid_clse_dt),
     amountWon,
   };
+}
+
+/**
+ * 등록 업종(is_active + tender_industries / primary)에 매칭된 진행 중 공고만 대상으로,
+ * 기초금액(또는 raw 추출)이 가장 큰 1건.
+ */
+export async function fetchHomeSpotlightTender(
+  supabase: SupabaseClient
+): Promise<HomeSpotlightTender | null> {
+  const row = await getHomeSpotlightTenderRowFromActiveIndustries(supabase);
+  return homeSpotlightTenderFromRow(row);
 }
 
 /** 일당 × 220(연 근무일 가정) → 연 환산 세전 */

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { refreshHomeContentStats } from "@/lib/content/refresh-home-page-stats";
 
 async function requireAdmin() {
   const supabase = await createServerSupabase();
@@ -29,9 +30,15 @@ export async function deletePost(postId: string): Promise<PostActionResult> {
   if (!auth.ok) return auth;
   const { error } = await auth.supabase.from("posts").delete().eq("id", postId);
   if (error) return { ok: false, error: error.message };
+  try {
+    await refreshHomeContentStats(auth.supabase);
+  } catch {
+    /* 무시 */
+  }
   revalidatePath("/admin/posts");
   revalidatePath("/news");
   revalidatePath("/categories");
+  revalidatePath("/");
   return { ok: true };
 }
 
@@ -41,8 +48,14 @@ export async function setPostPrivate(postId: string, isPrivate: boolean): Promis
   if (!auth.ok) return auth;
   const { error } = await auth.supabase.from("posts").update({ is_private: isPrivate }).eq("id", postId);
   if (error) return { ok: false, error: error.message };
+  try {
+    await refreshHomeContentStats(auth.supabase);
+  } catch {
+    /* 무시 */
+  }
   revalidatePath("/admin/posts");
   revalidatePath("/news");
   revalidatePath("/categories");
+  revalidatePath("/");
   return { ok: true };
 }

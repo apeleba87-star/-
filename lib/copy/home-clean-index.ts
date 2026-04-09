@@ -14,6 +14,8 @@ export const HOME_CLEAN_INDEX = {
   tenderScopeNote: "등록 업종 매칭 공고 기준",
   tenderSourceNote: "나라장터 등 공공 입찰 공고 집계",
   protagonistQuestion: "이 입찰의 주인공이 되시겠습니까?",
+  /** 히어로 주요 CTA — 공고 상세(또는 목록)로 이동 */
+  tenderDetailCta: "공고 확인하기",
   reportCta: "분석 리포트 확인",
   reportCtaSub: "미리보기 후 · 전체는 로그인",
   /** 채용 스포트라이트(워크넷 연동 전 비노출)용 카피 보관 */

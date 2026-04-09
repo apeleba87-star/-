@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { HOME_CLEAN_INDEX, HOME_REPORT_TEASER } from "@/lib/copy/home-clean-index";
 
 type Props = {
@@ -12,8 +12,8 @@ type Props = {
   regionLine: string;
   ddayLine: string;
   reportListHref?: string;
-  /** 기본: 전폭 버튼 · inline: 공고 한 줄용 텍스트형 */
-  variant?: "block" | "inline";
+  /** 기본: 전폭 버튼 · inline: 공고 한 줄용 텍스트형 · heroSecondary: 히어로 하단 회색 링크형 */
+  variant?: "block" | "inline" | "heroSecondary";
 };
 
 export default function HomeReportTeaserButton({
@@ -32,6 +32,9 @@ export default function HomeReportTeaserButton({
     "flex min-h-[56px] w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 via-violet-600 to-purple-600 px-5 text-[1.0625rem] font-bold text-white shadow-lg shadow-violet-500/25 transition hover:from-blue-500 hover:via-violet-500 hover:to-purple-500 hover:shadow-xl active:scale-[0.99] sm:min-h-[58px] sm:text-lg";
   const inlineClass =
     "shrink-0 inline-flex min-h-[2.25rem] items-center justify-center rounded-xl bg-zinc-900 px-3.5 py-2 text-[0.6875rem] font-semibold text-white shadow-md shadow-zinc-900/15 ring-1 ring-white/10 transition hover:bg-zinc-800 hover:shadow-lg active:scale-[0.98]";
+
+  const heroSecondaryClass =
+    "group inline-flex min-h-[44px] items-center justify-center gap-1.5 border-0 bg-transparent p-0 text-base font-medium text-zinc-500 underline-offset-4 transition hover:text-zinc-700";
 
   const modal =
     open ? (
@@ -113,6 +116,34 @@ export default function HomeReportTeaserButton({
       <>
         <button type="button" onClick={() => setOpen(true)} className={inlineClass}>
           {HOME_CLEAN_INDEX.reportCta}
+        </button>
+        {modal}
+      </>
+    );
+  }
+
+  const heroSecondaryChevron = (
+    <ChevronRight
+      className="h-5 w-5 shrink-0 text-zinc-400 transition group-hover:translate-x-0.5 group-hover:text-zinc-500"
+      strokeWidth={2}
+      aria-hidden
+    />
+  );
+
+  if (variant === "heroSecondary") {
+    if (isLoggedIn) {
+      return (
+        <Link href={reportListHref} className={heroSecondaryClass}>
+          {HOME_CLEAN_INDEX.reportCta}
+          {heroSecondaryChevron}
+        </Link>
+      );
+    }
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)} className={heroSecondaryClass}>
+          {HOME_CLEAN_INDEX.reportCta}
+          {heroSecondaryChevron}
         </button>
         {modal}
       </>

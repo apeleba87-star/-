@@ -138,44 +138,13 @@ async function loadMatchedOpenTendersForHome(
   return { kind: "ok", activeIndustries, matched, tenderToCodes };
 }
 
-/**
- * 등록 업종에 해당하는 접수 중 공고만 대상으로, 기초금액(또는 raw 추출)이 가장 큰 1건.
- * 금액을 알 수 있는 공고가 없으면 매칭 목록의 첫 건(마감 임박 순).
- */
-export async function getHomeSpotlightTenderRowFromActiveIndustries(
-  supabase: SupabaseClient,
-  options?: { now?: string }
-): Promise<HomeSpotlightTenderRow | null> {
-  const now = options?.now ?? new Date().toISOString();
-  const loaded = await loadMatchedOpenTendersForHome(supabase, now);
-  if (loaded.kind !== "ok" || loaded.matched.length === 0) return null;
+type LoadedHomeTenders = Awaited<ReturnType<typeof loadMatchedOpenTendersForHome>>;
 
-  let best: HomeSpotlightTenderRow | null = null;
-  let bestAmt = -1;
-  for (const t of loaded.matched) {
-    const amt = resolveSpotlightAmountWon(t);
-    if (amt != null && amt > bestAmt) {
-      bestAmt = amt;
-      best = t;
-    }
-  }
-  if (best) return best;
-  return loaded.matched[0];
-}
-
-/**
- * 등록 업종(is_active) 기준으로 접수 중(bid_clse_dt > now) 입찰을 집계하고,
- * 업종별 건수, 1위 업종, 최근 5건을 반환.
- */
-export async function getHomeTenderStats(
-  supabase: SupabaseClient,
-  options?: { now?: string }
-): Promise<HomeTenderStats> {
-  const now = options?.now ?? new Date().toISOString();
-  const { start: todayStart, end: todayEnd } = getKstDayRange();
-
-  const loaded = await loadMatchedOpenTendersForHome(supabase, now);
-
+function computeHomeTenderStatsFromLoaded(
+  loaded: LoadedHomeTenders,
+  todayStart: string,
+  todayEnd: string,
+): HomeTenderStats {
   if (loaded.kind === "no_active_industries") {
     return {
       tenderCount: 0,
@@ -235,4 +204,64 @@ export async function getHomeTenderStats(
     industryBreakdown,
     recentTenders,
   };
+}
+
+/** 스포트라이트: 기초금액(또는 raw) 최대, 없으면 마감 임박 첫 건 */
+export function pickSpotlightRowFromMatched(matched: HomeSpotlightTenderRow[]): HomeSpotlightTenderRow | null {
+  if (matched.length === 0) return null;
+  let best: HomeSpotlightTenderRow | null = null;
+  let bestAmt = -1;
+  for (const t of matched) {
+    const amt = resolveSpotlightAmountWon(t);
+    if (amt != null && amt > bestAmt) {
+      bestAmt = amt;
+      best = t;
+    }
+  }
+  if (best) return best;
+  return matched[0];
+}
+
+/**
+ * 홈 폴백용: 대량 매칭 쿼리 1회로 집계 + 스포트라이트 행을 함께 반환 (이중 스캔 방지).
+ */
+export async function getHomeTenderStatsWithSpotlightRow(
+  supabase: SupabaseClient,
+  options?: { now?: string }
+): Promise<{ stats: HomeTenderStats; spotlightRow: HomeSpotlightTenderRow | null }> {
+  const now = options?.now ?? new Date().toISOString();
+  const { start: todayStart, end: todayEnd } = getKstDayRange();
+  const loaded = await loadMatchedOpenTendersForHome(supabase, now);
+  const stats = computeHomeTenderStatsFromLoaded(loaded, todayStart, todayEnd);
+  const spotlightRow =
+    loaded.kind === "ok" && loaded.matched.length > 0 ? pickSpotlightRowFromMatched(loaded.matched) : null;
+  return { stats, spotlightRow };
+}
+
+/**
+ * 등록 업종에 해당하는 접수 중 공고만 대상으로, 기초금액(또는 raw 추출)이 가장 큰 1건.
+ * 금액을 알 수 있는 공고가 없으면 매칭 목록의 첫 건(마감 임박 순).
+ */
+export async function getHomeSpotlightTenderRowFromActiveIndustries(
+  supabase: SupabaseClient,
+  options?: { now?: string }
+): Promise<HomeSpotlightTenderRow | null> {
+  const now = options?.now ?? new Date().toISOString();
+  const loaded = await loadMatchedOpenTendersForHome(supabase, now);
+  if (loaded.kind !== "ok" || loaded.matched.length === 0) return null;
+  return pickSpotlightRowFromMatched(loaded.matched);
+}
+
+/**
+ * 등록 업종(is_active) 기준으로 접수 중(bid_clse_dt > now) 입찰을 집계하고,
+ * 업종별 건수, 1위 업종, 최근 5건을 반환.
+ */
+export async function getHomeTenderStats(
+  supabase: SupabaseClient,
+  options?: { now?: string }
+): Promise<HomeTenderStats> {
+  const now = options?.now ?? new Date().toISOString();
+  const { start: todayStart, end: todayEnd } = getKstDayRange();
+  const loaded = await loadMatchedOpenTendersForHome(supabase, now);
+  return computeHomeTenderStatsFromLoaded(loaded, todayStart, todayEnd);
 }

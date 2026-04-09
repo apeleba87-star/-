@@ -13,6 +13,7 @@ import { getRunKey, getRunTypeFromApi, GENERATOR_VERSION } from "@/lib/content/c
 import { getDailyReportCronSkipReason } from "@/lib/content/daily-report-cron-window";
 import { buildDailyTenderReport } from "@/lib/content/build-daily-tender-report";
 import { buildReportSnapshots } from "@/lib/content/build-report-snapshots";
+import { refreshHomeContentStats } from "@/lib/content/refresh-home-page-stats";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -117,6 +118,11 @@ async function handleGenerateContent(req: NextRequest): Promise<NextResponse> {
       });
     }
 
+    try {
+      await refreshHomeContentStats(supabase);
+    } catch {
+      /* 홈 스냅샷 실패해도 발행은 성공으로 처리 */
+    }
     revalidatePath("/");
     revalidatePath("/news");
 

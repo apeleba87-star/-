@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createServiceSupabase } from "@/lib/supabase-server";
-import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
+import { getHomeTenderStatsWithSpotlightRow } from "@/lib/content/home-tender-stats";
+import {
+  buildHomeTenderStatsUpsertFromBundle,
+  refreshHomeContentStats,
+} from "@/lib/content/refresh-home-page-stats";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
 
 export const dynamic = "force-dynamic";
@@ -34,10 +39,10 @@ export async function POST(req: NextRequest) {
         .in("id", ids);
     }
 
-    const [jobRes, listingRes, tenderStats] = await Promise.all([
+    const [jobRes, listingRes, tenderBundle] = await Promise.all([
       supabase.rpc("refresh_job_post_stats"),
       supabase.rpc("refresh_listing_stats"),
-      getHomeTenderStats(supabase),
+      getHomeTenderStatsWithSpotlightRow(supabase),
     ]);
 
     if (jobRes.error) {
@@ -53,18 +58,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const recentIds = tenderStats.recentTenders.map((t) => t.id);
-    const { error: upsertError } = await supabase.from("home_tender_stats").upsert(
-      {
-        id: 1,
-        open_count: tenderStats.tenderCount,
-        today_count: tenderStats.tenderTodayCount,
-        industry_breakdown: tenderStats.industryBreakdown,
-        recent_tender_ids: recentIds,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
+    const tenderRow = buildHomeTenderStatsUpsertFromBundle(tenderBundle);
+    const { error: upsertError } = await supabase.from("home_tender_stats").upsert(tenderRow, {
+      onConflict: "id",
+    });
 
     if (upsertError) {
       return NextResponse.json(
@@ -72,6 +69,9 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    await refreshHomeContentStats(supabase);
+    revalidatePath("/");
 
     return NextResponse.json({
       ok: true,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { refreshHomeSnapshotsAfterTenderIngest } from "@/lib/content/refresh-home-page-stats";
 import { runTenderFetch } from "@/lib/g2b/fetch-tenders";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,12 @@ export async function POST(req: NextRequest) {
             onProgress: (p) => send({ type: "progress", ...p }),
           });
           if (result.ok) {
+            try {
+              const serviceSupabase = createServiceSupabase();
+              await refreshHomeSnapshotsAfterTenderIngest(serviceSupabase);
+            } catch {
+              /* 스냅샷 실패해도 수집은 성공으로 표시 */
+            }
             revalidatePath("/tenders");
             revalidatePath("/");
           }
@@ -112,6 +119,12 @@ export async function POST(req: NextRequest) {
       }
     }
     if (result.ok) {
+      try {
+        const serviceSupabase = createServiceSupabase();
+        await refreshHomeSnapshotsAfterTenderIngest(serviceSupabase);
+      } catch {
+        /* 스냅샷 실패해도 수집은 성공으로 표시 */
+      }
       revalidatePath("/tenders");
       revalidatePath("/");
     }

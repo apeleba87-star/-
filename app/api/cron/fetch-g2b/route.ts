@@ -4,7 +4,7 @@ import { createClient, createServiceSupabase } from "@/lib/supabase-server";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { runTenderFetch, G2B_CRON_LOOKBACK_MINUTES } from "@/lib/g2b/fetch-tenders";
 import { getG2bCronSkipReason } from "@/lib/g2b/g2b-cron-window";
-import { getHomeTenderStats } from "@/lib/content/home-tender-stats";
+import { refreshHomeSnapshotsAfterTenderIngest } from "@/lib/content/refresh-home-page-stats";
 
 export const dynamic = "force-dynamic";
 /** 수집이 오래 걸릴 수 있음 (Vercel Pro 등) */
@@ -29,21 +29,9 @@ async function handleCronFetch(): Promise<NextResponse> {
         revalidatePath("/");
         try {
           const serviceSupabase = createServiceSupabase();
-          const tenderStats = await getHomeTenderStats(serviceSupabase);
-          const recentIds = tenderStats.recentTenders.map((t) => t.id);
-          await serviceSupabase.from("home_tender_stats").upsert(
-            {
-              id: 1,
-              open_count: tenderStats.tenderCount,
-              today_count: tenderStats.tenderTodayCount,
-              industry_breakdown: tenderStats.industryBreakdown,
-              recent_tender_ids: recentIds,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "id" }
-          );
+          await refreshHomeSnapshotsAfterTenderIngest(serviceSupabase);
         } catch (_) {
-          // 집계 테이블 갱신 실패해도 수집 결과는 반환
+          // 집계·스냅샷 갱신 실패해도 수집 결과는 반환
         }
       }
       return NextResponse.json({
