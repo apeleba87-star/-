@@ -5,6 +5,7 @@ import type { MetadataRoute } from "next";
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
   { path: "/", priority: 1, changeFrequency: "daily" },
   { path: "/news", priority: 0.9, changeFrequency: "daily" },
+  { path: "/industry-news", priority: 0.75, changeFrequency: "weekly" },
   { path: "/categories", priority: 0.8, changeFrequency: "weekly" },
   { path: "/listings", priority: 0.8, changeFrequency: "daily" },
   { path: "/tenders", priority: 0.8, changeFrequency: "daily" },

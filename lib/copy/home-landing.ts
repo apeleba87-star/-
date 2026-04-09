@@ -3,7 +3,7 @@
 export const HOME_LANDING = {
   valueTitle: "청소 업무에 맞춘 정보와 도구",
   valueSubtitle:
-    "공공 입찰부터 현장 거래·구인·데이터랩·견적까지 한곳에서 이어집니다.",
+    "공공 입찰부터 현장 거래·구인·업계소식·데이터랩·견적까지 한곳에서 이어집니다.",
   trustEyebrow: "실시간 집계",
   trustTitle: "오늘 플랫폼에서 움직이는 숫자",
   bottomTitle: "지금 입찰 기회를 확인해 보세요",
@@ -23,11 +23,19 @@ export const HOME_VALUE_CARDS = [
     icon: "trending",
   },
   {
-    key: "news",
+    key: "industry-news",
+    title: "업계소식",
+    description: "현장 이슈·시장 이야기를 블로그 형식으로 차례차례 연재합니다.",
+    href: "/industry-news",
+    icon: "rss",
+    disabled: true,
+  },
+  {
+    key: "datalab",
     title: "데이터랩",
-    description: "리포트·뉴스·이슈를 데이터랩에서 한곳에 모았습니다.",
+    description: "입찰·낙찰 리포트와 주제별 자료를 데이터랩에서 한곳에 모았습니다.",
     href: "/news",
-    icon: "newspaper",
+    icon: "chart",
   },
   {
     key: "listings",

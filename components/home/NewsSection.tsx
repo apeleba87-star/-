@@ -71,8 +71,8 @@ export default function NewsSection({ posts, isLoggedIn = true, sectionId = "new
             </ul>
           )}
 
-          <Link href={blind ? "/news" : "/categories/industry"} className={`${homeFooterBtnPrimaryClass} block`}>
-            전체 보기
+          <Link href="/news" className={`${homeFooterBtnPrimaryClass} block`}>
+            데이터랩 전체 보기
           </Link>
         </div>
       </div>

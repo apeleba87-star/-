@@ -18,6 +18,8 @@ export default function Footer() {
             <Link href="/categories" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">카테고리</Link>
             <Link href="/listings" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">현장 거래</Link>
             <Link href="/jobs" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">인력 구인</Link>
+            <span className="min-h-[44px] py-2 text-sm text-slate-500 touch-manipulation">업계소식 (준비중)</span>
+            <Link href="/news" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">데이터랩</Link>
             <Link href="/estimate" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">견적 계산기</Link>
             <Link href="/login" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">로그인</Link>
             <Link href="/terms" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">이용약관</Link>

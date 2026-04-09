@@ -28,7 +28,7 @@ export default function HeroSection({
       Icon: TrendingUp,
     },
     {
-      href: "/categories/industry",
+      href: "/news",
       count: newsCount,
       subCount: undefined,
       label: "데이터랩",

@@ -115,7 +115,7 @@ const primaryNavItems: PrimaryNavEntry[] = [
     label: "콘텐츠",
     Icon: BookOpen,
     items: [
-      { href: "/news", label: "데이터랩", Icon: Newspaper },
+      { label: "업계소식", Icon: Newspaper, disabled: true },
       { href: "/estimate", label: "견적 계산기", Icon: Calculator },
       { label: "청소 기술", Icon: FileText, disabled: true },
       { label: "이용 안내", Icon: HelpCircle, disabled: true },
@@ -131,6 +131,15 @@ const adminNavItems: NavItem[] = [
 
 const iconBtnClass =
   "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-white/60 hover:text-slate-900 touch-manipulation";
+
+function NavDisabledMenuLabel({ label }: { label: string }) {
+  return (
+    <>
+      <span>{label}</span>
+      <span className="ml-1.5 shrink-0 text-xs font-normal text-slate-400">(준비중)</span>
+    </>
+  );
+}
 
 function navLinkActive(
   pathname: string,
@@ -392,10 +401,14 @@ export default function Header() {
                                         key={key}
                                         role="menuitem"
                                         aria-disabled="true"
-                                        className="pointer-events-none flex cursor-not-allowed items-center gap-2 px-3 py-2 text-sm font-medium text-slate-400"
+                                        className="pointer-events-none flex cursor-not-allowed flex-wrap items-center gap-x-0 gap-y-0.5 px-3 py-2 text-sm font-medium text-slate-400"
                                       >
                                         <sub.Icon className="h-4 w-4 shrink-0 text-slate-300" />
-                                        {sub.label}
+                                        {sub.disabled ? (
+                                          <NavDisabledMenuLabel label={sub.label} />
+                                        ) : (
+                                          sub.label
+                                        )}
                                       </span>
                                     );
                                   }
@@ -433,10 +446,14 @@ export default function Header() {
                                   key={key}
                                   role="menuitem"
                                   aria-disabled="true"
-                                  className="pointer-events-none flex cursor-not-allowed items-center gap-2 px-3 py-2 text-sm font-medium text-slate-400"
+                                  className="pointer-events-none flex cursor-not-allowed flex-wrap items-center gap-x-0 gap-y-0.5 px-3 py-2 text-sm font-medium text-slate-400"
                                 >
                                   <sub.Icon className="h-4 w-4 shrink-0 text-slate-300" />
-                                  {sub.label}
+                                  {sub.disabled ? (
+                                    <NavDisabledMenuLabel label={sub.label} />
+                                  ) : (
+                                    sub.label
+                                  )}
                                 </span>
                               );
                             }
@@ -580,11 +597,13 @@ export default function Header() {
                     return (
                       <div
                         key={`dis-${item.label}-${idx}`}
-                        className="pointer-events-none flex min-h-[48px] cursor-not-allowed items-center gap-3 rounded-xl py-3 pl-10 pr-4 text-slate-400"
+                        className="pointer-events-none flex min-h-[48px] cursor-not-allowed flex-wrap items-center gap-x-1 gap-y-0.5 rounded-xl py-3 pl-10 pr-4 text-slate-400"
                         aria-disabled="true"
                       >
                         <item.Icon className="h-5 w-5 shrink-0 text-slate-300" aria-hidden />
-                        <span className="font-medium">{item.label}</span>
+                        <span className="flex flex-wrap items-baseline gap-x-1 font-medium">
+                          <NavDisabledMenuLabel label={item.label} />
+                        </span>
                       </div>
                     );
                   }
