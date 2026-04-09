@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -84,8 +84,8 @@ const primaryNavItems: PrimaryNavEntry[] = [
       {
         title: "나라장터 공고",
         items: [
-          { href: "/tenders", label: "입찰", Icon: Gavel },
-          { href: "/tender-awards", label: "낙찰", Icon: Trophy },
+          { href: "/tenders", label: "입찰 공고", Icon: Gavel },
+          { href: "/tender-awards", label: "낙찰 공고", Icon: Trophy },
         ],
       },
       {
@@ -132,43 +132,31 @@ const iconBtnClass =
 
 function navLinkActive(
   pathname: string,
-  searchParams: URLSearchParams | null,
   href: string,
 ) {
-  if (!href.includes("?")) {
-    return href === "/" ? pathname === "/" : pathname.startsWith(href);
-  }
-  const sp = searchParams ?? new URLSearchParams();
-  const [path, query] = href.split("?");
-  if (pathname !== path) return false;
-  const want = new URLSearchParams(query);
-  for (const key of want.keys()) {
-    if (sp.get(key) !== want.get(key)) return false;
-  }
-  return true;
+  const pathOnly = href.split("?")[0];
+  return pathOnly === "/" ? pathname === "/" : pathname.startsWith(pathOnly);
 }
 
 function navSubItemActive(
   pathname: string,
-  searchParams: URLSearchParams | null,
   item: NavSubItem,
 ) {
   if (item.disabled || !item.href) return false;
-  return navLinkActive(pathname, searchParams, item.href);
+  return navLinkActive(pathname, item.href);
 }
 
 function navEntryActive(
   pathname: string,
-  searchParams: URLSearchParams | null,
   entry: NavGroup | NavMegaGroup,
 ) {
   if (entry.kind === "group") {
     return entry.items.some((i) =>
-      navSubItemActive(pathname, searchParams, i),
+      navSubItemActive(pathname, i),
     );
   }
   return entry.columns.some((col) =>
-    col.items.some((i) => navSubItemActive(pathname, searchParams, i)),
+    col.items.some((i) => navSubItemActive(pathname, i)),
   );
 }
 
@@ -210,7 +198,6 @@ function primaryToMobileRows(entry: PrimaryNavEntry): MobileDrawerRow[] {
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdminNav, setShowAdminNav] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -319,7 +306,6 @@ export default function Header() {
                 if (entry.kind === "link") {
                   const isActive = navLinkActive(
                     pathname,
-                    searchParams,
                     entry.href,
                   );
                   return (
@@ -346,7 +332,6 @@ export default function Header() {
                 }
                 const groupActive = navEntryActive(
                   pathname,
-                  searchParams,
                   entry,
                 );
                 const isMega = entry.kind === "mega";
@@ -394,7 +379,6 @@ export default function Header() {
                                 {col.items.map((sub) => {
                                   const subActive = navSubItemActive(
                                     pathname,
-                                    searchParams,
                                     sub,
                                   );
                                   const key =
@@ -436,7 +420,6 @@ export default function Header() {
                         : entry.items.map((sub) => {
                             const subActive = navSubItemActive(
                               pathname,
-                              searchParams,
                               sub,
                             );
                             const key =
@@ -486,7 +469,6 @@ export default function Header() {
                 {adminNavItems.map((item) => {
                   const isActive = navLinkActive(
                     pathname,
-                    searchParams,
                     item.href,
                   );
                   const label = item.shortLabel ?? item.label;
@@ -606,7 +588,6 @@ export default function Header() {
                   }
                   const isActive = navLinkActive(
                     pathname,
-                    searchParams,
                     item.href,
                   );
                   const padClass =
