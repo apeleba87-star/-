@@ -77,6 +77,7 @@ type MobileDrawerRow =
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "홈", Icon: Home },
+  { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText },
   {
     kind: "mega",
     label: "데이터 분석",
@@ -211,11 +212,17 @@ export default function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdminNav, setShowAdminNav] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
+  const visiblePrimaryNavItems = primaryNavItems.filter((entry) => {
+    if (entry.kind === "link" && entry.href === "/cleanidex") return isAdmin;
+    return true;
+  });
+
   const mobileDrawerItems: MobileDrawerRow[] = [
-    ...primaryNavItems.flatMap(primaryToMobileRows),
+    ...visiblePrimaryNavItems.flatMap(primaryToMobileRows),
     ...(showAdminNav
       ? adminNavItems.map(
           (item): MobileDrawerRow => ({ kind: "link", ...item }),
@@ -243,6 +250,7 @@ export default function Header() {
       setIsLoggedIn(!!user);
       if (!user) {
         setShowAdminNav(false);
+        setIsAdmin(false);
         return;
       }
       await supabase
@@ -251,7 +259,9 @@ export default function Header() {
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
-          setShowAdminNav(data?.role === "admin" || data?.role === "editor");
+          const admin = data?.role === "admin";
+          setIsAdmin(admin);
+          setShowAdminNav(admin || data?.role === "editor");
         });
     });
   }, []);
@@ -267,7 +277,10 @@ export default function Header() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       setEmail(session?.user?.email ?? null);
       setIsLoggedIn(!!session?.user);
-      if (event === "SIGNED_OUT") setShowAdminNav(false);
+      if (event === "SIGNED_OUT") {
+        setShowAdminNav(false);
+        setIsAdmin(false);
+      }
       router.refresh();
     });
     return () => subscription.unsubscribe();
@@ -313,7 +326,7 @@ export default function Header() {
           >
             {/* PC: 가로 스크롤 없음 — 중앙 열 전체 너비를 쓰고, 매우 좁을 때만 줄바꿈(xl↑ 한 줄 고정) */}
             <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 xl:flex-nowrap xl:gap-x-1">
-              {primaryNavItems.map((entry) => {
+              {visiblePrimaryNavItems.map((entry) => {
                 if (entry.kind === "link") {
                   const isActive = navLinkActive(
                     pathname,
@@ -518,6 +531,7 @@ export default function Header() {
                     setEmail(null);
                     setIsLoggedIn(false);
                     setShowAdminNav(false);
+                    setIsAdmin(false);
                   }}
                 />
               </motion.span>
@@ -651,6 +665,7 @@ export default function Header() {
                       setEmail(null);
                       setIsLoggedIn(false);
                       setShowAdminNav(false);
+                      setIsAdmin(false);
                     }}
                   />
                 </div>
