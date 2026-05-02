@@ -89,10 +89,6 @@ export async function POST(req: NextRequest) {
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-  if (signerType === "client") {
-    await supabase.schema("cleanidex").from("contracts").update({ status: "signed" }).eq("id", contractId);
-  }
-
   await writeCleanidexAuditLog({
     companyId: context.companyId,
     actorUserId: context.userId,

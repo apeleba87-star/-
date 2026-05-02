@@ -1,9 +1,17 @@
 import { createHash, randomUUID } from "crypto";
+import { PDFDocument } from "pdf-lib";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase-server";
+import { CLIENT_ESIGN_CONSENT_TEXT, CLIENT_ESIGN_CONSENT_VERSION } from "@/lib/cleanidex/consent";
+import {
+  defaultClientSignaturePlacement,
+  embedPngSignatureOnPdf,
+  parseSignaturePlacement,
+} from "@/lib/cleanidex/contract-pdf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function sha256(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -26,8 +34,15 @@ async function resolveByToken(token: string) {
   if (error) return { error: error.message };
   if (!data) return { error: "token_not_found" as const };
   if (data.completed_at) return { error: "already_completed" as const };
-  if (!data.token_expires_at || new Date(data.token_expires_at).getTime() < Date.now()) return { error: "token_expired" as const };
+  if (!data.token_expires_at || new Date(data.token_expires_at).getTime() < Date.now()) {
+    return { error: "token_expired" as const };
+  }
   return { data };
+}
+
+function contractStateOk(signerType: "client" | "company", status: string) {
+  if (signerType === "client") return status === "sent";
+  return status === "owner_signed";
 }
 
 export async function GET(req: NextRequest) {
@@ -51,19 +66,26 @@ export async function GET(req: NextRequest) {
   const { data: contract, error } = await supabase
     .schema("cleanidex")
     .from("contracts")
-    .select("id, status, source_pdf_file_id")
+    .select(
+      "id, status, title, source_pdf_file_id, owner_signed_pdf_file_id, final_pdf_file_id, client_signed_at, completed_at"
+    )
     .eq("id", resolved.data.contract_id)
     .maybeSingle();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   if (!contract) return NextResponse.json({ ok: false, error: "contract_not_found" }, { status: 404 });
 
+  if (!contractStateOk(resolved.data.signer_type, contract.status)) {
+    return NextResponse.json({ ok: false, error: "contract_wrong_state" }, { status: 409 });
+  }
+
+  const pdfFileId = contract.owner_signed_pdf_file_id ?? contract.source_pdf_file_id;
   let sourcePdfSignedUrl: string | null = null;
-  if (contract.source_pdf_file_id) {
+  if (pdfFileId) {
     const { data: fileData } = await supabase
       .schema("cleanidex")
       .from("files")
       .select("file_path")
-      .eq("id", contract.source_pdf_file_id)
+      .eq("id", pdfFileId)
       .maybeSingle();
     if (fileData?.file_path) {
       const { data: signed } = await supabase.storage.from("cleanidex-private").createSignedUrl(fileData.file_path, 600);
@@ -79,6 +101,10 @@ export async function GET(req: NextRequest) {
       signer_type: resolved.data.signer_type,
       token_expires_at: resolved.data.token_expires_at,
       source_pdf_signed_url: sourcePdfSignedUrl,
+      contract_title: contract.title,
+      consent_text: CLIENT_ESIGN_CONSENT_TEXT,
+      consent_version: CLIENT_ESIGN_CONSENT_VERSION,
+      completed_at: contract.completed_at,
     },
   });
 }
@@ -88,15 +114,34 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveByToken(token);
   if ("error" in resolved) return NextResponse.json({ ok: false, error: resolved.error }, { status: 400 });
 
-  let body: { signer_name?: string; signature_data_url?: string };
+  let body: {
+    signer_name?: string;
+    signer_phone?: string;
+    signature_data_url?: string;
+    consent?: boolean;
+    consent_text_version?: string;
+  };
   try {
-    body = (await req.json()) as { signer_name?: string; signature_data_url?: string };
+    body = (await req.json()) as typeof body;
   } catch {
     body = {};
   }
 
   const signerName = body.signer_name?.trim() ?? "";
   if (!signerName) return NextResponse.json({ ok: false, error: "signer_name_required" }, { status: 400 });
+
+  const signerPhone = body.signer_phone?.trim() ?? "";
+  if (!signerPhone) return NextResponse.json({ ok: false, error: "signer_phone_required" }, { status: 400 });
+
+  if (!body.consent) {
+    return NextResponse.json({ ok: false, error: "consent_required" }, { status: 400 });
+  }
+
+  const version = body.consent_text_version?.trim() ?? "";
+  if (version !== CLIENT_ESIGN_CONSENT_VERSION) {
+    return NextResponse.json({ ok: false, error: "consent_version_mismatch" }, { status: 400 });
+  }
+
   const signatureDataUrl = body.signature_data_url?.trim() ?? "";
   if (!signatureDataUrl.startsWith("data:image/png;base64,")) {
     return NextResponse.json({ ok: false, error: "signature_data_url_invalid" }, { status: 400 });
@@ -113,12 +158,72 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "signature_data_too_large" }, { status: 400 });
   }
 
-  const signaturePath = `${resolved.data.company_id}/signatures/${Date.now()}-${randomUUID()}.png`;
-  const { error: uploadError } = await supabase.storage.from("cleanidex-private").upload(signaturePath, signatureBuffer, {
+  const { data: contract, error: cErr } = await supabase
+    .schema("cleanidex")
+    .from("contracts")
+    .select(
+      "id, company_id, status, owner_signed_pdf_file_id, client_signature_placement, final_pdf_file_id"
+    )
+    .eq("id", resolved.data.contract_id)
+    .maybeSingle();
+
+  if (cErr || !contract) {
+    return NextResponse.json({ ok: false, error: cErr?.message ?? "contract_not_found" }, { status: 400 });
+  }
+
+  if (!contractStateOk(resolved.data.signer_type, contract.status)) {
+    return NextResponse.json({ ok: false, error: "contract_wrong_state" }, { status: 409 });
+  }
+  if (!contract.owner_signed_pdf_file_id) {
+    return NextResponse.json({ ok: false, error: "owner_signed_pdf_required" }, { status: 409 });
+  }
+
+  const { data: basePdfFile } = await supabase
+    .schema("cleanidex")
+    .from("files")
+    .select("file_path")
+    .eq("id", contract.owner_signed_pdf_file_id)
+    .maybeSingle();
+  if (!basePdfFile?.file_path) {
+    return NextResponse.json({ ok: false, error: "owner_signed_pdf_missing" }, { status: 400 });
+  }
+
+  const { data: pdfBlob, error: dlPdf } = await supabase.storage.from("cleanidex-private").download(basePdfFile.file_path);
+  if (dlPdf || !pdfBlob) {
+    return NextResponse.json({ ok: false, error: dlPdf?.message ?? "pdf_download_failed" }, { status: 400 });
+  }
+  const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+
+  let placement;
+  try {
+    if (contract.client_signature_placement) {
+      placement = parseSignaturePlacement(contract.client_signature_placement);
+    } else {
+      const tmp = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+      placement = defaultClientSignaturePlacement(tmp.getPageCount());
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "placement_invalid";
+    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+  }
+
+  let merged: Uint8Array;
+  let finalSha: string;
+  try {
+    const out = await embedPngSignatureOnPdf(pdfBytes, new Uint8Array(signatureBuffer), placement);
+    merged = out.merged;
+    finalSha = out.sha256;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "pdf_merge_failed";
+    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+  }
+
+  const signaturePath = `${contract.company_id}/signatures/${Date.now()}-${randomUUID()}.png`;
+  const { error: uploadSigErr } = await supabase.storage.from("cleanidex-private").upload(signaturePath, signatureBuffer, {
     contentType: "image/png",
     upsert: false,
   });
-  if (uploadError) return NextResponse.json({ ok: false, error: uploadError.message }, { status: 400 });
+  if (uploadSigErr) return NextResponse.json({ ok: false, error: uploadSigErr.message }, { status: 400 });
 
   const { data: signatureFile, error: signatureFileError } = await supabase
     .schema("cleanidex")
@@ -136,6 +241,30 @@ export async function POST(req: NextRequest) {
     .single();
   if (signatureFileError) return NextResponse.json({ ok: false, error: signatureFileError.message }, { status: 400 });
 
+  const finalPath = `${contract.company_id}/contracts/${contract.id}/final-${Date.now()}-${randomUUID()}.pdf`;
+  const { error: upFinalErr } = await supabase.storage.from("cleanidex-private").upload(finalPath, merged, {
+    contentType: "application/pdf",
+    upsert: false,
+  });
+  if (upFinalErr) return NextResponse.json({ ok: false, error: upFinalErr.message }, { status: 400 });
+
+  const { data: finalFile, error: finalFileErr } = await supabase
+    .schema("cleanidex")
+    .from("files")
+    .insert({
+      company_id: resolved.data.company_id,
+      bucket_name: "cleanidex-private",
+      file_path: finalPath,
+      file_type: "contract_pdf",
+      mime_type: "application/pdf",
+      size: merged.byteLength,
+      sha256: finalSha,
+      uploaded_by: null,
+    })
+    .select("id")
+    .single();
+  if (finalFileErr) return NextResponse.json({ ok: false, error: finalFileErr.message }, { status: 400 });
+
   const { data: inserted, error: signError } = await supabase
     .schema("cleanidex")
     .from("contract_signatures")
@@ -144,8 +273,12 @@ export async function POST(req: NextRequest) {
       contract_id: resolved.data.contract_id,
       signer_type: resolved.data.signer_type,
       signer_name: signerName,
+      signer_phone: signerPhone,
       signature_file_id: signatureFile.id,
-      ip,
+      consent_text: CLIENT_ESIGN_CONSENT_TEXT,
+      consent_text_version: CLIENT_ESIGN_CONSENT_VERSION,
+      sign_request_id: resolved.data.id,
+      ip: ip ?? null,
       device,
       signed_at: now,
     })
@@ -153,20 +286,34 @@ export async function POST(req: NextRequest) {
     .single();
   if (signError) return NextResponse.json({ ok: false, error: signError.message }, { status: 400 });
 
-  await supabase
+  const { error: reqUpErr } = await supabase
     .schema("cleanidex")
     .from("contract_sign_requests")
     .update({
       completed_at: now,
-      completed_ip: ip,
+      completed_ip: ip ?? null,
       completed_device: device,
       token_hash: null,
     })
-    .eq("id", resolved.data.id);
+    .eq("id", resolved.data.id)
+    .is("completed_at", null);
+  if (reqUpErr) return NextResponse.json({ ok: false, error: reqUpErr.message }, { status: 400 });
 
-  if (resolved.data.signer_type === "client") {
-    await supabase.schema("cleanidex").from("contracts").update({ status: "signed" }).eq("id", resolved.data.contract_id);
-  }
+  const { error: conErr } = await supabase
+    .schema("cleanidex")
+    .from("contracts")
+    .update({
+      status: "completed",
+      signed_pdf_file_id: finalFile.id,
+      final_pdf_file_id: finalFile.id,
+      final_pdf_sha256: finalSha,
+      client_signed_at: now,
+      completed_at: now,
+    })
+    .eq("id", resolved.data.contract_id)
+    .in("status", resolved.data.signer_type === "client" ? ["sent"] : ["owner_signed"]);
+
+  if (conErr) return NextResponse.json({ ok: false, error: conErr.message }, { status: 400 });
 
   await supabase.schema("cleanidex").from("audit_logs").insert({
     company_id: resolved.data.company_id,
@@ -174,10 +321,27 @@ export async function POST(req: NextRequest) {
     action: "contract_signed_public_link",
     target_table: "contract_signatures",
     target_id: inserted.id,
-    ip,
+    ip: ip ?? null,
     device,
-    metadata: { contract_id: resolved.data.contract_id, signer_type: resolved.data.signer_type },
+    metadata: {
+      contract_id: resolved.data.contract_id,
+      signer_type: resolved.data.signer_type,
+      final_pdf_file_id: finalFile.id,
+      final_pdf_sha256: finalSha,
+    },
   });
 
-  return NextResponse.json({ ok: true, data: { contract_id: resolved.data.contract_id, signed_at: now } });
+  let finalPdfSignedUrl: string | null = null;
+  const { data: signed } = await supabase.storage.from("cleanidex-private").createSignedUrl(finalPath, 3600);
+  finalPdfSignedUrl = signed?.signedUrl ?? null;
+
+  return NextResponse.json({
+    ok: true,
+    data: {
+      contract_id: resolved.data.contract_id,
+      signed_at: now,
+      completed_at: now,
+      final_pdf_signed_url: finalPdfSignedUrl,
+    },
+  });
 }

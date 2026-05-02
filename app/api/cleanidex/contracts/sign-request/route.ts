@@ -42,11 +42,31 @@ export async function POST(req: NextRequest) {
   const { data: contract, error: contractError } = await supabase
     .schema("cleanidex")
     .from("contracts")
-    .select("id")
+    .select("id, status, owner_signed_pdf_file_id")
     .eq("id", contractId)
+    .eq("company_id", context.companyId)
     .maybeSingle();
+
   if (contractError) return NextResponse.json({ ok: false, error: contractError.message }, { status: 400 });
   if (!contract) return NextResponse.json({ ok: false, error: "contract_not_found" }, { status: 404 });
+
+  if (signerType === "client") {
+    if (contract.status !== "owner_signed") {
+      return NextResponse.json({ ok: false, error: "contract_must_be_owner_signed" }, { status: 409 });
+    }
+    if (!contract.owner_signed_pdf_file_id) {
+      return NextResponse.json({ ok: false, error: "owner_signed_pdf_required" }, { status: 409 });
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  await supabase
+    .schema("cleanidex")
+    .from("contract_sign_requests")
+    .update({ token_expires_at: nowIso })
+    .eq("contract_id", contractId)
+    .eq("signer_type", signerType)
+    .is("completed_at", null);
 
   const rawToken = randomBytes(24).toString("hex");
   const tokenHash = sha256(rawToken);
@@ -69,6 +89,17 @@ export async function POST(req: NextRequest) {
     .select("id, contract_id, signer_type, token_expires_at")
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+  if (signerType === "client") {
+    const { error: sentErr } = await supabase
+      .schema("cleanidex")
+      .from("contracts")
+      .update({ status: "sent" })
+      .eq("id", contractId)
+      .eq("company_id", context.companyId)
+      .eq("status", "owner_signed");
+    if (sentErr) return NextResponse.json({ ok: false, error: sentErr.message }, { status: 400 });
+  }
 
   await writeCleanidexAuditLog({
     companyId: context.companyId,

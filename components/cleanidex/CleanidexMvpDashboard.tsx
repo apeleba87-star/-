@@ -1,12 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Tab = "settings" | "work" | "confirm" | "evidence";
 type Client = { id: string; name: string };
 type Site = { id: string; name: string; client_id: string };
 type WorkSession = { id: string; site_id: string; work_date: string };
-type Contract = { id: string; status: "draft" | "signed" | "cancelled"; source_pdf_file_id?: string | null };
+type Contract = {
+  id: string;
+  status: string;
+  title?: string | null;
+  source_pdf_file_id?: string | null;
+  owner_signed_pdf_file_id?: string | null;
+};
 type ChecklistItem = { id: string; title: string };
 type ChecklistOption = { id: string; label: string };
 type ChecklistTemplate = { id: string; name: string };
@@ -755,6 +762,16 @@ export default function CleanidexMvpDashboard() {
               <input value={siteName} onChange={(e) => setSiteName(e.target.value)} placeholder="현장명" className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`} />
               <button className="mt-2 rounded bg-slate-900 px-3 py-2 text-sm text-white">추가</button>
             </form>
+            <div className={`rounded-xl border p-4 ${baseCard}`}>
+              <h2 className="font-semibold">전자계약 (PDF·사장서명·링크)</h2>
+              <p className="mt-1 text-xs text-slate-500">원본 PDF 업로드 → 사장 서명 합성 → 거래처 링크 발급까지 한 화면에서 진행합니다.</p>
+              <Link
+                href="/cleanidex/contracts/e-sign"
+                className="mt-2 inline-flex rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white"
+              >
+                전자계약 만들기
+              </Link>
+            </div>
             <form onSubmit={onCreateContract} className={`rounded-xl border p-4 ${baseCard}`}>
               <h2 className="font-semibold">계약 생성</h2>
               <select value={contractClientId} onChange={(e) => setContractClientId(e.target.value)} className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}>

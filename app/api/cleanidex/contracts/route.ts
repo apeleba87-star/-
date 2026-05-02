@@ -11,6 +11,7 @@ type CreateContractBody = {
   site_id?: string | null;
   template_id?: string | null;
   source_pdf_file_id?: string | null;
+  title?: string | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -26,7 +27,9 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .schema("cleanidex")
     .from("contracts")
-    .select("id, client_id, site_id, template_id, status, source_pdf_file_id, signed_pdf_file_id, created_at, updated_at")
+    .select(
+      "id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signed_pdf_file_id, final_pdf_file_id, created_at, updated_at"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -74,10 +77,13 @@ export async function POST(req: NextRequest) {
       site_id: body.site_id?.trim() || null,
       template_id: body.template_id?.trim() || null,
       source_pdf_file_id: body.source_pdf_file_id?.trim() || null,
+      title: body.title?.trim() || null,
       status: "draft",
       created_by: context.userId,
     })
-    .select("id, client_id, site_id, template_id, status, source_pdf_file_id, created_at, updated_at")
+    .select(
+      "id, client_id, site_id, template_id, status, title, source_pdf_file_id, created_at, updated_at"
+    )
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
