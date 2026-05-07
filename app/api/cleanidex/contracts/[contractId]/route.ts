@@ -33,6 +33,9 @@ type ContractDetailFlat = {
   final_pdf_sha256: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   client_name: string | null;
   site_name: string | null;
 };
@@ -67,17 +70,21 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ contractId:
   if (!id) return NextResponse.json({ ok: false, error: "contract_id_required" }, { status: 400 });
 
   const wantSignedUrls = req.nextUrl.searchParams.get("signed_urls") === "1";
+  const includeDeleted = req.nextUrl.searchParams.get("include_deleted") === "1";
 
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase
+  let rowQuery = supabase
     .schema("cleanidex")
     .from("contracts")
     .select(
-      "id, company_id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signature_file_id, owner_signed_pdf_file_id, final_pdf_file_id, owner_signature_placement, client_signature_placement, text_overlays, owner_signed_at, client_signed_at, completed_at, final_pdf_sha256, created_at, updated_at, clients ( name ), sites ( name )"
+      "id, company_id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signature_file_id, owner_signed_pdf_file_id, final_pdf_file_id, owner_signature_placement, client_signature_placement, text_overlays, owner_signed_at, client_signed_at, completed_at, final_pdf_sha256, created_at, updated_at, deleted_at, deleted_by, deleted_reason, clients ( name ), sites ( name )"
     )
     .eq("id", id)
-    .eq("company_id", context.companyId)
-    .maybeSingle();
+    .eq("company_id", context.companyId);
+
+  if (!includeDeleted) rowQuery = rowQuery.is("deleted_at", null);
+
+  const { data, error } = await rowQuery.maybeSingle();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   if (!data) return NextResponse.json({ ok: false, error: "contract_not_found" }, { status: 404 });
@@ -155,6 +162,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ contractI
     .select("id, status")
     .eq("id", id)
     .eq("company_id", context.companyId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (loadError) return NextResponse.json({ ok: false, error: loadError.message }, { status: 400 });
@@ -245,6 +253,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ contractI
     .update(patch)
     .eq("id", id)
     .eq("company_id", context.companyId)
+    .is("deleted_at", null)
     .select(
       "id, status, title, source_pdf_file_id, owner_signature_file_id, owner_signed_pdf_file_id, final_pdf_file_id, owner_signature_placement, client_signature_placement, text_overlays, updated_at"
     )
@@ -263,4 +272,74 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ contractI
   });
 
   return NextResponse.json({ ok: true, data });
+}
+
+type DeleteBody = {
+  reason?: string | null;
+};
+
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ contractId: string }> }) {
+  const context = await getCleanidexContext();
+  if (!context) {
+    return NextResponse.json({ ok: false, error: "cleanidex_membership_required" }, { status: 403 });
+  }
+
+  const { contractId } = await ctx.params;
+  const id = contractId?.trim() ?? "";
+  if (!id) return NextResponse.json({ ok: false, error: "contract_id_required" }, { status: 400 });
+
+  let body: DeleteBody = {};
+  try {
+    body = (await req.json()) as DeleteBody;
+  } catch {
+    body = {};
+  }
+  const reason = (body.reason ?? "").toString().trim().slice(0, 500) || null;
+
+  const supabase = await createServerSupabase();
+  const { data: existing, error: loadError } = await supabase
+    .schema("cleanidex")
+    .from("contracts")
+    .select("id, status, deleted_at")
+    .eq("id", id)
+    .eq("company_id", context.companyId)
+    .maybeSingle();
+  if (loadError) return NextResponse.json({ ok: false, error: loadError.message }, { status: 400 });
+  if (!existing) return NextResponse.json({ ok: false, error: "contract_not_found" }, { status: 404 });
+  if (existing.deleted_at) return NextResponse.json({ ok: false, error: "already_deleted" }, { status: 409 });
+
+  const now = new Date().toISOString();
+  const { data: updated, error: updateError } = await supabase
+    .schema("cleanidex")
+    .from("contracts")
+    .update({ deleted_at: now, deleted_by: context.userId, deleted_reason: reason })
+    .eq("id", id)
+    .eq("company_id", context.companyId)
+    .is("deleted_at", null)
+    .select("id, deleted_at, deleted_by, deleted_reason")
+    .maybeSingle();
+
+  if (updateError) return NextResponse.json({ ok: false, error: updateError.message }, { status: 400 });
+  if (!updated) return NextResponse.json({ ok: false, error: "race_or_already_deleted" }, { status: 409 });
+
+  // 진행 중이던 거래처 서명 토큰을 즉시 무효화하여 외부 링크가 더 이상 동작하지 않도록 처리.
+  await supabase
+    .schema("cleanidex")
+    .from("contract_sign_requests")
+    .update({ token_expires_at: now, token_hash: null })
+    .eq("company_id", context.companyId)
+    .eq("contract_id", id)
+    .is("completed_at", null);
+
+  await writeCleanidexAuditLog({
+    companyId: context.companyId,
+    actorUserId: context.userId,
+    action: "contract_soft_deleted",
+    targetTable: "contracts",
+    targetId: id,
+    metadata: { previous_status: existing.status, reason },
+    req,
+  });
+
+  return NextResponse.json({ ok: true, data: updated });
 }

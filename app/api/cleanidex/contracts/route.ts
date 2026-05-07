@@ -28,37 +28,81 @@ function flattenContractListRow(row: ContractRowWithJoins) {
   };
 }
 
+function parseLimit(raw: string | null, fallback: number, max: number) {
+  const n = Number(raw ?? "");
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.min(Math.floor(n), max);
+}
+
 export async function GET(req: NextRequest) {
   const context = await getCleanidexContext();
   if (!context) {
     return NextResponse.json({ ok: false, error: "cleanidex_membership_required" }, { status: 403 });
   }
 
-  const clientId = req.nextUrl.searchParams.get("client_id")?.trim();
-  const status = req.nextUrl.searchParams.get("status")?.trim();
-  const signRequestEligible = req.nextUrl.searchParams.get("sign_request_eligible") === "1";
+  const sp = req.nextUrl.searchParams;
+  const clientId = sp.get("client_id")?.trim();
+  const siteId = sp.get("site_id")?.trim();
+  const status = sp.get("status")?.trim();
+  const signRequestEligible = sp.get("sign_request_eligible") === "1";
+  const includeDeleted = sp.get("include_deleted") === "1";
+  const trashOnly = sp.get("trash") === "1";
+  const titleQ = sp.get("q")?.trim() ?? "";
+  const limit = parseLimit(sp.get("limit"), 50, 100);
+  const cursorCreatedAt = sp.get("cursor_created_at")?.trim();
+  const cursorId = sp.get("cursor_id")?.trim();
 
   const supabase = await createServerSupabase();
   let query = supabase
     .schema("cleanidex")
     .from("contracts")
     .select(
-      "id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signed_pdf_file_id, final_pdf_file_id, created_at, updated_at, clients ( name ), sites ( name )"
+      "id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signed_pdf_file_id, final_pdf_file_id, owner_signed_at, client_signed_at, completed_at, created_at, updated_at, deleted_at, deleted_by, deleted_reason, clients ( name ), sites ( name )"
     )
     .order("created_at", { ascending: false })
-    .limit(200);
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+
+  if (trashOnly) {
+    query = query.not("deleted_at", "is", null);
+  } else if (!includeDeleted) {
+    query = query.is("deleted_at", null);
+  }
 
   if (clientId) query = query.eq("client_id", clientId);
+  if (siteId) query = query.eq("site_id", siteId);
   if (status) query = query.eq("status", status);
   if (signRequestEligible) {
     query = query.eq("status", "owner_signed").not("owner_signed_pdf_file_id", "is", null);
+  }
+  if (titleQ) {
+    const escaped = titleQ.replace(/[\\%_,]/g, (m) => `\\${m}`);
+    query = query.ilike("title", `%${escaped}%`);
+  }
+  if (cursorCreatedAt && cursorId) {
+    query = query.or(
+      `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`
+    );
   }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-  const rows = (data ?? []).map((row) => flattenContractListRow(row as ContractRowWithJoins));
-  return NextResponse.json({ ok: true, data: rows });
+  const raw = (data ?? []) as ContractRowWithJoins[];
+  const hasMore = raw.length > limit;
+  const page = hasMore ? raw.slice(0, limit) : raw;
+  const rows = page.map((row) => flattenContractListRow(row));
+  const last = page[page.length - 1];
+  const nextCursor =
+    hasMore && last && typeof last.created_at === "string" && typeof last.id === "string"
+      ? { created_at: last.created_at, id: last.id }
+      : null;
+
+  return NextResponse.json({
+    ok: true,
+    data: rows,
+    pagination: { has_more: hasMore, limit, next_cursor: nextCursor },
+  });
 }
 
 export async function POST(req: NextRequest) {

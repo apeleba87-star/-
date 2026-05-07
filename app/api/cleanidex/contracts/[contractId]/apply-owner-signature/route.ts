@@ -28,6 +28,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ contractI
     )
     .eq("id", id)
     .eq("company_id", context.companyId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (cErr) return NextResponse.json({ ok: false, error: cErr.message }, { status: 400 });
@@ -158,6 +159,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ contractI
     })
     .eq("id", id)
     .eq("company_id", context.companyId)
+    .is("deleted_at", null)
     .eq("status", "draft")
     .select("id, status, owner_signed_pdf_file_id, owner_signed_at")
     .maybeSingle();

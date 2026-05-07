@@ -70,6 +70,7 @@ export async function GET(req: NextRequest) {
       "id, status, title, source_pdf_file_id, owner_signed_pdf_file_id, final_pdf_file_id, client_signed_at, completed_at"
     )
     .eq("id", resolved.data.contract_id)
+    .is("deleted_at", null)
     .maybeSingle();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   if (!contract) return NextResponse.json({ ok: false, error: "contract_not_found" }, { status: 404 });
@@ -165,6 +166,7 @@ export async function POST(req: NextRequest) {
       "id, company_id, status, owner_signed_pdf_file_id, client_signature_placement, final_pdf_file_id"
     )
     .eq("id", resolved.data.contract_id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (cErr || !contract) {
@@ -311,6 +313,7 @@ export async function POST(req: NextRequest) {
       completed_at: now,
     })
     .eq("id", resolved.data.contract_id)
+    .is("deleted_at", null)
     .in("status", resolved.data.signer_type === "client" ? ["sent"] : ["owner_signed"]);
 
   if (conErr) return NextResponse.json({ ok: false, error: conErr.message }, { status: 400 });

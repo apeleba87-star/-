@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     .select("id, status, owner_signed_pdf_file_id")
     .eq("id", contractId)
     .eq("company_id", context.companyId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (contractError) return NextResponse.json({ ok: false, error: contractError.message }, { status: 400 });
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
       .update({ status: "sent" })
       .eq("id", contractId)
       .eq("company_id", context.companyId)
+      .is("deleted_at", null)
       .eq("status", "owner_signed");
     if (sentErr) return NextResponse.json({ ok: false, error: sentErr.message }, { status: 400 });
   }
