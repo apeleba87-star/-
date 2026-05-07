@@ -41,7 +41,11 @@ END;
 $$;
 
 -- INSERT 시 소프트삭제 상태로 생성 방지. authenticated 하드 DELETE는 정책 미부여로 차단.
+-- 멱등성: 같은 마이그를 여러 번 실행해도 42710(이미 존재)이 나지 않도록 DROP IF EXISTS 후 재생성.
 DROP POLICY IF EXISTS "cleanidex_contracts_rw_company" ON cleanidex.contracts;
+DROP POLICY IF EXISTS "cleanidex_contracts_select_company" ON cleanidex.contracts;
+DROP POLICY IF EXISTS "cleanidex_contracts_insert_company" ON cleanidex.contracts;
+DROP POLICY IF EXISTS "cleanidex_contracts_update_company" ON cleanidex.contracts;
 
 CREATE POLICY "cleanidex_contracts_select_company" ON cleanidex.contracts
   FOR SELECT TO authenticated
