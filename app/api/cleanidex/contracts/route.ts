@@ -14,6 +14,20 @@ type CreateContractBody = {
   title?: string | null;
 };
 
+type ContractRowWithJoins = Record<string, unknown> & {
+  clients?: { name?: string } | null;
+  sites?: { name?: string } | null;
+};
+
+function flattenContractListRow(row: ContractRowWithJoins) {
+  const { clients, sites, ...rest } = row;
+  return {
+    ...rest,
+    client_name: typeof clients?.name === "string" ? clients.name : null,
+    site_name: typeof sites?.name === "string" ? sites.name : null,
+  };
+}
+
 export async function GET(req: NextRequest) {
   const context = await getCleanidexContext();
   if (!context) {
@@ -22,24 +36,29 @@ export async function GET(req: NextRequest) {
 
   const clientId = req.nextUrl.searchParams.get("client_id")?.trim();
   const status = req.nextUrl.searchParams.get("status")?.trim();
+  const signRequestEligible = req.nextUrl.searchParams.get("sign_request_eligible") === "1";
 
   const supabase = await createServerSupabase();
   let query = supabase
     .schema("cleanidex")
     .from("contracts")
     .select(
-      "id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signed_pdf_file_id, final_pdf_file_id, created_at, updated_at"
+      "id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signed_pdf_file_id, final_pdf_file_id, created_at, updated_at, clients ( name ), sites ( name )"
     )
     .order("created_at", { ascending: false })
     .limit(200);
 
   if (clientId) query = query.eq("client_id", clientId);
   if (status) query = query.eq("status", status);
+  if (signRequestEligible) {
+    query = query.eq("status", "owner_signed").not("owner_signed_pdf_file_id", "is", null);
+  }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-  return NextResponse.json({ ok: true, data: data ?? [] });
+  const rows = (data ?? []).map((row) => flattenContractListRow(row as ContractRowWithJoins));
+  return NextResponse.json({ ok: true, data: rows });
 }
 
 export async function POST(req: NextRequest) {

@@ -5,6 +5,47 @@ import { writeCleanidexAuditLog } from "@/lib/cleanidex/audit";
 import { parseContractTextOverlays } from "@/lib/cleanidex/contract-text-overlay";
 import { parseSignaturePlacement } from "@/lib/cleanidex/contract-pdf";
 
+type ContractRowWithJoins = Record<string, unknown> & {
+  clients?: { name?: string } | null;
+  sites?: { name?: string } | null;
+};
+
+/** GET select + join 결과 (중첩 제거 후 응답 형태). */
+type ContractDetailFlat = {
+  id: string;
+  company_id: string;
+  client_id: string;
+  site_id: string | null;
+  template_id: string | null;
+  status: string;
+  title: string | null;
+  source_pdf_file_id: string | null;
+  signed_pdf_file_id: string | null;
+  owner_signature_file_id: string | null;
+  owner_signed_pdf_file_id: string | null;
+  final_pdf_file_id: string | null;
+  owner_signature_placement: unknown;
+  client_signature_placement: unknown;
+  text_overlays: unknown;
+  owner_signed_at: string | null;
+  client_signed_at: string | null;
+  completed_at: string | null;
+  final_pdf_sha256: string | null;
+  created_at: string;
+  updated_at: string;
+  client_name: string | null;
+  site_name: string | null;
+};
+
+function flattenContractDetailRow(row: ContractRowWithJoins): ContractDetailFlat {
+  const { clients, sites, ...rest } = row;
+  return {
+    ...(rest as Omit<ContractDetailFlat, "client_name" | "site_name">),
+    client_name: typeof clients?.name === "string" ? clients.name : null,
+    site_name: typeof sites?.name === "string" ? sites.name : null,
+  };
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -32,7 +73,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ contractId:
     .schema("cleanidex")
     .from("contracts")
     .select(
-      "id, company_id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signature_file_id, owner_signed_pdf_file_id, final_pdf_file_id, owner_signature_placement, client_signature_placement, text_overlays, owner_signed_at, client_signed_at, completed_at, final_pdf_sha256, created_at, updated_at"
+      "id, company_id, client_id, site_id, template_id, status, title, source_pdf_file_id, signed_pdf_file_id, owner_signature_file_id, owner_signed_pdf_file_id, final_pdf_file_id, owner_signature_placement, client_signature_placement, text_overlays, owner_signed_at, client_signed_at, completed_at, final_pdf_sha256, created_at, updated_at, clients ( name ), sites ( name )"
     )
     .eq("id", id)
     .eq("company_id", context.companyId)
@@ -41,11 +82,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ contractId:
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   if (!data) return NextResponse.json({ ok: false, error: "contract_not_found" }, { status: 404 });
 
+  const flat = flattenContractDetailRow(data as ContractRowWithJoins);
+
   if (!wantSignedUrls) {
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ ok: true, data: flat });
   }
 
-  const fileIds = [data.source_pdf_file_id, data.owner_signed_pdf_file_id, data.final_pdf_file_id].filter(
+  const fileIds = [flat.source_pdf_file_id, flat.owner_signed_pdf_file_id, flat.final_pdf_file_id].filter(
     (x): x is string => typeof x === "string" && x.length > 0
   );
 
@@ -75,15 +118,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ contractId:
       signed_urls[key] = signed?.signedUrl ?? null;
     }
 
-    await signFor("source_pdf", data.source_pdf_file_id);
-    await signFor("owner_signed_pdf", data.owner_signed_pdf_file_id);
-    await signFor("final_pdf", data.final_pdf_file_id);
+    await signFor("source_pdf", flat.source_pdf_file_id as string | null);
+    await signFor("owner_signed_pdf", flat.owner_signed_pdf_file_id as string | null);
+    await signFor("final_pdf", flat.final_pdf_file_id as string | null);
   }
 
   return NextResponse.json({
     ok: true,
     data: {
-      ...data,
+      ...flat,
       signed_urls,
       signed_urls_expires_in_seconds: ttl,
     },

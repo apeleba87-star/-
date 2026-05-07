@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { PDFDocument } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import { drawTextOverlaysOnPdf, type ContractTextOverlay } from "@/lib/cleanidex/contract-text-overlay";
 
 /** Ratios 0–1; origin top-left of the page (web-style). */
@@ -108,6 +109,7 @@ export async function composeOwnerSignedPdfWithTextOverlays(
     if (!fontBytes || fontBytes.byteLength < 1000) {
       throw new Error("pdf_font_required_for_overlays");
     }
+    doc.registerFontkit(fontkit);
     const font = await doc.embedFont(fontBytes, { subset: true });
     drawTextOverlaysOnPdf(doc, font, textOverlays);
   }
