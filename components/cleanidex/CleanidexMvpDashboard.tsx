@@ -2,22 +2,11 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { formatContractListOptionLabel } from "@/lib/cleanidex/contract-display";
 
 type Tab = "settings" | "work" | "confirm" | "evidence";
 type Client = { id: string; name: string };
 type Site = { id: string; name: string; client_id: string };
 type WorkSession = { id: string; site_id: string; work_date: string };
-type Contract = {
-  id: string;
-  status: string;
-  title?: string | null;
-  source_pdf_file_id?: string | null;
-  owner_signed_pdf_file_id?: string | null;
-  client_name?: string | null;
-  site_name?: string | null;
-  created_at?: string | null;
-};
 type ChecklistItem = { id: string; title: string };
 type ChecklistOption = { id: string; label: string };
 type ChecklistTemplate = { id: string; name: string };
@@ -42,7 +31,6 @@ export default function CleanidexMvpDashboard() {
   const [clients, setClients] = useState<Client[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [sessions, setSessions] = useState<WorkSession[]>([]);
-  const [signEligibleContracts, setSignEligibleContracts] = useState<Contract[]>([]);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [optionSets, setOptionSets] = useState<OptionSet[]>([]);
   const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
@@ -63,14 +51,6 @@ export default function CleanidexMvpDashboard() {
   const [clientName, setClientName] = useState("");
   const [siteClientId, setSiteClientId] = useState("");
   const [siteName, setSiteName] = useState("");
-  const [contractClientId, setContractClientId] = useState("");
-  const [contractSiteId, setContractSiteId] = useState("");
-  const [contractTitle, setContractTitle] = useState("");
-  const [contractPdfFile, setContractPdfFile] = useState<File | null>(null);
-  const [signRequestContractId, setSignRequestContractId] = useState("");
-  const [signRequestRecipientName, setSignRequestRecipientName] = useState("");
-  const [signRequestRecipientContact, setSignRequestRecipientContact] = useState("");
-  const [latestSignRequestPath, setLatestSignRequestPath] = useState("");
   const [zoneSiteId, setZoneSiteId] = useState("");
   const [zoneName, setZoneName] = useState("");
   const [zoneBulkNames, setZoneBulkNames] = useState("");
@@ -110,26 +90,23 @@ export default function CleanidexMvpDashboard() {
   }, []);
 
   async function loadInitialData() {
-    const [clientsRes, sitesRes, sessionsRes, signEligibleRes, templatesRes, optionSetsRes] = await Promise.all([
+    const [clientsRes, sitesRes, sessionsRes, templatesRes, optionSetsRes] = await Promise.all([
       fetch("/api/cleanidex/clients"),
       fetch("/api/cleanidex/sites"),
       fetch("/api/cleanidex/work-sessions?limit=20&offset=0"),
-      fetch("/api/cleanidex/contracts?sign_request_eligible=1"),
       fetch("/api/cleanidex/checklist-template?mode=list"),
       fetch("/api/cleanidex/checklist-option-sets"),
     ]);
-    const [clientsJson, sitesJson, sessionsJson, signEligibleJson, templatesJson, optionSetsJson] = await Promise.all([
+    const [clientsJson, sitesJson, sessionsJson, templatesJson, optionSetsJson] = await Promise.all([
       clientsRes.json(),
       sitesRes.json(),
       sessionsRes.json(),
-      signEligibleRes.json(),
       templatesRes.json(),
       optionSetsRes.json(),
     ]);
     if (!clientsRes.ok) return setError(clientsJson.error ?? "load_failed");
     if (!sitesRes.ok) return setError(sitesJson.error ?? "load_failed");
     if (!sessionsRes.ok) return setError(sessionsJson.error ?? "load_failed");
-    if (!signEligibleRes.ok) return setError(signEligibleJson.error ?? "load_failed");
     if (!templatesRes.ok) return setError(templatesJson.error ?? "load_failed");
     if (!optionSetsRes.ok) return setError(optionSetsJson.error ?? "load_failed");
 
@@ -137,7 +114,6 @@ export default function CleanidexMvpDashboard() {
     setSites(sitesJson.data ?? []);
     setSessions(sessionsJson.data ?? []);
     setSessionHasMore(Boolean(sessionsJson.pagination?.has_more));
-    setSignEligibleContracts(signEligibleJson.data ?? []);
     setTemplates(templatesJson.data ?? []);
     setOptionSets(optionSetsJson.data ?? []);
   }
@@ -166,13 +142,6 @@ export default function CleanidexMvpDashboard() {
     const rows = (json.data ?? []) as WorkSession[];
     setSessions((prev) => (append ? [...prev, ...rows] : rows));
     setSessionHasMore(Boolean(json.pagination?.has_more));
-  }
-
-  async function loadContracts() {
-    const res = await fetch("/api/cleanidex/contracts?sign_request_eligible=1");
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error ?? "contracts_load_failed");
-    setSignEligibleContracts(json.data ?? []);
   }
 
   async function loadTemplates() {
@@ -303,12 +272,6 @@ export default function CleanidexMvpDashboard() {
     window.localStorage.setItem("cleanidex_theme", next ? "dark" : "light");
   }
 
-  useEffect(() => {
-    if (signRequestContractId && !signEligibleContracts.some((c) => c.id === signRequestContractId)) {
-      setSignRequestContractId("");
-    }
-  }, [signEligibleContracts, signRequestContractId]);
-
   async function postJson(url: string, body: unknown) {
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const json = await res.json();
@@ -332,54 +295,6 @@ export default function CleanidexMvpDashboard() {
     setSiteName("");
     setNotice("현장이 추가되었습니다.");
     await loadSites();
-  }
-
-  async function onCreateContract(e: FormEvent) {
-    e.preventDefault();
-    if (!contractClientId) return;
-    let sourcePdfFileId: string | null = null;
-    if (contractPdfFile) {
-      const ext = contractPdfFile.name.split(".").pop() ?? "pdf";
-      const signed = await postJson("/api/cleanidex/files/signed-upload", { file_type: "contract_pdf", extension: ext });
-      const uploadRes = await fetch(signed.data.signed_url, {
-        method: "PUT",
-        headers: { "content-type": contractPdfFile.type || "application/pdf" },
-        body: contractPdfFile,
-      });
-      if (!uploadRes.ok) throw new Error("contract_pdf_upload_failed");
-      const fileMeta = await postJson("/api/cleanidex/files", {
-        file_path: signed.data.file_path,
-        file_type: "contract_pdf",
-        mime_type: contractPdfFile.type || "application/pdf",
-        size: contractPdfFile.size,
-      });
-      sourcePdfFileId = fileMeta.data.id;
-    }
-    await postJson("/api/cleanidex/contracts", {
-      client_id: contractClientId,
-      site_id: contractSiteId || null,
-      source_pdf_file_id: sourcePdfFileId,
-      title: contractTitle.trim() || null,
-    });
-    setContractPdfFile(null);
-    setContractTitle("");
-    setNotice("계약이 생성되었습니다.");
-    await loadContracts();
-  }
-
-  async function onIssueContractSignRequest(e: FormEvent) {
-    e.preventDefault();
-    if (!signRequestContractId) return;
-    const json = await postJson("/api/cleanidex/contracts/sign-request", {
-      contract_id: signRequestContractId,
-      signer_type: "client",
-      recipient_name: signRequestRecipientName.trim() || null,
-      recipient_contact: signRequestRecipientContact.trim() || null,
-      expires_in_hours: 72,
-    });
-    setLatestSignRequestPath(json.data.sign_path ?? "");
-    setNotice("서명 요청 링크가 발급되었습니다.");
-    await loadContracts();
   }
 
   async function onCreatePhotoZone(e: FormEvent) {
@@ -769,76 +684,21 @@ export default function CleanidexMvpDashboard() {
             <div className={`rounded-xl border p-4 ${baseCard}`}>
               <h2 className="font-semibold">전자계약 (PDF·사장서명·링크)</h2>
               <p className="mt-1 text-xs text-slate-500">원본 PDF 업로드 → 사장 서명 합성 → 거래처 링크 발급까지 한 화면에서 진행합니다.</p>
-              <Link
-                href="/cleanidex/contracts/e-sign"
-                className="mt-2 inline-flex rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white"
-              >
-                전자계약 만들기
-              </Link>
-            </div>
-            <form onSubmit={onCreateContract} className={`rounded-xl border p-4 ${baseCard}`}>
-              <h2 className="font-semibold">계약 생성</h2>
-              <select value={contractClientId} onChange={(e) => setContractClientId(e.target.value)} className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}>
-                <option value="">거래처 선택</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <select value={contractSiteId} onChange={(e) => setContractSiteId(e.target.value)} className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}>
-                <option value="">현장(선택)</option>{sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-              <label className={`mt-2 block text-xs ${isDark ? "text-slate-400" : "text-slate-600"}`}>계약명 (선택, 목록에서 구분용)</label>
-              <input
-                value={contractTitle}
-                onChange={(e) => setContractTitle(e.target.value)}
-                placeholder="예: 2025 청소 용역 계약"
-                className={`mt-1 w-full rounded border px-3 py-2 text-sm ${baseInput}`}
-              />
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => setContractPdfFile(e.target.files?.[0] ?? null)}
-                className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}
-              />
-              <button className="mt-2 rounded bg-slate-900 px-3 py-2 text-sm text-white">계약 생성</button>
-            </form>
-            <form onSubmit={onIssueContractSignRequest} className={`rounded-xl border p-4 ${baseCard}`}>
-              <h2 className="font-semibold">계약 전자서명 요청 링크</h2>
-              <p className={`mt-1 text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                사장 서명이 PDF에 반영된 계약(<strong>사장 서명 PDF 완료</strong> 상태)만 선택할 수 있습니다. 전자계약은{" "}
-                <Link href="/cleanidex/contracts/e-sign" className="text-indigo-600 underline">
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Link
+                  href="/cleanidex/contracts/e-sign"
+                  className="inline-flex rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white"
+                >
                   전자계약 만들기
                 </Link>
-                에서 진행하세요.
-              </p>
-              <select value={signRequestContractId} onChange={(e) => setSignRequestContractId(e.target.value)} className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}>
-                <option value="">계약 선택</option>
-                {signEligibleContracts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {formatContractListOptionLabel(c)}
-                  </option>
-                ))}
-              </select>
-              {signEligibleContracts.length === 0 ? (
-                <p className={`mt-2 text-xs ${isDark ? "text-amber-200/90" : "text-amber-800"}`}>
-                  링크를 낼 수 있는 계약이 없습니다. e-sign에서 PDF 업로드·사장 서명 합성까지 완료한 뒤 다시 확인하세요.
-                </p>
-              ) : null}
-              <input value={signRequestRecipientName} onChange={(e) => setSignRequestRecipientName(e.target.value)} placeholder="수신자 이름(선택)" className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`} />
-              <input value={signRequestRecipientContact} onChange={(e) => setSignRequestRecipientContact(e.target.value)} placeholder="연락처/이메일(선택)" className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`} />
-              <button
-                type="submit"
-                disabled={!signRequestContractId || signEligibleContracts.length === 0}
-                className="mt-2 rounded bg-indigo-600 px-3 py-2 text-sm text-white disabled:bg-indigo-300 disabled:opacity-70"
-              >
-                서명요청 링크 발급
-              </button>
-              {latestSignRequestPath ? (
-                <p className="mt-2 text-xs">
-                  링크:{" "}
-                  <a href={latestSignRequestPath} target="_blank" rel="noreferrer" className="text-indigo-600 underline">
-                    {latestSignRequestPath}
-                  </a>
-                </p>
-              ) : null}
-            </form>
+                <Link
+                  href="/cleanidex/contracts"
+                  className="inline-flex rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+                >
+                  계약 관리
+                </Link>
+              </div>
+            </div>
             <form onSubmit={onCreatePhotoZone} className={`rounded-xl border p-4 ${baseCard}`}>
               <h2 className="font-semibold">현장별 사진 구역</h2>
               <select value={zoneSiteId} onChange={(e) => setZoneSiteId(e.target.value)} className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}>
