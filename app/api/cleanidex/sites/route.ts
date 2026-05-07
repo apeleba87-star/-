@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .schema("cleanidex")
     .from("sites")
-    .select("id, client_id, name, address, created_at, updated_at")
+    .select(
+      "id, client_id, name, address, lat, lng, geofence_radius_m, created_at, updated_at"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -76,7 +78,9 @@ export async function POST(req: NextRequest) {
       name,
       address,
     })
-    .select("id, client_id, name, address, created_at, updated_at")
+    .select(
+      "id, client_id, name, address, lat, lng, geofence_radius_m, created_at, updated_at"
+    )
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

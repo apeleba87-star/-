@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import CompanyMembersSettings from "@/components/cleanidex/CompanyMembersSettings";
+import SiteOperationsSettings from "@/components/cleanidex/SiteOperationsSettings";
+import ClientRequirementsSettings from "@/components/cleanidex/ClientRequirementsSettings";
+import TodayOperationsView from "@/components/cleanidex/TodayOperationsView";
+import WeeklySummaryView from "@/components/cleanidex/WeeklySummaryView";
 
-type Tab = "settings" | "work" | "confirm" | "evidence";
+type Tab = "today" | "weekly" | "settings" | "work" | "confirm" | "evidence";
 type Client = { id: string; name: string };
 type Site = { id: string; name: string; client_id: string };
 type WorkSession = { id: string; site_id: string; work_date: string };
@@ -16,14 +21,19 @@ type Confirmation = { id: string; work_session_id: string; opened_at: string | n
 type Report = { id: string; work_session_id: string; generated_at: string; generated_pdf_file_id: string | null };
 
 const TAB_LABEL: Record<Tab, string> = {
+  today: "오늘",
+  weekly: "주간",
   settings: "설정",
   work: "작업",
   confirm: "확인현황",
   evidence: "증거/PDF",
 };
 
+type SettingsSubTab = "start" | "ops";
+
 export default function CleanidexMvpDashboard() {
-  const [tab, setTab] = useState<Tab>("settings");
+  const [tab, setTab] = useState<Tab>("today");
+  const [settingsSub, setSettingsSub] = useState<SettingsSubTab>("start");
   const [isDark, setIsDark] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -633,7 +643,58 @@ export default function CleanidexMvpDashboard() {
           {error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}
         </div>
 
+        {tab === "today" ? (
+          <TodayOperationsView
+            isDark={isDark}
+            baseCard={baseCard}
+            baseInput={baseInput}
+            onError={setError}
+            onNotice={setNotice}
+          />
+        ) : null}
+
+        {tab === "weekly" ? (
+          <WeeklySummaryView isDark={isDark} baseCard={baseCard} baseInput={baseInput} onError={setError} />
+        ) : null}
+
         {tab === "settings" ? (
+          <div className="space-y-4">
+            <div className={`flex flex-wrap gap-2 rounded-xl border p-3 ${baseCard}`}>
+              <span className={`self-center text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>설정 구분</span>
+              <button
+                type="button"
+                onClick={() => setSettingsSub("start")}
+                className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                  settingsSub === "start" ? "bg-emerald-600 text-white" : isDark ? "bg-slate-700 text-slate-200" : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                시작하기
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettingsSub("ops")}
+                className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                  settingsSub === "ops" ? "bg-emerald-600 text-white" : isDark ? "bg-slate-700 text-slate-200" : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                운영
+              </button>
+              <p className={`w-full text-xs sm:ml-auto sm:w-auto ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                {settingsSub === "start"
+                  ? "거래처·현장·계약·체크리스트 등 처음 잡아두는 구조"
+                  : "방문 룰·위치·요구사항 등 매일·매주 손대는 값"}
+              </p>
+            </div>
+
+            {settingsSub === "start" ? (
+              <>
+            <CompanyMembersSettings
+              isDark={isDark}
+              baseCard={baseCard}
+              baseInput={baseInput}
+              onError={setError}
+              onNotice={setNotice}
+            />
           <div className="grid gap-4 md:grid-cols-2">
             <form onSubmit={onCreateClient} className={`rounded-xl border p-4 ${baseCard}`}>
               <h2 className="font-semibold">거래처 생성</h2>
@@ -867,6 +928,55 @@ export default function CleanidexMvpDashboard() {
             </form>
               </div>
             </details>
+          </div>
+              </>
+            ) : (
+              <>
+                <div className={`rounded-xl border p-4 ${baseCard}`}>
+                  <h2 className="font-semibold">운영 화면 바로가기</h2>
+                  <p className={`mt-1 text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    출근·체크아웃과 주간 완료율은 상단 탭에서 확인합니다. 필수 사진 구역은「시작하기」에서 먼저 지정하세요.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTab("today")}
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
+                    >
+                      오늘 탭으로
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTab("weekly")}
+                      className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white"
+                    >
+                      주간 탭으로
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsSub("start")}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium ${isDark ? "bg-slate-700 text-slate-100" : "bg-slate-200 text-slate-800"}`}
+                    >
+                      시작하기로 이동
+                    </button>
+                  </div>
+                </div>
+                <SiteOperationsSettings
+                  isDark={isDark}
+                  baseCard={baseCard}
+                  baseInput={baseInput}
+                  onError={setError}
+                  onNotice={setNotice}
+                />
+                <ClientRequirementsSettings
+                  isDark={isDark}
+                  baseCard={baseCard}
+                  baseInput={baseInput}
+                  onError={setError}
+                  onNotice={setNotice}
+                />
+              </>
+            )}
           </div>
         ) : null}
 
