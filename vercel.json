@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/fetch-scsbid-award-raw",
       "schedule": "50 19 * * *"
+    },
+    {
+      "path": "/api/cron/cleanidex-purge-trashed-contracts",
+      "schedule": "30 18 * * *"
     }
   ]
 }
