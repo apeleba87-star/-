@@ -635,39 +635,6 @@ export default function CleanidexMvpDashboard() {
 
         {tab === "settings" ? (
           <div className="grid gap-4 md:grid-cols-2">
-            <form onSubmit={onQuickCreateTemplate} className={`rounded-xl border p-4 md:col-span-2 ${baseCard}`}>
-              <h2 className="font-semibold">간편 체크리스트 템플릿 생성</h2>
-              <p className="mt-1 text-xs text-slate-500">템플릿명 + 항목 줄바꿈만 입력하면 바로 생성됩니다. (기본 옵션: 좋음/미흡)</p>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <input
-                  value={quickTemplateName}
-                  onChange={(e) => setQuickTemplateName(e.target.value)}
-                  placeholder="템플릿명 (예: 주간 정기청소)"
-                  className={`w-full rounded border px-3 py-2 text-sm ${baseInput}`}
-                />
-                <select
-                  value={quickTemplateSiteId}
-                  onChange={(e) => setQuickTemplateSiteId(e.target.value)}
-                  className={`w-full rounded border px-3 py-2 text-sm ${baseInput}`}
-                >
-                  <option value="">생성 후 바로 연결할 현장(선택)</option>
-                  {sites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <textarea
-                value={quickTemplateItems}
-                onChange={(e) => setQuickTemplateItems(e.target.value)}
-                placeholder={"항목을 한 줄씩 입력\n예)\n바닥 청결 상태\n화장실 청결 상태\n쓰레기 배출 완료"}
-                rows={5}
-                className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}
-              />
-              <button className="mt-2 rounded bg-emerald-600 px-3 py-2 text-sm text-white">간편 생성</button>
-            </form>
-
             <form onSubmit={onCreateClient} className={`rounded-xl border p-4 ${baseCard}`}>
               <h2 className="font-semibold">거래처 생성</h2>
               <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="거래처명" className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`} />
@@ -795,6 +762,40 @@ export default function CleanidexMvpDashboard() {
                   </div>
                 )}
               </div>
+            </form>
+            <form onSubmit={onQuickCreateTemplate} className={`rounded-xl border p-4 md:col-span-2 ${baseCard}`}>
+              <h2 className="font-semibold">간편 체크리스트 템플릿 생성</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                거래처·현장을 만든 뒤, 템플릿을 만들고 필요하면 아래에서 현장에 연결하세요. (기본 옵션: 좋음/미흡)
+              </p>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <input
+                  value={quickTemplateName}
+                  onChange={(e) => setQuickTemplateName(e.target.value)}
+                  placeholder="템플릿명 (예: 주간 정기청소)"
+                  className={`w-full rounded border px-3 py-2 text-sm ${baseInput}`}
+                />
+                <select
+                  value={quickTemplateSiteId}
+                  onChange={(e) => setQuickTemplateSiteId(e.target.value)}
+                  className={`w-full rounded border px-3 py-2 text-sm ${baseInput}`}
+                >
+                  <option value="">생성 후 바로 연결할 현장(선택)</option>
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <textarea
+                value={quickTemplateItems}
+                onChange={(e) => setQuickTemplateItems(e.target.value)}
+                placeholder={"항목을 한 줄씩 입력\n예)\n바닥 청결 상태\n화장실 청결 상태\n쓰레기 배출 완료"}
+                rows={5}
+                className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}
+              />
+              <button className="mt-2 rounded bg-emerald-600 px-3 py-2 text-sm text-white">간편 생성</button>
             </form>
             <form onSubmit={onSetSiteTemplate} className={`rounded-xl border p-4 ${baseCard}`}>
               <h2 className="font-semibold">현장별 체크리스트 템플릿</h2>
