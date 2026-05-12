@@ -1,17 +1,24 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Noto_Sans_KR } from "next/font/google";
+import { Black_Han_Sans, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
+import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME } from "@/lib/seo";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
-import Footer from "@/components/Footer";
-import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
-import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME } from "@/lib/seo";
+
+const siteDisplay = Black_Han_Sans({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-site-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
@@ -72,7 +79,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${notoSansKr.className} flex min-h-screen min-w-0 flex-col antialiased`}>
+      <body
+        className={`${notoSansKr.className} ${siteDisplay.variable} flex min-h-screen min-w-0 flex-col antialiased`}
+      >
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-JXV9GMLMEZ"
           strategy="afterInteractive"

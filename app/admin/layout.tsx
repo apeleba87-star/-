@@ -88,6 +88,9 @@ export default async function AdminLayout({
         <Link href="/admin/users" className="font-medium text-slate-700 hover:text-slate-900">
           사용자
         </Link>
+        <Link href="/admin/beta-applications" className="font-medium text-slate-700 hover:text-slate-900">
+          베타 지원
+        </Link>
         <Link href="/admin/subscriptions" className="font-medium text-slate-700 hover:text-slate-900">
           구독 관리
         </Link>

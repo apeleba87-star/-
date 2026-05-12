@@ -1,6 +1,21 @@
 /** 클린아이덱스 홈 히어로 카피 */
 
+/** 베타 모집 홈 노출 — 상태 / 교환 / 부담 */
+export const HOME_CLEAN_INDEX_BETA = {
+  status: "베타",
+  exchange: "온보딩 지원",
+  burden: "주 1회 15분",
+  /** 히어로 CTA 아래 한 줄 */
+  heroNote: "베타 참여 시 온보딩 지원 · 주 1회 15분 피드백",
+  /** 검정 CTA 블록 본문 */
+  ctaBody:
+    "지금은 베타입니다. 가입하시면 온보딩을 지원하며, 주 1회 15분 정도의 피드백을 부탁드립니다. 현장 기록·체크리스트·고객 확인을 바로 써 보실 수 있습니다.",
+  ctaPrimary: "베타로 시작하기",
+} as const;
+
 export const HOME_CLEAN_INDEX = {
+  /** 흰 카드 히어로 첫 줄 — 이 문구 아래는 카드에서 생략 */
+  heroHeadline: "청소업의 모든 기회",
   /** 맨 위 정체성 — 히어로에서 lead / highlight / brand 로 나눠 스타일 적용 */
   slogan: "청소업의 모든 기회, 데이터로 한눈에 - 클린아이덱스",
   sloganLead: "청소업의 모든 기회, ",

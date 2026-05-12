@@ -96,4 +96,17 @@ body {
   .post-report tbody tr:hover {
     @apply bg-slate-50/80;
   }
+
+  /* 홈 클린아이덱스 내러티브 스크롤 등장 */
+  .narr-fade {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    transition:
+      opacity 0.65s ease,
+      transform 0.65s ease;
+  }
+  .narr-fade.narr-fade-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
