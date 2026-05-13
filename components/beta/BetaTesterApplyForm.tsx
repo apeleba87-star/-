@@ -268,7 +268,6 @@ export default function BetaTesterApplyForm() {
           </fieldset>
           <fieldset>
             <legend className="text-sm font-semibold text-zinc-800">현재 직원은 몇 명인가요?</legend>
-            <p className="mt-1 text-xs font-medium text-teal-700">※ 이 질문 중요함 — 진짜 돈 되는 고객 선별에 도움이 됩니다.</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {BETA_EMPLOYEE_BAND_OPTIONS.map((opt) => (
                 <label
@@ -320,7 +319,6 @@ export default function BetaTesterApplyForm() {
           </fieldset>
           <fieldset>
             <legend className="text-sm font-semibold text-zinc-800">이런 경험이 있으신가요? (중복 선택)</legend>
-            <p className="mt-1 text-xs font-medium text-teal-700">※ 이 질문 핵심 — 고통 강도 파악에 도움이 됩니다.</p>
             <div className="mt-3 grid gap-2">
               {BETA_PAIN_EXPERIENCE_OPTIONS.map((opt) => (
                 <label
@@ -393,7 +391,6 @@ export default function BetaTesterApplyForm() {
             <label htmlFor="bt-pain" className="block text-sm font-semibold text-zinc-800">
               현재 가장 불편한 점은 무엇인가요?
             </label>
-            <p className="mt-1 text-xs font-medium text-teal-700">※ 여기서 진짜 시장 데이터가 나옵니다. 편하게 길게 적어 주세요.</p>
             <textarea
               id="bt-pain"
               name="biggestPain"
