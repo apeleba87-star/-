@@ -1,4 +1,26 @@
+import type { Metadata } from "next";
 import HomeCleanidexNarrative from "@/components/home/HomeCleanidexNarrative";
+import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME } from "@/lib/seo";
+
+/** 홈: 검색·SNS 공유 시 기본 메타를 명시( canonical, OG URL ) */
+export const metadata: Metadata = {
+  title: { absolute: defaultTitle },
+  description: defaultDescription,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: defaultTitle,
+    description: defaultDescription,
+    url: `${getBaseUrl()}/`,
+    siteName: SITE_NAME,
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultTitle,
+    description: defaultDescription,
+  },
+};
 
 /** 홈: 클린아이덱스 내러티브(검정 CTA 블록까지)만 노출 */
 export default function HomePage() {

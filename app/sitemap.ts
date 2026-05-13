@@ -9,10 +9,16 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/categories", priority: 0.8, changeFrequency: "weekly" },
   { path: "/listings", priority: 0.8, changeFrequency: "daily" },
   { path: "/tenders", priority: 0.8, changeFrequency: "daily" },
+  { path: "/tender-awards", priority: 0.75, changeFrequency: "daily" },
+  { path: "/marketing-report", priority: 0.75, changeFrequency: "daily" },
+  { path: "/job-market-report", priority: 0.75, changeFrequency: "daily" },
   { path: "/jobs", priority: 0.8, changeFrequency: "daily" },
+  { path: "/beta", priority: 0.7, changeFrequency: "weekly" },
+  { path: "/cleanidex", priority: 0.65, changeFrequency: "weekly" },
   { path: "/estimate", priority: 0.6, changeFrequency: "monthly" },
   { path: "/contracts", priority: 0.5, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "monthly" },
+  { path: "/terms", priority: 0.3, changeFrequency: "monthly" },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

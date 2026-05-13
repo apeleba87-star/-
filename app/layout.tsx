@@ -5,7 +5,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
-import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME } from "@/lib/seo";
+import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME, seoKeywords } from "@/lib/seo";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
@@ -27,10 +27,12 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: defaultDescription,
-  keywords: ["청소업", "입찰", "방역", "청소 입찰", "나라장터", "견적", "현장거래", "클린아이덱스"],
+  keywords: seoKeywords,
+  applicationName: SITE_NAME,
   openGraph: {
     type: "website",
     locale: "ko_KR",
+    url: getBaseUrl(),
     siteName: SITE_NAME,
     title: defaultTitle,
     description: defaultDescription,
@@ -92,6 +94,27 @@ function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-JXV9GMLMEZ');`}
         </Script>
+        <Script
+          id="ld-json-site"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: SITE_NAME,
+              alternateName: "Cleanidex",
+              url: getBaseUrl(),
+              description: defaultDescription,
+              inLanguage: "ko-KR",
+              publisher: {
+                "@type": "Organization",
+                name: SITE_NAME,
+                url: getBaseUrl(),
+              },
+            }),
+          }}
+        />
         <SupabaseSessionRefresh />
         <Header />
         <main className="flex min-h-0 min-w-0 w-full max-w-[100vw] flex-1 flex-col items-stretch pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)] lg:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">

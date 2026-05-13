@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { siteTagline } from "@/lib/seo";
 
 export default function Footer() {
   return (
@@ -9,9 +10,7 @@ export default function Footer() {
             <Link href="/" className="font-semibold text-white hover:text-teal-300 transition-colors">
               클린아이덱스
             </Link>
-            <p className="mt-1 text-sm text-slate-400">
-              청소업 정보 뉴스레터 - 클린아이덱스
-            </p>
+            <p className="mt-1 text-sm text-slate-400">{siteTagline}</p>
           </div>
           <nav className="flex flex-wrap gap-4 sm:gap-6" aria-label="푸터 링크">
             <Link href="/archive" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">아카이브</Link>
