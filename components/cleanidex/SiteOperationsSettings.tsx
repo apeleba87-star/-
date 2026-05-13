@@ -34,6 +34,8 @@ type Override = {
 };
 
 type Props = {
+  /** 부모 대시보드가 이미 불러온 목록 — clients/sites API 중복 제거 */
+  shareCatalog?: { clients: Client[]; sites: Site[] } | null;
   isDark: boolean;
   baseCard: string;
   baseInput: string;
@@ -65,7 +67,14 @@ function formatRule(rule: ScheduleRule): string {
   return "-";
 }
 
-export default function SiteOperationsSettings({ isDark, baseCard, baseInput, onError, onNotice }: Props) {
+export default function SiteOperationsSettings({
+  shareCatalog = null,
+  isDark,
+  baseCard,
+  baseInput,
+  onError,
+  onNotice,
+}: Props) {
   const [clients, setClients] = useState<Client[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
@@ -97,7 +106,7 @@ export default function SiteOperationsSettings({ isDark, baseCard, baseInput, on
   const [newOverrideNotes, setNewOverrideNotes] = useState("");
   const [savingOverride, setSavingOverride] = useState(false);
 
-  const loadInitial = useCallback(async () => {
+  const loadOwnCatalog = useCallback(async () => {
     setLoading(true);
     try {
       const [clientsRes, sitesRes] = await Promise.all([
@@ -111,17 +120,30 @@ export default function SiteOperationsSettings({ isDark, baseCard, baseInput, on
       setClients(clientsJson.data ?? []);
       const list = (sitesJson.data ?? []) as Site[];
       setSites(list);
-      if (list.length > 0 && !selectedSiteId) setSelectedSiteId(list[0].id);
+      setSelectedSiteId((prev) => {
+        if (prev && list.some((s) => s.id === prev)) return prev;
+        return list[0]?.id ?? "";
+      });
     } catch (e) {
       onError(e instanceof Error ? e.message : "사이트/거래처 정보를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
-  }, [onError, selectedSiteId]);
+  }, [onError]);
 
   useEffect(() => {
-    loadInitial();
-  }, [loadInitial]);
+    if (shareCatalog) {
+      setClients(shareCatalog.clients);
+      setSites(shareCatalog.sites as Site[]);
+      setSelectedSiteId((prev) => {
+        if (prev && shareCatalog.sites.some((s) => s.id === prev)) return prev;
+        return shareCatalog.sites[0]?.id ?? "";
+      });
+      setLoading(false);
+      return;
+    }
+    void loadOwnCatalog();
+  }, [shareCatalog, loadOwnCatalog]);
 
   const selectedSite = useMemo(() => sites.find((s) => s.id === selectedSiteId) ?? null, [sites, selectedSiteId]);
   const selectedClientName = useMemo(() => {

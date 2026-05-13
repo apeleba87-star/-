@@ -98,7 +98,12 @@ export default function WeeklySummaryView({ isDark, baseCard, baseInput, onError
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="font-semibold">주간 현황</h2>
-            <p className={`mt-0.5 text-xs ${subText}`}>월요일 시작. 룰·이번 주 변경·완료 세션을 종합한 결과입니다.</p>
+            <p className={`mt-0.5 text-xs ${subText}`}>
+              월요일 시작 주간 기준으로, 현장별 방문 룰·이번 주 조정·완료된 작업 세션을 합친 요약입니다.
+            </p>
+            <p className={`mt-1 text-[11px] leading-snug ${subText}`}>
+              룰은 <span className={isDark ? "font-semibold text-slate-200" : "font-semibold text-slate-700"}>설정 → 운영</span>에서 넣으면 여기 기대치가 채워집니다. 칸 색: 완료(초록) · 예정 · 진행(주황) · 추가(보라) · 스킵(빨강).
+            </p>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -120,6 +125,13 @@ export default function WeeklySummaryView({ isDark, baseCard, baseInput, onError
               className={`rounded px-2 py-1 text-xs ${isDark ? "bg-slate-700 text-slate-100" : "bg-slate-100 text-slate-700"}`}
             >
               다음 주 ›
+            </button>
+            <button
+              type="button"
+              onClick={() => void load(weekStart)}
+              className={`rounded px-2 py-1 text-xs ${isDark ? "bg-slate-700 text-slate-100 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+            >
+              이 주만 다시 불러오기
             </button>
             {!isThisWeek ? (
               <button

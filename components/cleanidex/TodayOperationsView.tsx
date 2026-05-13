@@ -29,6 +29,10 @@ type StaleRequirement = {
 };
 
 type Props = {
+  /** 부모가 거래처·현장을 이미 불러온 뒤에만 true — 중복 API 방지 */
+  catalogReady: boolean;
+  /** null이면 자체로 거래처·현장까지 요청 (단독 사용 시) */
+  shareCatalog: { clients: Client[]; sites: Site[] } | null;
   isDark: boolean;
   baseCard: string;
   baseInput: string;
@@ -60,7 +64,15 @@ function flattenSite(raw: unknown): { id: string; name: string } | null {
   return null;
 }
 
-export default function TodayOperationsView({ isDark, baseCard, baseInput, onError, onNotice }: Props) {
+export default function TodayOperationsView({
+  catalogReady,
+  shareCatalog,
+  isDark,
+  baseCard,
+  baseInput,
+  onError,
+  onNotice,
+}: Props) {
   const [sites, setSites] = useState<Site[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [events, setEvents] = useState<AttendanceEvent[]>([]);
@@ -78,40 +90,63 @@ export default function TodayOperationsView({ isDark, baseCard, baseInput, onErr
     occurred_at: string;
   } | null>(null);
 
+  const loadEventsAndStale = useCallback(async () => {
+    const today = todayIsoLocal();
+    const [evRes, stRes] = await Promise.all([
+      fetch(`/api/cleanidex/attendance?date=${today}&limit=200`, { cache: "no-store" }),
+      fetch("/api/cleanidex/client-requirements?stale=1", { cache: "no-store" }),
+    ]);
+    const evJson = await evRes.json();
+    const stJson = await stRes.json();
+    if (!evRes.ok || !evJson?.ok) throw new Error(evJson?.error || "attendance_load_failed");
+    if (!stRes.ok || !stJson?.ok) throw new Error(stJson?.error || "stale_load_failed");
+    const rawEvents = (evJson.data ?? []) as Array<Omit<AttendanceEvent, "site"> & { site: unknown }>;
+    setEvents(rawEvents.map((e) => ({ ...e, site: flattenSite(e.site) })));
+    setStale((stJson.data ?? []) as StaleRequirement[]);
+    if (typeof stJson.stale_threshold_days === "number") setStaleThreshold(stJson.stale_threshold_days);
+  }, []);
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const today = todayIsoLocal();
-      const [sitesRes, clientsRes, evRes, stRes] = await Promise.all([
-        fetch("/api/cleanidex/sites", { cache: "no-store" }),
-        fetch("/api/cleanidex/clients", { cache: "no-store" }),
-        fetch(`/api/cleanidex/attendance?date=${today}&limit=200`, { cache: "no-store" }),
-        fetch("/api/cleanidex/client-requirements?stale=1", { cache: "no-store" }),
-      ]);
-      const sitesJson = await sitesRes.json();
-      const clientsJson = await clientsRes.json();
-      const evJson = await evRes.json();
-      const stJson = await stRes.json();
-      if (!sitesRes.ok || !sitesJson?.ok) throw new Error(sitesJson?.error || "sites_load_failed");
-      if (!clientsRes.ok || !clientsJson?.ok) throw new Error(clientsJson?.error || "clients_load_failed");
-      if (!evRes.ok || !evJson?.ok) throw new Error(evJson?.error || "attendance_load_failed");
-      if (!stRes.ok || !stJson?.ok) throw new Error(stJson?.error || "stale_load_failed");
-      setSites((sitesJson.data ?? []) as Site[]);
-      setClients((clientsJson.data ?? []) as Client[]);
-      const rawEvents = (evJson.data ?? []) as Array<Omit<AttendanceEvent, "site"> & { site: unknown }>;
-      setEvents(rawEvents.map((e) => ({ ...e, site: flattenSite(e.site) })));
-      setStale((stJson.data ?? []) as StaleRequirement[]);
-      if (typeof stJson.stale_threshold_days === "number") setStaleThreshold(stJson.stale_threshold_days);
+      if (shareCatalog) {
+        setSites(shareCatalog.sites);
+        setClients(shareCatalog.clients);
+        await loadEventsAndStale();
+      } else {
+        const today = todayIsoLocal();
+        const [sitesRes, clientsRes, evRes, stRes] = await Promise.all([
+          fetch("/api/cleanidex/sites", { cache: "no-store" }),
+          fetch("/api/cleanidex/clients", { cache: "no-store" }),
+          fetch(`/api/cleanidex/attendance?date=${today}&limit=200`, { cache: "no-store" }),
+          fetch("/api/cleanidex/client-requirements?stale=1", { cache: "no-store" }),
+        ]);
+        const sitesJson = await sitesRes.json();
+        const clientsJson = await clientsRes.json();
+        const evJson = await evRes.json();
+        const stJson = await stRes.json();
+        if (!sitesRes.ok || !sitesJson?.ok) throw new Error(sitesJson?.error || "sites_load_failed");
+        if (!clientsRes.ok || !clientsJson?.ok) throw new Error(clientsJson?.error || "clients_load_failed");
+        if (!evRes.ok || !evJson?.ok) throw new Error(evJson?.error || "attendance_load_failed");
+        if (!stRes.ok || !stJson?.ok) throw new Error(stJson?.error || "stale_load_failed");
+        setSites((sitesJson.data ?? []) as Site[]);
+        setClients((clientsJson.data ?? []) as Client[]);
+        const rawEvents = (evJson.data ?? []) as Array<Omit<AttendanceEvent, "site"> & { site: unknown }>;
+        setEvents(rawEvents.map((e) => ({ ...e, site: flattenSite(e.site) })));
+        setStale((stJson.data ?? []) as StaleRequirement[]);
+        if (typeof stJson.stale_threshold_days === "number") setStaleThreshold(stJson.stale_threshold_days);
+      }
     } catch (e) {
       onError(e instanceof Error ? e.message : "오늘 데이터를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
-  }, [onError]);
+  }, [onError, shareCatalog, loadEventsAndStale]);
 
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    if (!catalogReady) return;
+    void loadAll();
+  }, [catalogReady, loadAll]);
 
   function getCoords(): Promise<GeolocationPosition> {
     return new Promise((resolve, reject) => {
@@ -167,7 +202,7 @@ export default function TodayOperationsView({ isDark, baseCard, baseInput, onErr
         occurred_at: json.data?.occurred_at,
       });
       onNotice("체크인 완료 — 작업 세션이 시작되었습니다.");
-      await loadAll();
+      await loadEventsAndStale();
     } catch (e) {
       onError(e instanceof Error ? e.message : "체크인에 실패했습니다.");
     } finally {
@@ -214,7 +249,7 @@ export default function TodayOperationsView({ isDark, baseCard, baseInput, onErr
           ? "체크아웃 완료 — 모든 필수 사진이 갖춰져 작업이 자동 완료되었습니다."
           : "체크아웃 완료 — 누락된 필수 사진이 있어 자동 완료는 보류 중입니다."
       );
-      await loadAll();
+      await loadEventsAndStale();
     } catch (e) {
       onError(e instanceof Error ? e.message : "체크아웃에 실패했습니다.");
     } finally {
@@ -239,6 +274,14 @@ export default function TodayOperationsView({ isDark, baseCard, baseInput, onErr
   const today = todayIsoLocal();
   const subText = isDark ? "text-slate-400" : "text-slate-500";
   const dimBox = isDark ? "border-slate-700 bg-slate-800/40" : "border-slate-200 bg-slate-50";
+
+  if (!catalogReady) {
+    return (
+      <div className={`rounded-xl border p-8 text-center ${baseCard}`}>
+        <p className={`text-sm ${subText}`}>대시보드 데이터를 준비하는 중입니다…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -277,7 +320,7 @@ export default function TodayOperationsView({ isDark, baseCard, baseInput, onErr
                     <option key={s.id} value={s.id}>
                       {cn ? `${cn} · ` : ""}
                       {s.name}
-                      {s.lat === null ? " (위치 미설정)" : ""}
+                      {s.lat == null ? " (위치 미설정)" : ""}
                     </option>
                   );
                 })}

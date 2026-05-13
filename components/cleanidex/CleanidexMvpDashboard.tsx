@@ -10,7 +10,16 @@ import WeeklySummaryView from "@/components/cleanidex/WeeklySummaryView";
 
 type Tab = "today" | "weekly" | "settings" | "work" | "confirm" | "evidence";
 type Client = { id: string; name: string };
-type Site = { id: string; name: string; client_id: string };
+/** API `sites` 행과 동일 — 운영·오늘 탭에서 공유 */
+type Site = {
+  id: string;
+  name: string;
+  client_id: string;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  geofence_radius_m: number | null;
+};
 type WorkSession = { id: string; site_id: string; work_date: string };
 type ChecklistItem = { id: string; title: string };
 type ChecklistOption = { id: string; label: string };
@@ -45,6 +54,8 @@ export default function CleanidexMvpDashboard() {
   const [optionSets, setOptionSets] = useState<OptionSet[]>([]);
   const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  /** 거래처·현장 목록 초기 로드 완료 — 하위 탭이 같은 데이터를 다시 요청하지 않도록 */
+  const [catalogReady, setCatalogReady] = useState(false);
   const [hasLoadedConfirmations, setHasLoadedConfirmations] = useState(false);
   const [hasLoadedReports, setHasLoadedReports] = useState(false);
   const [sessionHasMore, setSessionHasMore] = useState(false);
@@ -121,11 +132,12 @@ export default function CleanidexMvpDashboard() {
     if (!optionSetsRes.ok) return setError(optionSetsJson.error ?? "load_failed");
 
     setClients(clientsJson.data ?? []);
-    setSites(sitesJson.data ?? []);
+    setSites((sitesJson.data ?? []) as Site[]);
     setSessions(sessionsJson.data ?? []);
     setSessionHasMore(Boolean(sessionsJson.pagination?.has_more));
     setTemplates(templatesJson.data ?? []);
     setOptionSets(optionSetsJson.data ?? []);
+    setCatalogReady(true);
   }
 
   async function loadClients() {
@@ -205,6 +217,11 @@ export default function CleanidexMvpDashboard() {
   const selectedSession = useMemo(() => sessions.find((s) => s.id === workSessionId) ?? null, [sessions, workSessionId]);
   const pagedConfirmations = useMemo(() => confirmations, [confirmations]);
   const pagedReports = useMemo(() => reports, [reports]);
+
+  const shareCatalog = useMemo(
+    () => (catalogReady ? { clients, sites } : null),
+    [catalogReady, clients, sites],
+  );
 
   useEffect(() => {
     if (!zoneSiteId) {
@@ -645,6 +662,8 @@ export default function CleanidexMvpDashboard() {
 
         {tab === "today" ? (
           <TodayOperationsView
+            catalogReady={catalogReady}
+            shareCatalog={shareCatalog}
             isDark={isDark}
             baseCard={baseCard}
             baseInput={baseInput}
@@ -962,6 +981,7 @@ export default function CleanidexMvpDashboard() {
                   </div>
                 </div>
                 <SiteOperationsSettings
+                  shareCatalog={shareCatalog}
                   isDark={isDark}
                   baseCard={baseCard}
                   baseInput={baseInput}
@@ -981,7 +1001,22 @@ export default function CleanidexMvpDashboard() {
         ) : null}
 
         {tab === "work" ? (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-4">
+            <div className={`rounded-xl border px-4 py-3 ${isDark ? "border-slate-700 bg-slate-900/60" : "border-slate-200 bg-white"}`}>
+              <p className={`text-xs font-semibold ${isDark ? "text-slate-200" : "text-slate-800"}`}>작업 탭 흐름 (한 줄)</p>
+              <ol className={`mt-2 flex flex-col gap-1 text-xs sm:flex-row sm:flex-wrap sm:gap-x-4 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                <li>
+                  <span className="font-semibold text-emerald-600">①</span> 날짜·현장으로 작업 세션 만들기
+                </li>
+                <li>
+                  <span className="font-semibold text-emerald-600">②</span> 같은 세션을 고른 뒤 체크리스트 저장
+                </li>
+                <li>
+                  <span className="font-semibold text-emerald-600">③</span> 사진 구역·파일로 증빙, 필요 시 고객 확인 링크 복사
+                </li>
+              </ol>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
             <form onSubmit={onStartWork} className={`rounded-xl border p-4 ${baseCard}`}>
               <h2 className="font-semibold">1) 작업 시작</h2>
               <select value={workSiteId} onChange={(e) => setWorkSiteId(e.target.value)} className={`mt-2 w-full rounded border px-3 py-2 text-sm ${baseInput}`}>
@@ -1039,6 +1074,7 @@ export default function CleanidexMvpDashboard() {
                 확인 링크 발급
               </button>
               {confirmLinkPath ? <p className="mt-2 text-sm">링크: <a className="underline text-emerald-600" href={confirmLinkPath} target="_blank" rel="noreferrer">{confirmLinkPath}</a></p> : null}
+            </div>
             </div>
           </div>
         ) : null}

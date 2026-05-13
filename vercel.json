@@ -25,6 +25,10 @@
       "schedule": "59 14 * * *"
     },
     {
+      "path": "/api/cron/generate-award-report",
+      "schedule": "55 14 * * *"
+    },
+    {
       "path": "/api/cron/naver-trend-report",
       "schedule": "0 18 * * *"
     },

@@ -89,6 +89,11 @@ export default function ScsbidAwardIngestPanel() {
           <code className="text-xs">SCSBID_AWARD_CRON_LOOKBACK_MINUTES</code>로 조정합니다(기본 약 4시간 10분, 이
           환경변수 상한은 14일). 아래 「24시간치」는 관리자 전용으로 개찰일시 기준 최근 24시간 구간을 한 번에 조회합니다.
         </p>
+        <p className="mt-2 text-sm text-slate-500">
+          낙찰 리포트 글 자동 발행: <code className="text-xs">/api/cron/generate-award-report</code> — 매일{" "}
+          <strong className="font-medium text-slate-700">한국시간 23:55</strong>(Vercel 스케줄 UTC 14:55), 생성 즉시
+          공개됩니다.
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">

@@ -59,8 +59,8 @@ export default function BetaTesterApplyForm() {
   const validateStep = useCallback(
     (s: number): string | null => {
       if (s === 1) {
-        if (!applicantName.trim()) return "이름을 입력해 주세요.";
-        if (!contact.trim()) return "연락처를 입력해 주세요.";
+        if (!applicantName.trim()) return "성함을 입력해 주세요.";
+        if (!contact.trim()) return "이메일 주소를 입력해 주세요.";
         if (!isValidKrMobileDigits(normalizePhoneDigits(phone))) return "휴대폰 번호를 확인해 주세요.";
         if (!industry) return "운영 중인 업종을 선택해 주세요.";
         if (!employeeBand) return "직원 수를 선택해 주세요.";
@@ -157,7 +157,7 @@ export default function BetaTesterApplyForm() {
       <div className="rounded-2xl border border-teal-200/80 bg-teal-50/50 px-6 py-10 text-center">
         <p className={`${DISPLAY} text-xl font-normal tracking-tight text-zinc-900`}>지원해 주셔서 감사합니다.</p>
         <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-          검토 후 순차적으로 연락드리겠습니다. 베타 온보딩 안내는 입력하신 연락처로 안내드립니다.
+          검토 후 순차적으로 연락드리겠습니다. 베타 온보딩 안내는 입력하신 이메일 주소로 안내드립니다.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
@@ -204,7 +204,7 @@ export default function BetaTesterApplyForm() {
         <div className="space-y-6">
           <div>
             <label htmlFor="bt-name" className="block text-sm font-semibold text-zinc-800">
-              이름
+              성함
             </label>
             <input
               id="bt-name"
@@ -217,9 +217,8 @@ export default function BetaTesterApplyForm() {
           </div>
           <div>
             <label htmlFor="bt-contact" className="block text-sm font-semibold text-zinc-800">
-              연락처
+              이메일주소
             </label>
-            <p className="mt-0.5 text-xs text-zinc-500">이메일, 카카오 채널 등 연락 가능한 정보를 적어 주세요.</p>
             <input
               id="bt-contact"
               name="contact"
@@ -459,7 +458,7 @@ export default function BetaTesterApplyForm() {
               className="mt-0.5 text-teal-600"
             />
             <span>
-              <strong className="text-zinc-900">개인정보 수집·이용에 동의합니다.</strong> 베타 선정·연락·온보딩 목적으로 이름·연락처·휴대폰·지원
+              <strong className="text-zinc-900">개인정보 수집·이용에 동의합니다.</strong> 베타 선정·연락·온보딩 목적으로 성함·이메일 주소·휴대폰·지원
               내용을 수집·이용합니다. 목적 달성 후 지체 없이 파기하며, 관련 문의는 고객센터로 연락 주세요.
             </span>
           </label>

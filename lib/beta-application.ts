@@ -138,10 +138,10 @@ export function parseAndValidateBetaApplication(body: unknown): BetaApplyValidat
   const consentPersonal = o.consentPersonal === true;
 
   if (!applicantName || applicantName.length > 80) {
-    return { ok: false, error: "이름을 입력해 주세요." };
+    return { ok: false, error: "성함을 입력해 주세요." };
   }
   if (!contact || contact.length > 200) {
-    return { ok: false, error: "연락처(이메일·카카오 등)를 입력해 주세요." };
+    return { ok: false, error: "이메일 주소를 입력해 주세요." };
   }
   const phoneDigits = normalizePhoneDigits(phoneRaw);
   if (!isValidKrMobileDigits(phoneDigits)) {
