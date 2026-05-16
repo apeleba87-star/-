@@ -1,4 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase-server";
+import { isCoupangPartnersConfigured } from "@/lib/coupang-partners/client";
+import { parseCoupangSlotConfig } from "@/lib/coupang-partners/config";
+import type { CoupangSlotConfig } from "@/lib/coupang-partners/types";
 import HomeAdsManager from "./HomeAdsManager";
 import AdDailyStatsTable from "./AdDailyStatsTable";
 
@@ -9,10 +12,12 @@ export default async function AdminAdsPage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const fromDate = sevenDaysAgo.toISOString().slice(0, 10);
 
-  const [{ data: slots }, { data: campaigns }, { data: dailyStats }] = await Promise.all([
+  const [{ data: slots }, { data: campaigns }, { data: dailyStats }, { data: caches }] = await Promise.all([
     supabase
       .from("home_ad_slots")
-      .select("id, key, name, enabled, slot_type, script_content")
+      .select(
+        "id, key, name, enabled, slot_type, script_content, fallback_type, fallback_script_content, coupang_config"
+      )
       .order("key"),
     supabase
       .from("home_ad_campaigns")
@@ -23,17 +28,44 @@ export default async function AdminAdsPage() {
       .select("stats_date, campaign_id, slot_key, impressions_raw, impressions_deduped, clicks_raw, clicks_deduped")
       .gte("stats_date", fromDate)
       .order("stats_date", { ascending: false }),
+    supabase.from("coupang_ad_cache").select("slot_key, products, fetch_error, fetched_at"),
   ]);
 
   const campaignTitles = new Map((campaigns ?? []).map((c) => [c.id, c.title ?? "(제목 없음)"]));
+
+  const cacheByKey = Object.fromEntries(
+    (caches ?? []).map((c) => {
+      const row = c as { slot_key: string; products?: unknown[]; fetch_error?: string | null; fetched_at?: string };
+      return [
+        row.slot_key,
+        {
+          fetched_at: row.fetched_at ?? null,
+          fetch_error: row.fetch_error ?? null,
+          product_count: Array.isArray(row.products) ? row.products.length : 0,
+        },
+      ];
+    })
+  );
+
+  const coupangConfigBySlotId: Record<string, CoupangSlotConfig | null> = {};
+  for (const s of slots ?? []) {
+    const row = s as { id: string; coupang_config?: unknown };
+    coupangConfigBySlotId[row.id] = parseCoupangSlotConfig(row.coupang_config);
+  }
 
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold text-slate-900">광고 슬롯</h1>
       <p className="mb-6 text-sm text-slate-600">
-        모든 광고 자리를 한 곳에서 관리합니다. 노출 ON/OFF, 직접 수주 캠페인 또는 구글/쿠팡 스크립트를 슬롯별로 설정하세요.
+        모든 광고 자리를 한 곳에서 관리합니다. 직접 수주, 쿠팡 파트너스 API, 구글/쿠팡 스크립트를 슬롯별로 설정하세요.
       </p>
-      <HomeAdsManager slots={slots ?? []} campaigns={campaigns ?? []} />
+      <HomeAdsManager
+        slots={slots ?? []}
+        campaigns={campaigns ?? []}
+        coupangCacheByKey={cacheByKey}
+        coupangConfigBySlotId={coupangConfigBySlotId}
+        coupangApiConfigured={isCoupangPartnersConfigured()}
+      />
 
       <section className="mt-12">
         <h2 className="mb-2 text-lg font-bold text-slate-900">직접 수주 성과 (최근 7일)</h2>

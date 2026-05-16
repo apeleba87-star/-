@@ -37,9 +37,7 @@ import {
 } from "lucide-react";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatters";
-import { SHARED_RANDOM_PANEL_COUNT, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
 import DataTrust3Pack from "@/components/DataTrust3Pack";
-import ReportShareUnlockButton from "@/components/report/ReportShareUnlockButton";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
 import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredInline";
@@ -112,16 +110,13 @@ function PremiumInsightBarRow({
 }
 
 type Props = {
-  postId?: string;
   payload: DailyTenderPayload;
   title: string;
   dateLabel: string;
   insightSentence: string;
   excerpt?: string | null;
   updatedAt?: string | null;
-  accessLevel?: "free" | "shared" | "premium";
-  /** 공유 해금 시 열리는 심화 패널 키 (SHARED_RANDOM_PANEL_COUNT) */
-  sharedRevealKeys?: SharedRandomPanelKey[] | null;
+  accessLevel?: "free" | "premium";
   premiumInsights?: {
     weekCompare: { currentWeekCount: number; prevWeekCount: number; deltaPct: number | null };
     drilldown: { topRegions: { name: string; count: number }[]; topIndustries: { name: string; count: number }[] };
@@ -137,7 +132,6 @@ type Props = {
 };
 
 export default function DailyTenderReportDashboard({
-  postId,
   payload,
   title,
   dateLabel,
@@ -145,7 +139,6 @@ export default function DailyTenderReportDashboard({
   excerpt,
   updatedAt,
   accessLevel = "free",
-  sharedRevealKeys = null,
   premiumInsights = null,
   relatedReports = [],
   guestTeaser = false,
@@ -179,20 +172,7 @@ export default function DailyTenderReportDashboard({
     )
   );
   const riskScore = Math.min(100, Math.round(deadlinePressure * 0.6 + concentrationScore * 0.3 + (payload.has_budget_unknown ? 10 : 0)));
-  const sharedRevealSet = new Set<string>(sharedRevealKeys ?? []);
-  const coreUnlocked = accessLevel === "premium" || accessLevel === "shared";
-  const deepOpen = (key: SharedRandomPanelKey) =>
-    accessLevel === "premium" || (accessLevel === "shared" && sharedRevealSet.has(key));
-
-  const tenderTeamShareText = [
-    `입찰 ${count_total.toLocaleString()}건`,
-    "✔ 바로 지원 가능한 것만 선별",
-    "✔ 경쟁 낮은 건 포함",
-    "",
-    "오늘 안 보면 끝입니다",
-    "",
-    "👇 지금 확인",
-  ].join("\n");
+  const coreUnlocked = accessLevel === "premium";
 
   return (
     <div className="mx-auto min-w-0 max-w-[1400px] space-y-4 rounded-2xl bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-2 xs:p-3 sm:space-y-6 sm:p-6 lg:space-y-8 lg:p-8">
@@ -222,11 +202,7 @@ export default function DailyTenderReportDashboard({
             </div>
           </div>
           <div className="self-start rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-            {accessLevel === "premium"
-              ? "프리미엄 전체 분석"
-              : accessLevel === "shared"
-                ? `공유 · 심화 ${SHARED_RANDOM_PANEL_COUNT}종 + 당일 핵심`
-                : "기본 요약 모드"}
+            {accessLevel === "premium" ? "전체 분석" : "미리보기"}
           </div>
         </div>
       </header>
@@ -786,16 +762,6 @@ export default function DailyTenderReportDashboard({
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
                 오늘 시장 온도·리스크·실행 우선순위를 먼저 보고, 이어서 주간 흐름·지역·업종·발주처·금액대를 한곳에서 비교할 수 있습니다.
               </p>
-              {accessLevel === "free" && postId && (
-                <div className="mt-4 max-w-xl">
-                  <ReportShareUnlockButton
-                    postId={postId}
-                    shareTitle={title}
-                    shareText={tenderTeamShareText}
-                    layout="full"
-                  />
-                </div>
-              )}
             </div>
           </div>
           <Link
@@ -818,8 +784,9 @@ export default function DailyTenderReportDashboard({
               open={coreUnlocked}
               title="시장 온도"
               icon={<Gauge className="h-5 w-5 text-blue-600" />}
-              lockMessage="공유 또는 프리미엄에서 시장 온도를 확인할 수 있습니다."
+              lockMessage="로그인 후 시장 온도를 확인할 수 있습니다."
               accessLevel={accessLevel}
+              loginNext={loginNext}
               tone="premium"
             >
               <p className="text-3xl font-bold tabular-nums text-blue-700">{marketHeat}점</p>
@@ -848,8 +815,9 @@ export default function DailyTenderReportDashboard({
               open={coreUnlocked}
               title="리스크 경보"
               icon={<ShieldAlert className="h-5 w-5 text-amber-600" />}
-              lockMessage="공유 또는 프리미엄에서 리스크 경보를 확인할 수 있습니다."
+              lockMessage="로그인 후 리스크 경보를 확인할 수 있습니다."
               accessLevel={accessLevel}
+              loginNext={loginNext}
               tone="premium"
             >
               <p className="text-3xl font-bold tabular-nums text-amber-700">{riskScore}점</p>
@@ -876,8 +844,9 @@ export default function DailyTenderReportDashboard({
               open={coreUnlocked}
               title="실행 우선순위"
               icon={<Target className="h-5 w-5 text-emerald-600" />}
-              lockMessage="공유 또는 프리미엄에서 실행 우선순위를 확인할 수 있습니다."
+              lockMessage="로그인 후 실행 우선순위를 확인할 수 있습니다."
               accessLevel={accessLevel}
+              loginNext={loginNext}
               tone="premium"
             >
               <ol className="space-y-3 text-sm leading-snug text-slate-700">
@@ -914,11 +883,12 @@ export default function DailyTenderReportDashboard({
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <DecisionPanel
-            open={deepOpen("week_compare")}
+            open={coreUnlocked}
             title="기간 비교 (7일/전주)"
             icon={<BarChart2 className="h-5 w-5 text-indigo-600" />}
-            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
+            lockMessage="로그인 후 전체 심화 분석을 확인할 수 있습니다."
             accessLevel={accessLevel}
+            loginNext={loginNext}
             tone="premium"
           >
             {(() => {
@@ -989,11 +959,12 @@ export default function DailyTenderReportDashboard({
           </DecisionPanel>
 
           <DecisionPanel
-            open={deepOpen("drilldown")}
+            open={coreUnlocked}
             title="지역·업종 드릴다운"
             icon={<MapPin className="h-5 w-5 text-cyan-600" />}
-            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
+            lockMessage="로그인 후 전체 심화 분석을 확인할 수 있습니다."
             accessLevel={accessLevel}
+            loginNext={loginNext}
             tone="premium"
           >
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -1133,11 +1104,12 @@ export default function DailyTenderReportDashboard({
           </DecisionPanel>
 
           <DecisionPanel
-            open={deepOpen("agencies")}
+            open={coreUnlocked}
             title="발주처 패턴"
             icon={<Building2 className="h-5 w-5 text-violet-600" />}
-            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
+            lockMessage="로그인 후 전체 심화 분석을 확인할 수 있습니다."
             accessLevel={accessLevel}
+            loginNext={loginNext}
             tone="premium"
           >
             <p className="mb-3 text-xs leading-relaxed text-slate-500">
@@ -1171,11 +1143,12 @@ export default function DailyTenderReportDashboard({
           </DecisionPanel>
 
           <DecisionPanel
-            open={deepOpen("budget_bands")}
+            open={coreUnlocked}
             title="금액 구간 전략"
             icon={<Banknote className="h-5 w-5 text-emerald-600" />}
-            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
+            lockMessage="로그인 후 전체 심화 분석을 확인할 수 있습니다."
             accessLevel={accessLevel}
+            loginNext={loginNext}
             tone="premium"
           >
             <p className="mb-3 text-xs leading-relaxed text-slate-500">
@@ -1240,11 +1213,12 @@ export default function DailyTenderReportDashboard({
 
         <div className="relative mt-2">
           <DecisionPanel
-            open={deepOpen("anomalies")}
+            open={coreUnlocked}
             title="이상치·경고 히스토리"
             icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
-            lockMessage={`공유 시 무작위 ${SHARED_RANDOM_PANEL_COUNT}종 중 하나일 수 있습니다. 프리미엄에서 전체를 확인할 수 있습니다.`}
+            lockMessage="로그인 후 전체 심화 분석을 확인할 수 있습니다."
             accessLevel={accessLevel}
+            loginNext={loginNext}
             tone="premium"
           >
             {(premiumInsights?.anomalies?.length ?? 0) === 0 ? (
@@ -1280,17 +1254,6 @@ export default function DailyTenderReportDashboard({
 
       {relatedReports.length > 0 ? <RelatedReportsSection posts={relatedReports} /> : null}
 
-      {postId && (accessLevel === "shared" || accessLevel === "premium") && (
-        <div className="mx-auto max-w-xl px-1">
-          <ReportShareUnlockButton
-            postId={postId}
-            shareTitle={title}
-            shareText={tenderTeamShareText}
-            layout="compact"
-          />
-        </div>
-      )}
-
       {/* 7. 푸터 안내 */}
       {/* 뉴스레터 CTA(리포트 하단) */}
       <section className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 shadow-xl sm:p-8">
@@ -1303,10 +1266,10 @@ export default function DailyTenderReportDashboard({
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
             <Link
-              href="/subscribe"
+              href="/news?section=report"
               className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-indigo-700 shadow-lg transition hover:bg-white/90"
             >
-              뉴스레터 구독하기
+              다른 리포트 보기
             </Link>
             <Link
               href="/news"
@@ -1353,6 +1316,7 @@ function DecisionPanel({
   children,
   lockMessage,
   accessLevel,
+  loginNext,
   tone = "default",
 }: {
   open: boolean;
@@ -1360,7 +1324,8 @@ function DecisionPanel({
   icon: React.ReactNode;
   children: React.ReactNode;
   lockMessage: string;
-  accessLevel: "free" | "shared" | "premium";
+  accessLevel: "free" | "premium";
+  loginNext?: string;
   tone?: "default" | "premium";
 }) {
   const openSurface =
@@ -1404,8 +1369,8 @@ function DecisionPanel({
           </p>
           <p className="mt-1 text-xs text-slate-600">{lockMessage}</p>
           <div className="mt-2">
-            <Link href="/subscribe" className="text-xs font-medium text-blue-600 hover:underline">
-              {accessLevel === "shared" ? "프리미엄으로 전체 열기" : "공유 후 더 열기 / 프리미엄 보기"}
+            <Link href={loginNext ? `/login?next=${encodeURIComponent(loginNext)}` : "/login"} className="text-xs font-medium text-blue-600 hover:underline">
+              로그인 후 전체 보기
             </Link>
           </div>
         </div>

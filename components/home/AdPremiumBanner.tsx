@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { ExternalLink, Sparkles } from "lucide-react";
-import type { HomeAdCampaign } from "@/lib/ads";
+import type { HomeAdCampaign } from "@/lib/ads-shared";
 import { trackAdEvent } from "@/lib/ads-tracking";
 
 type Props = { campaign: HomeAdCampaign; slotKey?: string };

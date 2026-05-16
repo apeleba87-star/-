@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, ImageUp, Calendar, ArrowUpDown, Code } from "lucide-react";
+import CoupangApiSlotPanel from "./CoupangApiSlotPanel";
+import type { CoupangSlotConfig } from "@/lib/coupang-partners/types";
 import {
   toggleSlotEnabled,
   updateSlotTypeAndScript,
+  updateSlotFallback,
   createCampaign,
   updateCampaign,
   deleteCampaign,
@@ -24,6 +27,14 @@ type Slot = {
   enabled: boolean;
   slot_type: SlotType | null;
   script_content: string | null;
+  fallback_type: "google" | "coupang" | null;
+  fallback_script_content: string | null;
+};
+
+type CoupangCacheInfo = {
+  fetched_at: string | null;
+  fetch_error: string | null;
+  product_count: number;
 };
 type Campaign = {
   id: string;
@@ -53,9 +64,15 @@ function statusColor(s: string) {
 export default function HomeAdsManager({
   slots,
   campaigns,
+  coupangCacheByKey = {},
+  coupangConfigBySlotId = {},
+  coupangApiConfigured = false,
 }: {
   slots: Slot[];
   campaigns: Campaign[];
+  coupangCacheByKey?: Record<string, CoupangCacheInfo>;
+  coupangConfigBySlotId?: Record<string, CoupangSlotConfig | null>;
+  coupangApiConfigured?: boolean;
 }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -63,7 +80,10 @@ export default function HomeAdsManager({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [scriptDrafts, setScriptDrafts] = useState<Record<string, string>>({});
+  const [fallbackDrafts, setFallbackDrafts] = useState<Record<string, string>>({});
+  const [fallbackTypes, setFallbackTypes] = useState<Record<string, "google" | "coupang" | "">>({});
   const [savingScriptSlotId, setSavingScriptSlotId] = useState<string | null>(null);
+  const [savingFallbackSlotId, setSavingFallbackSlotId] = useState<string | null>(null);
 
   const defaultForm: CampaignInput = {
     home_ad_slot_id: "",
@@ -131,6 +151,21 @@ export default function HomeAdsManager({
       setScriptDrafts((d) => ({ ...d, [slotId]: "" }));
       router.refresh();
     }
+  }
+
+  async function handleSaveFallback(slotId: string) {
+    const fbType = fallbackTypes[slotId] ?? "";
+    const script = fallbackDrafts[slotId] ?? "";
+    setSavingFallbackSlotId(slotId);
+    setMessage(null);
+    const res = await updateSlotFallback(
+      slotId,
+      fbType === "google" || fbType === "coupang" ? fbType : null,
+      script
+    );
+    setSavingFallbackSlotId(null);
+    setMessage(res.ok ? { ok: true, text: "대체 광고가 저장되었습니다." } : { ok: false, text: res.error ?? "실패" });
+    if (res.ok) router.refresh();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -212,9 +247,14 @@ export default function HomeAdsManager({
             <div className="mb-4">
               <span className="mb-2 block text-sm font-medium text-slate-700">광고 유형</span>
               <div className="flex flex-wrap gap-2">
-                {(["direct", "google", "coupang"] as const).map((t) => {
+                {(["direct", "coupang_api", "google", "coupang"] as const).map((t) => {
                   const isActive = (slot.slot_type ?? "direct") === t;
-                  const labels = { direct: "직접 수주", google: "구글", coupang: "쿠팡" };
+                  const labels = {
+                    direct: "직접 수주",
+                    coupang_api: "쿠팡 API",
+                    google: "구글",
+                    coupang: "쿠팡 스크립트",
+                  };
                   return (
                     <button
                       key={t}
@@ -233,7 +273,15 @@ export default function HomeAdsManager({
               </div>
             </div>
 
-            {(slot.slot_type ?? "direct") === "google" || (slot.slot_type ?? "direct") === "coupang" ? (
+            {(slot.slot_type ?? "direct") === "coupang_api" ? (
+              <CoupangApiSlotPanel
+                slotId={slot.id}
+                slotKey={slot.key}
+                initialConfig={coupangConfigBySlotId[slot.id] ?? null}
+                cache={coupangCacheByKey[slot.key] ?? null}
+                apiConfigured={coupangApiConfigured}
+              />
+            ) : (slot.slot_type ?? "direct") === "google" || (slot.slot_type ?? "direct") === "coupang" ? (
               <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
                 <label className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700">
                   <Code className="h-4 w-4" />
@@ -446,6 +494,47 @@ export default function HomeAdsManager({
                 </div>
               </form>
                 )}
+
+                <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50/40 p-4">
+                  <p className="mb-1 text-sm font-medium text-slate-800">직접 캠페인 없을 때 대체 (쿠팡/구글)</p>
+                  <p className="mb-3 text-xs text-slate-500">
+                    활성 직접 캠페인이 없으면 아래 스크립트가 배너로 노출됩니다.
+                  </p>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {(["", "coupang", "google"] as const).map((t) => {
+                      const current = fallbackTypes[slot.id] ?? slot.fallback_type ?? "";
+                      const active = current === t;
+                      const label = t === "" ? "없음" : t === "coupang" ? "쿠팡" : "구글";
+                      return (
+                        <button
+                          key={t || "none"}
+                          type="button"
+                          onClick={() => setFallbackTypes((d) => ({ ...d, [slot.id]: t }))}
+                          className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                            active ? "border-violet-700 bg-violet-700 text-white" : "border-slate-300 bg-white text-slate-600"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <textarea
+                    value={fallbackDrafts[slot.id] ?? slot.fallback_script_content ?? ""}
+                    onChange={(e) => setFallbackDrafts((d) => ({ ...d, [slot.id]: e.target.value }))}
+                    placeholder="대체 배너 스크립트"
+                    rows={4}
+                    className="mb-2 w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingFallbackSlotId === slot.id}
+                    onClick={() => handleSaveFallback(slot.id)}
+                    className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+                  >
+                    {savingFallbackSlotId === slot.id ? "저장 중…" : "대체 광고 저장"}
+                  </button>
+                </div>
               </>
             )}
           </motion.section>

@@ -6,8 +6,8 @@ import Link from "next/link";
 import { FileText, ChevronDown, Bookmark } from "lucide-react";
 import TenderBidCard from "@/components/tender/TenderBidCard";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
-import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
-import type { HomeAdSlotWithCampaign } from "@/lib/ads";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { isAdSlotRenderable, type HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import { getBaseAmtFromRaw } from "@/lib/tender-utils";
 import { ddayNumber } from "@/lib/tender-utils";
 import { REGION_GUGUN, type RegionSido } from "@/lib/listings/regions";
@@ -606,11 +606,11 @@ export default function TendersListWithFilters({
             </section>
           )}
 
-          {adSlotMid && (
+          {isAdSlotRenderable(adSlotMid) ? (
             <div className="mb-10">
-              <AdSlotRenderer slot={adSlotMid} variant="card" />
+              <AffiliateAdSlot slot={adSlotMid} variant="banner" />
             </div>
-          )}
+          ) : null}
 
           {closedTenders.length > 0 && (
             <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm">

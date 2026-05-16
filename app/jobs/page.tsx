@@ -16,7 +16,8 @@ import { getCachedJobsHeadlineDailyWageStats } from "@/lib/jobs/jobs-headline-wa
 import { getKstTodayString, getKstTomorrowString, addDaysToDateString } from "@/lib/jobs/kst-date";
 import { buildOpenVisibleJobsOrFilter } from "@/lib/jobs/visibility";
 import { getActiveJobsAds } from "@/lib/ads";
-import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { isAdSlotRenderable } from "@/lib/ads";
 
 export const revalidate = 60;
 
@@ -442,9 +443,9 @@ export default async function JobsListPage({
         </AuthRequiredCta>
       </div>
 
-      {(jobsAds.jobs_top?.enabled && (jobsAds.jobs_top.campaign || jobsAds.jobs_top.script_content)) ? (
+      {isAdSlotRenderable(jobsAds.jobs_top) ? (
         <div className="mb-6">
-          <AdSlotRenderer slot={jobsAds.jobs_top} variant="card" />
+          <AffiliateAdSlot slot={jobsAds.jobs_top} variant="banner" />
         </div>
       ) : null}
 

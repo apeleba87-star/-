@@ -1,8 +1,9 @@
 "use client";
 
-import type { HomeAdSlotWithCampaign } from "@/lib/ads";
+import type { HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import AdPremiumBanner from "@/components/home/AdPremiumBanner";
 import AdNativeCard from "@/components/home/AdNativeCard";
+import CoupangProductBanner from "@/components/ads/CoupangProductBanner";
 import AdScriptBlock from "./AdScriptBlock";
 
 type Props = {
@@ -16,6 +17,9 @@ type Props = {
  */
 export default function AdSlotRenderer({ slot, variant = "card", className }: Props) {
   if (!slot?.enabled) return null;
+  if (slot.slot_type === "coupang_api" && slot.coupang_products?.length) {
+    return <CoupangProductBanner products={slot.coupang_products} slotKey={slot.key} />;
+  }
   if (slot.campaign) {
     if (variant === "banner") return <AdPremiumBanner campaign={slot.campaign} slotKey={slot.key} />;
     return <AdNativeCard campaign={slot.campaign} slotKey={slot.key} />;

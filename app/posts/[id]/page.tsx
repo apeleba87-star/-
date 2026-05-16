@@ -4,16 +4,15 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Metadata } from "next";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import { getActivePostDetailAds } from "@/lib/ads";
-import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
+import { getActivePostDetailAds, isAdSlotRenderable } from "@/lib/ads";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { getLoggedInReportAccessLevel } from "@/lib/report/report-access";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { resolvePremiumAgencyAndBudgetBands } from "@/lib/content/tender-report-queries";
 import { getCachedDailyTenderPayload, getCachedWeeklyTenderPayload } from "@/lib/content/tender-report-cache";
 import { buildInsightSentence } from "@/lib/content/tender-report-formatters";
 import { getKstDateString } from "@/lib/content/kst-utils";
-import { hasSubscriptionAccess } from "@/lib/subscription-access";
-import { ensureSharedRevealKeys, kstCalendarMinusDays, type SharedRandomPanelKey } from "@/lib/report/share-unlock-panels";
-import ReportPaywallLock from "@/components/report/ReportPaywallLock";
+import { kstCalendarMinusDays } from "@/lib/report/share-unlock-panels";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 import { REPORT_TYPE_AWARD_MARKET_INTEL } from "@/lib/content/report-snapshot-types";
 import {
@@ -150,7 +149,7 @@ export default async function PostPage({ params }: PostPageParams) {
       }
     }
     const [reportAccess, premiumInsights, relatedReports] = await Promise.all([
-      getReportAccess(slugPost, reportData, supabase),
+      getReportAccess(slugPost, reportData),
       getPremiumInsights(reportData, !user),
       isReportPostKind(slugPost) ? getRelatedReportPosts(supabase, slugPost) : Promise.resolve([] as RelatedReportPostRow[]),
     ]);
@@ -159,7 +158,7 @@ export default async function PostPage({ params }: PostPageParams) {
   if ((post as { is_private?: boolean }).is_private && !user) notFound();
   if (user) await ensurePrivateAccess(post, authSupabase, user.id);
   const [reportAccess, premiumInsights, relatedReports] = await Promise.all([
-    getReportAccess(post!, reportData, supabase),
+    getReportAccess(post!, reportData),
     getPremiumInsights(reportData, !user),
     isReportPostKind(post!) ? getRelatedReportPosts(supabase, post!) : Promise.resolve([] as RelatedReportPostRow[]),
   ]);
@@ -167,59 +166,18 @@ export default async function PostPage({ params }: PostPageParams) {
 }
 
 type ReportAccessState = {
-  level: "free" | "shared" | "premium";
-  sharedRevealKeys: SharedRandomPanelKey[] | null;
+  level: "free" | "premium";
+  sharedRevealKeys: null;
 };
 
 async function getReportAccess(
   post: PostForRender,
-  reportData: ReportData | null,
-  _supabase: ReturnType<typeof createClient>
+  reportData: ReportData | null
 ): Promise<ReportAccessState> {
   const none: ReportAccessState = { level: "free", sharedRevealKeys: null };
   if (!isReportPost(post) || !reportData) return none;
-  const authSupabase = await createServerSupabase();
-  const { data: { user } } = await authSupabase.auth.getUser();
-  if (!user) return none;
-  const { data: profile } = await authSupabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role === "admin" || role === "editor") {
-    return { level: "premium", sharedRevealKeys: null };
-  }
-  const todayKst = getKstDateString();
-  const { data: sub } = await authSupabase
-    .from("subscriptions")
-    .select("id, status, next_billing_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (hasSubscriptionAccess(sub as { status: string; next_billing_at?: string | null } | null, todayKst)) {
-    return { level: "premium", sharedRevealKeys: null };
-  }
-
-  const { data: todayGrant } = await authSupabase
-    .from("report_share_grants")
-    .select("post_id, revealed_panel_keys")
-    .eq("user_id", user.id)
-    .eq("grant_date", todayKst)
-    .maybeSingle();
-
-  // 오늘 KST 기준 1회 공유면 당일 게시되는 모든 리포트에 동일 revealed_panel_keys 적용
-  if (todayGrant) {
-    const firstPostId = (todayGrant as { post_id?: string }).post_id ?? post.id;
-    const keys = ensureSharedRevealKeys(
-      user.id,
-      firstPostId,
-      todayKst,
-      (todayGrant as { revealed_panel_keys?: string[] | null }).revealed_panel_keys
-    );
-    return { level: "shared", sharedRevealKeys: keys };
-  }
-
-  return none;
+  const level = await getLoggedInReportAccessLevel();
+  return { level, sharedRevealKeys: null };
 }
 
 type PostForRender = {
@@ -324,10 +282,9 @@ function renderPost(
   relatedReports: RelatedReportPostRow[]
 ) {
   const isReport = isReportPost(post);
-  const showTopAd = ads.post_top?.enabled && (ads.post_top.campaign || ads.post_top.script_content);
-  const showBottomAd = ads.post_bottom?.enabled && (ads.post_bottom.campaign || ads.post_bottom.script_content);
+  const showTopAd = !guestPreview && isAdSlotRenderable(ads.post_top);
+  const showBottomAd = !guestPreview && isAdSlotRenderable(ads.post_bottom);
   const useDashboard = isDailyTenderReportPost(post) && reportData;
-  const showLock = false;
   const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
   const reportGuestLayout = guestPreview && isReport;
 
@@ -368,23 +325,14 @@ function renderPost(
 
   const body = (
     <>
-      {showLock ? (
-        <ReportPaywallLock
-          postId={post.id}
-          loginReturnPath={`/posts/${post.id}`}
-          title={post.title}
-          excerpt={post.excerpt}
-          dateLabel={reportData?.payload.dateLabel}
-        />
-      ) : useDashboard ? (
+      {useDashboard ? (
         <>
           {showTopAd && ads.post_top && (
             <div className="mb-6">
-              <AdSlotRenderer slot={ads.post_top} variant="card" />
+              <AffiliateAdSlot slot={ads.post_top} variant="banner" />
             </div>
           )}
           <DailyTenderReportDashboard
-            postId={post.id}
             payload={dailyPayload!}
             title={post.title}
             dateLabel={dailyPayload!.dateLabel}
@@ -392,7 +340,6 @@ function renderPost(
             excerpt={post.excerpt}
             updatedAt={post.updated_at ?? null}
             accessLevel={reportAccess.level}
-            sharedRevealKeys={reportAccess.sharedRevealKeys}
             premiumInsights={premiumInsights}
             relatedReports={relatedReports}
             guestTeaser={guestPreview}
@@ -400,7 +347,7 @@ function renderPost(
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
-              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+              <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
             </div>
           )}
         </>
@@ -408,7 +355,7 @@ function renderPost(
         <>
           {showTopAd && ads.post_top && (
             <div className="mb-6">
-              <AdSlotRenderer slot={ads.post_top} variant="card" />
+              <AffiliateAdSlot slot={ads.post_top} variant="banner" />
             </div>
           )}
           <AwardReportSnapshotView
@@ -422,7 +369,7 @@ function renderPost(
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
-              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+              <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
             </div>
           )}
         </>
@@ -430,7 +377,7 @@ function renderPost(
         <>
           {showTopAd && ads.post_top && (
             <div className="mb-6">
-              <AdSlotRenderer slot={ads.post_top} variant="card" />
+              <AffiliateAdSlot slot={ads.post_top} variant="banner" />
             </div>
           )}
           <ReportSnapshotView
@@ -445,7 +392,7 @@ function renderPost(
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">
-              <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+              <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
             </div>
           )}
         </>
@@ -465,7 +412,7 @@ function renderPost(
 
             {showTopAd && ads.post_top && (
               <div className="mt-6">
-                <AdSlotRenderer slot={ads.post_top} variant="card" />
+                <AffiliateAdSlot slot={ads.post_top} variant="banner" />
               </div>
             )}
 
@@ -487,7 +434,7 @@ function renderPost(
 
             {showBottomAd && ads.post_bottom && (
               <div className="mt-8">
-                <AdSlotRenderer slot={ads.post_bottom} variant="card" />
+                <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
               </div>
             )}
           </article>

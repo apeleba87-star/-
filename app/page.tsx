@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import HomeCleanidexNarrative from "@/components/home/HomeCleanidexNarrative";
+import HomeBottomAd from "@/components/home/HomeBottomAd";
 import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME } from "@/lib/seo";
 
 /** 홈: 검색·SNS 공유 시 기본 메타를 명시( canonical, OG URL ) */
@@ -29,6 +30,7 @@ export default function HomePage() {
       <div className="page-shell py-6 sm:py-10 lg:py-12">
         <div className="mx-auto flex w-full max-w-3xl flex-col sm:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
           <HomeCleanidexNarrative />
+          <HomeBottomAd />
         </div>
       </div>
     </div>

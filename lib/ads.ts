@@ -1,45 +1,59 @@
 /**
- * 광고 슬롯 통합: 직접 수주 / 구글 / 쿠팡. 슬롯별 on/off, 직접 수주는 기간 내 캠페인 1건, 구글/쿠팡은 스크립트 삽입.
+ * 광고 슬롯 서버 조회 (Supabase). 타입·유틸은 @/lib/ads-shared 사용.
  */
 
 import { createClient } from "@/lib/supabase-server";
+import type {
+  AdSlotType,
+  CoupangBannerProduct,
+  HomeAdCampaign,
+  HomeAdSlotKey,
+  HomeAdSlotWithCampaign,
+} from "@/lib/ads-shared";
 
-export type HomeAdSlotKey =
-  | "premium_banner"
-  | "native_card"
-  | "home_bottom"
-  | "post_top"
-  | "post_bottom"
-  | "tenders_top"
-  | "tenders_mid"
-  | "listings_top"
-  | "jobs_top";
+export type {
+  AdSlotType,
+  CoupangBannerProduct,
+  HomeAdCampaign,
+  HomeAdSlotKey,
+  HomeAdSlotWithCampaign,
+} from "@/lib/ads-shared";
 
-export type AdSlotType = "direct" | "google" | "coupang";
-
-export type HomeAdCampaign = {
-  id: string;
-  home_ad_slot_id: string;
-  title: string | null;
-  description: string | null;
-  cta_text: string | null;
-  cta_url: string | null;
-  image_url: string | null;
-  start_date: string;
-  end_date: string;
-  sort_order: number;
-};
-
-export type HomeAdSlotWithCampaign = {
-  key: string;
-  name: string;
-  enabled: boolean;
-  slot_type: AdSlotType;
-  script_content: string | null;
-  campaign: HomeAdCampaign | null;
-};
+export { isAdSlotRenderable } from "@/lib/ads-shared";
 
 const TODAY = new Date().toISOString().slice(0, 10);
+
+type SlotRow = {
+  id: string;
+  key: string;
+  name: string | null;
+  enabled: boolean;
+  slot_type: string | null;
+  script_content: string | null;
+  fallback_type: string | null;
+  fallback_script_content: string | null;
+};
+
+function applyFallback(
+  item: HomeAdSlotWithCampaign,
+  row: SlotRow,
+  primaryType: AdSlotType
+): HomeAdSlotWithCampaign {
+  if (
+    primaryType === "direct" &&
+    !item.campaign &&
+    row.fallback_type &&
+    (row.fallback_type === "google" || row.fallback_type === "coupang") &&
+    row.fallback_script_content?.trim()
+  ) {
+    return {
+      ...item,
+      slot_type: row.fallback_type as AdSlotType,
+      script_content: row.fallback_script_content.trim(),
+    };
+  }
+  return item;
+}
 
 async function getActiveAdsForSlotKeys(
   supabase: ReturnType<typeof createClient>,
@@ -50,27 +64,37 @@ async function getActiveAdsForSlotKeys(
 
   const { data: slots } = await supabase
     .from("home_ad_slots")
-    .select("id, key, name, enabled, slot_type, script_content")
+    .select(
+      "id, key, name, enabled, slot_type, script_content, fallback_type, fallback_script_content"
+    )
     .in("key", slotKeys);
 
   if (!slots?.length) return result;
 
-  for (const slot of slots) {
+  const coupangApiKeys: string[] = [];
+
+  for (const slot of slots as SlotRow[]) {
     const key = slot.key as string;
-    const slotType = (slot.slot_type as AdSlotType) || "direct";
-    const item: HomeAdSlotWithCampaign = {
+    const primaryType = (slot.slot_type as AdSlotType) || "direct";
+    let item: HomeAdSlotWithCampaign = {
       key,
       name: slot.name ?? "",
       enabled: !!slot.enabled,
-      slot_type: slotType,
+      slot_type: primaryType,
       script_content: slot.script_content ?? null,
       campaign: null,
     };
 
-    if (slot.enabled && slot.id && slotType === "direct") {
+    if (primaryType === "coupang_api" && slot.enabled) {
+      coupangApiKeys.push(key);
+    }
+
+    if (slot.enabled && slot.id && primaryType === "direct") {
       const { data: campaigns } = await supabase
         .from("home_ad_campaigns")
-        .select("id, home_ad_slot_id, title, description, cta_text, cta_url, image_url, start_date, end_date, sort_order")
+        .select(
+          "id, home_ad_slot_id, title, description, cta_text, cta_url, image_url, start_date, end_date, sort_order"
+        )
         .eq("home_ad_slot_id", slot.id)
         .lte("start_date", TODAY)
         .gte("end_date", TODAY)
@@ -80,7 +104,30 @@ async function getActiveAdsForSlotKeys(
       if (campaigns?.[0]) item.campaign = campaigns[0] as HomeAdCampaign;
     }
 
+    if (slot.enabled) {
+      item = applyFallback(item, slot, primaryType);
+    }
+
     result[key] = item;
+  }
+
+  if (coupangApiKeys.length > 0) {
+    const { data: caches } = await supabase
+      .from("coupang_ad_cache")
+      .select("slot_key, products, fetch_error")
+      .in("slot_key", coupangApiKeys);
+
+    for (const row of caches ?? []) {
+      const cacheKey = String((row as { slot_key: string }).slot_key);
+      const existing = result[cacheKey];
+      if (!existing) continue;
+      const products = (row as { products?: unknown }).products;
+      result[cacheKey] = {
+        ...existing,
+        coupang_products: Array.isArray(products) ? (products as CoupangBannerProduct[]) : [],
+        coupang_fetch_error: (row as { fetch_error?: string | null }).fetch_error ?? null,
+      };
+    }
   }
 
   return result;
@@ -124,6 +171,45 @@ export async function getActiveTendersAds(): Promise<{
   return {
     tenders_top: map.tenders_top ?? null,
     tenders_mid: map.tenders_mid ?? null,
+  };
+}
+
+/** 낙찰 목록 페이지용 */
+export async function getActiveTenderAwardsAds(): Promise<{
+  awards_top: HomeAdSlotWithCampaign | null;
+  awards_mid: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, ["awards_top", "awards_mid"]);
+  return {
+    awards_top: map.awards_top ?? null,
+    awards_mid: map.awards_mid ?? null,
+  };
+}
+
+/** 입찰 상세 페이지용 */
+export async function getActiveTenderDetailAds(): Promise<{
+  tender_detail_top: HomeAdSlotWithCampaign | null;
+  tender_detail_bottom: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, ["tender_detail_top", "tender_detail_bottom"]);
+  return {
+    tender_detail_top: map.tender_detail_top ?? null,
+    tender_detail_bottom: map.tender_detail_bottom ?? null,
+  };
+}
+
+/** 일당·마케팅 리포트 페이지용 */
+export async function getActiveReportPageAds(): Promise<{
+  report_top: HomeAdSlotWithCampaign | null;
+  report_bottom: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, ["report_top", "report_bottom"]);
+  return {
+    report_top: map.report_top ?? null,
+    report_bottom: map.report_bottom ?? null,
   };
 }
 

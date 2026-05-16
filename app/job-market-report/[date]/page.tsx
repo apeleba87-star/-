@@ -23,7 +23,8 @@ import {
   provincesFromPayload,
   topProvinceFromProvinces,
 } from "@/lib/jobs/job-wage-report-display";
-import { hasSubscriptionAccess } from "@/lib/subscription-access";
+import { getActiveReportPageAds, isAdSlotRenderable } from "@/lib/ads";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
@@ -99,7 +100,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }, { data: prevReportRow }, crossPosts] = await Promise.all([
+  const [{ data: report, error }, { data: recent }, { data: prevReportRow }, crossPosts, reportAds] = await Promise.all([
     supabase.from("job_wage_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
     supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(365),
     supabase
@@ -110,6 +111,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
       .limit(1)
       .maybeSingle(),
     getCrossReportDiscoveryPosts(supabase, 4),
+    getActiveReportPageAds(),
   ]);
 
   if (error || !report) notFound();
@@ -151,27 +153,9 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
     ? { currAvg: null, prevAvg: null, delta: null, deltaPct: null }
     : nationalCompare;
 
-  const todayKst = getKstDateString();
-  let jobWageInsightUnlocked = isAdmin;
-  if (!jobWageInsightUnlocked && user) {
-    const { data: subRow } = await authSupabase
-      .from("subscriptions")
-      .select("status, next_billing_at")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (hasSubscriptionAccess(subRow as { status: string; next_billing_at?: string | null } | null, todayKst)) {
-      jobWageInsightUnlocked = true;
-    }
-  }
-  if (!jobWageInsightUnlocked && user) {
-    const { data: shareGrant } = await authSupabase
-      .from("report_share_grants")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("grant_date", todayKst)
-      .maybeSingle();
-    jobWageInsightUnlocked = Boolean(shareGrant);
-  }
+  const jobWageInsightUnlocked = Boolean(user) || isAdmin;
+  const showReportTopAd = Boolean(user) && isAdSlotRenderable(reportAds.report_top);
+  const showReportBottomAd = Boolean(user) && isAdSlotRenderable(reportAds.report_bottom);
 
   const jobWageShareTitle = `일당 리포트 ${date}`;
   const jobWageShareText = jobWageTeamShareText(date);
@@ -223,6 +207,9 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
           layout={user ? "crop" : "full"}
         >
         <div className="mx-auto mt-8 max-w-4xl space-y-6">
+          {showReportTopAd ? (
+            <AffiliateAdSlot slot={reportAds.report_top} variant="banner" className="mb-2" />
+          ) : null}
           {!hasPayload || !payload ? (
             <div className={`${cardClass} text-center text-slate-600`}>리포트 데이터 형식을 읽을 수 없습니다.</div>
           ) : (
@@ -485,9 +472,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                       <>
                         공고 <strong className="font-semibold text-slate-900">{payload.jobPostCount.toLocaleString("ko-KR")}곳</strong> 기준 · 평균 높은 순 · 상위
                         5곳은 지도와 같은 색 뱃지
-                        {!jobWageInsightUnlocked ? (
-                          <> · 표 전체 복사는 우리 팀 공유 또는 구독 시 사용할 수 있습니다.</>
-                        ) : null}
+                        {!jobWageInsightUnlocked ? <> · 표 전체 복사는 로그인 후 사용할 수 있습니다.</> : null}
                       </>
                     }
                     iconBg="bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20"
@@ -642,6 +627,10 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
               입찰 리포트
             </Link>
           </div>
+
+          {showReportBottomAd ? (
+            <AffiliateAdSlot slot={reportAds.report_bottom} variant="banner" className="mt-4" />
+          ) : null}
         </div>
         </GuestPreviewGate>
       </div>

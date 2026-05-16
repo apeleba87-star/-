@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { TrendingUp, ExternalLink } from "lucide-react";
-import type { HomeAdCampaign } from "@/lib/ads";
+import type { HomeAdCampaign } from "@/lib/ads-shared";
 import { trackAdEvent } from "@/lib/ads-tracking";
 
 const glass = "bg-white/60 backdrop-blur-xl border border-white/30 shadow-lg";

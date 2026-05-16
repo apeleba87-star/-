@@ -20,7 +20,7 @@ export async function toggleSlotEnabled(slotId: string, enabled: boolean) {
   return { ok: true };
 }
 
-export type SlotType = "direct" | "google" | "coupang";
+export type SlotType = "direct" | "google" | "coupang" | "coupang_api";
 
 export async function updateSlotTypeAndScript(
   slotId: string,
@@ -28,11 +28,27 @@ export async function updateSlotTypeAndScript(
   script_content: string | null
 ) {
   const supabase = await createServerSupabase();
-  const payload: { slot_type: SlotType; script_content: string | null; updated_at: string } = {
+  const payload: {
+    slot_type: SlotType;
+    script_content: string | null;
+    updated_at: string;
+    coupang_config?: unknown;
+  } = {
     slot_type,
-    script_content: slot_type === "direct" ? null : script_content ?? null,
+    script_content: slot_type === "direct" || slot_type === "coupang_api" ? null : script_content ?? null,
     updated_at: new Date().toISOString(),
   };
+  if (slot_type === "coupang_api") {
+    const { data: existing } = await supabase
+      .from("home_ad_slots")
+      .select("key, coupang_config")
+      .eq("id", slotId)
+      .maybeSingle();
+    if (existing && !(existing as { coupang_config?: unknown }).coupang_config) {
+      const { defaultCoupangConfigForSlot } = await import("@/lib/coupang-partners/config");
+      payload.coupang_config = defaultCoupangConfigForSlot(String((existing as { key: string }).key));
+    }
+  }
   const { error } = await supabase.from("home_ad_slots").update(payload).eq("id", slotId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/ads");
@@ -40,7 +56,66 @@ export async function updateSlotTypeAndScript(
   revalidatePath("/tenders");
   revalidatePath("/listings");
   revalidatePath("/jobs");
+  revalidatePath("/tender-awards");
+  revalidatePath("/posts");
   return { ok: true };
+}
+
+export async function updateSlotFallback(
+  slotId: string,
+  fallback_type: "google" | "coupang" | null,
+  fallback_script_content: string | null
+) {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from("home_ad_slots")
+    .update({
+      fallback_type,
+      fallback_script_content: fallback_type ? fallback_script_content?.trim() || null : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", slotId);
+  if (error) return { ok: false, error: error.message };
+  revalidateAllAdPaths();
+  return { ok: true };
+}
+
+export async function updateSlotCoupangConfig(slotId: string, config: unknown) {
+  const supabase = await createServerSupabase();
+  const { parseCoupangSlotConfig } = await import("@/lib/coupang-partners/config");
+  const parsed = parseCoupangSlotConfig(config);
+  if (!parsed) return { ok: false, error: "쿠팡 설정 형식이 올바르지 않습니다." };
+
+  const { error } = await supabase
+    .from("home_ad_slots")
+    .update({
+      slot_type: "coupang_api",
+      coupang_config: parsed,
+      script_content: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", slotId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateAllAdPaths();
+  return { ok: true };
+}
+
+export async function refreshCoupangSlotNow(slotKey: string) {
+  const { refreshCoupangAdSlot } = await import("@/lib/coupang-partners/refresh");
+  const result = await refreshCoupangAdSlot(slotKey);
+  revalidateAllAdPaths();
+  return result;
+}
+
+function revalidateAllAdPaths() {
+  revalidatePath("/admin/ads");
+  revalidatePath("/");
+  revalidatePath("/tenders");
+  revalidatePath("/tender-awards");
+  revalidatePath("/listings");
+  revalidatePath("/jobs");
+  revalidatePath("/news");
 }
 
 export type CampaignInput = {

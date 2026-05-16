@@ -3,7 +3,8 @@ import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import { Suspense } from "react";
 import TendersListWithFilters from "./TendersListWithFilters";
 import { getActiveTendersAds } from "@/lib/ads";
-import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { isAdSlotRenderable } from "@/lib/ads";
 import { countOpenTenders, parseGugunParam } from "@/lib/tenders/user-focus";
 import type { UserTenderFocusRow } from "@/lib/tenders/user-focus";
 
@@ -126,9 +127,9 @@ export default async function TendersPage({ searchParams }: PageProps) {
           </p>
         </header>
 
-        {(tendersAds.tenders_top?.enabled && (tendersAds.tenders_top.campaign || tendersAds.tenders_top.script_content)) ? (
+        {isAdSlotRenderable(tendersAds.tenders_top) ? (
           <div className="mb-8">
-            <AdSlotRenderer slot={tendersAds.tenders_top} variant="card" />
+            <AffiliateAdSlot slot={tendersAds.tenders_top} variant="banner" />
           </div>
         ) : null}
 
