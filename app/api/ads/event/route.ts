@@ -13,8 +13,6 @@ const ALLOWED_EVENT_TYPES = [
 ] as const;
 
 const SLOT_KEYS = [
-  "premium_banner",
-  "native_card",
   "home_bottom",
   "post_top",
   "post_bottom",

@@ -133,19 +133,11 @@ async function getActiveAdsForSlotKeys(
   return result;
 }
 
-/** 슬롯별 enabled 여부 + 직접 수주 캠페인 1건 또는 스크립트(구글/쿠팡) */
-export async function getActiveHomeAds(): Promise<{
-  premium_banner: HomeAdSlotWithCampaign | null;
-  native_card: HomeAdSlotWithCampaign | null;
-  home_bottom: HomeAdSlotWithCampaign | null;
-}> {
+/** 홈 하단 슬롯 */
+export async function getActiveHomeBottomAd(): Promise<HomeAdSlotWithCampaign | null> {
   const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["premium_banner", "native_card", "home_bottom"]);
-  return {
-    premium_banner: map.premium_banner ?? null,
-    native_card: map.native_card ?? null,
-    home_bottom: map.home_bottom ?? null,
-  };
+  const map = await getActiveAdsForSlotKeys(supabase, ["home_bottom"]);
+  return map.home_bottom ?? null;
 }
 
 /** 글 상세 페이지용: 상단·하단 슬롯 */

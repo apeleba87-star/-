@@ -3,8 +3,6 @@
  */
 
 export type HomeAdSlotKey =
-  | "premium_banner"
-  | "native_card"
   | "home_bottom"
   | "post_top"
   | "post_bottom"
