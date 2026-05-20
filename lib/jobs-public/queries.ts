@@ -1,0 +1,107 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { regionMatchesScope } from "@/lib/jobs-public-ingest/worknet/region-parse";
+import type { JobPublicRegionPreference } from "./region-preference";
+
+export type PublicJobOpeningListItem = {
+  id: string;
+  wanted_auth_no: string;
+  title: string;
+  company: string | null;
+  preset_label: string | null;
+  pay_display: string;
+  pay_monthly_normalized: number | null;
+  region_text: string | null;
+  region_sido: string | null;
+  region_sigungu: string | null;
+  closing_at: string | null;
+  holiday_label: string | null;
+  career_label: string | null;
+  external_url: string;
+  last_synced_at: string;
+};
+
+export type JobSpotlightSnapshot = {
+  scope_key: string;
+  local_top_opening_id: string | null;
+  local_top_title: string | null;
+  local_top_pay_display: string | null;
+  local_top_preset_label: string | null;
+  local_top_closing_label: string | null;
+  pay_top_opening_id: string | null;
+  pay_top_title: string | null;
+  pay_top_pay_display: string | null;
+  pay_top_region_label: string | null;
+  pay_delta_display: string | null;
+  opening_count_local: number;
+  computed_at: string;
+};
+
+const LIST_SELECT =
+  "id, wanted_auth_no, title, company, preset_label, pay_display, pay_monthly_normalized, region_text, region_sido, region_sigungu, closing_at, holiday_label, career_label, external_url, last_synced_at";
+
+export async function fetchSpotlightSnapshot(
+  supabase: SupabaseClient,
+  scopeKey: string
+): Promise<JobSpotlightSnapshot | null> {
+  const { data } = await supabase
+    .from("job_spotlight_snapshots")
+    .select(
+      "scope_key, local_top_opening_id, local_top_title, local_top_pay_display, local_top_preset_label, local_top_closing_label, pay_top_opening_id, pay_top_title, pay_top_pay_display, pay_top_region_label, pay_delta_display, opening_count_local, computed_at"
+    )
+    .eq("scope_key", scopeKey)
+    .maybeSingle();
+  return (data as JobSpotlightSnapshot | null) ?? null;
+}
+
+export async function fetchPublicJobList(
+  supabase: SupabaseClient,
+  opts: { limit?: number; orderByPay?: boolean } = {}
+): Promise<PublicJobOpeningListItem[]> {
+  const limit = opts.limit ?? 30;
+  let q = supabase
+    .from("public_job_openings")
+    .select(LIST_SELECT)
+    .eq("is_open", true);
+  if (opts.orderByPay) {
+    q = q.order("pay_monthly_normalized", { ascending: false, nullsFirst: true });
+  } else {
+    q = q.order("last_synced_at", { ascending: false });
+  }
+  const { data } = await q.limit(limit);
+  return (data ?? []) as PublicJobOpeningListItem[];
+}
+
+export function filterLocalJobs(
+  rows: PublicJobOpeningListItem[],
+  pref: JobPublicRegionPreference
+): PublicJobOpeningListItem[] {
+  return rows.filter((r) =>
+    regionMatchesScope(
+      { region_sido: r.region_sido, region_sigungu: r.region_sigungu },
+      { sido: pref.sido, sigungu: pref.sigungu }
+    )
+  );
+}
+
+export async function fetchPublicJobByAuthNo(
+  supabase: SupabaseClient,
+  wantedAuthNo: string
+) {
+  const { data } = await supabase
+    .from("public_job_openings")
+    .select("*")
+    .eq("wanted_auth_no", wantedAuthNo.trim())
+    .eq("is_open", true)
+    .maybeSingle();
+  return data;
+}
+
+export function formatSyncedAt(iso: string | null | undefined): string {
+  if (!iso) return "갱신 시각 확인 중";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "갱신 시각 확인 중";
+  const hours = Math.floor((Date.now() - t) / 3600000);
+  if (hours < 1) return "1시간 이내 반영";
+  if (hours < 24) return `${hours}시간 전 반영`;
+  return "12시간마다 갱신";
+}

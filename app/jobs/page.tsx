@@ -431,6 +431,12 @@ export default async function JobsListPage({
           <div>
             <h1 className="text-xl font-bold text-slate-900">인력 구인</h1>
             <p className="mt-0.5 text-xs text-slate-500">구인글을 확인하고 지원하세요.</p>
+            <Link
+              href="/jobs/public"
+              className="mt-2 inline-block text-sm font-semibold text-blue-800 underline"
+            >
+              청소·용역 공공 채용 (워크넷) 보기
+            </Link>
           </div>
         </div>
         <AuthRequiredCta
