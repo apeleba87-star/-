@@ -109,6 +109,7 @@ const primaryNavItems: PrimaryNavEntry[] = [
       { href: "/listings", label: "현장 마켓", Icon: Briefcase },
       { href: "/partners", label: "협력 센터", Icon: Handshake },
       { href: "/jobs", label: "인력 센터", Icon: UserPlus },
+      { href: "/jobs/public", label: "공공 채용", Icon: Landmark },
     ],
   },
   {
@@ -147,7 +148,14 @@ function navLinkActive(
   href: string,
 ) {
   const pathOnly = href.split("?")[0];
-  return pathOnly === "/" ? pathname === "/" : pathname.startsWith(pathOnly);
+  if (pathOnly === "/") return pathname === "/";
+  if (pathOnly === "/jobs") {
+    return (
+      pathname === "/jobs" ||
+      (pathname.startsWith("/jobs/") && !pathname.startsWith("/jobs/public"))
+    );
+  }
+  return pathname.startsWith(pathOnly);
 }
 
 function navSubItemActive(

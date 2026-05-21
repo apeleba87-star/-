@@ -35,7 +35,12 @@ export async function updateSlotTypeAndScript(
     coupang_config?: unknown;
   } = {
     slot_type,
-    script_content: slot_type === "direct" || slot_type === "coupang_api" ? null : script_content ?? null,
+    script_content:
+      slot_type === "direct"
+        ? null
+        : slot_type === "coupang_api"
+          ? script_content?.trim() || null
+          : script_content ?? null,
     updated_at: new Date().toISOString(),
   };
   if (slot_type === "coupang_api") {

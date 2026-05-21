@@ -4,7 +4,11 @@ import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import ReportListPagination from "@/components/report/ReportListPagination";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import { buildMarketingReportListHref } from "@/lib/report/report-list-hrefs";
+import { clampReportListPage, parseReportListPage } from "@/lib/report/report-list-pagination";
+import { countMarketingReports, fetchMarketingReportsPage } from "@/lib/report/report-list-queries";
 import { getCrossReportDiscoveryPosts } from "@/lib/content/related-report-posts";
 import {
   formatReportCardListDate,
@@ -21,7 +25,13 @@ function formatMarketingListTitle(ymd: string): string {
   return `${m}월 ${d}일 키워드 트렌드`;
 }
 
-export default async function MarketingReportIndexPage() {
+export default async function MarketingReportIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const requestedPage = parseReportListPage(rawPage);
   const authSupabase = await createServerSupabase();
   const {
     data: { user },
@@ -32,15 +42,13 @@ export default async function MarketingReportIndexPage() {
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: rows, error }, { data: jobWageLatest }, crossPosts] = await Promise.all([
-    supabase
-      .from("naver_trend_daily_reports")
-      .select("report_date, headline, payload")
-      .order("report_date", { ascending: false })
-      .limit(365),
+  const [total, { data: jobWageLatest }, crossPosts] = await Promise.all([
+    countMarketingReports(supabase),
     supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
     getCrossReportDiscoveryPosts(supabase, 4),
   ]);
+  const listPage = clampReportListPage(requestedPage, total);
+  const { data: rows, error } = await fetchMarketingReportsPage(supabase, listPage);
 
   if (error) {
     return (
@@ -142,6 +150,12 @@ export default async function MarketingReportIndexPage() {
             </li>
           ))}
         </ul>
+
+        <ReportListPagination
+          page={listPage}
+          totalCount={total}
+          buildHref={buildMarketingReportListHref}
+        />
 
         {crossPosts.length > 0 ? (
           <div className="mx-auto mt-10 max-w-5xl">

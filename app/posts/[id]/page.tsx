@@ -282,9 +282,9 @@ function renderPost(
   relatedReports: RelatedReportPostRow[]
 ) {
   const isReport = isReportPost(post);
-  const showTopAd = !guestPreview && isAdSlotRenderable(ads.post_top);
-  const showBottomAd = !guestPreview && isAdSlotRenderable(ads.post_bottom);
   const useDashboard = isDailyTenderReportPost(post) && reportData;
+  const showTopAd = !guestPreview && isAdSlotRenderable(ads.post_top) && !useDashboard;
+  const showBottomAd = !guestPreview && isAdSlotRenderable(ads.post_bottom) && !useDashboard;
   const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
   const reportGuestLayout = guestPreview && isReport;
 
@@ -344,6 +344,10 @@ function renderPost(
             relatedReports={relatedReports}
             guestTeaser={guestPreview}
             loginNext={loginNext}
+            inlineAds={{
+              budgetBelow: ads.tender_report_budget_below,
+              premiumCoreBelow: ads.tender_report_premium_core_below,
+            }}
           />
           {showBottomAd && ads.post_bottom && (
             <div className="mt-8">

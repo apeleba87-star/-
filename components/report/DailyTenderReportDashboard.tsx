@@ -37,6 +37,8 @@ import {
 } from "lucide-react";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { buildRegionSummarySentence } from "@/lib/content/tender-report-formatters";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { isAdSlotRenderable, type HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import DataTrust3Pack from "@/components/DataTrust3Pack";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
@@ -129,6 +131,11 @@ type Props = {
   /** 비로그인 티저: 서버에서 마스킹된 payload + 일부 칸만 락 */
   guestTeaser?: boolean;
   loginNext?: string;
+  /** 입찰 리포트 본문 내 광고 (예산 상위 아래 · 당일 핵심 카드 아래) */
+  inlineAds?: {
+    budgetBelow: HomeAdSlotWithCampaign | null;
+    premiumCoreBelow: HomeAdSlotWithCampaign | null;
+  };
 };
 
 export default function DailyTenderReportDashboard({
@@ -143,6 +150,7 @@ export default function DailyTenderReportDashboard({
   relatedReports = [],
   guestTeaser = false,
   loginNext = "",
+  inlineAds = undefined,
 }: Props) {
   const { count_total, region_breakdown, top_budget_tenders, deadline_soon_tenders, industry_breakdown, top_industry } = payload;
 
@@ -671,6 +679,10 @@ export default function DailyTenderReportDashboard({
         </div>
       </section>
 
+      {isAdSlotRenderable(inlineAds?.budgetBelow) ? (
+        <AffiliateAdSlot slot={inlineAds!.budgetBelow} variant="banner" />
+      ) : null}
+
       {/* 5. 마감 임박 공고 */}
       <section className="space-y-3 sm:space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -874,6 +886,12 @@ export default function DailyTenderReportDashboard({
               </p>
             </DecisionPanel>
           </div>
+
+          {isAdSlotRenderable(inlineAds?.premiumCoreBelow) ? (
+            <div className="mt-4 overflow-visible sm:mt-5">
+              <AffiliateAdSlot slot={inlineAds!.premiumCoreBelow} variant="banner" />
+            </div>
+          ) : null}
         </div>
 
         <div className="relative mt-8 border-t border-violet-200/50 pt-8">

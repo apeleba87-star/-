@@ -4,7 +4,22 @@ import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
 import { heroMetricsFromAwardExcerpt } from "@/lib/news/parseReportCardHero";
+import ReportListPagination from "@/components/report/ReportListPagination";
 import ReportNextStep from "@/components/report/ReportNextStep";
+import { buildNewsReportListHref } from "@/lib/report/report-list-hrefs";
+import {
+  clampReportListPage,
+  parseReportListPage,
+} from "@/lib/report/report-list-pagination";
+import {
+  countAwardReportPosts,
+  countIndustryPosts,
+  countPrivatePosts,
+  countTenderDailyReportPosts,
+  fetchIndustryPostsPage,
+  fetchPrivatePostsPage,
+  fetchReportPostsPage,
+} from "@/lib/report/report-list-queries";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -42,9 +57,10 @@ function newsSectionFromCategory(cat: NewsCategoryKey): "report" | "industry" {
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; section?: string }>;
+  searchParams: Promise<{ category?: string; section?: string; page?: string }>;
 }) {
-  const { category: rawCategory, section: rawSection } = await searchParams;
+  const { category: rawCategory, section: rawSection, page: rawPage } = await searchParams;
+  const requestedPage = parseReportListPage(rawPage);
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
   const { data: profile } = user
@@ -85,13 +101,9 @@ export default async function NewsPage({
 
   // 비공개 탭: 관리자만, is_private = true 글만
   if (category === CATEGORY_PRIVATE) {
-    const { data: privatePosts } = await supabase
-      .from("posts")
-      .select("id, title, excerpt, published_at, slug, source_type, source_ref")
-      .not("published_at", "is", null)
-      .eq("is_private", true)
-      .order("published_at", { ascending: false })
-      .limit(50);
+    const totalPrivate = await countPrivatePosts(supabase);
+    const privatePage = clampReportListPage(requestedPage, totalPrivate);
+    const { data: privatePosts } = await fetchPrivatePostsPage(supabase, privatePage);
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-teal-50/40">
@@ -128,6 +140,11 @@ export default async function NewsPage({
               ))}
             </ul>
           )}
+          <ReportListPagination
+            page={privatePage}
+            totalCount={totalPrivate}
+            buildHref={(p) => buildNewsReportListHref(CATEGORY_PRIVATE, p)}
+          />
         </div>
       </div>
     );
@@ -141,15 +158,12 @@ export default async function NewsPage({
       .maybeSingle();
 
     let posts: { id: string; title: string; excerpt: string | null; published_at: string | null; slug: string | null }[] = [];
+    let industryTotal = 0;
+    let industryPage = 1;
     if (contentCat?.id) {
-      const { data } = await supabase
-        .from("posts")
-        .select("id, title, excerpt, published_at, slug")
-        .not("published_at", "is", null)
-        .eq("category_id", contentCat.id)
-        .eq("is_private", false)
-        .order("published_at", { ascending: false })
-        .limit(50);
+      industryTotal = await countIndustryPosts(supabase, contentCat.id);
+      industryPage = clampReportListPage(requestedPage, industryTotal);
+      const { data } = await fetchIndustryPostsPage(supabase, contentCat.id, industryPage);
       posts = data ?? [];
     }
 
@@ -195,30 +209,23 @@ export default async function NewsPage({
               ))}
             </ul>
           )}
+          <ReportListPagination
+            page={industryPage}
+            totalCount={industryTotal}
+            buildHref={(p) => buildNewsReportListHref(category, p)}
+          />
         </div>
       </div>
     );
   }
 
   const isAwardReportCategory = category === "award_report";
+  const totalReports = isAwardReportCategory
+    ? await countAwardReportPosts(supabase)
+    : await countTenderDailyReportPosts(supabase);
+  const reportPage = clampReportListPage(requestedPage, totalReports);
   const [{ data: posts }, { data: marketingLatest }] = await Promise.all([
-    isAwardReportCategory
-      ? supabase
-          .from("posts")
-          .select("id, title, excerpt, published_at, slug, source_type, source_ref")
-          .not("published_at", "is", null)
-          .eq("is_private", false)
-          .eq("source_type", "award_market_intel")
-          .order("published_at", { ascending: false })
-          .limit(50)
-      : supabase
-          .from("posts")
-          .select("id, title, excerpt, published_at, slug, source_type, source_ref")
-          .not("published_at", "is", null)
-          .eq("is_private", false)
-          .or("source_type.eq.auto_tender_daily,slug.ilike.*daily-tender-digest*")
-          .order("published_at", { ascending: false })
-          .limit(50),
+    fetchReportPostsPage(supabase, { isAward: isAwardReportCategory, page: reportPage }),
     supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
@@ -304,6 +311,11 @@ export default async function NewsPage({
             })}
           </ul>
         )}
+        <ReportListPagination
+          page={reportPage}
+          totalCount={totalReports}
+          buildHref={(p) => buildNewsReportListHref(category, p)}
+        />
         <div className="mx-auto mt-10 max-w-2xl">
           {isAwardReportCategory ? (
             <ReportNextStep

@@ -26,6 +26,8 @@ const SLOT_KEYS = [
   "tender_detail_bottom",
   "report_top",
   "report_bottom",
+  "tender_report_budget_below",
+  "tender_report_premium_core_below",
 ];
 
 type Body = {

@@ -4,7 +4,11 @@ import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
+import ReportListPagination from "@/components/report/ReportListPagination";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import { buildJobMarketReportListHref } from "@/lib/report/report-list-hrefs";
+import { clampReportListPage, parseReportListPage } from "@/lib/report/report-list-pagination";
+import { countJobWageReports, fetchJobWageReportsPage } from "@/lib/report/report-list-queries";
 import { getCrossReportDiscoveryPosts } from "@/lib/content/related-report-posts";
 import {
   formatJobWageDominantDisplayName,
@@ -24,7 +28,13 @@ function formatJobWageListTitle(ymd: string): string {
   return `${m}월 ${d}일 · 일당 리포트`;
 }
 
-export default async function JobMarketReportIndexPage() {
+export default async function JobMarketReportIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const requestedPage = parseReportListPage(rawPage);
   const authSupabase = await createServerSupabase();
   const {
     data: { user },
@@ -35,14 +45,12 @@ export default async function JobMarketReportIndexPage() {
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: rows, error }, crossPosts] = await Promise.all([
-    supabase
-      .from("job_wage_daily_reports")
-      .select("report_date, headline, payload")
-      .order("report_date", { ascending: false })
-      .limit(365),
+  const [total, crossPosts] = await Promise.all([
+    countJobWageReports(supabase),
     getCrossReportDiscoveryPosts(supabase, 4),
   ]);
+  const listPage = clampReportListPage(requestedPage, total);
+  const { data: rows, error } = await fetchJobWageReportsPage(supabase, listPage);
 
   if (error) {
     return (
@@ -149,6 +157,12 @@ export default async function JobMarketReportIndexPage() {
             </li>
           ))}
         </ul>
+
+        <ReportListPagination
+          page={listPage}
+          totalCount={total}
+          buildHref={buildJobMarketReportListHref}
+        />
 
         {crossPosts.length > 0 ? (
           <div className="mx-auto mt-10 max-w-5xl">

@@ -34,14 +34,41 @@ export function parseReportCardHeroFromExcerpt(
 }
 
 /**
- * 낙찰 시장 리포트 excerpt → 카드 히어로 (평균 낙찰률·참여 업체 수 등).
- * 문구 예: "최근 90일 … 평균 낙찰률은 88.46%, 평균 참여 업체수는 11.7개입니다."
+ * 낙찰 시장 리포트 excerpt → 카드 히어로.
+ * 당일: "5월 20일 낙찰 12건, 평균 낙찰률 87.2%, 참여 업체 평균 9.3곳"
+ * (구) 90일 롤링 문구도 하위 호환
  */
 export function heroMetricsFromAwardExcerpt(excerpt: string | null | undefined): ReportCardHeroMetrics | null {
   if (!excerpt?.trim()) return null;
   const t = excerpt.replace(/\s+/g, " ").trim();
-  const rateM = t.match(/평균\s*낙찰률(?:은)?\s*([\d.]+%)/);
-  const partM = t.match(/평균\s*참여\s*업체수(?:는)?\s*([\d.]+)\s*개/);
+
+  if (/신규\s*낙찰\s*없음/.test(t)) {
+    return { primaryLine: "당일 낙찰 없음", subtitle: "자세한 내용은 본문(90일 흐름) 참고" };
+  }
+
+  const countM = t.match(/낙찰\s*([\d,]+)\s*건/);
+  const rateM = t.match(/평균\s*낙찰률\s*([\d.]+%)/);
+  const partM =
+    t.match(/참여\s*업체\s*평균\s*([\d.]+)\s*곳/) ??
+    t.match(/평균\s*참여\s*업체수(?:는)?\s*([\d.]+)\s*개/);
+
+  if (countM && rateM && partM) {
+    const n = countM[1].replace(/,/g, "");
+    return {
+      primaryLine: `낙찰 ${n}건 · ${rateM[1]}`,
+      subtitle: `참여 업체 평균 ${partM[1]}곳`,
+    };
+  }
+  if (countM && rateM) {
+    return {
+      primaryLine: `낙찰 ${countM[1].replace(/,/g, "")}건 · ${rateM[1]}`,
+      subtitle: null,
+    };
+  }
+  if (countM) {
+    return { primaryLine: `낙찰 ${countM[1].replace(/,/g, "")}건`, subtitle: null };
+  }
+
   if (rateM && partM) {
     return {
       primaryLine: `평균 낙찰률 ${rateM[1]}`,

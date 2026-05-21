@@ -20,12 +20,15 @@ export default function AdSlotRenderer({ slot, variant = "card", className }: Pr
   if (slot.slot_type === "coupang_api" && slot.coupang_products?.length) {
     return <CoupangProductBanner products={slot.coupang_products} slotKey={slot.key} />;
   }
+  if (slot.slot_type === "coupang_api" && slot.script_content?.trim()) {
+    return <AdScriptBlock scriptContent={slot.script_content} className={className} slotKey={slot.key} />;
+  }
   if (slot.campaign) {
     if (variant === "banner") return <AdPremiumBanner campaign={slot.campaign} slotKey={slot.key} />;
     return <AdNativeCard campaign={slot.campaign} slotKey={slot.key} />;
   }
   if (slot.script_content?.trim()) {
-    return <AdScriptBlock scriptContent={slot.script_content} className={className} />;
+    return <AdScriptBlock scriptContent={slot.script_content} className={className} slotKey={slot.key} />;
   }
   return null;
 }

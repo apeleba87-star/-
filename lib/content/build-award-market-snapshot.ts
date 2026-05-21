@@ -78,6 +78,11 @@ type AwardReportContent = ReportContentBlock & {
       award_count: number;
     }[];
   };
+  /** 목록 카드용 — 해당 일자(KST) 낙찰만 집계 (90일 롤링과 구분) */
+  card_headline?: string;
+  daily_award_count?: number;
+  rolling_90d_avg_rate_pct?: number | null;
+  rolling_90d_avg_participants?: number | null;
 };
 
 const KST = "Asia/Seoul";
@@ -89,6 +94,56 @@ function kstDateKey(date: Date): string {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function opengDtKstDateKey(opengDt: string | null | undefined): string | null {
+  if (!opengDt?.trim()) return null;
+  const d = new Date(opengDt);
+  if (Number.isNaN(d.getTime())) return null;
+  return kstDateKey(d);
+}
+
+function formatPeriodKeyKo(periodKey: string): string {
+  const m = periodKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return periodKey;
+  return `${Number(m[2])}월 ${Number(m[3])}일`;
+}
+
+export type AwardDailyCardRow = {
+  openg_dt?: string | null;
+  bid_rate_pct: number | null;
+  prtcpt_cnum: number | null;
+};
+
+/** 목록 카드용 — 해당 KST 일자 낙찰만 (업종 필터 없음) */
+export function computeAwardDailyCardHeadline(
+  rows: AwardDailyCardRow[],
+  periodKey: string,
+): { card_headline: string; daily_award_count: number } {
+  const dayLabel = formatPeriodKeyKo(periodKey);
+  const dailyRows = rows.filter((r) => opengDtKstDateKey(r.openg_dt) === periodKey);
+  const dailyRates = dailyRows
+    .map((r) => r.bid_rate_pct)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n));
+  const dailyParticipants = dailyRows
+    .map((r) => r.prtcpt_cnum)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  const dailyAvgRate = avg(dailyRates);
+  const dailyAvgParticipants = avg(dailyParticipants);
+  const dailyCount = dailyRows.length;
+
+  let card_headline: string;
+  if (dailyCount > 0 && dailyAvgRate != null && dailyAvgParticipants != null) {
+    card_headline = `${dayLabel} 낙찰 ${dailyCount.toLocaleString("ko-KR")}건, 평균 낙찰률 ${dailyAvgRate.toFixed(2)}%, 참여 업체 평균 ${dailyAvgParticipants.toFixed(1)}곳`;
+  } else if (dailyCount > 0 && dailyAvgRate != null) {
+    card_headline = `${dayLabel} 낙찰 ${dailyCount.toLocaleString("ko-KR")}건, 평균 낙찰률 ${dailyAvgRate.toFixed(2)}%`;
+  } else if (dailyCount > 0) {
+    card_headline = `${dayLabel} 낙찰 ${dailyCount.toLocaleString("ko-KR")}건`;
+  } else {
+    card_headline = `${dayLabel} 신규 낙찰 없음`;
+  }
+
+  return { card_headline, daily_award_count: dailyCount };
 }
 
 function avg(values: number[]): number | null {
@@ -207,9 +262,14 @@ export function buildAwardMarketSnapshot(rows: AwardRow[], now = new Date()): Aw
     `핵심 군집 ${clusterStart.toFixed(2)}~${clusterEnd.toFixed(2)}%`,
   ];
 
+  const { card_headline: cardHeadline, daily_award_count: dailyCount } = computeAwardDailyCardHeadline(
+    inScopeRows,
+    periodKey,
+  );
+
   const headline =
     avgRate != null && avgParticipants != null
-      ? `최근 90일 낙찰 결과 기준 평균 낙찰률은 ${avgRate.toFixed(2)}%, 평균 참여 업체수는 ${avgParticipants.toFixed(1)}개입니다.`
+      ? `최근 90일 낙찰 결과 기준 평균 낙찰률은 ${avgRate.toFixed(2)}%, 평균 참여 업체수는 ${avgParticipants.toFixed(1)}개입니다. 본문에서 일자별·군집 분석을 확인하세요.`
       : `최근 90일 등록 업종 낙찰 결과 표본 ${sampleCount.toLocaleString("ko-KR")}건을 기반으로 낙찰 흐름을 요약했습니다.`;
 
   const practicalNote =
@@ -345,6 +405,10 @@ export function buildAwardMarketSnapshot(rows: AwardRow[], now = new Date()): Aw
 
   const content: AwardReportContent = {
     headline,
+    card_headline: cardHeadline,
+    daily_award_count: dailyCount,
+    rolling_90d_avg_rate_pct: avgRate,
+    rolling_90d_avg_participants: avgParticipants,
     key_metrics: keyMetrics,
     practical_note: practicalNote,
     next_action: nextAction,

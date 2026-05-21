@@ -43,7 +43,11 @@ export default function AffiliateAdSlot({ slot, variant = "banner", className }:
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">광고</span>
         {disclosure ? <span className="text-[10px] leading-snug text-slate-500">{disclosure}</span> : null}
       </div>
-      <div className="p-3">
+      <div
+        className={`p-3 ${
+          effectiveType === "coupang" || effectiveType === "coupang_api" ? "overflow-visible" : ""
+        }`}
+      >
         <AdSlotRenderer slot={slot} variant={useBanner ? "banner" : "card"} />
       </div>
     </aside>

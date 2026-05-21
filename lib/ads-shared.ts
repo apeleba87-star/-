@@ -15,7 +15,9 @@ export type HomeAdSlotKey =
   | "tender_detail_top"
   | "tender_detail_bottom"
   | "report_top"
-  | "report_bottom";
+  | "report_bottom"
+  | "tender_report_budget_below"
+  | "tender_report_premium_core_below";
 
 export type AdSlotType = "direct" | "google" | "coupang" | "coupang_api";
 
@@ -59,6 +61,8 @@ export type HomeAdSlotWithCampaign = {
 export function isAdSlotRenderable(slot: HomeAdSlotWithCampaign | null | undefined): boolean {
   if (!slot?.enabled) return false;
   if (slot.campaign) return true;
-  if (slot.slot_type === "coupang_api") return (slot.coupang_products?.length ?? 0) > 0;
+  if (slot.slot_type === "coupang_api") {
+    return (slot.coupang_products?.length ?? 0) > 0 || Boolean(slot.script_content?.trim());
+  }
   return Boolean(slot.script_content?.trim());
 }

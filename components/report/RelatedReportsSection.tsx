@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Layers } from "lucide-react";
 import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
 import { classifyReportKind } from "@/lib/content/related-report-posts";
-import { getReportBadgeLabel } from "@/lib/news/report-list-title";
-import { getReportCardListTitle } from "@/lib/news/report-list-title";
+import { getReportBadgeLabel, getReportCardListTitle } from "@/lib/news/report-list-title";
+import { getReportListPageItems } from "@/lib/report/report-list-pagination";
 
 const BADGE: Record<ReturnType<typeof classifyReportKind>, string> = {
   daily: "bg-teal-50 text-teal-800 ring-1 ring-teal-200/75",
@@ -131,30 +131,74 @@ export default function RelatedReportsSection({
 
       {totalPages > 1 ? (
         <nav
-          className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 pt-4"
+          className="mt-5 flex flex-col items-center gap-2 border-t border-slate-200/80 pt-4"
           aria-label="관련 리포트 페이지"
         >
-          <p className="text-xs text-slate-500 tabular-nums">
-            {sliceStart + 1}–{Math.min(sliceStart + pageSizeClamped, posts.length)} / 전체 {posts.length}건 · 페이지 {safePage}/{totalPages}
-          </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1">
+            <button
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setPage(1)}
+              className="px-2 text-xs text-slate-600 hover:text-teal-700 disabled:text-slate-300"
+            >
+              처음
+            </button>
             <button
               type="button"
               disabled={safePage <= 1}
               onClick={() => setPage(Math.max(1, safePage - 1))}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="px-2 text-xs text-slate-600 hover:text-teal-700 disabled:text-slate-300"
             >
               이전
             </button>
+            <ol className="mx-1 flex list-none gap-0.5 p-0">
+              {getReportListPageItems(safePage, totalPages, pageSizeClamped).map((item, idx) =>
+                item === "ellipsis" ? (
+                  <li key={`e-${idx}`} className="min-w-7 px-1 text-center text-xs text-slate-400">
+                    …
+                  </li>
+                ) : item === safePage ? (
+                  <li key={item}>
+                    <span
+                      className="inline-flex min-h-8 min-w-8 items-center justify-center rounded border border-teal-600 bg-teal-600 text-xs font-bold text-white tabular-nums"
+                      aria-current="page"
+                    >
+                      {item}
+                    </span>
+                  </li>
+                ) : (
+                  <li key={item}>
+                    <button
+                      type="button"
+                      onClick={() => setPage(item)}
+                      className="inline-flex min-h-8 min-w-8 items-center justify-center rounded text-xs font-medium text-slate-700 tabular-nums hover:bg-slate-100"
+                    >
+                      {item}
+                    </button>
+                  </li>
+                ),
+              )}
+            </ol>
             <button
               type="button"
               disabled={safePage >= totalPages}
               onClick={() => setPage(Math.min(totalPages, safePage + 1))}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="px-2 text-xs text-slate-600 hover:text-teal-700 disabled:text-slate-300"
             >
               다음
             </button>
+            <button
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage(totalPages)}
+              className="px-2 text-xs text-slate-600 hover:text-teal-700 disabled:text-slate-300"
+            >
+              마지막
+            </button>
           </div>
+          <p className="text-xs text-slate-500 tabular-nums">
+            {sliceStart + 1}–{Math.min(sliceStart + pageSizeClamped, posts.length)} / 전체 {posts.length}건
+          </p>
         </nav>
       ) : null}
     </section>

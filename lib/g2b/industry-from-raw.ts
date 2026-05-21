@@ -234,6 +234,86 @@ export function extractIndustryCodesFromRaw(
   return extractIndustryMatchesFromRaw(raw, industries).matches.map((m) => m.code);
 }
 
+/** 공고명 키워드 → 조달청 업종코드 (구체적 패턴 우선) */
+const NOTICE_KEYWORD_TO_CODE: { keywords: string[]; code: string }[] = [
+  { keywords: ["저수조청소", "저수조"], code: "1173" },
+  { keywords: ["유리창청소", "유창청소"], code: "5527" },
+  { keywords: ["분뇨수집", "분뇨운반", "분뇨"], code: "1136" },
+  { keywords: ["소독", "방역"], code: "1192" },
+  { keywords: ["시설경비", "경비용역"], code: "1164" },
+  {
+    keywords: [
+      "청소",
+      "미화",
+      "환경미화",
+      "청소용역",
+      "미화용역",
+      "건물청소",
+      "위생관리",
+      "환경정비",
+      "청소관리",
+    ],
+    code: "1162",
+  },
+  { keywords: ["관리용역", "시설관리", "환경관리", "시설관리용역", "건물관리"], code: "1260" },
+];
+
+const NOTICE_TITLE_EXCLUDE = ["청소년", "뉴스클리핑", "뉴스스크랩", "연구용역", "설계용역", "설계"];
+
+function stripNoticeExcludePhrases(title: string): string {
+  let out = title;
+  for (const ex of NOTICE_TITLE_EXCLUDE) {
+    const re = new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+    out = out.replace(re, " ");
+  }
+  return out;
+}
+
+function matchIndustryByNoticeKeywords(
+  title: string,
+  industries: IndustryRow[],
+): IndustryMatch | null {
+  const searchCompact = compact(normalize(stripNoticeExcludePhrases(title)));
+  if (searchCompact.length < 2) return null;
+  const activeCodes = new Set(industries.map((i) => i.code));
+  for (const { keywords, code } of NOTICE_KEYWORD_TO_CODE) {
+    if (!activeCodes.has(code)) continue;
+    for (const kw of keywords) {
+      const kc = compact(kw);
+      if (kc.length >= 2 && searchCompact.includes(kc)) {
+        const name = industries.find((i) => i.code === code)?.name ?? code;
+        return { code, match_source: "text_estimated", raw_value: `${name}(${kw})` };
+      }
+    }
+  }
+  return null;
+}
+
+/** 공고명 텍스트만으로 업종 추정 (별칭·업종명 + 청소/미화 등 키워드) */
+export function extractIndustryMatchesFromNoticeTitle(
+  title: string | null | undefined,
+  industries: IndustryRow[],
+): IndustryMatchResult {
+  const t = normalize(String(title ?? ""));
+  if (!t || industries.length === 0) {
+    return { matches: [], match_status: "unclassified", raw_values: [] };
+  }
+  const matchMap = new Map<string, IndustryMatch>();
+  for (const m of matchByTextSearch(t, industries)) {
+    matchMap.set(m.code, m);
+  }
+  const kw = matchIndustryByNoticeKeywords(t, industries);
+  if (kw && !matchMap.has(kw.code)) {
+    matchMap.set(kw.code, kw);
+  }
+  const matches = [...matchMap.values()];
+  return {
+    matches,
+    match_status: matches.length > 0 ? "text_estimated" : "unclassified",
+    raw_values: [t],
+  };
+}
+
 /**
  * 대표 업종 1개 선정: group_key 우선순위(cleaning > disinfection > facility > labor) 후 sort_order
  */

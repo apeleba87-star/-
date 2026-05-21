@@ -140,16 +140,25 @@ export async function getActiveHomeBottomAd(): Promise<HomeAdSlotWithCampaign | 
   return map.home_bottom ?? null;
 }
 
-/** 글 상세 페이지용: 상단·하단 슬롯 */
+/** 글 상세 페이지용: 상단·하단 + 일간 입찰 리포트 본문 내 슬롯 */
 export async function getActivePostDetailAds(): Promise<{
   post_top: HomeAdSlotWithCampaign | null;
   post_bottom: HomeAdSlotWithCampaign | null;
+  tender_report_budget_below: HomeAdSlotWithCampaign | null;
+  tender_report_premium_core_below: HomeAdSlotWithCampaign | null;
 }> {
   const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["post_top", "post_bottom"]);
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "post_top",
+    "post_bottom",
+    "tender_report_budget_below",
+    "tender_report_premium_core_below",
+  ]);
   return {
     post_top: map.post_top ?? null,
     post_bottom: map.post_bottom ?? null,
+    tender_report_budget_below: map.tender_report_budget_below ?? null,
+    tender_report_premium_core_below: map.tender_report_premium_core_below ?? null,
   };
 }
 

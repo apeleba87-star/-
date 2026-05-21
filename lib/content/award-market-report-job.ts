@@ -3,7 +3,9 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { GENERATOR_VERSION } from "@/lib/content/content-generation-runs";
-import { buildAwardMarketSnapshot } from "@/lib/content/build-award-market-snapshot";
+import { buildAwardMarketSnapshot, computeAwardDailyCardHeadline } from "@/lib/content/build-award-market-snapshot";
+import { extractIndustryMatchesFromNoticeTitle } from "@/lib/g2b/industry-from-raw";
+import { REPORT_TYPE_AWARD_MARKET_INTEL } from "@/lib/content/report-snapshot-types";
 import { reportContentToMarkdown } from "@/lib/content/snapshot-to-post-body";
 
 export const AWARD_MARKET_RUN_TYPE = "award_market_digest";
@@ -30,6 +32,82 @@ export type AwardMarketReportJobResult =
       message: string;
     }
   | { ok: false; error: string; run_key?: string };
+
+/** 업종 매핑 없을 때 기존 스냅샷·글의 일자별 카드 헤드라인만 갱신 */
+export async function refreshAwardReportDailyCard(
+  supabase: SupabaseClient,
+  periodKey: string,
+): Promise<{ ok: true; card_headline: string; daily_award_count: number } | { ok: false; error: string }> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(periodKey)) {
+    return { ok: false, error: "invalid period_key" };
+  }
+
+  const at = new Date(`${periodKey}T15:00:00+09:00`);
+  const since = new Date(at.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: rows, error: rowsError } = await supabase
+    .from("tender_award_summaries")
+    .select("openg_dt,bid_rate_pct,prtcpt_cnum")
+    .gte("openg_dt", since);
+
+  if (rowsError) return { ok: false, error: rowsError.message };
+
+  const { card_headline, daily_award_count } = computeAwardDailyCardHeadline(rows ?? [], periodKey);
+
+  const { data: existingPost, error: postError } = await supabase
+    .from("posts")
+    .select("id,report_snapshot")
+    .eq("source_type", REPORT_TYPE_AWARD_MARKET_INTEL)
+    .eq("source_ref", periodKey)
+    .maybeSingle();
+
+  if (postError) return { ok: false, error: postError.message };
+  if (!existingPost?.id) return { ok: false, error: "post not found" };
+
+  const snapshot = (existingPost.report_snapshot ?? {}) as Record<string, unknown>;
+  const mergedSnapshot = {
+    ...snapshot,
+    card_headline,
+    daily_award_count,
+  };
+
+  const { error: updatePostError } = await supabase
+    .from("posts")
+    .update({
+      excerpt: card_headline,
+      report_snapshot: mergedSnapshot,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", existingPost.id);
+
+  if (updatePostError) return { ok: false, error: updatePostError.message };
+
+  const { data: snapRow } = await supabase
+    .from("report_snapshots")
+    .select("content_full,content_summary")
+    .eq("report_type", REPORT_TYPE_AWARD_MARKET_INTEL)
+    .eq("period_key", periodKey)
+    .maybeSingle();
+
+  if (snapRow) {
+    const full = { ...((snapRow.content_full ?? {}) as Record<string, unknown>), card_headline, daily_award_count };
+    const summary = {
+      ...((snapRow.content_summary ?? {}) as Record<string, unknown>),
+      card_headline,
+      daily_award_count,
+    };
+    await supabase
+      .from("report_snapshots")
+      .update({
+        content_full: full,
+        content_summary: summary,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("report_type", REPORT_TYPE_AWARD_MARKET_INTEL)
+      .eq("period_key", periodKey);
+  }
+
+  return { ok: true, card_headline, daily_award_count };
+}
 
 export async function runAwardMarketReportJob(
   supabase: SupabaseClient,
@@ -93,21 +171,34 @@ export async function runAwardMarketReportJob(
   const tenderIds = [...new Set((rows ?? []).map((r) => r.tender_id).filter((v): v is string => typeof v === "string" && v.length > 0))];
   const [{ data: tRows }, { data: tiRows }, { data: industryRows }] = await Promise.all([
     tenderIds.length
-      ? supabase.from("tenders").select("id,region_sido_list,ntce_instt_nm,base_amt").in("id", tenderIds)
+      ? supabase
+          .from("tenders")
+          .select("id,region_sido_list,ntce_instt_nm,base_amt,primary_industry_code")
+          .in("id", tenderIds)
       : Promise.resolve({ data: [] as unknown[] }),
     tenderIds.length
       ? supabase.from("tender_industries").select("tender_id,industry_code").in("tender_id", tenderIds)
       : Promise.resolve({ data: [] as unknown[] }),
-    supabase.from("industries").select("code,name,is_active").eq("is_active", true),
+    supabase.from("industries").select("code,name,aliases,group_key,sort_order,is_active").eq("is_active", true),
   ]);
 
-  const tendersById = new Map(
-    ((tRows ?? []) as { id: string; region_sido_list: string[] | null; ntce_instt_nm: string | null; base_amt: number | null }[]).map((t) => [
-      t.id,
-      t,
-    ]),
-  );
+  type TenderRow = {
+    id: string;
+    region_sido_list: string[] | null;
+    ntce_instt_nm: string | null;
+    base_amt: number | null;
+    primary_industry_code: string | null;
+  };
+
+  const tendersById = new Map(((tRows ?? []) as TenderRow[]).map((t) => [t.id, t]));
   const industryNameByCode = new Map(((industryRows ?? []) as { code: string; name: string }[]).map((i) => [i.code, i.name]));
+  const industryRowsForTitle = (industryRows ?? []) as {
+    code: string;
+    name: string;
+    aliases?: string[] | null;
+    group_key?: string | null;
+    sort_order?: number;
+  }[];
   const industryCodesByTender = new Map<string, string[]>();
   for (const row of (tiRows ?? []) as { tender_id: string; industry_code: string }[]) {
     const list = industryCodesByTender.get(row.tender_id) ?? [];
@@ -117,14 +208,27 @@ export async function runAwardMarketReportJob(
 
   const enrichedRows = (rows ?? []).map((r) => {
     const tender = r.tender_id ? tendersById.get(r.tender_id) : undefined;
-    const codes = r.tender_id ? industryCodesByTender.get(r.tender_id) ?? [] : [];
-    const pickedCode = codes.find((c) => industryNameByCode.has(c)) ?? codes[0] ?? null;
+    let codes = r.tender_id ? (industryCodesByTender.get(r.tender_id) ?? []) : [];
+    const primary = tender?.primary_industry_code?.trim();
+    if (codes.length === 0 && primary && industryNameByCode.has(primary)) {
+      codes = [primary];
+    }
+    let pickedCode = codes.find((c) => industryNameByCode.has(c)) ?? codes[0] ?? null;
+    let industryName = pickedCode ? (industryNameByCode.get(pickedCode) ?? pickedCode) : null;
+    if (!pickedCode) {
+      const titleMatch = extractIndustryMatchesFromNoticeTitle(r.bid_ntce_nm, industryRowsForTitle);
+      const m = titleMatch.matches[0];
+      if (m && industryNameByCode.has(m.code)) {
+        pickedCode = m.code;
+        industryName = industryNameByCode.get(m.code) ?? m.code;
+      }
+    }
     const region =
       Array.isArray(tender?.region_sido_list) && tender!.region_sido_list.length > 0 ? tender!.region_sido_list[0]! : null;
     return {
       ...r,
       industry_code: pickedCode,
-      industry_name: pickedCode ? industryNameByCode.get(pickedCode) ?? pickedCode : null,
+      industry_name: industryName,
       region_sido: region,
       agency_name: tender?.ntce_instt_nm ?? null,
       base_amt: tender?.base_amt ?? null,
@@ -175,9 +279,16 @@ export async function runAwardMarketReportJob(
   }
 
   const postSlug = `report-${snapshot.report_type.replace(/_/g, "-")}-${snapshot.period_key.replace(/\s/g, "-")}`;
+  const summary = snapshot.content_summary as Record<string, unknown>;
+  const full = snapshot.content_full as Record<string, unknown>;
+  const cardHeadline =
+    (typeof summary.card_headline === "string" && summary.card_headline.trim()) ||
+    (typeof full.card_headline === "string" && full.card_headline.trim()) ||
+    "";
   const postExcerpt =
-    (snapshot.content_summary.headline as string | undefined) ??
-    (snapshot.content_full.headline as string | undefined) ??
+    cardHeadline ||
+    (typeof summary.headline === "string" ? summary.headline : undefined) ||
+    (typeof full.headline === "string" ? full.headline : undefined) ||
     snapshot.title;
   const postBody = reportContentToMarkdown(snapshot.content_full);
 
