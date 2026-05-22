@@ -48,7 +48,7 @@ export default function AdScriptBlock({ scriptContent, className = "", slotKey }
 
     let cancelled = false;
     let reparentHandle: CoupangReparentHandle | null = null;
-    let failTimer: ReturnType<typeof setTimeout> | undefined;
+    let failTimer: number | undefined;
 
     if (mountId && mount && isCoupangPartnersScript(scriptContent)) {
       setLoadFailed(false);
