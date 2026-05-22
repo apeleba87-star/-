@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useEffect, useRef, useState, useTransition } from "react";
+import { Fragment, useMemo, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FileText, ChevronDown, Bookmark } from "lucide-react";
 import TenderBidCard from "@/components/tender/TenderBidCard";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { isAdSlotRenderable, type HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import { getBaseAmtFromRaw } from "@/lib/tender-utils";
 import { ddayNumber } from "@/lib/tender-utils";
 import { REGION_GUGUN, type RegionSido } from "@/lib/listings/regions";
@@ -18,6 +20,9 @@ import { saveUserTenderFocus, clearUserTenderFocus } from "./actions";
 import { dispatchTenderFocusUpdated } from "@/lib/tenders/tender-focus-events";
 
 const MAX_INDUSTRIES = 4;
+
+/** 진행 중 공고 목록에서 광고를 넣을 0-based 인덱스 (3번째 칸) */
+const INDUSTRY_LIST_AD_INDEX = 2;
 
 const SORT_OPTIONS = [
   { id: "posted", label: "최신순" },
@@ -65,6 +70,7 @@ type Props = {
   /** 시·군·구 (시·도 선택 시에만, 빈 문자열이면 시·도 전체만) */
   initialGugun?: string;
   initialSort?: SortId;
+  industryListAd?: HomeAdSlotWithCampaign | null;
   isLoggedIn?: boolean;
   savedFocus?: UserTenderFocusRow | null;
   totalOpenCount?: number;
@@ -106,6 +112,7 @@ export default function TendersListWithFilters({
   initialRegion = "전체 지역",
   initialGugun = "",
   initialSort = "posted",
+  industryListAd = null,
   isLoggedIn = false,
   savedFocus = null,
   totalOpenCount = 0,
@@ -187,6 +194,12 @@ export default function TendersListWithFilters({
     const closed = tenders.filter((t) => ddayNumber(t.bid_clse_dt) < 0).sort(sortFn);
     return { openTenders: open, closedTenders: closed };
   }, [tenders, sortBy]);
+
+  const showIndustryListAd =
+    selectedIndustryCodes.length > 0 && isAdSlotRenderable(industryListAd);
+  const industryListAdInsertAt = showIndustryListAd
+    ? Math.min(INDUSTRY_LIST_AD_INDEX, openTenders.length)
+    : -1;
 
   const clearFilters = () => router.push("/tenders");
 
@@ -593,11 +606,23 @@ export default function TendersListWithFilters({
             <section className="mb-10">
               <h2 className="mb-4 text-lg font-semibold text-slate-800">진행 중인 공고</h2>
               <ul className="space-y-4">
-                {openTenders.map((t) => (
-                  <li key={t.id}>
-                    <TenderBidCard tender={t} industryNames={industryNames} isLoggedIn={isLoggedIn} />
-                  </li>
+                {openTenders.map((t, index) => (
+                  <Fragment key={t.id}>
+                    {industryListAdInsertAt === index ? (
+                      <li key="tenders-industry-open-ad">
+                        <AffiliateAdSlot slot={industryListAd!} variant="banner" />
+                      </li>
+                    ) : null}
+                    <li>
+                      <TenderBidCard tender={t} industryNames={industryNames} isLoggedIn={isLoggedIn} />
+                    </li>
+                  </Fragment>
                 ))}
+                {industryListAdInsertAt === openTenders.length ? (
+                  <li key="tenders-industry-open-ad-end">
+                    <AffiliateAdSlot slot={industryListAd!} variant="banner" />
+                  </li>
+                ) : null}
               </ul>
             </section>
           )}

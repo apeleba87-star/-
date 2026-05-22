@@ -16,6 +16,12 @@ import {
   resolveTenderDetailAwardBannerState,
 } from "@/lib/tenders/tender-detail-award";
 import { isValidSido } from "@/lib/tenders/user-focus";
+import {
+  getActiveTenderDetailStrategyAd,
+  getActiveTenderDetailSummaryAd,
+  isAdSlotRenderable,
+} from "@/lib/ads";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 
 export const revalidate = 60;
 
@@ -187,11 +193,15 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
     | string
     | undefined;
 
-  const similarTendersResult = await fetchSimilarOpenTenders(supabase, {
-    excludeTenderId: id,
-    industryCodes: recommendationIndustryCodes,
-    regionSido: recommendationRegionSido ?? null,
-  });
+  const [similarTendersResult, summaryAd, strategyAd] = await Promise.all([
+    fetchSimilarOpenTenders(supabase, {
+      excludeTenderId: id,
+      industryCodes: recommendationIndustryCodes,
+      regionSido: recommendationRegionSido ?? null,
+    }),
+    getActiveTenderDetailSummaryAd(),
+    getActiveTenderDetailStrategyAd(),
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/20">
@@ -213,6 +223,12 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
           basePrice={baseAmt}
           raw={tender.raw}
         />
+
+        {isAdSlotRenderable(summaryAd) ? (
+          <div className="mt-6">
+            <AffiliateAdSlot slot={summaryAd} variant="banner" />
+          </div>
+        ) : null}
 
         <TenderDetailAwardBanner state={awardBannerState} />
         <SimilarTendersList
@@ -237,6 +253,12 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
         <div className="mt-8">
           <TenderBidStrategy lowerPrice={lowerPrice} />
         </div>
+
+        {isAdSlotRenderable(strategyAd) ? (
+          <div className="mt-6">
+            <AffiliateAdSlot slot={strategyAd} variant="banner" />
+          </div>
+        ) : null}
 
         {/* [4] 일정 */}
         <div className="mt-6">

@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props) {
   const { id } = await params;
   const row = await loadOpening(id);
   return {
-    title: row?.title ? `${row.title} | 공공 채용` : "공공 채용",
+    title: row?.title ? `${row.title} | 채용 공고` : "채용 공고",
   };
 }
 

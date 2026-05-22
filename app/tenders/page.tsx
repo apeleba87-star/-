@@ -2,6 +2,7 @@ import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import { Suspense } from "react";
 import TendersListWithFilters from "./TendersListWithFilters";
+import { getActiveTendersIndustryListAd } from "@/lib/ads";
 import { countOpenTenders, parseGugunParam } from "@/lib/tenders/user-focus";
 import type { UserTenderFocusRow } from "@/lib/tenders/user-focus";
 
@@ -81,7 +82,10 @@ export default async function TendersPage({ searchParams }: PageProps) {
     return { ...rest, tender_industries: tender_industries ?? [] } as TenderBidCardT;
   });
 
-  const authSupabase = await createServerSupabase();
+  const [industryListAd, authSupabase] = await Promise.all([
+    getActiveTendersIndustryListAd(),
+    createServerSupabase(),
+  ]);
   const { data: { user } } = await authSupabase.auth.getUser();
 
   let savedFocus: UserTenderFocusRow | null = null;
@@ -137,6 +141,7 @@ export default async function TendersPage({ searchParams }: PageProps) {
             initialRegion={region ?? "전체 지역"}
             initialGugun={gugun ?? ""}
             initialSort={sort}
+            industryListAd={industryListAd}
             isLoggedIn={!!user}
             savedFocus={savedFocus}
             totalOpenCount={totalOpenCount}

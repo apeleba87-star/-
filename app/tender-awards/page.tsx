@@ -1,5 +1,8 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { getActiveAwardsIndustryListAd, isAdSlotRenderable } from "@/lib/ads";
 import TenderAwardListCard, { type TenderAwardListRow } from "@/components/tender/TenderAwardListCard";
 import TenderAwardsFilters from "./TenderAwardsFilters";
 import { buildTenderAwardsSearchParams } from "@/lib/tenders/tender-awards-url";
@@ -193,9 +196,14 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
     dataQ = dataQ.order("openg_dt", { ascending: false, nullsFirst: false });
   }
 
-  const { data, error } = await dataQ.range(from, to);
+  const [{ data, error }, listAd] = await Promise.all([
+    dataQ.range(from, to),
+    getActiveAwardsIndustryListAd(),
+  ]);
 
   const rows = (data ?? []) as TenderAwardListRow[];
+  const showListAd = industryCodes.length > 0 && isAdSlotRenderable(listAd);
+  const listAdInsertAt = showListAd ? Math.min(2, rows.length) : -1;
 
   const regionLabel = region ?? "전체 지역";
   const filterBase = {
@@ -238,11 +246,23 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
               {from + 1}–{Math.min(to + 1, total)}번째
             </p>
             <ul className="space-y-6">
-              {rows.map((row) => (
-                <li key={row.id}>
-                  <TenderAwardListCard row={row} />
-                </li>
+              {rows.map((row, index) => (
+                <Fragment key={row.id}>
+                  {listAdInsertAt === index ? (
+                    <li key="awards-industry-list-ad">
+                      <AffiliateAdSlot slot={listAd!} variant="banner" />
+                    </li>
+                  ) : null}
+                  <li>
+                    <TenderAwardListCard row={row} />
+                  </li>
+                </Fragment>
               ))}
+              {listAdInsertAt === rows.length ? (
+                <li key="awards-industry-list-ad-end">
+                  <AffiliateAdSlot slot={listAd!} variant="banner" />
+                </li>
+              ) : null}
             </ul>
             {totalPages > 1 && (
               <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="페이지">

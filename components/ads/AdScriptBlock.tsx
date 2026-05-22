@@ -57,10 +57,6 @@ export default function AdScriptBlock({ scriptContent, className = "", slotKey }
         const el = document.getElementById(mountId);
         if (!el || cancelled) return;
 
-        if (!el.querySelector("iframe")) {
-          el.innerHTML = "";
-        }
-
         reparentHandle = await mountCoupangPartnersScript(scriptContent, mountId, el);
 
         failTimer = window.setTimeout(() => {

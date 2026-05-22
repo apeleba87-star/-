@@ -1,8 +1,11 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FileText, Lightbulb, Megaphone, PenLine, Search, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
+import { getActiveMarketingReportSuggestedTitlesAd } from "@/lib/ads";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { isAdSlotRenderable } from "@/lib/ads-shared";
 import {
   MARKETING_SUGGESTED_TITLE_DISPLAY_CAP,
   type DailyReportPayload,
@@ -88,12 +91,15 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }, { data: jobWageLatest }, crossPosts] = await Promise.all([
-    supabase.from("naver_trend_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
-    supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(14),
-    supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
-    getCrossReportDiscoveryPosts(supabase, 4),
-  ]);
+  const [{ data: report, error }, { data: recent }, { data: jobWageLatest }, crossPosts, suggestedTitlesAd] =
+    await Promise.all([
+      supabase.from("naver_trend_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
+      supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(14),
+      supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
+      getCrossReportDiscoveryPosts(supabase, 4),
+      getActiveMarketingReportSuggestedTitlesAd(),
+    ]);
+  const showSuggestedTitlesAd = isAdSlotRenderable(suggestedTitlesAd);
 
   if (error || !report) notFound();
 
@@ -236,16 +242,20 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
                         ) : (
                           <ul className="mt-3 space-y-2">
                             {titles.map((title, idx) => (
-                              <li
-                                key={`${t.id}-${idx}`}
-                                className="flex items-start gap-3 rounded-xl border border-white bg-white px-4 py-3 text-sm text-slate-800 shadow-sm"
-                              >
-                                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-800">
-                                  {idx + 1}
-                                </span>
-                                <FileText className="mt-1 h-4 w-4 shrink-0 text-indigo-500/80" aria-hidden />
-                                <span className="min-w-0 leading-relaxed">{title}</span>
-                              </li>
+                              <Fragment key={`${t.id}-${idx}`}>
+                                <li className="flex items-start gap-3 rounded-xl border border-white bg-white px-4 py-3 text-sm text-slate-800 shadow-sm">
+                                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-800">
+                                    {idx + 1}
+                                  </span>
+                                  <FileText className="mt-1 h-4 w-4 shrink-0 text-indigo-500/80" aria-hidden />
+                                  <span className="min-w-0 leading-relaxed">{title}</span>
+                                </li>
+                                {idx === 0 && showSuggestedTitlesAd && titles.length >= 2 ? (
+                                  <li className="list-none">
+                                    <AffiliateAdSlot slot={suggestedTitlesAd} variant="banner" />
+                                  </li>
+                                ) : null}
+                              </Fragment>
                             ))}
                           </ul>
                         )}

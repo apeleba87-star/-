@@ -377,6 +377,8 @@ export async function runAwardMarketReportJob(
     .eq("run_type", AWARD_MARKET_RUN_TYPE)
     .eq("run_key", runKey);
 
+  await refreshAwardReportDailyCard(supabase, snapshot.period_key);
+
   return {
     ok: true,
     skipped: false,

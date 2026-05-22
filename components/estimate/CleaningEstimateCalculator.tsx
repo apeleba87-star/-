@@ -32,6 +32,8 @@ import {
   type LaborInput,
   type VerdictType,
 } from "@/lib/estimate-calc";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { isAdSlotRenderable, type HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 
 const KAKAO_CHAT_URL = process.env.NEXT_PUBLIC_KAKAO_CHAT_URL || "#";
 const SHARE_TITLE = "내 단가 전략 점검 완료";
@@ -78,7 +80,13 @@ function fromKakao(): boolean {
 type TabMode = "area" | "labor";
 type AreaSub = "office" | "stairs";
 
-export default function CleaningEstimateCalculator({ config }: { config: EstimateConfig }) {
+export default function CleaningEstimateCalculator({
+  config,
+  analyzeBelowAd = null,
+}: {
+  config: EstimateConfig;
+  analyzeBelowAd?: HomeAdSlotWithCampaign | null;
+}) {
   const [tab, setTab] = useState<TabMode>("area");
   const [areaSub, setAreaSub] = useState<AreaSub>("office");
 
@@ -599,6 +607,11 @@ export default function CleaningEstimateCalculator({ config }: { config: Estimat
             >
               내 견적 분석하기
             </button>
+            {isAdSlotRenderable(analyzeBelowAd) ? (
+              <div className="mt-4">
+                <AffiliateAdSlot slot={analyzeBelowAd} variant="banner" />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

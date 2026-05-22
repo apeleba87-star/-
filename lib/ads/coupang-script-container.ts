@@ -102,33 +102,20 @@ export function ensureCoupangGJsLoaded(): Promise<void> {
   return appendExternalScript(COUPANG_G_JS).then(() => waitForPartnersCoupang(12000)).then(() => undefined);
 }
 
-function invokePartnersCoupangG(mountEl: HTMLElement, config: Record<string, unknown>): void {
+/** container 지정 G() 1회만 호출 (중복 위젯 방지) */
+function invokePartnersCoupangGOnce(mountEl: HTMLElement, config: Record<string, unknown>): void {
   const PC = getPartnersCoupang();
   if (!PC?.G) return;
 
   const base = { ...config };
   delete base.container;
+  const opts = { ...base, container: mountEl };
 
-  const optsList: Record<string, unknown>[] = [
-    { ...base, container: mountEl },
-    { ...base, container: mountEl.id },
-    { ...base, container: `#${mountEl.id}` },
-    base,
-  ];
-
-  for (const opts of optsList) {
-    try {
-      const G = PC.G as unknown as new (o: Record<string, unknown>) => unknown;
-      new G(opts);
-      return;
-    } catch {
-      try {
-        PC.G(opts);
-        return;
-      } catch {
-        // try next
-      }
-    }
+  try {
+    const G = PC.G as unknown as new (o: Record<string, unknown>) => unknown;
+    new G(opts);
+  } catch {
+    PC.G(opts);
   }
 }
 
@@ -141,6 +128,12 @@ function appendInlineScript(code: string, mountEl: HTMLElement): void {
   parent.insertBefore(script, mountEl.nextSibling);
 }
 
+function dedupeCoupangMountChildren(container: HTMLElement): void {
+  const kids = Array.from(container.children);
+  if (kids.length <= 1) return;
+  for (let i = 1; i < kids.length; i++) kids[i]!.remove();
+}
+
 /** 쿠팡이 body 등에 붙인 iframe·래퍼를 슬롯 mount로 이동 */
 export function reparentCoupangIframeToContainer(
   containerId: string,
@@ -149,7 +142,8 @@ export function reparentCoupangIframeToContainer(
   const container = document.getElementById(containerId);
   if (!container) return false;
 
-  if (container.querySelector("iframe, a[href*='coupang'], img[src*='coupang']")) return true;
+  dedupeCoupangMountChildren(container);
+  if (container.childElementCount > 0) return true;
 
   const nodes: HTMLElement[] = [];
 
@@ -181,6 +175,7 @@ export function reparentCoupangIframeToContainer(
 
     try {
       container.appendChild(target);
+      dedupeCoupangMountChildren(container);
       return true;
     } catch {
       // try next
@@ -232,9 +227,10 @@ export async function mountCoupangPartnersScript(
   containerId: string,
   mountEl: HTMLElement
 ): Promise<CoupangReparentHandle> {
-  const patched = patchCoupangScriptContent(scriptContent, containerId);
+  mountEl.innerHTML = "";
+
   const sandbox = document.createElement("div");
-  sandbox.innerHTML = patched;
+  sandbox.innerHTML = scriptContent.trim();
   const scriptEls = Array.from(sandbox.querySelectorAll("script"));
 
   for (const old of scriptEls) {
@@ -249,17 +245,15 @@ export async function mountCoupangPartnersScript(
   await waitForPartnersCoupang(12000);
 
   const config = extractCoupangGConfig(scriptContent);
-  if (config) {
-    invokePartnersCoupangG(mountEl, config);
-    await new Promise((r) => window.setTimeout(r, 400));
-  }
-
-  if (!mountEl.querySelector("iframe")) {
-    for (const old of scriptEls) {
-      if (old.getAttribute("src")) continue;
-      const code = old.textContent?.trim();
-      if (code) appendInlineScript(code, mountEl);
-    }
+  if (config && getPartnersCoupang()?.G) {
+    invokePartnersCoupangGOnce(mountEl, config);
+  } else {
+    const patched = patchCoupangScriptContent(scriptContent, containerId);
+    const tmp = document.createElement("div");
+    tmp.innerHTML = patched;
+    const inline = tmp.querySelector("script:not([src])");
+    const code = inline?.textContent?.trim();
+    if (code) appendInlineScript(code, mountEl);
   }
 
   const widgetId = extractCoupangWidgetId(scriptContent);
@@ -271,7 +265,7 @@ export function renderCoupangPartnersWidget(
   mountEl: HTMLElement,
   config: Record<string, unknown>
 ): void {
-  invokePartnersCoupangG(mountEl, config);
+  invokePartnersCoupangGOnce(mountEl, config);
 }
 
 /** @deprecated reparentCoupangIframeToContainer 사용 */

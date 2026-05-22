@@ -3,7 +3,7 @@ import { getKstDateString } from "@/lib/content/kst-utils";
 import { getReportTypeLabel } from "@/lib/content/report-snapshot-types";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
-import { heroMetricsFromAwardExcerpt } from "@/lib/news/parseReportCardHero";
+import { awardReportListHeroExcerpt, heroMetricsFromAwardExcerpt } from "@/lib/news/parseReportCardHero";
 import ReportListPagination from "@/components/report/ReportListPagination";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import { buildNewsReportListHref } from "@/lib/report/report-list-hrefs";
@@ -272,8 +272,14 @@ export default async function NewsPage({
                 typeof post.excerpt === "string" && post.excerpt.trim()
                   ? post.excerpt.trim()
                   : listTitle;
+              const awardHeroExcerpt =
+                isAwardReportCategory && !isDaily
+                  ? awardReportListHeroExcerpt(
+                      post as { excerpt?: string | null; report_snapshot?: unknown },
+                    )
+                  : null;
               const awardHero =
-                isAwardReportCategory && !isDaily ? heroMetricsFromAwardExcerpt(post.excerpt) : null;
+                isAwardReportCategory && !isDaily ? heroMetricsFromAwardExcerpt(awardHeroExcerpt) : null;
               const reportBadgeKind = isDaily
                 ? "daily"
                 : sourceType === "award_market_intel"

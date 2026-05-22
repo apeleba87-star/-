@@ -131,8 +131,9 @@ type Props = {
   /** 비로그인 티저: 서버에서 마스킹된 payload + 일부 칸만 락 */
   guestTeaser?: boolean;
   loginNext?: string;
-  /** 입찰 리포트 본문 내 광고 (예산 상위 아래 · 당일 핵심 카드 아래) */
+  /** 입찰 리포트 본문 내 광고 */
   inlineAds?: {
+    glanceBelow: HomeAdSlotWithCampaign | null;
     budgetBelow: HomeAdSlotWithCampaign | null;
     premiumCoreBelow: HomeAdSlotWithCampaign | null;
   };
@@ -309,6 +310,10 @@ export default function DailyTenderReportDashboard({
             : "청소·소독·방역 분류 기준 당일 집계입니다. 지역·마감은 리포트에 반영된 공고만 해당합니다."}
         </p>
       </section>
+
+      {isAdSlotRenderable(inlineAds?.glanceBelow) ? (
+        <AffiliateAdSlot slot={inlineAds!.glanceBelow} variant="banner" className="mt-4" />
+      ) : null}
 
       {/* 데이터 신뢰 3종 세트 */}
       <DataTrust3Pack

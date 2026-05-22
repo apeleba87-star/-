@@ -33,6 +33,19 @@ export function parseReportCardHeroFromExcerpt(
   return { count, subtitle };
 }
 
+/** 목록 카드용 excerpt — card_headline 우선 */
+export function awardReportListHeroExcerpt(post: {
+  excerpt?: string | null;
+  report_snapshot?: unknown;
+}): string | null | undefined {
+  const snap = post.report_snapshot;
+  if (snap != null && typeof snap === "object") {
+    const card = (snap as { card_headline?: unknown }).card_headline;
+    if (typeof card === "string" && card.trim()) return card.trim();
+  }
+  return post.excerpt;
+}
+
 /**
  * 낙찰 시장 리포트 excerpt → 카드 히어로.
  * 당일: "5월 20일 낙찰 12건, 평균 낙찰률 87.2%, 참여 업체 평균 9.3곳"
@@ -47,7 +60,7 @@ export function heroMetricsFromAwardExcerpt(excerpt: string | null | undefined):
   }
 
   const countM = t.match(/낙찰\s*([\d,]+)\s*건/);
-  const rateM = t.match(/평균\s*낙찰률\s*([\d.]+%)/);
+  const rateM = t.match(/평균\s*낙찰률(?:은)?\s*([\d.]+%)/);
   const partM =
     t.match(/참여\s*업체\s*평균\s*([\d.]+)\s*곳/) ??
     t.match(/평균\s*참여\s*업체수(?:는)?\s*([\d.]+)\s*개/);
@@ -72,7 +85,7 @@ export function heroMetricsFromAwardExcerpt(excerpt: string | null | undefined):
   if (rateM && partM) {
     return {
       primaryLine: `평균 낙찰률 ${rateM[1]}`,
-      subtitle: `참여 업체 평균 ${partM[1]}곳`,
+      subtitle: `참여 업체 평균 ${partM[1]}곳${/최근\s*90일/.test(t) ? " · 최근 90일" : ""}`,
     };
   }
   if (rateM) {

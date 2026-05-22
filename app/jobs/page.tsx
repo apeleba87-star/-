@@ -431,7 +431,7 @@ export default async function JobsListPage({
               href="/jobs/public"
               className="mt-2 inline-block text-sm font-semibold text-blue-800 underline"
             >
-              청소·용역 공공 채용 (워크넷) 보기
+              청소·용역 채용 공고 (워크넷) 보기
             </Link>
           </div>
         </div>

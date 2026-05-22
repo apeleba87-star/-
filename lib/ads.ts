@@ -133,28 +133,160 @@ async function getActiveAdsForSlotKeys(
   return result;
 }
 
-/** 일간 입찰 리포트 본문 인라인 슬롯 (예산 상위 아래 · 프리미엄 당일 핵심 아래) */
+/** 견적 계산기: 내 견적 분석하기 버튼 아래 */
+export async function getActiveEstimateAnalyzeBelowAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "estimate_analyze_below",
+    "tender_report_budget_below",
+  ]);
+  return applySlotScriptFallback(
+    map.estimate_analyze_below ?? null,
+    map.tender_report_budget_below ?? null
+  );
+}
+
+/** 마케팅 리포트: 추천 제목 1번·2번 카드 사이 */
+export async function getActiveMarketingReportSuggestedTitlesAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "marketing_report_suggested_titles_1_2",
+    "tender_report_budget_below",
+  ]);
+  return applySlotScriptFallback(
+    map.marketing_report_suggested_titles_1_2 ?? null,
+    map.tender_report_budget_below ?? null
+  );
+}
+
+/** 낙찰 리포트 본문 인라인 슬롯 */
+export async function getActiveAwardReportInlineAds(): Promise<{
+  award_report_key_metrics_below: HomeAdSlotWithCampaign | null;
+  award_report_top_awards_above: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "award_report_key_metrics_below",
+    "award_report_top_awards_above",
+    "tender_report_budget_below",
+  ]);
+  const fallback = map.tender_report_budget_below ?? null;
+  return {
+    award_report_key_metrics_below: applySlotScriptFallback(
+      map.award_report_key_metrics_below ?? null,
+      fallback
+    ),
+    award_report_top_awards_above: applySlotScriptFallback(
+      map.award_report_top_awards_above ?? null,
+      fallback
+    ),
+  };
+}
+
+/** 일간 입찰 리포트 본문 인라인 슬롯 */
 export async function getActiveTenderReportInlineAds(): Promise<{
+  tender_report_glance_below: HomeAdSlotWithCampaign | null;
   tender_report_budget_below: HomeAdSlotWithCampaign | null;
   tender_report_premium_core_below: HomeAdSlotWithCampaign | null;
 }> {
   const supabase = createClient();
   const map = await getActiveAdsForSlotKeys(supabase, [
+    "tender_report_glance_below",
     "tender_report_budget_below",
     "tender_report_premium_core_below",
   ]);
+  const fallback = map.tender_report_budget_below ?? null;
   return {
+    tender_report_glance_below: applySlotScriptFallback(
+      map.tender_report_glance_below ?? null,
+      fallback
+    ),
     tender_report_budget_below: map.tender_report_budget_below ?? null,
-    tender_report_premium_core_below: map.tender_report_premium_core_below ?? null,
+    tender_report_premium_core_below: applySlotScriptFallback(
+      map.tender_report_premium_core_below ?? null,
+      fallback
+    ),
   };
 }
 
 /** @deprecated getActiveTenderReportInlineAds 사용 */
 export async function getActivePostDetailAds(): Promise<{
+  tender_report_glance_below: HomeAdSlotWithCampaign | null;
   tender_report_budget_below: HomeAdSlotWithCampaign | null;
   tender_report_premium_core_below: HomeAdSlotWithCampaign | null;
 }> {
   return getActiveTenderReportInlineAds();
+}
+
+function applySlotScriptFallback(
+  slot: HomeAdSlotWithCampaign | null,
+  fallback: HomeAdSlotWithCampaign | null
+): HomeAdSlotWithCampaign | null {
+  if (!slot?.enabled) return null;
+  if (slot.script_content?.trim() || slot.campaign) return slot;
+  if (fallback?.script_content?.trim() || fallback?.campaign) {
+    return {
+      ...slot,
+      slot_type: fallback.slot_type,
+      script_content: fallback.script_content,
+      campaign: fallback.campaign,
+      coupang_products: fallback.coupang_products,
+      coupang_fetch_error: fallback.coupang_fetch_error,
+    };
+  }
+  return slot;
+}
+
+/** 입찰 목록: 업종 필터 시 진행 중 공고 3번째 슬롯 */
+export async function getActiveTendersIndustryListAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "tenders_industry_open_3rd",
+    "tender_report_budget_below",
+  ]);
+  return applySlotScriptFallback(
+    map.tenders_industry_open_3rd ?? null,
+    map.tender_report_budget_below ?? null
+  );
+}
+
+/** 낙찰공고 목록: 업종 필터 시 2~3번째 공고 사이 */
+export async function getActiveAwardsIndustryListAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "awards_industry_list_3rd",
+    "tender_report_budget_below",
+  ]);
+  return applySlotScriptFallback(
+    map.awards_industry_list_3rd ?? null,
+    map.tender_report_budget_below ?? null
+  );
+}
+
+/** 입찰 상세: 요약 카드와 진행·낙찰 상태 카드 사이 */
+export async function getActiveTenderDetailSummaryAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "tender_detail_summary_below",
+    "tender_report_budget_below",
+  ]);
+  return applySlotScriptFallback(
+    map.tender_detail_summary_below ?? null,
+    map.tender_report_budget_below ?? null
+  );
+}
+
+/** 입찰 상세: 입찰 전략 가격 카드 아래 */
+export async function getActiveTenderDetailStrategyAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "tender_detail_strategy_below",
+    "tender_report_budget_below",
+  ]);
+  return applySlotScriptFallback(
+    map.tender_detail_strategy_below ?? null,
+    map.tender_report_budget_below ?? null
+  );
 }
 
 /** 키 목록으로 슬롯 데이터 조회 (관리자·이벤트용) */

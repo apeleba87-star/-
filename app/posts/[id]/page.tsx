@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Metadata } from "next";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import { getActiveTenderReportInlineAds } from "@/lib/ads";
+import { getActiveAwardReportInlineAds, getActiveTenderReportInlineAds } from "@/lib/ads";
 import { getLoggedInReportAccessLevel } from "@/lib/report/report-access";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { resolvePremiumAgencyAndBudgetBands } from "@/lib/content/tender-report-queries";
@@ -90,8 +90,9 @@ export default async function PostPage({ params }: PostPageParams) {
   const { data: { user } } = await authSupabase.auth.getUser();
 
   const supabase = createClient();
-  const [adsResult, { data: post, error }] = await Promise.all([
+  const [adsResult, awardAdsResult, { data: post, error }] = await Promise.all([
     getActiveTenderReportInlineAds(),
+    getActiveAwardReportInlineAds(),
     supabase
       .from("posts")
       .select("*, category:content_categories(id, slug, name)")
@@ -152,7 +153,7 @@ export default async function PostPage({ params }: PostPageParams) {
       getPremiumInsights(reportData, !user),
       isReportPostKind(slugPost) ? getRelatedReportPosts(supabase, slugPost) : Promise.resolve([] as RelatedReportPostRow[]),
     ]);
-    return renderPost(slugPost, adsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
+    return renderPost(slugPost, adsResult, awardAdsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
   }
   if ((post as { is_private?: boolean }).is_private && !user) notFound();
   if (user) await ensurePrivateAccess(post, authSupabase, user.id);
@@ -161,7 +162,7 @@ export default async function PostPage({ params }: PostPageParams) {
     getPremiumInsights(reportData, !user),
     isReportPostKind(post!) ? getRelatedReportPosts(supabase, post!) : Promise.resolve([] as RelatedReportPostRow[]),
   ]);
-  return renderPost(post!, adsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
+  return renderPost(post!, adsResult, awardAdsResult, reportData, reportAccess, premiumInsights, !user, relatedReports);
 }
 
 type ReportAccessState = {
@@ -194,6 +195,7 @@ type PostForRender = {
 };
 
 type TenderReportInlineAds = Awaited<ReturnType<typeof getActiveTenderReportInlineAds>>;
+type AwardReportInlineAds = Awaited<ReturnType<typeof getActiveAwardReportInlineAds>>;
 type ReportData = { payload: DailyTenderPayload; insightSentence: string };
 type PremiumInsights = {
   weekCompare: { currentWeekCount: number; prevWeekCount: number; deltaPct: number | null };
@@ -274,6 +276,7 @@ function isSnapshotReport(post: PostForRender): boolean {
 function renderPost(
   post: PostForRender,
   ads: TenderReportInlineAds,
+  awardAds: AwardReportInlineAds,
   reportData: ReportData | null,
   reportAccess: ReportAccessState,
   premiumInsights: PremiumInsights,
@@ -337,6 +340,7 @@ function renderPost(
             guestTeaser={guestPreview}
             loginNext={loginNext}
             inlineAds={{
+              glanceBelow: ads.tender_report_glance_below,
               budgetBelow: ads.tender_report_budget_below,
               premiumCoreBelow: ads.tender_report_premium_core_below,
             }}
@@ -352,6 +356,10 @@ function renderPost(
             relatedReports={relatedReports}
             guestTeaser={guestPreview}
             loginNext={loginNext}
+            inlineAds={{
+              keyMetricsBelow: awardAds.award_report_key_metrics_below,
+              topAwardsAbove: awardAds.award_report_top_awards_above,
+            }}
           />
         </>
       ) : genericSnapshotContent ? (

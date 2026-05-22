@@ -263,7 +263,7 @@ export function buildAwardMarketSnapshot(rows: AwardRow[], now = new Date()): Aw
   ];
 
   const { card_headline: cardHeadline, daily_award_count: dailyCount } = computeAwardDailyCardHeadline(
-    inScopeRows,
+    rows,
     periodKey,
   );
 

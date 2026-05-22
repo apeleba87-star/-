@@ -3,8 +3,17 @@
  */
 
 export type HomeAdSlotKey =
+  | "tender_report_glance_below"
   | "tender_report_budget_below"
-  | "tender_report_premium_core_below";
+  | "tender_report_premium_core_below"
+  | "award_report_key_metrics_below"
+  | "award_report_top_awards_above"
+  | "marketing_report_suggested_titles_1_2"
+  | "estimate_analyze_below"
+  | "tenders_industry_open_3rd"
+  | "tender_detail_summary_below"
+  | "tender_detail_strategy_below"
+  | "awards_industry_list_3rd";
 
 export type AdSlotType = "direct" | "google" | "coupang" | "coupang_api";
 

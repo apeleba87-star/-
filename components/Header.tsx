@@ -88,6 +88,7 @@ const primaryNavItems: PrimaryNavEntry[] = [
         items: [
           { href: "/tenders", label: "입찰 공고", Icon: Gavel },
           { href: "/tender-awards", label: "낙찰 공고", Icon: Trophy },
+          { href: "/jobs/public", label: "채용 공고", Icon: Landmark },
         ],
       },
       {
@@ -109,7 +110,6 @@ const primaryNavItems: PrimaryNavEntry[] = [
       { href: "/listings", label: "현장 마켓", Icon: Briefcase },
       { href: "/partners", label: "협력 센터", Icon: Handshake },
       { href: "/jobs", label: "인력 센터", Icon: UserPlus },
-      { href: "/jobs/public", label: "공공 채용", Icon: Landmark },
     ],
   },
   {

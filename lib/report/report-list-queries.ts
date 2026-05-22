@@ -29,7 +29,7 @@ export async function fetchReportPostsPage(
   const base = opts.isAward
     ? supabase
         .from("posts")
-        .select("id, title, excerpt, published_at, slug, source_type, source_ref")
+        .select("id, title, excerpt, published_at, slug, source_type, source_ref, report_snapshot")
         .not("published_at", "is", null)
         .eq("is_private", false)
         .eq("source_type", "award_market_intel")

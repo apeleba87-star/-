@@ -22,10 +22,12 @@ import {
   Target,
   Building2,
 } from "lucide-react";
+import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import type { RelatedReportPostRow } from "@/lib/content/related-report-posts";
 import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredInline";
 import { isGuestLockedCount, isGuestLockedMetricText } from "@/lib/report/guest-teaser-redact";
+import { isAdSlotRenderable, type HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 
 /** 막대·차트 — 초록 일색을 피하고 인디고·바이올렛·앰버·스카이 등을 교차 */
 const CHART_COLORS = [
@@ -110,6 +112,10 @@ type Props = {
   relatedReports?: RelatedReportPostRow[];
   guestTeaser?: boolean;
   loginNext?: string;
+  inlineAds?: {
+    keyMetricsBelow: HomeAdSlotWithCampaign | null;
+    topAwardsAbove: HomeAdSlotWithCampaign | null;
+  };
 };
 
 function parseMetricValue(metrics: string[] | undefined, matcher: RegExp): string {
@@ -217,6 +223,7 @@ export default function AwardReportSnapshotView({
   relatedReports = [],
   guestTeaser = false,
   loginNext = "",
+  inlineAds,
 }: Props) {
   const metrics = content.key_metrics ?? [];
   const sample = content.data_trust?.sample_count ?? null;
@@ -362,6 +369,10 @@ export default function AwardReportSnapshotView({
           </div>
         </div>
       </section>
+
+      {isAdSlotRenderable(inlineAds?.keyMetricsBelow) ? (
+        <AffiliateAdSlot slot={inlineAds!.keyMetricsBelow} variant="banner" />
+      ) : null}
 
       {reco ? (
         <section className="rounded-2xl border border-indigo-200/70 bg-white p-4 shadow-sm sm:p-5">
@@ -607,6 +618,10 @@ export default function AwardReportSnapshotView({
           </>
         )}
       </section>
+
+      {isAdSlotRenderable(inlineAds?.topAwardsAbove) ? (
+        <AffiliateAdSlot slot={inlineAds!.topAwardsAbove} variant="banner" />
+      ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h2 className="text-base font-bold text-slate-900">낙찰 공고 상위 (등록 업종 기준)</h2>
