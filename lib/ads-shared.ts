@@ -3,19 +3,6 @@
  */
 
 export type HomeAdSlotKey =
-  | "home_bottom"
-  | "post_top"
-  | "post_bottom"
-  | "tenders_top"
-  | "tenders_mid"
-  | "listings_top"
-  | "jobs_top"
-  | "awards_top"
-  | "awards_mid"
-  | "tender_detail_top"
-  | "tender_detail_bottom"
-  | "report_top"
-  | "report_bottom"
   | "tender_report_budget_below"
   | "tender_report_premium_core_below";
 
@@ -28,18 +15,15 @@ export type CoupangBannerProduct = {
   productImage: string;
   productPrice: number;
   productUrl: string;
-  categoryName?: string;
-  isRocket?: boolean;
-  isFreeShipping?: boolean;
 };
 
 export type HomeAdCampaign = {
   id: string;
   home_ad_slot_id: string;
-  title: string | null;
+  title: string;
   description: string | null;
-  cta_text: string | null;
-  cta_url: string | null;
+  cta_text: string;
+  cta_url: string;
   image_url: string | null;
   start_date: string;
   end_date: string;
@@ -57,7 +41,6 @@ export type HomeAdSlotWithCampaign = {
   coupang_fetch_error?: string | null;
 };
 
-/** 슬롯에 노출할 콘텐츠(캠페인 또는 스크립트)가 있는지 */
 export function isAdSlotRenderable(slot: HomeAdSlotWithCampaign | null | undefined): boolean {
   if (!slot?.enabled) return false;
   if (slot.campaign) return true;

@@ -133,106 +133,31 @@ async function getActiveAdsForSlotKeys(
   return result;
 }
 
-/** 홈 하단 슬롯 */
-export async function getActiveHomeBottomAd(): Promise<HomeAdSlotWithCampaign | null> {
-  const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["home_bottom"]);
-  return map.home_bottom ?? null;
-}
-
-/** 글 상세 페이지용: 상단·하단 + 일간 입찰 리포트 본문 내 슬롯 */
-export async function getActivePostDetailAds(): Promise<{
-  post_top: HomeAdSlotWithCampaign | null;
-  post_bottom: HomeAdSlotWithCampaign | null;
+/** 일간 입찰 리포트 본문 인라인 슬롯 (예산 상위 아래 · 프리미엄 당일 핵심 아래) */
+export async function getActiveTenderReportInlineAds(): Promise<{
   tender_report_budget_below: HomeAdSlotWithCampaign | null;
   tender_report_premium_core_below: HomeAdSlotWithCampaign | null;
 }> {
   const supabase = createClient();
   const map = await getActiveAdsForSlotKeys(supabase, [
-    "post_top",
-    "post_bottom",
     "tender_report_budget_below",
     "tender_report_premium_core_below",
   ]);
   return {
-    post_top: map.post_top ?? null,
-    post_bottom: map.post_bottom ?? null,
     tender_report_budget_below: map.tender_report_budget_below ?? null,
     tender_report_premium_core_below: map.tender_report_premium_core_below ?? null,
   };
 }
 
-/** 입찰 목록 페이지용 */
-export async function getActiveTendersAds(): Promise<{
-  tenders_top: HomeAdSlotWithCampaign | null;
-  tenders_mid: HomeAdSlotWithCampaign | null;
+/** @deprecated getActiveTenderReportInlineAds 사용 */
+export async function getActivePostDetailAds(): Promise<{
+  tender_report_budget_below: HomeAdSlotWithCampaign | null;
+  tender_report_premium_core_below: HomeAdSlotWithCampaign | null;
 }> {
-  const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["tenders_top", "tenders_mid"]);
-  return {
-    tenders_top: map.tenders_top ?? null,
-    tenders_mid: map.tenders_mid ?? null,
-  };
+  return getActiveTenderReportInlineAds();
 }
 
-/** 낙찰 목록 페이지용 */
-export async function getActiveTenderAwardsAds(): Promise<{
-  awards_top: HomeAdSlotWithCampaign | null;
-  awards_mid: HomeAdSlotWithCampaign | null;
-}> {
-  const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["awards_top", "awards_mid"]);
-  return {
-    awards_top: map.awards_top ?? null,
-    awards_mid: map.awards_mid ?? null,
-  };
-}
-
-/** 입찰 상세 페이지용 */
-export async function getActiveTenderDetailAds(): Promise<{
-  tender_detail_top: HomeAdSlotWithCampaign | null;
-  tender_detail_bottom: HomeAdSlotWithCampaign | null;
-}> {
-  const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["tender_detail_top", "tender_detail_bottom"]);
-  return {
-    tender_detail_top: map.tender_detail_top ?? null,
-    tender_detail_bottom: map.tender_detail_bottom ?? null,
-  };
-}
-
-/** 일당·마케팅 리포트 페이지용 */
-export async function getActiveReportPageAds(): Promise<{
-  report_top: HomeAdSlotWithCampaign | null;
-  report_bottom: HomeAdSlotWithCampaign | null;
-}> {
-  const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["report_top", "report_bottom"]);
-  return {
-    report_top: map.report_top ?? null,
-    report_bottom: map.report_bottom ?? null,
-  };
-}
-
-/** 현장 거래 목록 페이지용 */
-export async function getActiveListingsAds(): Promise<{
-  listings_top: HomeAdSlotWithCampaign | null;
-}> {
-  const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["listings_top"]);
-  return { listings_top: map.listings_top ?? null };
-}
-
-/** 구인 목록 페이지용 */
-export async function getActiveJobsAds(): Promise<{
-  jobs_top: HomeAdSlotWithCampaign | null;
-}> {
-  const supabase = createClient();
-  const map = await getActiveAdsForSlotKeys(supabase, ["jobs_top"]);
-  return { jobs_top: map.jobs_top ?? null };
-}
-
-/** 키 목록으로 슬롯 데이터 조회 (어디서든 사용) */
+/** 키 목록으로 슬롯 데이터 조회 (관리자·이벤트용) */
 export async function getActiveAdsByKeys(
   keys: HomeAdSlotKey[]
 ): Promise<Record<string, HomeAdSlotWithCampaign | null>> {

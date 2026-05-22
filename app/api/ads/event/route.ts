@@ -12,23 +12,7 @@ const ALLOWED_EVENT_TYPES = [
   "kakao_click",
 ] as const;
 
-const SLOT_KEYS = [
-  "home_bottom",
-  "post_top",
-  "post_bottom",
-  "tenders_top",
-  "tenders_mid",
-  "listings_top",
-  "jobs_top",
-  "awards_top",
-  "awards_mid",
-  "tender_detail_top",
-  "tender_detail_bottom",
-  "report_top",
-  "report_bottom",
-  "tender_report_budget_below",
-  "tender_report_premium_core_below",
-];
+const SLOT_KEYS = ["tender_report_budget_below", "tender_report_premium_core_below"];
 
 type Body = {
   event_type: string;

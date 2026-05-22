@@ -2,9 +2,6 @@ import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
 import { Suspense } from "react";
 import TendersListWithFilters from "./TendersListWithFilters";
-import { getActiveTendersAds } from "@/lib/ads";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
-import { isAdSlotRenderable } from "@/lib/ads";
 import { countOpenTenders, parseGugunParam } from "@/lib/tenders/user-focus";
 import type { UserTenderFocusRow } from "@/lib/tenders/user-focus";
 
@@ -84,8 +81,6 @@ export default async function TendersPage({ searchParams }: PageProps) {
     return { ...rest, tender_industries: tender_industries ?? [] } as TenderBidCardT;
   });
 
-  const tendersAds = await getActiveTendersAds();
-
   const authSupabase = await createServerSupabase();
   const { data: { user } } = await authSupabase.auth.getUser();
 
@@ -127,12 +122,6 @@ export default async function TendersPage({ searchParams }: PageProps) {
           </p>
         </header>
 
-        {isAdSlotRenderable(tendersAds.tenders_top) ? (
-          <div className="mb-8">
-            <AffiliateAdSlot slot={tendersAds.tenders_top} variant="banner" />
-          </div>
-        ) : null}
-
         <Suspense
           fallback={
             <div className="space-y-4">
@@ -148,7 +137,6 @@ export default async function TendersPage({ searchParams }: PageProps) {
             initialRegion={region ?? "전체 지역"}
             initialGugun={gugun ?? ""}
             initialSort={sort}
-            adSlotMid={tendersAds.tenders_mid?.enabled && (tendersAds.tenders_mid.campaign || tendersAds.tenders_mid.script_content) ? tendersAds.tenders_mid : null}
             isLoggedIn={!!user}
             savedFocus={savedFocus}
             totalOpenCount={totalOpenCount}

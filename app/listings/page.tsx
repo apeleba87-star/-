@@ -4,9 +4,6 @@ import ListingsPageHeader from "@/components/listings/ListingsPageHeader";
 import ListingsSortFilter from "@/components/listings/ListingsSortFilter";
 import Link from "next/link";
 import type { PayUnit } from "@/lib/listings/types";
-import { getActiveListingsAds } from "@/lib/ads";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
-import { isAdSlotRenderable } from "@/lib/ads";
 import { wageGapPercent } from "@/lib/listings/grade";
 import { REGION_SIDO_LIST, REGION_GUGUN } from "@/lib/listings/regions";
 export const revalidate = 60;
@@ -230,8 +227,6 @@ export default async function ListingsPage({ searchParams }: PageProps) {
     });
   }
 
-  const listingsAds = await getActiveListingsAds();
-
   return (
     <div className="page-shell py-8 lg:py-10">
       <ListingsPageHeader isLoggedIn={!!user} />
@@ -252,12 +247,6 @@ export default async function ListingsPage({ searchParams }: PageProps) {
         )}
         categoryOptions={workTypeOptions}
       />
-
-      {isAdSlotRenderable(listingsAds.listings_top) ? (
-        <div className="mb-8">
-          <AffiliateAdSlot slot={listingsAds.listings_top} variant="banner" />
-        </div>
-      ) : null}
 
       {listingsWithMeta.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">

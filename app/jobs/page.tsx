@@ -15,9 +15,6 @@ import {
 import { getCachedJobsHeadlineDailyWageStats } from "@/lib/jobs/jobs-headline-wage-cache";
 import { getKstTodayString, getKstTomorrowString, addDaysToDateString } from "@/lib/jobs/kst-date";
 import { buildOpenVisibleJobsOrFilter } from "@/lib/jobs/visibility";
-import { getActiveJobsAds } from "@/lib/ads";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
-import { isAdSlotRenderable } from "@/lib/ads";
 
 export const revalidate = 60;
 
@@ -175,7 +172,6 @@ export default async function JobsListPage({
   }
 
   const hasPosts = (jobPosts?.length ?? 0) > 0;
-  const jobsAds = await getActiveJobsAds();
 
   if (!hasPosts) {
     const isAppliedGuest = filter === "applied" && !user;
@@ -448,12 +444,6 @@ export default async function JobsListPage({
           구인하기
         </AuthRequiredCta>
       </div>
-
-      {isAdSlotRenderable(jobsAds.jobs_top) ? (
-        <div className="mb-6">
-          <AffiliateAdSlot slot={jobsAds.jobs_top} variant="banner" />
-        </div>
-      ) : null}
 
       <JobsPrimaryTabs
         active={filter === "applied" ? "applied" : "all"}

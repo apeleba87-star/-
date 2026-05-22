@@ -57,7 +57,7 @@ export default async function AdminAdsPage() {
     <div>
       <h1 className="mb-2 text-2xl font-bold text-slate-900">광고 슬롯</h1>
       <p className="mb-6 text-sm text-slate-600">
-        모든 광고 자리를 한 곳에서 관리합니다. 직접 수주, 쿠팡 파트너스 API, 구글/쿠팡 스크립트를 슬롯별로 설정하세요.
+        입찰 리포트 본문 인라인 광고(예산 상위 공고 아래 · 프리미엄 당일 핵심 아래)만 관리합니다.
       </p>
       <HomeAdsManager
         slots={slots ?? []}

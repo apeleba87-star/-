@@ -16,8 +16,6 @@ import {
   resolveTenderDetailAwardBannerState,
 } from "@/lib/tenders/tender-detail-award";
 import { isValidSido } from "@/lib/tenders/user-focus";
-import { getActiveTenderDetailAds, isAdSlotRenderable } from "@/lib/ads";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 
 export const revalidate = 60;
 
@@ -189,14 +187,11 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
     | string
     | undefined;
 
-  const [similarTendersResult, detailAds] = await Promise.all([
-    fetchSimilarOpenTenders(supabase, {
-      excludeTenderId: id,
-      industryCodes: recommendationIndustryCodes,
-      regionSido: recommendationRegionSido ?? null,
-    }),
-    getActiveTenderDetailAds(),
-  ]);
+  const similarTendersResult = await fetchSimilarOpenTenders(supabase, {
+    excludeTenderId: id,
+    industryCodes: recommendationIndustryCodes,
+    regionSido: recommendationRegionSido ?? null,
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/20">
@@ -218,12 +213,6 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
           basePrice={baseAmt}
           raw={tender.raw}
         />
-
-        {isAdSlotRenderable(detailAds.tender_detail_top) ? (
-          <div className="mt-6">
-            <AffiliateAdSlot slot={detailAds.tender_detail_top} variant="banner" />
-          </div>
-        ) : null}
 
         <TenderDetailAwardBanner state={awardBannerState} />
         <SimilarTendersList
@@ -322,11 +311,6 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
           )}
         </section>
 
-        {isAdSlotRenderable(detailAds.tender_detail_bottom) ? (
-          <div className="mt-8">
-            <AffiliateAdSlot slot={detailAds.tender_detail_bottom} variant="banner" />
-          </div>
-        ) : null}
       </div>
     </div>
   );

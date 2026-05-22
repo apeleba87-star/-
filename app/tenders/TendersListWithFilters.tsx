@@ -6,8 +6,6 @@ import Link from "next/link";
 import { FileText, ChevronDown, Bookmark } from "lucide-react";
 import TenderBidCard from "@/components/tender/TenderBidCard";
 import type { TenderBidCardT } from "@/components/tender/TenderBidCard";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
-import { isAdSlotRenderable, type HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import { getBaseAmtFromRaw } from "@/lib/tender-utils";
 import { ddayNumber } from "@/lib/tender-utils";
 import { REGION_GUGUN, type RegionSido } from "@/lib/listings/regions";
@@ -67,7 +65,6 @@ type Props = {
   /** 시·군·구 (시·도 선택 시에만, 빈 문자열이면 시·도 전체만) */
   initialGugun?: string;
   initialSort?: SortId;
-  adSlotMid?: HomeAdSlotWithCampaign | null;
   isLoggedIn?: boolean;
   savedFocus?: UserTenderFocusRow | null;
   totalOpenCount?: number;
@@ -109,7 +106,6 @@ export default function TendersListWithFilters({
   initialRegion = "전체 지역",
   initialGugun = "",
   initialSort = "posted",
-  adSlotMid = null,
   isLoggedIn = false,
   savedFocus = null,
   totalOpenCount = 0,
@@ -605,12 +601,6 @@ export default function TendersListWithFilters({
               </ul>
             </section>
           )}
-
-          {isAdSlotRenderable(adSlotMid) ? (
-            <div className="mb-10">
-              <AffiliateAdSlot slot={adSlotMid} variant="banner" />
-            </div>
-          ) : null}
 
           {closedTenders.length > 0 && (
             <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm">

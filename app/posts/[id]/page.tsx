@@ -4,8 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Metadata } from "next";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import { getActivePostDetailAds, isAdSlotRenderable } from "@/lib/ads";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
+import { getActiveTenderReportInlineAds } from "@/lib/ads";
 import { getLoggedInReportAccessLevel } from "@/lib/report/report-access";
 import type { DailyTenderPayload } from "@/lib/content/tender-report-queries";
 import { resolvePremiumAgencyAndBudgetBands } from "@/lib/content/tender-report-queries";
@@ -92,7 +91,7 @@ export default async function PostPage({ params }: PostPageParams) {
 
   const supabase = createClient();
   const [adsResult, { data: post, error }] = await Promise.all([
-    getActivePostDetailAds(),
+    getActiveTenderReportInlineAds(),
     supabase
       .from("posts")
       .select("*, category:content_categories(id, slug, name)")
@@ -194,7 +193,7 @@ type PostForRender = {
   report_snapshot?: unknown;
 };
 
-type PostDetailAds = Awaited<ReturnType<typeof getActivePostDetailAds>>;
+type TenderReportInlineAds = Awaited<ReturnType<typeof getActiveTenderReportInlineAds>>;
 type ReportData = { payload: DailyTenderPayload; insightSentence: string };
 type PremiumInsights = {
   weekCompare: { currentWeekCount: number; prevWeekCount: number; deltaPct: number | null };
@@ -274,7 +273,7 @@ function isSnapshotReport(post: PostForRender): boolean {
 
 function renderPost(
   post: PostForRender,
-  ads: PostDetailAds,
+  ads: TenderReportInlineAds,
   reportData: ReportData | null,
   reportAccess: ReportAccessState,
   premiumInsights: PremiumInsights,
@@ -283,8 +282,6 @@ function renderPost(
 ) {
   const isReport = isReportPost(post);
   const useDashboard = isDailyTenderReportPost(post) && reportData;
-  const showTopAd = !guestPreview && isAdSlotRenderable(ads.post_top) && !useDashboard;
-  const showBottomAd = !guestPreview && isAdSlotRenderable(ads.post_bottom) && !useDashboard;
   const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
   const reportGuestLayout = guestPreview && isReport;
 
@@ -327,11 +324,6 @@ function renderPost(
     <>
       {useDashboard ? (
         <>
-          {showTopAd && ads.post_top && (
-            <div className="mb-6">
-              <AffiliateAdSlot slot={ads.post_top} variant="banner" />
-            </div>
-          )}
           <DailyTenderReportDashboard
             payload={dailyPayload!}
             title={post.title}
@@ -349,19 +341,9 @@ function renderPost(
               premiumCoreBelow: ads.tender_report_premium_core_below,
             }}
           />
-          {showBottomAd && ads.post_bottom && (
-            <div className="mt-8">
-              <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
-            </div>
-          )}
         </>
       ) : awardSnapshotContent ? (
         <>
-          {showTopAd && ads.post_top && (
-            <div className="mb-6">
-              <AffiliateAdSlot slot={ads.post_top} variant="banner" />
-            </div>
-          )}
           <AwardReportSnapshotView
             title={post.title}
             excerpt={post.excerpt}
@@ -371,19 +353,9 @@ function renderPost(
             guestTeaser={guestPreview}
             loginNext={loginNext}
           />
-          {showBottomAd && ads.post_bottom && (
-            <div className="mt-8">
-              <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
-            </div>
-          )}
         </>
       ) : genericSnapshotContent ? (
         <>
-          {showTopAd && ads.post_top && (
-            <div className="mb-6">
-              <AffiliateAdSlot slot={ads.post_top} variant="banner" />
-            </div>
-          )}
           <ReportSnapshotView
             title={post.title}
             excerpt={post.excerpt}
@@ -394,11 +366,6 @@ function renderPost(
             guestTeaser={guestPreview}
             loginNext={loginNext}
           />
-          {showBottomAd && ads.post_bottom && (
-            <div className="mt-8">
-              <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
-            </div>
-          )}
         </>
       ) : (
         <>
@@ -413,12 +380,6 @@ function renderPost(
                 : ""}
             </time>
             {post.excerpt && <p className="mt-4 text-slate-600">{post.excerpt}</p>}
-
-            {showTopAd && ads.post_top && (
-              <div className="mt-6">
-                <AffiliateAdSlot slot={ads.post_top} variant="banner" />
-              </div>
-            )}
 
             {post.body && guestPreview && isReport ? (
               <p className="mt-6 text-sm leading-relaxed text-slate-600">
@@ -436,11 +397,6 @@ function renderPost(
                 </div>
               ))}
 
-            {showBottomAd && ads.post_bottom && (
-              <div className="mt-8">
-                <AffiliateAdSlot slot={ads.post_bottom} variant="banner" />
-              </div>
-            )}
           </article>
           {isReport && relatedReports.length > 0 ? (
             <div className="mt-8 max-w-3xl">

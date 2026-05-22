@@ -9,8 +9,6 @@ import {
   parseGugunParam,
   isValidSido,
 } from "@/lib/tenders/user-focus";
-import { getActiveTenderAwardsAds, isAdSlotRenderable } from "@/lib/ads";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 export const revalidate = 60;
 
 const PAGE_SIZE = 50;
@@ -195,13 +193,9 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
     dataQ = dataQ.order("openg_dt", { ascending: false, nullsFirst: false });
   }
 
-  const [{ data, error }, awardsAds] = await Promise.all([
-    dataQ.range(from, to),
-    getActiveTenderAwardsAds(),
-  ]);
+  const { data, error } = await dataQ.range(from, to);
 
   const rows = (data ?? []) as TenderAwardListRow[];
-  const midAdIndex = rows.length > 0 ? Math.floor((rows.length - 1) / 2) : -1;
 
   const regionLabel = region ?? "전체 지역";
   const filterBase = {
@@ -229,12 +223,6 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
           initialSort={sort}
         />
 
-        {isAdSlotRenderable(awardsAds.awards_top) ? (
-          <div className="mb-8">
-            <AffiliateAdSlot slot={awardsAds.awards_top} variant="banner" />
-          </div>
-        ) : null}
-
         {error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             목록을 불러오지 못했습니다. ({error.message})
@@ -250,14 +238,9 @@ export default async function TenderAwardsPage({ searchParams }: { searchParams:
               {from + 1}–{Math.min(to + 1, total)}번째
             </p>
             <ul className="space-y-6">
-              {rows.map((row, index) => (
+              {rows.map((row) => (
                 <li key={row.id}>
                   <TenderAwardListCard row={row} />
-                  {index === midAdIndex && isAdSlotRenderable(awardsAds.awards_mid) ? (
-                    <div className="mt-6">
-                      <AffiliateAdSlot slot={awardsAds.awards_mid} variant="banner" />
-                    </div>
-                  ) : null}
                 </li>
               ))}
             </ul>

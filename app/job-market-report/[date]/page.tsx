@@ -23,8 +23,6 @@ import {
   provincesFromPayload,
   topProvinceFromProvinces,
 } from "@/lib/jobs/job-wage-report-display";
-import { getActiveReportPageAds, isAdSlotRenderable } from "@/lib/ads";
-import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
@@ -100,7 +98,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }, { data: prevReportRow }, crossPosts, reportAds] = await Promise.all([
+  const [{ data: report, error }, { data: recent }, { data: prevReportRow }, crossPosts] = await Promise.all([
     supabase.from("job_wage_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
     supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(365),
     supabase
@@ -111,7 +109,6 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
       .limit(1)
       .maybeSingle(),
     getCrossReportDiscoveryPosts(supabase, 4),
-    getActiveReportPageAds(),
   ]);
 
   if (error || !report) notFound();
@@ -154,8 +151,6 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
     : nationalCompare;
 
   const jobWageInsightUnlocked = Boolean(user) || isAdmin;
-  const showReportTopAd = Boolean(user) && isAdSlotRenderable(reportAds.report_top);
-  const showReportBottomAd = Boolean(user) && isAdSlotRenderable(reportAds.report_bottom);
 
   const jobWageShareTitle = `일당 리포트 ${date}`;
   const jobWageShareText = jobWageTeamShareText(date);
@@ -207,9 +202,6 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
           layout={user ? "crop" : "full"}
         >
         <div className="mx-auto mt-8 max-w-4xl space-y-6">
-          {showReportTopAd ? (
-            <AffiliateAdSlot slot={reportAds.report_top} variant="banner" className="mb-2" />
-          ) : null}
           {!hasPayload || !payload ? (
             <div className={`${cardClass} text-center text-slate-600`}>리포트 데이터 형식을 읽을 수 없습니다.</div>
           ) : (
@@ -628,9 +620,6 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
             </Link>
           </div>
 
-          {showReportBottomAd ? (
-            <AffiliateAdSlot slot={reportAds.report_bottom} variant="banner" className="mt-4" />
-          ) : null}
         </div>
         </GuestPreviewGate>
       </div>
