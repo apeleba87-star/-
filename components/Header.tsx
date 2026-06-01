@@ -100,6 +100,10 @@ const primaryNavItems: PrimaryNavEntry[] = [
           { href: "/job-market-report", label: "일당", Icon: Landmark },
         ],
       },
+      {
+        title: "영업·수요",
+        items: [{ href: "/demand", label: "입주수요 탐험", Icon: Sparkles }],
+      },
     ],
   },
   {
