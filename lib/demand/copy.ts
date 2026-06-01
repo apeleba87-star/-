@@ -1,9 +1,23 @@
 import type { DemandSignal } from "@/lib/demand/types";
 
-/** 네이버 데이터랩 — 전국 키워드 상대 지수 (실제 검색 건수 아님) */
+/** 표·근거 카드 공통 지표명 (열 순서와 동일) */
+export const DEMAND_METRIC_LABELS = {
+  sale: "주택매매 지수",
+  jeonse: "전월세 거래지수",
+  packingVolume: "포장이사 검색량",
+  packingIndex: "포장이사 검색지수",
+  moveInVolume: "입주청소 검색량",
+  moveInIndex: "입주청소 검색지수",
+  /** @deprecated 열 분리 전 라벨 */
+  packing: "포장이사 검색량",
+  moveInClean: "입주청소 검색량",
+  composite: "입주수요지수",
+} as const;
+
+/** @deprecated DEMAND_METRIC_LABELS 사용 */
 export const DEMAND_NATIONAL_KEYWORD_LABELS = {
-  packing: "포장이사 검색지수",
-  moveInClean: "입주청소 검색지수",
+  packing: DEMAND_METRIC_LABELS.packing,
+  moveInClean: DEMAND_METRIC_LABELS.moveInClean,
 } as const;
 
 export const DEMAND_DISCLAIMER =
@@ -39,6 +53,15 @@ export function formatMomPercent(n: number): string {
 
 export function formatTradeCount(n: number): string {
   return `${n.toLocaleString("ko-KR")}건`;
+}
+
+/** 검색광고 API 월간 조회 추정치 */
+export function formatSearchVolumeMonth(n: number): string {
+  if (n >= 10_000) {
+    const man = n / 10_000;
+    return man >= 10 ? `${Math.round(man)}만` : `${man.toFixed(1).replace(/\.0$/, "")}만`;
+  }
+  return n.toLocaleString("ko-KR");
 }
 
 export function formatRankChange(prev: number, current: number): string {

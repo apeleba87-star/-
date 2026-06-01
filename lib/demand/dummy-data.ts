@@ -1,4 +1,4 @@
-import { DEMAND_NATIONAL_KEYWORD_LABELS } from "@/lib/demand/copy";
+import { DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
 import { guNameToSlug } from "@/lib/demand/slugs";
 import type { DemandDistrictScore, DemandDriver, DemandHit, DemandSnapshotMeta } from "@/lib/demand/types";
 
@@ -36,20 +36,20 @@ function driversForGu(
   const counts = tradeCountsForGu(gu);
   return [
     {
-      key: "packing_search",
-      label: DEMAND_NATIONAL_KEYWORD_LABELS.packing,
-      scope: "national",
-      momPercent: packing,
+      key: "sale_trade",
+      label: DEMAND_METRIC_LABELS.sale,
+      scope: "district",
+      momPercent: sale,
+      monthCount: counts.sale,
       drilldown: {
-        summary: `최근 3개월 전국 포장이사 검색지수가 전월 대비 ${packing > 0 ? "높아" : "낮아"}지는 흐름입니다.`,
-        detail:
-          "네이버 데이터랩 통합검색 상대 지수(%)입니다. 구별 검색지수는 API로 제공되지 않아 전국 지표를 모든 구에 동일 적용합니다.",
-        chartHint: "전국 · 최근 6개월 추이 (더미)",
+        summary: `${gu} 주택매매 ${counts.sale}건 · 전월 대비 ${sale > 0 ? "증가" : "감소"}`,
+        detail: "국토부 아파트 매매 실거래 신고 건수(월별) 기준입니다.",
+        chartHint: `${gu} · 월별 건수 (더미)`,
       },
     },
     {
       key: "jeonse_wolse_trade",
-      label: "전월세 거래량",
+      label: DEMAND_METRIC_LABELS.jeonse,
       scope: "district",
       momPercent: jeonse,
       monthCount: counts.jeonse,
@@ -60,27 +60,27 @@ function driversForGu(
       },
     },
     {
-      key: "sale_trade",
-      label: "매매 거래량",
-      scope: "district",
-      momPercent: sale,
-      monthCount: counts.sale,
+      key: "packing_search",
+      label: DEMAND_METRIC_LABELS.packing,
+      scope: "national",
+      momPercent: packing,
       drilldown: {
-        summary: `${gu} 매매 ${counts.sale}건 · 전월 대비 ${sale > 0 ? "증가" : "감소"}`,
-        detail: "국토부 아파트 매매 실거래 신고 건수(월별) 기준입니다.",
-        chartHint: `${gu} · 월별 건수 (더미)`,
+        summary: `포장이사 지수(검색량)가 전월 대비 ${packing > 0 ? "높아" : "낮아"}지는 흐름입니다.`,
+        detail:
+          "네이버 데이터랩 통합검색 상대 지수(%)입니다. 구별 검색지수는 API로 제공되지 않아 동일 값을 표시합니다.",
+        chartHint: "최근 6개월 추이 (더미)",
       },
     },
     {
       key: "move_in_clean_search",
-      label: DEMAND_NATIONAL_KEYWORD_LABELS.moveInClean,
+      label: DEMAND_METRIC_LABELS.moveInClean,
       scope: "national",
       momPercent: moveIn,
       drilldown: {
-        summary: `전국 입주청소 검색지수는 전월 대비 ${moveIn > 0 ? "상승" : "하락"} 중입니다.`,
+        summary: `입주청소 지수(검색량)는 전월 대비 ${moveIn > 0 ? "상승" : "하락"} 중입니다.`,
         detail:
-          "과거 패턴상 포장이사 검색지수가 1~2개월 선행하는 경우가 있어, 거래·전국 검색지수를 함께 보는 것을 권장합니다. (가설·검증 중)",
-        chartHint: "전국 · 최근 6개월 추이 (더미)",
+          "과거 패턴상 포장이사 지수가 1~2개월 선행하는 경우가 있어, 거래 지수와 함께 보는 것을 권장합니다. (가설·검증 중)",
+        chartHint: "최근 6개월 추이 (더미)",
       },
     },
   ];
@@ -313,10 +313,10 @@ export const DEMAND_HITS: DemandHit[] = [
   {
     id: "hit-1",
     leadPeriod: "2025년 12월",
-    leadLabel: `전국 ${DEMAND_NATIONAL_KEYWORD_LABELS.packing}`,
+    leadLabel: DEMAND_METRIC_LABELS.packing,
     leadMomPercent: 35,
     lagPeriod: "2026년 1월",
-    lagLabel: `전국 ${DEMAND_NATIONAL_KEYWORD_LABELS.moveInClean}`,
+    lagLabel: DEMAND_METRIC_LABELS.moveInClean,
     lagMomPercent: 28,
     scope: "national",
     hit: true,
@@ -327,7 +327,7 @@ export const DEMAND_HITS: DemandHit[] = [
     leadLabel: "강서구 전월세 거래량",
     leadMomPercent: 18,
     lagPeriod: "2025년 9월",
-    lagLabel: `전국 ${DEMAND_NATIONAL_KEYWORD_LABELS.moveInClean}`,
+    lagLabel: DEMAND_METRIC_LABELS.moveInClean,
     lagMomPercent: 15,
     scope: "district",
     gu: "강서구",

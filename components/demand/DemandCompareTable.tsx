@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import ScopeBadge from "@/components/demand/ScopeBadge";
 import { DemandReveal } from "@/components/demand/DemandReveal";
-import { DEMAND_NATIONAL_KEYWORD_LABELS, formatMomPercent } from "@/lib/demand/copy";
+import { DEMAND_METRIC_LABELS, formatMomPercent } from "@/lib/demand/copy";
 import {
   DEMAND_DEFAULT_COMPARE_SLUGS,
   DEMAND_TOP10,
@@ -117,39 +117,8 @@ export default function DemandCompareTable() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 <tr>
-                  <td className="px-4 py-3 font-medium text-slate-700">입주수요지수</td>
-                  {districts.map((d) => (
-                    <td key={d.slug} className="px-4 py-3 text-lg font-black tabular-nums text-teal-700">
-                      {d.indexScore}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-700">전월세</span>
-                    <ScopeBadge scope="district" className="ml-2 inline-flex" />
-                  </td>
-                  {districts.map((d) => {
-                    const driver = d.drivers.find((x) => x.key === "jeonse_wolse_trade");
-                    const count = driver?.monthCount;
-                    const mom = driver?.momPercent ?? 0;
-                    return (
-                      <td key={d.slug} className="px-4 py-3 font-semibold tabular-nums">
-                        {count != null ? (
-                          <>
-                            <span className="block text-slate-900">{count.toLocaleString("ko-KR")}건</span>
-                            <span className="block text-xs text-slate-500">{formatMomPercent(mom)}</span>
-                          </>
-                        ) : (
-                          formatMomPercent(mom)
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-                <tr>
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-slate-700">매매</span>
+                    <span className="font-medium text-slate-700">{DEMAND_METRIC_LABELS.sale}</span>
                     <ScopeBadge scope="district" className="ml-2 inline-flex" />
                   </td>
                   {districts.map((d) => {
@@ -172,7 +141,30 @@ export default function DemandCompareTable() {
                 </tr>
                 <tr>
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-700">{DEMAND_NATIONAL_KEYWORD_LABELS.packing}</span>
+                    <span className="font-medium text-slate-700">{DEMAND_METRIC_LABELS.jeonse}</span>
+                    <ScopeBadge scope="district" className="ml-2 inline-flex" />
+                  </td>
+                  {districts.map((d) => {
+                    const driver = d.drivers.find((x) => x.key === "jeonse_wolse_trade");
+                    const count = driver?.monthCount;
+                    const mom = driver?.momPercent ?? 0;
+                    return (
+                      <td key={d.slug} className="px-4 py-3 font-semibold tabular-nums">
+                        {count != null ? (
+                          <>
+                            <span className="block text-slate-900">{count.toLocaleString("ko-KR")}건</span>
+                            <span className="block text-xs text-slate-500">{formatMomPercent(mom)}</span>
+                          </>
+                        ) : (
+                          formatMomPercent(mom)
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr>
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-slate-700">{DEMAND_METRIC_LABELS.packing}</span>
                     <ScopeBadge scope="national" className="ml-2 inline-flex" />
                   </td>
                   {districts.map((d) => (
@@ -183,12 +175,20 @@ export default function DemandCompareTable() {
                 </tr>
                 <tr>
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-700">{DEMAND_NATIONAL_KEYWORD_LABELS.moveInClean}</span>
+                    <span className="font-medium text-slate-700">{DEMAND_METRIC_LABELS.moveInClean}</span>
                     <ScopeBadge scope="national" className="ml-2 inline-flex" />
                   </td>
                   {districts.map((d) => (
                     <td key={d.slug} className="px-4 py-3 font-semibold tabular-nums text-violet-900">
                       {formatMomPercent(nationalMoveIn)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-slate-700">{DEMAND_METRIC_LABELS.composite}</td>
+                  {districts.map((d) => (
+                    <td key={d.slug} className="px-4 py-3 text-lg font-black tabular-nums text-teal-700">
+                      {d.indexScore}
                     </td>
                   ))}
                 </tr>

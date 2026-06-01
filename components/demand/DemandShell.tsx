@@ -4,13 +4,14 @@ import DemandNav from "@/components/demand/DemandNav";
 import DemandSearch from "@/components/demand/DemandSearch";
 import DemandDisclaimer from "@/components/demand/DemandDisclaimer";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
-import { DEMAND_TODAY_META } from "@/lib/demand/dummy-daily";
 
 type Props = {
   title: string;
   subtitle?: string;
   children: ReactNode;
   hideNav?: boolean;
+  /** 허브: 헤더·배경 최소화 */
+  variant?: "default" | "minimal";
   /** 허브: 오늘·월간 메타 모두 표시 */
   metaVariant?: "default" | "hub";
   /** 허브는 페이지에서 hero 검색 사용 */
@@ -22,51 +23,73 @@ export default function DemandShell({
   subtitle,
   children,
   hideNav,
+  variant = "default",
   metaVariant = "default",
   searchVariant = "bar",
 }: Props) {
+  const minimal = variant === "minimal";
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-teal-50/50 via-white to-slate-50/80">
-      <div
-        className="pointer-events-none absolute inset-x-0 -top-24 h-72 bg-gradient-to-b from-teal-200/20 via-emerald-100/10 to-transparent blur-3xl"
-        aria-hidden
-      />
-      <div className="page-shell relative py-8 lg:py-12">
-        <div className="mb-6 lg:mb-8">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-800/90">입주수요 · 지역 탐험</p>
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-amber-200/80">
-              {DEMAND_PHASE0_BADGE}
-            </span>
-          </div>
-          <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+    <div
+      className={
+        minimal ? "min-h-screen bg-white" : "relative min-h-screen overflow-hidden bg-gradient-to-b from-teal-50/50 via-white to-slate-50/80"
+      }
+    >
+      {!minimal ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 -top-24 h-72 bg-gradient-to-b from-teal-200/20 via-emerald-100/10 to-transparent blur-3xl"
+          aria-hidden
+        />
+      ) : null}
+      <div className={minimal ? "page-shell py-6 lg:py-8" : "page-shell relative py-8 lg:py-12"}>
+        <header className={minimal ? "mb-5" : "mb-6 lg:mb-8"}>
+          {!minimal ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-800/90">입주수요</p>
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-amber-200/80">
+                {DEMAND_PHASE0_BADGE}
+              </span>
+            </div>
+          ) : null}
+          <h1
+            className={
+              minimal
+                ? "text-xl font-bold text-slate-900"
+                : "mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl"
+            }
+          >
             {title}
           </h1>
-          {subtitle ? (
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">{subtitle}</p>
-          ) : null}
-          <p className="mt-2 text-xs font-medium text-slate-500">
+          {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
+          <p className="mt-1 text-xs text-slate-500">
             {metaVariant === "hub" ? (
               <>
-                <span className="text-teal-800">오늘</span> {DEMAND_TODAY_META.briefingDateLabel} ·{" "}
-                <span className="text-slate-700">이번 달</span> {DEMAND_SNAPSHOT_META.baseMonthLabel} (
-                {DEMAND_SNAPSHOT_META.publishedAtLabel})
+                {DEMAND_SNAPSHOT_META.baseMonthLabel} · {DEMAND_SNAPSHOT_META.publishedAtLabel}
               </>
             ) : (
               <>
-                데이터 기준: {DEMAND_SNAPSHOT_META.baseMonthLabel} · {DEMAND_SNAPSHOT_META.publishedAtLabel}
+                {DEMAND_SNAPSHOT_META.baseMonthLabel} · {DEMAND_SNAPSHOT_META.publishedAtLabel}
               </>
             )}
           </p>
-        </div>
+        </header>
 
         {searchVariant === "bar" ? <DemandSearch variant="bar" /> : null}
 
-        {!hideNav ? <DemandNav className="mb-8" /> : null}
+        {!hideNav ? <DemandNav className="mb-6" /> : null}
 
         {children}
 
-        <DemandDisclaimer className="mt-10" />
+        {minimal ? (
+          <details className="mt-8 text-xs text-slate-400">
+            <summary className="cursor-pointer hover:text-slate-600">참고 · 면책</summary>
+            <p className="mt-2 leading-relaxed">
+              미리보기 더미 데이터입니다. 검색지수는 네이버 데이터랩 상대값이며 실제 검색 건수가 아닙니다.
+            </p>
+          </details>
+        ) : (
+          <DemandDisclaimer className="mt-10" />
+        )}
       </div>
     </div>
   );
