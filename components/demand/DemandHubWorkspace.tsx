@@ -21,7 +21,7 @@ import {
   type DemandRtmsDistrictOverrides,
   type DemandScopeTableRow,
 } from "@/lib/demand/scope-data";
-import type { DemandKeywordHubData } from "@/lib/demand/keyword-hub-data";
+import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
 
@@ -59,23 +59,33 @@ type Props = {
   rtmsOverrides?: DemandRtmsDistrictOverrides;
   rtmsBaseMonthLabel?: string | null;
   rtmsSeries?: DemandRtmsSeriesStore;
-  keywordHub?: DemandKeywordHubData | null;
+  keywordStore?: DemandKeywordStore | null;
 };
 
 export default function DemandHubWorkspace({
   rtmsOverrides = {},
   rtmsBaseMonthLabel = null,
   rtmsSeries = {},
-  keywordHub = null,
+  keywordStore = null,
 }: Props) {
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
   const [chartRowKey, setChartRowKey] = useState<string | null>(null);
 
   const scopeRows = useMemo(
-    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides, keywordHub),
-    [selections, rtmsOverrides, keywordHub]
+    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides, keywordStore),
+    [selections, rtmsOverrides, keywordStore]
   );
+
+  const keywordSourceSummary = useMemo(() => {
+    if (!scopeRows.length) return { datalab: "dummy" as const, volume: "dummy" as const };
+    const datalabLive = scopeRows.some((r) => r.keywordSource?.datalab === "live");
+    const volumeLive = scopeRows.some((r) => r.keywordSource?.volume === "live");
+    return {
+      datalab: datalabLive ? ("live" as const) : ("dummy" as const),
+      volume: volumeLive ? ("live" as const) : ("dummy" as const),
+    };
+  }, [scopeRows]);
   const hasSelection = selections.length > 0;
   const primaryRow = scopeRows[0];
 
@@ -150,7 +160,6 @@ export default function DemandHubWorkspace({
               metricId={selectedMetric}
               focusRowKey={focusRowKey}
               rtmsSeries={rtmsSeries}
-              keywordHub={keywordHub}
             />
           ) : null}
         </>
@@ -268,8 +277,9 @@ export default function DemandHubWorkspace({
             </table>
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">
               {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS · 검색지수=
-              {keywordHub?.source.datalab === "live" ? "데이터랩(전국)" : "더미"} · 검색량=
-              {keywordHub?.source.volume === "live" ? "검색광고(전국)" : "더미"}
+              검색지수=
+              {keywordSourceSummary.datalab === "live" ? "데이터랩(지역)" : "더미"} · 검색량=
+              {keywordSourceSummary.volume === "live" ? "검색광고(지역)" : "더미"}
             </p>
           </div>
 

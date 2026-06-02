@@ -17,19 +17,26 @@ export type DemandKeywordIngestResult = {
   searchAd: DemandSearchAdMonthlyIngestResult;
 };
 
+/** 데이터랩·트렌드만 (일 1회). 검색량은 `runDemandSearchAdMonthlyIngestJob` / 월간 cron. */
 export async function runDemandKeywordIngestJob(
   supabase: SupabaseClient
 ): Promise<DemandKeywordIngestResult> {
   let datalab: DemandDatalabIngestOutcome = await runDemandDatalabDailyIngestJob(supabase);
 
-  if (!datalab.ok && datalab.needsKey) {
+  if (!datalab.ok && "needsKey" in datalab && datalab.needsKey) {
     const synced = await syncDemandKeywordDailyFromNaverTrend(supabase);
     if (synced.ok) {
       datalab = synced;
     }
   }
 
-  const searchAd = await runDemandSearchAdMonthlyIngestJob(supabase);
-  const ok = datalab.ok && (searchAd.ok || searchAd.skipped === true);
-  return { ok, datalab, searchAd };
+  const searchAd: DemandSearchAdMonthlyIngestResult = {
+    ok: true,
+    skipped: true,
+    note: "검색광고는 매월 스냅샷 전용 — /api/cron/ingest-demand-searchad 또는 관리자 「검색광고만 수집」",
+  };
+
+  return { ok: datalab.ok, datalab, searchAd };
 }
+
+export { runDemandSearchAdMonthlyIngestJob };

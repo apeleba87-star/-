@@ -11,6 +11,10 @@ import { demandMetricChartTheme, demandRegionCompareColor } from "@/lib/demand/m
 import type { DemandMetricId } from "@/lib/demand/metrics";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
 import type { DemandScopeTableRow } from "@/lib/demand/scope-data";
+import {
+  demandKeywordIndexLevelHint,
+  demandKeywordVolumeLevelHint,
+} from "@/lib/demand/keyword-resolve";
 import SignalBadge from "@/components/demand/SignalBadge";
 import { getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
 import { cn } from "@/lib/utils";
@@ -86,6 +90,22 @@ export default function DemandScopeSummaryStrip({
   const district = cardRow.slug ? getDemandDistrictBySlug(cardRow.slug) : undefined;
   const packing = cardRow.packing;
   const moveIn = cardRow.moveInClean;
+  const packingIndexHint = demandKeywordIndexLevelHint(
+    cardRow.selection,
+    cardRow.keywordIndexLevelByKey?.packing ?? cardRow.keywordIndexLevel ?? "dummy"
+  );
+  const moveInIndexHint = demandKeywordIndexLevelHint(
+    cardRow.selection,
+    cardRow.keywordIndexLevelByKey?.move_in_clean ?? cardRow.keywordIndexLevel ?? "dummy"
+  );
+  const packingVolumeHint = demandKeywordVolumeLevelHint(
+    cardRow.selection,
+    cardRow.keywordVolumeLevelByKey?.packing ?? cardRow.keywordVolumeLevel ?? "dummy"
+  );
+  const moveInVolumeHint = demandKeywordVolumeLevelHint(
+    cardRow.selection,
+    cardRow.keywordVolumeLevelByKey?.move_in_clean ?? cardRow.keywordVolumeLevel ?? "dummy"
+  );
 
   return (
     <section className="space-y-3">
@@ -177,7 +197,7 @@ export default function DemandScopeSummaryStrip({
                 ? formatSearchVolumeMonth(packing.searchVolumeMonth)
                 : "—"
           }
-          sub="최근 30일"
+          sub={`검색광고 최근 30일${packingVolumeHint}`}
           keywordHint={packing.keyword}
           selected={selectedMetric === "packingVolume"}
           onSelect={onSelectMetric}
@@ -186,7 +206,7 @@ export default function DemandScopeSummaryStrip({
           metricId="packingIndex"
           label="포장이사 검색지수"
           value={formatSearchIndexPercent(packing.indexDodPercent)}
-          sub="전일"
+          sub={`전일${packingIndexHint}`}
           keywordHint={packing.keyword}
           selected={selectedMetric === "packingIndex"}
           onSelect={onSelectMetric}
@@ -201,7 +221,7 @@ export default function DemandScopeSummaryStrip({
                 ? formatSearchVolumeMonth(moveIn.searchVolumeMonth)
                 : "—"
           }
-          sub="최근 30일"
+          sub={`검색광고 최근 30일${moveInVolumeHint}`}
           keywordHint={moveIn.keyword}
           selected={selectedMetric === "moveInVolume"}
           onSelect={onSelectMetric}
@@ -210,7 +230,7 @@ export default function DemandScopeSummaryStrip({
           metricId="moveInIndex"
           label="입주청소 검색지수"
           value={formatSearchIndexPercent(moveIn.indexDodPercent)}
-          sub="전일"
+          sub={`전일${moveInIndexHint}`}
           keywordHint={moveIn.keyword}
           selected={selectedMetric === "moveInIndex"}
           onSelect={onSelectMetric}

@@ -11,11 +11,17 @@
 - **동작**: `buildDailyTenderReport` + **`autoPublish: true`** → `posts.published_at` 설정(자동 공개). 이미 당일 성공한 run이 있으면 `already_success`로 스킵(`force` 없을 때).
 - **인증**: `GET`/`POST` 모두 `verifyCronSecret`(Bearer 또는 `x-cron-secret`).
 
-### 입주수요 검색 지표 `/api/cron/ingest-demand-keywords`
+### 입주수요 검색 지수 `/api/cron/ingest-demand-keywords`
 
 - **스케줄 (KST)**: **매일 03:30** (UTC `30 18 * * *`, `naver-trend-report` 03:00 직후).
-- **동작**: 데이터랩 일별(포장이사·입주청소) → `demand_keyword_daily`, 검색광고 월별 → `demand_keyword_monthly`.
-- **환경 변수**: `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, (선택) `NAVER_SEARCHAD_*`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+- **동작**: 데이터랩 일·월 상대지수(전국·서울·25구) → `demand_keyword_daily`. **검색광고 검색량은 포함하지 않음.**
+- **환경 변수**: `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+### 입주수요 검색량(검색광고) `/api/cron/ingest-demand-searchad`
+
+- **스케줄 (KST)**: **매월 1일 01:00** (UTC `0 16 1 * *`).
+- **동작**: 지역+키워드(`강서구포장이사` 등)별 **그달 스냅샷** 1행 → `demand_keyword_monthly` (`yyyymm` 유니크). 같은 달 재수집 시 해당 월만 갱신, **과거 월은 유지** → 12개월 누적 시 1년 차트.
+- **환경 변수**: `NAVER_SEARCHAD_API_KEY`, `NAVER_SEARCHAD_SECRET_KEY`, `NAVER_SEARCHAD_CUSTOMER_ID`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 ### 입주수요 RTMS `/api/cron/ingest-demand-rtms-seoul`
 

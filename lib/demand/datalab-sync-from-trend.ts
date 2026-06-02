@@ -6,8 +6,8 @@ export type DemandDatalabSyncFromTrendResult =
   | { ok: false; error: string };
 
 const KEYWORD_MATCHERS: { key: DemandKeywordKey; test: (text: string) => boolean }[] = [
-  { key: "packing", test: (t) => t.includes("포장이사") || t.includes("포장") },
-  { key: "move_in_clean", test: (t) => t.includes("입주청소") || t.includes("입주") },
+  { key: "packing", test: (t) => t === "포장이사" || t.includes("포장이사") },
+  { key: "move_in_clean", test: (t) => t === "입주청소" || t.includes("입주청소") },
 ];
 
 function groupMatchesKey(
@@ -39,6 +39,9 @@ export async function syncDemandKeywordDailyFromNaverTrend(
 
   const rows: Array<{
     keyword_key: DemandKeywordKey;
+    region_scope: string;
+    region_key: string;
+    search_phrase: string;
     period_date: string;
     index_ratio: number;
     source: string;
@@ -51,30 +54,43 @@ export async function syncDemandKeywordDailyFromNaverTrend(
     const group = groups.find((g) => groupMatchesKey(g as { group_name: string; keywords: string[] }, key));
     if (!group) continue;
 
-    const { data: latestWindow } = await supabase
-      .from("naver_trend_datapoints")
-      .select("window_end_date")
-      .eq("keyword_group_id", group.id)
-      .order("window_end_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!latestWindow?.window_end_date) continue;
-
     const { data: points, error: pErr } = await supabase
       .from("naver_trend_datapoints")
-      .select("period_date, ratio")
+      .select("period_date, ratio, window_end_date")
       .eq("keyword_group_id", group.id)
-      .eq("window_end_date", latestWindow.window_end_date)
       .order("period_date", { ascending: true });
 
     if (pErr) return { ok: false, error: pErr.message };
     if (!points?.length) continue;
 
-    matched.push(`${key}:${group.group_name}`);
+    /** 윈도우별 중복 일자 — 최신 window_end_date 값 우선 */
+    const byPeriod = new Map<string, { period_date: string; ratio: number; windowEnd: string }>();
     for (const p of points) {
+      const periodDate = String(p.period_date).slice(0, 10);
+      const windowEnd = String(p.window_end_date ?? "");
+      const prev = byPeriod.get(periodDate);
+      if (!prev || windowEnd >= prev.windowEnd) {
+        byPeriod.set(periodDate, {
+          period_date: periodDate,
+          ratio: Number(p.ratio) || 0,
+          windowEnd,
+        });
+      }
+    }
+
+    const deduped = [...byPeriod.values()].sort((a, b) =>
+      a.period_date.localeCompare(b.period_date)
+    );
+    if (deduped.length === 0) continue;
+
+    matched.push(`${key}:${group.group_name}(${deduped.length}d)`);
+    const searchPhrase = key === "packing" ? "포장이사" : "입주청소";
+    for (const p of deduped) {
       rows.push({
         keyword_key: key,
+        region_scope: "national",
+        region_key: "kr",
+        search_phrase: searchPhrase,
         period_date: String(p.period_date).slice(0, 10),
         index_ratio: Number(p.ratio) || 0,
         source: "naver_trend",
@@ -93,7 +109,10 @@ export async function syncDemandKeywordDailyFromNaverTrend(
 
   const { error, count } = await supabase
     .from("demand_keyword_daily")
-    .upsert(rows, { onConflict: "keyword_key,period_date", count: "exact" });
+    .upsert(rows, {
+      onConflict: "keyword_key,region_scope,region_key,period_date,source",
+      count: "exact",
+    });
 
   if (error) return { ok: false, error: error.message };
 

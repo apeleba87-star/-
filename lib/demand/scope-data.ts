@@ -7,9 +7,19 @@ import {
   type DemandRegionScope,
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
-import { guNameToSlug } from "@/lib/demand/slugs";
-import type { DemandKeywordHubData } from "@/lib/demand/keyword-hub-data";
+import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
 import { demandKeywordKeyForMetric } from "@/lib/demand/keyword-hub-data";
+import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
+import {
+  demandKeywordIndexLevelHint,
+  demandKeywordVolumeLevelHint,
+  resolveDemandKeywordBundle,
+  type DemandKeywordIndexLevel,
+} from "@/lib/demand/keyword-resolve";
+import {
+  buildRegionSearchPhrases,
+  formatRegionSearchPhraseDisplay,
+} from "@/lib/demand/region-search-keywords";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { DEMAND_TABLE_ROWS } from "@/lib/demand/table-data";
 
@@ -27,6 +37,14 @@ export type DemandScopeTableRow = {
   jeonseMom: number;
   packing: DemandKeywordMetricSlice & { keyword: string; indexRatio?: number };
   moveInClean: DemandKeywordMetricSlice & { keyword: string; indexRatio?: number };
+  keywordDailySeries?: Record<DemandKeywordKey, DemandChartPoint[]>;
+  keywordMonthlyIndexSeries?: Record<DemandKeywordKey, DemandChartPoint[]>;
+  keywordVolumeMonthlySeries?: Record<DemandKeywordKey, DemandChartPoint[]>;
+  keywordSource?: { datalab: "live" | "dummy"; volume: "live" | "dummy" };
+  keywordIndexLevel?: DemandKeywordIndexLevel;
+  keywordVolumeLevel?: DemandKeywordIndexLevel;
+  keywordIndexLevelByKey?: Record<DemandKeywordKey, DemandKeywordIndexLevel>;
+  keywordVolumeLevelByKey?: Record<DemandKeywordKey, DemandKeywordIndexLevel>;
 };
 
 export type DemandRtmsDistrictOverrides = Record<
@@ -49,6 +67,9 @@ export type DemandTradeChartRange = "12m" | "24m" | "36m";
 export type DemandAnyChartRange = DemandChartRange | DemandTradeChartRange;
 
 const CHART_DAILY_POINTS = 30;
+/** 1년 차트: 월별 포인트가 이보다 적으면 일별 시계열로 대체 */
+const MIN_MONTHLY_POINTS_FOR_YEAR_CHART = 3;
+const MIN_VOLUME_MONTHLY_FOR_YEAR_CHART = 2;
 
 function hashSeed(key: string): number {
   let h = 0;
@@ -60,18 +81,6 @@ function hashSeed(key: string): number {
 
 function pseudoMom(seed: string, spread = 16): number {
   return (hashSeed(seed) % (spread * 2 + 1)) - spread;
-}
-
-function packingKeywordForScope(scope: DemandRegionScope, gu?: string): string {
-  if (scope === "national") return "포장이사";
-  if (scope === "city") return "서울 포장이사";
-  return `${gu ?? ""} 포장이사`;
-}
-
-function moveInKeywordForScope(scope: DemandRegionScope, gu?: string): string {
-  if (scope === "national") return "입주청소";
-  if (scope === "city") return "서울 입주청소";
-  return `${gu ?? ""} 입주청소`;
 }
 
 function searchVolumeForKeyword(keyword: string, nationalBase: number): number | null {
@@ -88,23 +97,8 @@ function searchVolumeForKeyword(keyword: string, nationalBase: number): number |
 
 function searchSliceForKeyword(
   keyword: string,
-  nationalBase: number,
-  nationalLive?: DemandKeywordHubData | null,
-  key?: "packing" | "move_in_clean"
+  nationalBase: number
 ): DemandKeywordMetricSlice & { keyword: string; indexRatio: number } {
-  if (nationalLive && key) {
-    const slice = key === "packing" ? nationalLive.packing : nationalLive.moveInClean;
-    const series = nationalLive.dailySeries[key];
-    const latestRatio = series.length > 0 ? series[series.length - 1].value : 52;
-    return {
-      keyword,
-      searchVolumeMonth: slice.searchVolumeMonth,
-      searchVolumeBelowTen: slice.searchVolumeBelowTen,
-      indexMomPercent: slice.indexMomPercent,
-      indexDodPercent: slice.indexDodPercent,
-      indexRatio: latestRatio,
-    };
-  }
   const belowTen = hashSeed(`${keyword}:lt10`) % 31 === 0;
   const vol = belowTen ? null : searchVolumeForKeyword(keyword, nationalBase);
   const packingPulse = DEMAND_DAILY_NATIONAL_KEYWORDS.find((k) => k.id === "packing");
@@ -143,18 +137,64 @@ function seoulCompositeIndex(): number {
   return Math.round(sum / scored.length);
 }
 
+function volumeBaseForScope(scope: DemandRegionScope): { packing: number; moveIn: number } {
+  if (scope === "national") return { packing: 124_000, moveIn: 87_000 };
+  if (scope === "city") return { packing: 42_000, moveIn: 28_000 };
+  return { packing: 8_000, moveIn: 5_500 };
+}
+
+function keywordFieldsForSelection(
+  selection: DemandRegionSelection,
+  keywordStore: DemandKeywordStore | null | undefined
+) {
+  const phrases =
+    buildRegionSearchPhrases(selection) ?? buildRegionSearchPhrases({ scope: "national" })!;
+  const volBase = volumeBaseForScope(selection.scope);
+  const displayPacking = formatRegionSearchPhraseDisplay(phrases.packing);
+  const displayMoveIn = formatRegionSearchPhraseDisplay(phrases.moveInClean);
+  const fallbackSlices = {
+    packing: searchSliceForKeyword(displayPacking, volBase.packing),
+    moveInClean: searchSliceForKeyword(displayMoveIn, volBase.moveIn),
+  };
+
+  if (!keywordStore) {
+    return {
+      packing: fallbackSlices.packing,
+      moveInClean: fallbackSlices.moveInClean,
+      keywordDailySeries: undefined,
+      keywordMonthlyIndexSeries: undefined,
+      keywordSource: { datalab: "dummy" as const, volume: "dummy" as const },
+    };
+  }
+
+  const bundle = resolveDemandKeywordBundle(keywordStore, selection, fallbackSlices);
+
+  return {
+    packing: { ...bundle.packing, keyword: displayPacking },
+    moveInClean: { ...bundle.moveInClean, keyword: displayMoveIn },
+    keywordDailySeries: bundle.dailySeries,
+    keywordMonthlyIndexSeries: bundle.monthlyIndexSeries,
+    keywordVolumeMonthlySeries: bundle.volumeMonthlySeries,
+    keywordSource: bundle.source,
+    keywordIndexLevel: bundle.indexLevel,
+    keywordVolumeLevel: bundle.volumeLevel,
+    keywordIndexLevelByKey: bundle.indexLevelByKey,
+    keywordVolumeLevelByKey: bundle.volumeLevelByKey,
+  };
+}
+
 export function buildDemandScopeRow(
   selection: DemandRegionSelection,
   rtmsOverrides?: DemandRtmsDistrictOverrides,
-  keywordHub?: DemandKeywordHubData | null
+  keywordStore?: DemandKeywordStore | null
 ): DemandScopeTableRow | null {
   const pathLabel = formatDemandRegionLabel(selection);
   if (!pathLabel) return null;
 
+  const kw = keywordFieldsForSelection(selection, keywordStore);
+
   if (selection.scope === "national") {
     const agg = seoulAggregateTrade();
-    const packingKw = packingKeywordForScope("national");
-    const moveInKw = moveInKeywordForScope("national");
     return {
       selection,
       scope: "national",
@@ -167,15 +207,12 @@ export function buildDemandScopeRow(
       saleMom: 9,
       jeonseCount: Math.round(agg.jeonseCount * 4.1),
       jeonseMom: 11,
-      packing: searchSliceForKeyword(packingKw, 124_000, keywordHub, "packing"),
-      moveInClean: searchSliceForKeyword(moveInKw, 87_000, keywordHub, "move_in_clean"),
+      ...kw,
     };
   }
 
   if (selection.scope === "city") {
     const agg = seoulAggregateTrade();
-    const packingKw = packingKeywordForScope("city");
-    const moveInKw = moveInKeywordForScope("city");
     return {
       selection,
       scope: "city",
@@ -188,17 +225,12 @@ export function buildDemandScopeRow(
       saleMom: agg.saleMom,
       jeonseCount: agg.jeonseCount,
       jeonseMom: agg.jeonseMom,
-      packing: searchSliceForKeyword(packingKw, 42_000, keywordHub, "packing"),
-      moveInClean: searchSliceForKeyword(moveInKw, 28_000, keywordHub, "move_in_clean"),
+      ...kw,
     };
   }
 
   const tableRow = DEMAND_TABLE_ROWS.find((r) => r.slug === selection.guSlug);
   if (!tableRow) return null;
-  const district = getDemandDistrictBySlug(selection.guSlug);
-  const packingKw = packingKeywordForScope("district", tableRow.gu);
-  const moveInKw = moveInKeywordForScope("district", tableRow.gu);
-
   const rtms = rtmsOverrides?.[tableRow.slug];
   return {
     selection,
@@ -212,8 +244,7 @@ export function buildDemandScopeRow(
     saleMom: rtms?.saleMom ?? tableRow.saleMom,
     jeonseCount: rtms?.jeonseCount ?? tableRow.jeonseCount,
     jeonseMom: rtms?.jeonseMom ?? tableRow.jeonseMom,
-    packing: searchSliceForKeyword(packingKw, 8_000, keywordHub, "packing"),
-    moveInClean: searchSliceForKeyword(moveInKw, 5_500, keywordHub, "move_in_clean"),
+    ...kw,
   };
 }
 
@@ -226,10 +257,10 @@ export function buildDemandScopeRows(selections: DemandRegionSelection[]): Deman
 export function buildDemandScopeRowsWithRtms(
   selections: DemandRegionSelection[],
   rtmsOverrides: DemandRtmsDistrictOverrides,
-  keywordHub?: DemandKeywordHubData | null
+  keywordStore?: DemandKeywordStore | null
 ): DemandScopeTableRow[] {
   return selections
-    .map((s) => buildDemandScopeRow(s, rtmsOverrides, keywordHub))
+    .map((s) => buildDemandScopeRow(s, rtmsOverrides, keywordStore))
     .filter((r): r is DemandScopeTableRow => r != null);
 }
 
@@ -359,16 +390,43 @@ function buildDailyIndexDeltaPoints(
   });
 }
 
-function buildDailyVolumePoints(
-  seed: string,
-  volumeMonth: number,
-  periods: string[]
+/**
+ * 검색광고 API에 월별 절대량이 없을 때, 동일 지역·키워드 데이터랩 월 지수로 형태만 추정.
+ * 네이버 키워드도구 「월별 검색수」 달력 차트와 수치·기준이 다릅니다.
+ */
+function estimateVolumeFromDatalabMonthlyIndex(
+  current30dTotal: number,
+  monthlyIndex: DemandChartPoint[]
 ): DemandChartPoint[] {
-  const h = hashSeed(seed);
-  const dailyMean = volumeMonth / Math.max(periods.length, 1);
-  return periods.map((period, i) => ({
+  if (monthlyIndex.length < MIN_MONTHLY_POINTS_FOR_YEAR_CHART || current30dTotal <= 0) {
+    return [];
+  }
+  const weights = monthlyIndex.map((p) => Math.max(p.value, 0.01));
+  const mean = weights.reduce((s, w) => s + w, 0) / weights.length;
+  return monthlyIndex.map((p) => ({
+    period: p.period,
+    value: Math.max(0, Math.round((current30dTotal * p.value) / mean)),
+  }));
+}
+
+/** 검색광고는 일별 미제공 — 데이터랩 지수 비율로 30일 총량 배분(동일 지역·키워드) */
+function distributeSearchVolume30d(
+  total30d: number,
+  dailyIndex: DemandChartPoint[] | undefined,
+  dayPeriods: string[]
+): DemandChartPoint[] {
+  const indexPoints = dailyIndex?.slice(-dayPeriods.length) ?? [];
+  if (indexPoints.length >= 7 && indexPoints.length === dayPeriods.length) {
+    const sum = indexPoints.reduce((s, p) => s + Math.max(p.value, 0.01), 0);
+    return indexPoints.map((p) => ({
+      period: p.period,
+      value: Math.max(0, Math.round((total30d * Math.max(p.value, 0.01)) / sum)),
+    }));
+  }
+  const mean = total30d / Math.max(dayPeriods.length, 1);
+  return dayPeriods.map((period) => ({
     period,
-    value: Math.max(0, Math.round(dailyMean * (0.72 + ((h + i * 17) % 56) / 100))),
+    value: Math.round(mean),
   }));
 }
 
@@ -394,7 +452,6 @@ export function buildDemandMetricChartSeries(
   range: DemandAnyChartRange = "30d",
   options?: {
     rtmsSeries?: DemandRtmsSeriesStore;
-    keywordHub?: DemandKeywordHubData | null;
   }
 ): {
   points: DemandChartPoint[];
@@ -421,40 +478,119 @@ export function buildDemandMetricChartSeries(
 
   if (metricId === "packingVolume" || metricId === "moveInVolume") {
     const slice = metricId === "packingVolume" ? row.packing : row.moveInClean;
+    const key = demandKeywordKeyForMetric(metricId);
+    const monthlyVol = row.keywordVolumeMonthlySeries?.[key];
+    const dailyIndex = row.keywordDailySeries?.[key];
     const vol = slice.searchVolumeMonth ?? 0;
-    const volumeLive = options?.keywordHub?.source.volume === "live";
-    if (isDaily) {
+    const volumeLive = row.keywordSource?.volume === "live";
+    const volumeLevel =
+      row.keywordVolumeLevelByKey?.[key] ?? row.keywordVolumeLevel ?? "dummy";
+    const volumeHint = demandKeywordVolumeLevelHint(row.selection, volumeLevel);
+
+    if (!isDaily && volumeLive && monthlyVol && monthlyVol.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART) {
+      const points = monthlyVol.slice(-12);
       return {
         chartKind: "volume",
-        subtitle: volumeLive
-          ? `키워드 「${slice.keyword}」 · 전국 · 검색광고 월 추정(30일 차트는 참고용 더미)`
-          : `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 일별 추정 (더미)`,
-        points: buildDailyVolumePoints(seed, vol, dayPeriods),
+        subtitle: `키워드 「${slice.keyword}」 · 검색광고 월 스냅샷(수집 시점·최근 30일 롤링) · ${points.length}개월${volumeHint} · 콘솔 달력 12개월 차트와 다를 수 있음`,
+        points,
       };
     }
+
+    if (!isDaily && volumeLive && monthlyVol?.length === 1) {
+      return {
+        chartKind: "volume",
+        subtitle: `키워드 「${slice.keyword}」 · 검색광고 스냅샷 1개월(${monthlyVol[0].period})${volumeHint} · 1년 그래프는 매월 수집 후 채워짐 · API는 콘솔 「월별 검색수」12개월 미제공`,
+        points: monthlyVol,
+      };
+    }
+
+    if (!isDaily && volumeLive && vol > 0) {
+      const monthlyIndex = row.keywordMonthlyIndexSeries?.[key];
+      const estimated = estimateVolumeFromDatalabMonthlyIndex(vol, monthlyIndex ?? []);
+      if (estimated.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART) {
+        return {
+          chartKind: "volume",
+          subtitle: `키워드 「${slice.keyword}」 · 데이터랩 월별 추이×현재 검색광고 30일 총량 추정${volumeHint} · 검색광고 콘솔 월별 검색수와 다름`,
+          points: estimated.slice(-12),
+        };
+      }
+    }
+
+    if (isDaily && volumeLive && vol > 0) {
+      const points = distributeSearchVolume30d(vol, dailyIndex, dayPeriods);
+      const shaped = (dailyIndex?.length ?? 0) >= 7;
+      return {
+        chartKind: "volume",
+        subtitle: shaped
+          ? `키워드 「${slice.keyword}」 · 검색광고 최근 30일 추정 · 데이터랩 추이로 일별 배분${volumeHint}`
+          : `키워드 「${slice.keyword}」 · 검색광고 최근 30일 추정(일별 API 없음·균등)${volumeHint}`,
+        points,
+      };
+    }
+
+    if (isDaily) {
+      const mean = vol / Math.max(dayPeriods.length, 1);
+      return {
+        chartKind: "volume",
+        subtitle: `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 (더미)`,
+        points: dayPeriods.map((period) => ({ period, value: Math.round(mean) })),
+      };
+    }
+
     return {
       chartKind: "volume",
-      subtitle: `키워드 「${slice.keyword}」 · 월별 검색량 추정 (더미)`,
-      points: monthPeriods.map((period, i) => ({
-        period,
-        value: Math.max(0, Math.round(vol * (0.82 + ((h + i * 17) % 28) / 100))),
-      })),
+      subtitle: volumeLive
+        ? `키워드 「${slice.keyword}」 · 1년 차트 없음 — 검색광고 API는 「최근 30일」 1값만 제공(콘솔 월별 12개월과 별도)${volumeHint} · 매월 「검색광고 수집」으로 스냅샷 누적 또는 데이터랩(지역) 수집 후 표시`
+        : `키워드 「${slice.keyword}」 · 검색량 데이터 없음`,
+      points: [],
     };
   }
 
   if (metricId === "packingIndex" || metricId === "moveInIndex") {
     const slice = metricId === "packingIndex" ? row.packing : row.moveInClean;
     const key = demandKeywordKeyForMetric(metricId);
+    const rowSeries = row.keywordDailySeries?.[key];
+    const monthlySeries = row.keywordMonthlyIndexSeries?.[key];
     const liveDaily =
-      isDaily &&
-      options?.keywordHub?.source.datalab === "live" &&
-      (options.keywordHub.dailySeries[key]?.length ?? 0) > 0;
+      isDaily && row.keywordSource?.datalab === "live" && (rowSeries?.length ?? 0) > 0;
+    const levelHint = demandKeywordIndexLevelHint(
+      row.selection,
+      row.keywordIndexLevelByKey?.[key] ?? row.keywordIndexLevel ?? "dummy"
+    );
 
-    if (liveDaily) {
-      const points = options!.keywordHub!.dailySeries[key].slice(-CHART_DAILY_POINTS);
+    if (liveDaily && rowSeries && isDaily) {
+      const points = rowSeries.slice(-CHART_DAILY_POINTS);
       return {
         chartKind: "index",
-        subtitle: `키워드 「${slice.keyword}」 · 전국 · 데이터랩 상대지수 · 최근 ${points.length}일`,
+        subtitle: `키워드 「${slice.keyword}」 · 데이터랩 상대지수(0~100) · 최근 ${points.length}일${levelHint}`,
+        points,
+      };
+    }
+
+    if (
+      searchRange === "1y" &&
+      liveDaily &&
+      rowSeries &&
+      rowSeries.length > 0 &&
+      (!monthlySeries || monthlySeries.length < MIN_MONTHLY_POINTS_FOR_YEAR_CHART)
+    ) {
+      const points = rowSeries.slice(-365);
+      return {
+        chartKind: "index",
+        subtitle: `키워드 「${slice.keyword}」 · 데이터랩 일별 상대지수(0~100) · ${points.length}일 (월별 ${monthlySeries?.length ?? 0}개월 — 12개월 미만)${levelHint}`,
+        points,
+      };
+    }
+
+    if (
+      row.keywordSource?.datalab === "live" &&
+      monthlySeries &&
+      monthlySeries.length >= MIN_MONTHLY_POINTS_FOR_YEAR_CHART
+    ) {
+      const points = monthlySeries.slice(-12);
+      return {
+        chartKind: "index",
+        subtitle: `키워드 「${slice.keyword}」 · 데이터랩 월별 상대지수(0~100) · ${points.length}개월${levelHint}`,
         points,
       };
     }

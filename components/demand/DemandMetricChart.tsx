@@ -17,7 +17,6 @@ import {
   type DemandScopeTableRow,
 } from "@/lib/demand/scope-data";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
-import type { DemandKeywordHubData } from "@/lib/demand/keyword-hub-data";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +42,10 @@ function defaultRangeForMetric(metricId: DemandMetricId): DemandAnyChartRange {
   return isDemandTradeMetric(metricId) ? "12m" : "30d";
 }
 
+function isSearchIndexMetric(metricId: DemandMetricId): boolean {
+  return metricId === "packingIndex" || metricId === "moveInIndex";
+}
+
 function chartRangeOptions(
   metricId: DemandMetricId
 ): { key: DemandAnyChartRange; label: string; disabled?: boolean }[] {
@@ -53,9 +56,23 @@ function chartRangeOptions(
       { key: "36m", label: "36개월", disabled: true },
     ];
   }
+  if (isSearchIndexMetric(metricId)) {
+    return [
+      { key: "30d", label: "30일" },
+      { key: "1y", label: "1년" },
+      { key: "3y", label: "3년", disabled: true },
+    ];
+  }
+  if (metricId === "packingVolume" || metricId === "moveInVolume") {
+    return [
+      { key: "30d", label: "30일" },
+      { key: "1y", label: "1년" },
+      { key: "3y", label: "3년", disabled: true },
+    ];
+  }
   return [
     { key: "30d", label: "30일" },
-    { key: "1y", label: "1년" },
+    { key: "1y", label: "1년", disabled: true },
     { key: "3y", label: "3년", disabled: true },
   ];
 }
@@ -65,7 +82,6 @@ type Props = {
   metricId: DemandMetricId;
   focusRowKey?: string | null;
   rtmsSeries?: DemandRtmsSeriesStore;
-  keywordHub?: DemandKeywordHubData | null;
 };
 
 function pctX(svgX: number): string {
@@ -94,7 +110,6 @@ export default function DemandMetricChart({
   metricId,
   focusRowKey,
   rtmsSeries,
-  keywordHub,
 }: Props) {
   const [range, setRange] = useState<DemandAnyChartRange>(() => defaultRangeForMetric(metricId));
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -117,7 +132,7 @@ export default function DemandMetricChart({
 
   const { chartKind, subtitle, seriesList } = useMemo(() => {
     const bundles = rows.map((row, i) => {
-      const series = buildDemandMetricChartSeries(row, metricId, range, { rtmsSeries, keywordHub });
+      const series = buildDemandMetricChartSeries(row, metricId, range, { rtmsSeries });
       return {
         row,
         rowKey: demandRegionSelectionKey(row.selection),
@@ -133,7 +148,7 @@ export default function DemandMetricChart({
       ? bundles.map((b) => b.subtitle).find(Boolean) ?? ""
       : bundles[0]?.subtitle ?? "";
     return { chartKind: kind, subtitle: sub, seriesList: bundles };
-  }, [rows, metricId, range, compareMode, metricTheme.stroke, rtmsSeries, keywordHub]);
+  }, [rows, metricId, range, compareMode, metricTheme.stroke, rtmsSeries]);
 
   const chart = useMemo(() => {
     if (seriesList.length === 0 || seriesList[0].points.length === 0) return null;
@@ -190,14 +205,42 @@ export default function DemandMetricChart({
 
   const label = demandMetricLabel(metricId);
   const compareSubtitle = compareMode ? rows.map((r) => r.label).join(" · ") : null;
+  const primaryRow = rows.find((r) => demandRegionSelectionKey(r.selection) === focusKey) ?? rows[0];
+  const keyword =
+    metricId === "packingVolume" || metricId === "packingIndex"
+      ? primaryRow?.packing.keyword
+      : metricId === "moveInVolume" || metricId === "moveInIndex"
+        ? primaryRow?.moveInClean.keyword
+        : null;
   const showFooterSubtitle =
     !compareMode &&
     subtitle &&
     (isDemandTradeMetric(metricId) ||
       metricId === "packingVolume" ||
-      metricId === "moveInVolume");
+      metricId === "moveInVolume" ||
+      metricId === "packingIndex" ||
+      metricId === "moveInIndex");
 
-  if (!chart || chart.pointCount === 0) return null;
+  if (!chart || chart.pointCount === 0) {
+    const emptySub = subtitle || seriesList[0]?.subtitle;
+    return (
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+          <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
+          <p className="mt-0.5 truncate text-xs text-slate-500">
+            {compareSubtitle ?? primaryRow?.pathLabel}
+            {!compareMode && keyword ? ` · ${keyword}` : null}
+          </p>
+        </div>
+        <div className="px-4 py-10 text-center sm:px-5">
+          <p className="text-sm text-slate-600">표시할 추이 데이터가 없습니다.</p>
+          {emptySub ? (
+            <p className="mx-auto mt-2 max-w-lg text-[11px] leading-relaxed text-slate-500">{emptySub}</p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   const { ticks, series, zeroY, fmt, areaPath } = chart;
   const activeIdx = Math.min(Math.max(0, selectedIndex), chart.pointCount - 1);
@@ -205,14 +248,6 @@ export default function DemandMetricChart({
   const densePoints = chart.pointCount > 15;
   const dotRadius = densePoints ? 2 : 3;
   const gradientId = `demand-grad-${chartUid}`;
-
-  const primaryRow = rows.find((r) => demandRegionSelectionKey(r.selection) === focusKey) ?? rows[0];
-  const keyword =
-    metricId === "packingVolume" || metricId === "packingIndex"
-      ? primaryRow.packing.keyword
-      : metricId === "moveInVolume" || metricId === "moveInIndex"
-        ? primaryRow.moveInClean.keyword
-        : null;
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

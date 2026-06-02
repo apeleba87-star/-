@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { runDemandSearchAdMonthlyIngestJob } from "@/lib/demand/searchad-monthly-ingest";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
-import { runDemandKeywordIngestJob } from "@/lib/demand/keyword-ingest";
 import { getSearchAdCredentialsStatus } from "@/lib/naver/searchad-keyword-client";
 
 export const dynamic = "force-dynamic";
@@ -24,30 +24,23 @@ export async function GET() {
   if (!gate.ok) {
     return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+
+  const creds = getSearchAdCredentialsStatus();
   try {
     const service = createServiceSupabase();
-    const [dailyRes, monthlyRes] = await Promise.all([
-      service.from("demand_keyword_daily").select("*", { count: "exact", head: true }),
-      service.from("demand_keyword_monthly").select("*", { count: "exact", head: true }),
-    ]);
-    const searchadMonthly = await service
+    const { count, error } = await service
       .from("demand_keyword_monthly")
       .select("*", { count: "exact", head: true })
       .eq("source", "searchad");
 
-    const { data: yyyymmRows } = await service
-      .from("demand_keyword_monthly")
-      .select("yyyymm")
-      .eq("source", "searchad");
-    const searchadDistinctMonths = new Set((yyyymmRows ?? []).map((r) => r.yyyymm)).size;
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       ok: true,
-      dailyRows: dailyRes.count ?? 0,
-      monthlyRows: monthlyRes.count ?? 0,
-      searchadMonthlyRows: searchadMonthly.count ?? 0,
-      searchadDistinctMonths,
-      searchAdCredentials: getSearchAdCredentialsStatus(),
+      credentials: creds,
+      searchadMonthlyRows: count ?? 0,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -60,12 +53,11 @@ export async function POST() {
   if (!gate.ok) {
     return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
+
   try {
     const service = createServiceSupabase();
-    const result = await runDemandKeywordIngestJob(service);
-    return NextResponse.json(result, {
-      status: result.ok ? 200 : 500,
-    });
+    const result = await runDemandSearchAdMonthlyIngestJob(service);
+    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

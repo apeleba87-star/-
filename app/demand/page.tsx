@@ -1,7 +1,7 @@
 import DemandShell from "@/components/demand/DemandShell";
 import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
 import { DEMAND_HUB_HERO } from "@/lib/demand/copy";
-import { getDemandKeywordHubData } from "@/lib/demand/keyword-query";
+import { getDemandKeywordStore } from "@/lib/demand/keyword-query";
 import { getDemandRtmsDistrictSnapshot, getDemandRtmsMonthlySeries } from "@/lib/demand/rtms-query";
 
 export const metadata = {
@@ -10,10 +10,10 @@ export const metadata = {
 };
 
 export default async function DemandHubPage() {
-  const [rtmsSnapshot, rtmsSeries, keywordHub] = await Promise.all([
+  const [rtmsSnapshot, rtmsSeries, keywordStore] = await Promise.all([
     getDemandRtmsDistrictSnapshot(),
     getDemandRtmsMonthlySeries(),
-    getDemandKeywordHubData(),
+    getDemandKeywordStore(),
   ]);
 
   return (
@@ -29,7 +29,7 @@ export default async function DemandHubPage() {
         rtmsOverrides={rtmsSnapshot.bySlug}
         rtmsBaseMonthLabel={rtmsSnapshot.baseMonthLabel}
         rtmsSeries={rtmsSeries}
-        keywordHub={keywordHub}
+        keywordStore={keywordStore}
       />
     </DemandShell>
   );
