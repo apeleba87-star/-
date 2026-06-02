@@ -2,10 +2,12 @@ import { guNameToSlug, SEOUL_GU_NAMES } from "@/lib/demand/slugs";
 
 export const DEMAND_MAX_REGION_COMPARE = 5;
 
-export type DemandRegionSelection = {
-  cityId: string;
-  guSlug: string;
-};
+export type DemandRegionScope = "national" | "city" | "district";
+
+export type DemandRegionSelection =
+  | { scope: "national" }
+  | { scope: "city"; cityId: string }
+  | { scope: "district"; cityId: string; guSlug: string };
 
 export type DemandDistrictRef = {
   slug: string;
@@ -46,13 +48,23 @@ export function getDemandDistrictRef(
 }
 
 export function demandRegionSelectionKey(sel: DemandRegionSelection): string {
-  return `${sel.cityId}:${sel.guSlug}`;
+  if (sel.scope === "national") return "national";
+  if (sel.scope === "city") return `city:${sel.cityId}`;
+  return `district:${sel.cityId}:${sel.guSlug}`;
 }
 
-/** breadcrumb: 서울 > 강서구 */
-export function formatDemandRegionPath(cityId: string, guSlug: string): string | null {
-  const city = getDemandCity(cityId);
-  const district = getDemandDistrictRef(cityId, guSlug);
-  if (!city || !district) return null;
+/** breadcrumb: 전국 | 서울특별시 | 서울 > 강서구 */
+export function formatDemandRegionLabel(sel: DemandRegionSelection): string | null {
+  if (sel.scope === "national") return "전국";
+  const city = getDemandCity(sel.cityId);
+  if (!city) return null;
+  if (sel.scope === "city") return city.fullLabel;
+  const district = getDemandDistrictRef(sel.cityId, sel.guSlug);
+  if (!district) return null;
   return `${city.label} > ${district.gu}`;
+}
+
+/** @deprecated formatDemandRegionLabel 사용 */
+export function formatDemandRegionPath(cityId: string, guSlug: string): string | null {
+  return formatDemandRegionLabel({ scope: "district", cityId, guSlug });
 }

@@ -51,6 +51,35 @@ export function formatMomPercent(n: number): string {
   return `${sign}${n}%`;
 }
 
+/** 검색지수(전일·전월 대비) — 소수 첫째 자리, 예: +1.2% */
+export function formatSearchIndexPercent(n: number): string {
+  const rounded = Math.round(n * 10) / 10;
+  const sign = rounded > 0 ? "+" : "";
+  const body = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${sign}${body}%`;
+}
+
+/** 선형 차트 축·툴팁용 */
+export function formatChartMetricValue(
+  value: number,
+  kind: "trade" | "index" | "indexDelta" | "volume" | "composite"
+): string {
+  switch (kind) {
+    case "trade":
+      return `${Math.round(value).toLocaleString("ko-KR")}건`;
+    case "volume":
+      return value >= 10_000
+        ? `${(value / 10_000).toFixed(1).replace(/\.0$/, "")}만`
+        : value.toLocaleString("ko-KR");
+    case "indexDelta":
+      return formatSearchIndexPercent(value);
+    case "index":
+      return Math.round(value).toLocaleString("ko-KR");
+    case "composite":
+      return String(Math.round(value));
+  }
+}
+
 export function formatTradeCount(n: number): string {
   return `${n.toLocaleString("ko-KR")}건`;
 }

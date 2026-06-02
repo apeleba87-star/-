@@ -10,6 +10,8 @@ type Props = {
   subtitle?: string;
   children: ReactNode;
   hideNav?: boolean;
+  /** 허브: 판다랭크식 훅 문구 (title 대신 또는 함께) */
+  heroTagline?: string;
   /** 허브: 헤더·배경 최소화 */
   variant?: "default" | "minimal";
   /** 허브: 오늘·월간 메타 모두 표시 */
@@ -24,6 +26,7 @@ export default function DemandShell({
   children,
   hideNav,
   variant = "default",
+  heroTagline,
   metaVariant = "default",
   searchVariant = "bar",
 }: Props) {
@@ -50,12 +53,23 @@ export default function DemandShell({
                 {DEMAND_PHASE0_BADGE}
               </span>
             </div>
+          ) : (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200/80">
+              {DEMAND_PHASE0_BADGE}
+            </span>
+          )}
+          {heroTagline ? (
+            <p className={minimal ? "mt-3 text-lg font-bold text-slate-900 sm:text-xl" : "mt-2 text-lg font-bold text-slate-900"}>
+              {heroTagline}
+            </p>
           ) : null}
           <h1
             className={
-              minimal
-                ? "text-xl font-bold text-slate-900"
-                : "mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl"
+              heroTagline
+                ? "sr-only"
+                : minimal
+                  ? "text-xl font-bold text-slate-900"
+                  : "mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl"
             }
           >
             {title}
