@@ -9,13 +9,16 @@ import {
   demandMetricChartTheme,
   demandRegionCompareColor,
 } from "@/lib/demand/metric-chart-theme";
-import { demandMetricLabel, type DemandMetricId } from "@/lib/demand/metrics";
+import { demandMetricLabel, isDemandTradeMetric, type DemandMetricId } from "@/lib/demand/metrics";
 import {
   buildDemandMetricChartSeries,
+  type DemandAnyChartRange,
   type DemandChartPoint,
   type DemandScopeTableRow,
 } from "@/lib/demand/scope-data";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
+import type { DemandKeywordHubData } from "@/lib/demand/keyword-hub-data";
+import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
 
 const W = 640;
@@ -23,8 +26,6 @@ const H = 200;
 const PAD = { top: 14, right: 16, bottom: 14, left: 48 };
 const PLOT_W = W - PAD.left - PAD.right;
 const PLOT_H = H - PAD.top - PAD.bottom;
-
-type RangeKey = "30d" | "1y" | "3y";
 
 type ChartKind = "trade" | "index" | "indexDelta" | "volume" | "composite";
 
@@ -38,7 +39,20 @@ type SeriesBundle = {
   coords: Array<DemandChartPoint & { x: number; y: number }>;
 };
 
-function chartRangeOptions(): { key: RangeKey; label: string; disabled?: boolean }[] {
+function defaultRangeForMetric(metricId: DemandMetricId): DemandAnyChartRange {
+  return isDemandTradeMetric(metricId) ? "12m" : "30d";
+}
+
+function chartRangeOptions(
+  metricId: DemandMetricId
+): { key: DemandAnyChartRange; label: string; disabled?: boolean }[] {
+  if (isDemandTradeMetric(metricId)) {
+    return [
+      { key: "12m", label: "12개월" },
+      { key: "24m", label: "24개월" },
+      { key: "36m", label: "36개월", disabled: true },
+    ];
+  }
   return [
     { key: "30d", label: "30일" },
     { key: "1y", label: "1년" },
@@ -49,8 +63,9 @@ function chartRangeOptions(): { key: RangeKey; label: string; disabled?: boolean
 type Props = {
   rows: DemandScopeTableRow[];
   metricId: DemandMetricId;
-  /** 표에서 클릭한 행 — 비교 차트에서 강조 */
   focusRowKey?: string | null;
+  rtmsSeries?: DemandRtmsSeriesStore;
+  keywordHub?: DemandKeywordHubData | null;
 };
 
 function pctX(svgX: number): string {
@@ -74,9 +89,19 @@ function buildCoords(
   }));
 }
 
-export default function DemandMetricChart({ rows, metricId, focusRowKey }: Props) {
-  const [range, setRange] = useState<RangeKey>("30d");
+export default function DemandMetricChart({
+  rows,
+  metricId,
+  focusRowKey,
+  rtmsSeries,
+  keywordHub,
+}: Props) {
+  const [range, setRange] = useState<DemandAnyChartRange>(() => defaultRangeForMetric(metricId));
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    setRange(defaultRangeForMetric(metricId));
+  }, [metricId]);
 
   const compareMode = rows.length > 1;
   const rowKeysSig = rows.map((r) => demandRegionSelectionKey(r.selection)).join(",");
@@ -92,7 +117,7 @@ export default function DemandMetricChart({ rows, metricId, focusRowKey }: Props
 
   const { chartKind, subtitle, seriesList } = useMemo(() => {
     const bundles = rows.map((row, i) => {
-      const series = buildDemandMetricChartSeries(row, metricId, range);
+      const series = buildDemandMetricChartSeries(row, metricId, range, { rtmsSeries, keywordHub });
       return {
         row,
         rowKey: demandRegionSelectionKey(row.selection),
@@ -108,7 +133,7 @@ export default function DemandMetricChart({ rows, metricId, focusRowKey }: Props
       ? bundles.map((b) => b.subtitle).find(Boolean) ?? ""
       : bundles[0]?.subtitle ?? "";
     return { chartKind: kind, subtitle: sub, seriesList: bundles };
-  }, [rows, metricId, range, compareMode, metricTheme.stroke]);
+  }, [rows, metricId, range, compareMode, metricTheme.stroke, rtmsSeries, keywordHub]);
 
   const chart = useMemo(() => {
     if (seriesList.length === 0 || seriesList[0].points.length === 0) return null;
@@ -165,6 +190,12 @@ export default function DemandMetricChart({ rows, metricId, focusRowKey }: Props
 
   const label = demandMetricLabel(metricId);
   const compareSubtitle = compareMode ? rows.map((r) => r.label).join(" · ") : null;
+  const showFooterSubtitle =
+    !compareMode &&
+    subtitle &&
+    (isDemandTradeMetric(metricId) ||
+      metricId === "packingVolume" ||
+      metricId === "moveInVolume");
 
   if (!chart || chart.pointCount === 0) return null;
 
@@ -218,7 +249,7 @@ export default function DemandMetricChart({ rows, metricId, focusRowKey }: Props
             ) : null}
           </div>
           <div className="inline-flex shrink-0 rounded-lg border border-slate-200 p-0.5 text-xs">
-            {chartRangeOptions().map(({ key, label: rangeLabel, disabled }) => (
+            {chartRangeOptions(metricId).map(({ key, label: rangeLabel, disabled }) => (
               <button
                 key={key}
                 type="button"
@@ -460,7 +491,7 @@ export default function DemandMetricChart({ rows, metricId, focusRowKey }: Props
         </div>
       </div>
 
-      {!compareMode && (metricId === "packingVolume" || metricId === "moveInVolume") && subtitle ? (
+      {showFooterSubtitle ? (
         <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400 sm:px-5">{subtitle}</p>
       ) : null}
     </div>

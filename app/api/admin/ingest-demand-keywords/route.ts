@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
-import { runDemandRtmsIngestJob } from "@/lib/demand/rtms-ingest";
+import { runDemandKeywordIngestJob } from "@/lib/demand/keyword-ingest";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 async function requireAdminEditor() {
   const supabase = await createServerSupabase();
@@ -25,19 +25,14 @@ export async function GET() {
   }
   try {
     const service = createServiceSupabase();
-    const [countRes, latestRes] = await Promise.all([
-      service.from("demand_rtms_monthly").select("*", { count: "exact", head: true }),
-      service
-        .from("demand_rtms_monthly")
-        .select("yyyymm")
-        .order("yyyymm", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+    const [dailyRes, monthlyRes] = await Promise.all([
+      service.from("demand_keyword_daily").select("*", { count: "exact", head: true }),
+      service.from("demand_keyword_monthly").select("*", { count: "exact", head: true }),
     ]);
     return NextResponse.json({
       ok: true,
-      totalRows: countRes.count ?? 0,
-      latestMonth: latestRes.data?.yyyymm ?? null,
+      dailyRows: dailyRes.count ?? 0,
+      monthlyRows: monthlyRes.count ?? 0,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -45,27 +40,17 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   const gate = await requireAdminEditor();
   if (!gate.ok) {
     return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
   try {
-    let monthsBack: number | undefined;
-    try {
-      const body = (await req.json()) as { monthsBack?: number };
-      if (body?.monthsBack != null && Number.isFinite(body.monthsBack)) {
-        monthsBack = Math.round(body.monthsBack);
-      }
-    } catch {
-      /* empty body */
-    }
     const service = createServiceSupabase();
-    const result = await runDemandRtmsIngestJob(service, { monthsBack });
-    if (!result.ok) {
-      return NextResponse.json(result, { status: result.needsKey ? 400 : 500 });
-    }
-    return NextResponse.json(result);
+    const result = await runDemandKeywordIngestJob(service);
+    return NextResponse.json(result, {
+      status: result.ok ? 200 : 500,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

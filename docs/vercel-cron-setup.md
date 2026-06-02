@@ -11,6 +11,19 @@
 - **동작**: `buildDailyTenderReport` + **`autoPublish: true`** → `posts.published_at` 설정(자동 공개). 이미 당일 성공한 run이 있으면 `already_success`로 스킵(`force` 없을 때).
 - **인증**: `GET`/`POST` 모두 `verifyCronSecret`(Bearer 또는 `x-cron-secret`).
 
+### 입주수요 검색 지표 `/api/cron/ingest-demand-keywords`
+
+- **스케줄 (KST)**: **매일 03:30** (UTC `30 18 * * *`, `naver-trend-report` 03:00 직후).
+- **동작**: 데이터랩 일별(포장이사·입주청소) → `demand_keyword_daily`, 검색광고 월별 → `demand_keyword_monthly`.
+- **환경 변수**: `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, (선택) `NAVER_SEARCHAD_*`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+### 입주수요 RTMS `/api/cron/ingest-demand-rtms-seoul`
+
+- **스케줄 (KST)**: **매월 1일 00:01** (서울 25구 아파트 매매·전월세, **최근 2개월** — `DEMAND_RTMS_MONTHS_BACK=2`).
+- **UTC cron**: Vercel은 UTC만 지원하므로, KST 1일 00:01 = 전월 말일 **15:01 UTC**에 맞춰 `vercel.json`에 3~4줄로 나눠 등록 (31일·30일·2월 28/29일).
+- **인증**: `GET`/`POST` + `verifyCronSecret`.
+- **환경 변수**: `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `MOLIT_RTMS_TRADE_SERVICE_KEY`, `MOLIT_RTMS_RENT_SERVICE_KEY`(또는 `MOLIT_RTMS_SERVICE_KEY`), `DEMAND_RTMS_MONTHS_BACK=2`.
+
 ### 네이버 데이터랩 `/api/cron/naver-trend-report`
 
 - **스케줄**: UTC `0 18 * * *` → **한국 시간 매일 03:00** (KST = UTC+9).
@@ -61,6 +74,7 @@ CRON_SECRET=여기에_긴_임의_문자열
 |------|------|------------------|
 | `GET/POST /api/cron/fetch-g2b` | G2B 입찰 수집 | `vercel.json` 참고 (Pro) |
 | `GET/POST /api/cron/generate-content` | 일간 입찰 리포트 생성·자동 발행 | `59 14 * * *` (UTC) ≈ KST 23:59, 주말 스킵 |
+| `GET/POST /api/cron/ingest-demand-rtms-seoul` | 서울 RTMS 월별 수집(2개월) | KST 매월 1일 00:01 → `vercel.json` (31·30·2월) |
 | `GET/POST /api/cron/naver-trend-report` | 네이버 데이터랩 일일 리포트 | `0 18 * * *` (UTC) = KST 03:00 |
 | `POST /api/cron/close-expired-job-posts` | work_date 지난 구인글 마감 처리 | 매일 1회 |
 | `POST /api/cron/cleanup-closed-tenders` | 마감 3개월 지난 입찰 정리 | 매일 1회 |

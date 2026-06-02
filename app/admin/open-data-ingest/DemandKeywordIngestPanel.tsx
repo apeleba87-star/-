@@ -2,23 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-type Stats =
-  | { ok: true; totalRows: number; latestMonth: string | null }
-  | { ok: false; error?: string };
+type Stats = { ok: true; dailyRows: number; monthlyRows: number } | { ok: false; error?: string };
 
 type RunResult = {
   ok: boolean;
-  inserted?: number;
-  updated?: number;
-  period?: string;
-  months?: number;
-  districts?: number;
-  calls?: number;
+  datalab?: { ok: boolean; inserted?: number; startDate?: string; endDate?: string; error?: string };
+  searchAd?: { ok: boolean; inserted?: number; yyyymm?: string; skipped?: boolean; error?: string };
   error?: string;
-  needsKey?: boolean;
 };
 
-export default function DemandRtmsIngestPanel() {
+export default function DemandKeywordIngestPanel() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -27,7 +20,7 @@ export default function DemandRtmsIngestPanel() {
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const res = await fetch("/api/admin/ingest-demand-rtms");
+      const res = await fetch("/api/admin/ingest-demand-keywords");
       const j = (await res.json()) as Stats;
       setStats(res.ok ? j : { ok: false, error: (j as { error?: string }).error });
     } catch {
@@ -41,15 +34,11 @@ export default function DemandRtmsIngestPanel() {
     void loadStats();
   }, [loadStats]);
 
-  const runIngest = useCallback(async (monthsBack?: number) => {
+  const runIngest = useCallback(async () => {
     setRunning(true);
     setLastRun(null);
     try {
-      const res = await fetch("/api/admin/ingest-demand-rtms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(monthsBack != null ? { monthsBack } : {}),
-      });
+      const res = await fetch("/api/admin/ingest-demand-keywords", { method: "POST" });
       const j = (await res.json()) as RunResult;
       setLastRun(j);
       await loadStats();
@@ -63,45 +52,27 @@ export default function DemandRtmsIngestPanel() {
   return (
     <div className="card mt-8 space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">입주수요 RTMS 수집</h2>
+        <h2 className="text-lg font-semibold text-slate-900">입주수요 검색 지표 수집</h2>
         <p className="mt-2 text-sm text-slate-600">
-          서울 25구 아파트 매매·전월세 실거래를 월 단위로 수집해{" "}
-          <code className="rounded bg-slate-100 px-1 text-xs">demand_rtms_monthly</code>에 저장합니다.
+          데이터랩 일별 지수 → <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_daily</code>
+          , 검색광고 월별 검색량 →{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_monthly</code>
         </p>
         <p className="mt-2 text-sm text-slate-500">
-          필요 키: <code className="text-xs">MOLIT_RTMS_TRADE_SERVICE_KEY</code>,{" "}
-          <code className="text-xs">MOLIT_RTMS_RENT_SERVICE_KEY</code>
-        </p>
-        <p className="mt-2 text-sm text-amber-800">
-          RTMS는 <strong>월 단위</strong> API입니다. 백필 후에는{" "}
-          <strong>최근 2개월</strong>만 매월 수집하면 MoM·늦은 신고 반영에 충분합니다.
+          키: <code className="text-xs">NAVER_CLIENT_ID</code>, <code className="text-xs">NAVER_CLIENT_SECRET</code>
+          (네이버 트렌드와 동일). 로컬에 없으면{" "}
+          <strong>마케팅 트렌드 DB</strong>에서 포장이사·입주청소 그룹을 자동 복사합니다.
         </p>
       </div>
 
       <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-4">
         <button
           type="button"
-          onClick={() => void runIngest(2)}
+          onClick={() => void runIngest()}
           disabled={running}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {running ? "수집 중…" : "증분 수집 (최근 2개월)"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void runIngest(1)}
-          disabled={running}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-        >
-          테스트 (1개월)
-        </button>
-        <button
-          type="button"
-          onClick={() => void runIngest(36)}
-          disabled={running}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-        >
-          백필 (36개월)
+          {running ? "수집 중…" : "검색 지표 수집 실행"}
         </button>
         <button
           type="button"
@@ -118,10 +89,10 @@ export default function DemandRtmsIngestPanel() {
       ) : stats?.ok ? (
         <ul className="list-inside list-disc text-sm text-slate-600">
           <li>
-            저장 행 수: <strong>{stats.totalRows.toLocaleString()}</strong>
+            일별 지수 행: <strong>{stats.dailyRows.toLocaleString()}</strong>
           </li>
           <li>
-            최신 기준월: <strong>{stats.latestMonth ?? "-"}</strong>
+            월별 검색량 행: <strong>{stats.monthlyRows.toLocaleString()}</strong>
           </li>
         </ul>
       ) : (
@@ -135,12 +106,25 @@ export default function DemandRtmsIngestPanel() {
           }`}
         >
           {lastRun.ok ? (
-            <p>
-              완료: {lastRun.period} · 저장 {lastRun.inserted ?? 0}건 · 대상 {lastRun.districts ?? 0}구 · 호출{" "}
-              {lastRun.calls ?? 0}회
-            </p>
+            <div className="space-y-1">
+              <p>
+                DataLab: {lastRun.datalab?.ok ? "OK" : "실패"} ·{" "}
+                {"source" in (lastRun.datalab ?? {}) && lastRun.datalab?.source === "naver_trend_datapoints"
+                  ? `트렌드 DB 복사 · ${(lastRun.datalab as { matched?: string[] }).matched?.join(", ") ?? ""}`
+                  : `${(lastRun.datalab as { startDate?: string }).startDate ?? ""}~${(lastRun.datalab as { endDate?: string }).endDate ?? ""}`}{" "}
+                · {lastRun.datalab && "inserted" in lastRun.datalab ? lastRun.datalab.inserted : 0}행
+              </p>
+              <p>
+                검색광고:{" "}
+                {lastRun.searchAd?.skipped
+                  ? "스킵(키 없음)"
+                  : lastRun.searchAd?.ok
+                    ? `OK · ${lastRun.searchAd.yyyymm} · ${lastRun.searchAd.inserted ?? 0}행`
+                    : `실패 — ${lastRun.searchAd?.error ?? ""}`}
+              </p>
+            </div>
           ) : (
-            <p>{lastRun.error ?? "실패"}</p>
+            <p>{lastRun.error ?? lastRun.datalab?.error ?? "실패"}</p>
           )}
         </div>
       ) : null}

@@ -42,3 +42,7 @@ export function demandMetricLabel(id: DemandMetricId): string {
 export function isDemandMetricId(v: string): v is DemandMetricId {
   return (DEMAND_METRIC_IDS as string[]).includes(v);
 }
+
+export function isDemandTradeMetric(metricId: DemandMetricId): boolean {
+  return metricId === "sale" || metricId === "jeonse";
+}

@@ -385,7 +385,7 @@ UI: **참고용** + 규칙 `?` — 구 vs 구 비교 화면 하단.
 
 ### 12.2 Cron
 
-1. `ingest-demand-rtms-seoul` — 25구 × 최근 6~36개월  
+1. `ingest-demand-rtms-seoul` — 25구 × 최근 2개월(운영) / 36개월(최초 백필)  
 2. `ingest-demand-migration-seoul` (v3.1)  
 3. `compute-demand-scores`  
 4. `publish-demand-snapshots`  

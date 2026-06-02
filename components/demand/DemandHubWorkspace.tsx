@@ -21,6 +21,8 @@ import {
   type DemandRtmsDistrictOverrides,
   type DemandScopeTableRow,
 } from "@/lib/demand/scope-data";
+import type { DemandKeywordHubData } from "@/lib/demand/keyword-hub-data";
+import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
 
 function ClickableMetricCell({
@@ -56,16 +58,23 @@ function ClickableMetricCell({
 type Props = {
   rtmsOverrides?: DemandRtmsDistrictOverrides;
   rtmsBaseMonthLabel?: string | null;
+  rtmsSeries?: DemandRtmsSeriesStore;
+  keywordHub?: DemandKeywordHubData | null;
 };
 
-export default function DemandHubWorkspace({ rtmsOverrides = {}, rtmsBaseMonthLabel = null }: Props) {
+export default function DemandHubWorkspace({
+  rtmsOverrides = {},
+  rtmsBaseMonthLabel = null,
+  rtmsSeries = {},
+  keywordHub = null,
+}: Props) {
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
   const [chartRowKey, setChartRowKey] = useState<string | null>(null);
 
   const scopeRows = useMemo(
-    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides),
-    [selections, rtmsOverrides]
+    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides, keywordHub),
+    [selections, rtmsOverrides, keywordHub]
   );
   const hasSelection = selections.length > 0;
   const primaryRow = scopeRows[0];
@@ -140,6 +149,8 @@ export default function DemandHubWorkspace({ rtmsOverrides = {}, rtmsBaseMonthLa
               rows={scopeRows}
               metricId={selectedMetric}
               focusRowKey={focusRowKey}
+              rtmsSeries={rtmsSeries}
+              keywordHub={keywordHub}
             />
           ) : null}
         </>
@@ -256,9 +267,9 @@ export default function DemandHubWorkspace({ rtmsOverrides = {}, rtmsBaseMonthLa
               </tbody>
             </table>
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">
-              {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS(구/합산) ·
-              검색량=키워드별 30일(더미) ·
-              검색지수=데이터랩(더미)
+              {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS · 검색지수=
+              {keywordHub?.source.datalab === "live" ? "데이터랩(전국)" : "더미"} · 검색량=
+              {keywordHub?.source.volume === "live" ? "검색광고(전국)" : "더미"}
             </p>
           </div>
 

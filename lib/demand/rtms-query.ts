@@ -1,17 +1,14 @@
+import type {
+  DemandRtmsDistrictSnapshot,
+  DemandRtmsSeriesStore,
+} from "@/lib/demand/rtms-types";
 import { createServiceSupabase } from "@/lib/supabase-server";
 
-export type DemandRtmsDistrictSnapshot = {
-  bySlug: Record<
-    string,
-    {
-      saleCount: number;
-      jeonseCount: number;
-      saleMom: number;
-      jeonseMom: number;
-    }
-  >;
-  baseMonthLabel: string | null;
-};
+export type { DemandRtmsDistrictSnapshot, DemandRtmsMonthlyPoint, DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
+
+function demandRtmsSeriesKey(regionScope: string, regionKey: string): string {
+  return `${regionScope}:${regionKey}`;
+}
 
 function toMonthLabel(yyyymm: string): string {
   const [y, m] = yyyymm.split("-");
@@ -77,5 +74,34 @@ export async function getDemandRtmsDistrictSnapshot(): Promise<DemandRtmsDistric
     };
   } catch {
     return { bySlug: {}, baseMonthLabel: null };
+  }
+}
+
+/**
+ * demand_rtms_monthly 전체 스코프 월별 시계열 (차트 12·24개월용).
+ */
+export async function getDemandRtmsMonthlySeries(): Promise<DemandRtmsSeriesStore> {
+  try {
+    const supabase = createServiceSupabase();
+    const { data, error } = await supabase
+      .from("demand_rtms_monthly")
+      .select("region_scope, region_key, yyyymm, sale_count, jeonse_count")
+      .order("yyyymm", { ascending: true });
+
+    if (error || !data?.length) return {};
+
+    const store: DemandRtmsSeriesStore = {};
+    for (const row of data) {
+      const key = demandRtmsSeriesKey(String(row.region_scope), String(row.region_key));
+      if (!store[key]) store[key] = [];
+      store[key].push({
+        yyyymm: String(row.yyyymm),
+        saleCount: Number(row.sale_count ?? 0),
+        jeonseCount: Number(row.jeonse_count ?? 0),
+      });
+    }
+    return store;
+  } catch {
+    return {};
   }
 }

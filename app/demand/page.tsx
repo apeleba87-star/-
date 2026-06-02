@@ -1,7 +1,8 @@
 import DemandShell from "@/components/demand/DemandShell";
 import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
 import { DEMAND_HUB_HERO } from "@/lib/demand/copy";
-import { getDemandRtmsDistrictSnapshot } from "@/lib/demand/rtms-query";
+import { getDemandKeywordHubData } from "@/lib/demand/keyword-query";
+import { getDemandRtmsDistrictSnapshot, getDemandRtmsMonthlySeries } from "@/lib/demand/rtms-query";
 
 export const metadata = {
   title: "입주수요 · 지역 탐색 | 클린아이덱스",
@@ -9,7 +10,11 @@ export const metadata = {
 };
 
 export default async function DemandHubPage() {
-  const rtmsSnapshot = await getDemandRtmsDistrictSnapshot();
+  const [rtmsSnapshot, rtmsSeries, keywordHub] = await Promise.all([
+    getDemandRtmsDistrictSnapshot(),
+    getDemandRtmsMonthlySeries(),
+    getDemandKeywordHubData(),
+  ]);
 
   return (
     <DemandShell
@@ -23,6 +28,8 @@ export default async function DemandHubPage() {
       <DemandHubWorkspace
         rtmsOverrides={rtmsSnapshot.bySlug}
         rtmsBaseMonthLabel={rtmsSnapshot.baseMonthLabel}
+        rtmsSeries={rtmsSeries}
+        keywordHub={keywordHub}
       />
     </DemandShell>
   );

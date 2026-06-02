@@ -8,6 +8,9 @@ import {
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
 import { guNameToSlug } from "@/lib/demand/slugs";
+import type { DemandKeywordHubData } from "@/lib/demand/keyword-hub-data";
+import { demandKeywordKeyForMetric } from "@/lib/demand/keyword-hub-data";
+import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { DEMAND_TABLE_ROWS } from "@/lib/demand/table-data";
 
 export type DemandScopeTableRow = {
@@ -42,6 +45,8 @@ export type DemandChartPoint = {
 };
 
 export type DemandChartRange = "30d" | "1y" | "3y";
+export type DemandTradeChartRange = "12m" | "24m" | "36m";
+export type DemandAnyChartRange = DemandChartRange | DemandTradeChartRange;
 
 const CHART_DAILY_POINTS = 30;
 
@@ -83,8 +88,23 @@ function searchVolumeForKeyword(keyword: string, nationalBase: number): number |
 
 function searchSliceForKeyword(
   keyword: string,
-  nationalBase: number
+  nationalBase: number,
+  nationalLive?: DemandKeywordHubData | null,
+  key?: "packing" | "move_in_clean"
 ): DemandKeywordMetricSlice & { keyword: string; indexRatio: number } {
+  if (nationalLive && key) {
+    const slice = key === "packing" ? nationalLive.packing : nationalLive.moveInClean;
+    const series = nationalLive.dailySeries[key];
+    const latestRatio = series.length > 0 ? series[series.length - 1].value : 52;
+    return {
+      keyword,
+      searchVolumeMonth: slice.searchVolumeMonth,
+      searchVolumeBelowTen: slice.searchVolumeBelowTen,
+      indexMomPercent: slice.indexMomPercent,
+      indexDodPercent: slice.indexDodPercent,
+      indexRatio: latestRatio,
+    };
+  }
   const belowTen = hashSeed(`${keyword}:lt10`) % 31 === 0;
   const vol = belowTen ? null : searchVolumeForKeyword(keyword, nationalBase);
   const packingPulse = DEMAND_DAILY_NATIONAL_KEYWORDS.find((k) => k.id === "packing");
@@ -125,7 +145,8 @@ function seoulCompositeIndex(): number {
 
 export function buildDemandScopeRow(
   selection: DemandRegionSelection,
-  rtmsOverrides?: DemandRtmsDistrictOverrides
+  rtmsOverrides?: DemandRtmsDistrictOverrides,
+  keywordHub?: DemandKeywordHubData | null
 ): DemandScopeTableRow | null {
   const pathLabel = formatDemandRegionLabel(selection);
   if (!pathLabel) return null;
@@ -146,8 +167,8 @@ export function buildDemandScopeRow(
       saleMom: 9,
       jeonseCount: Math.round(agg.jeonseCount * 4.1),
       jeonseMom: 11,
-      packing: searchSliceForKeyword(packingKw, 124_000),
-      moveInClean: searchSliceForKeyword(moveInKw, 87_000),
+      packing: searchSliceForKeyword(packingKw, 124_000, keywordHub, "packing"),
+      moveInClean: searchSliceForKeyword(moveInKw, 87_000, keywordHub, "move_in_clean"),
     };
   }
 
@@ -167,8 +188,8 @@ export function buildDemandScopeRow(
       saleMom: agg.saleMom,
       jeonseCount: agg.jeonseCount,
       jeonseMom: agg.jeonseMom,
-      packing: searchSliceForKeyword(packingKw, 42_000),
-      moveInClean: searchSliceForKeyword(moveInKw, 28_000),
+      packing: searchSliceForKeyword(packingKw, 42_000, keywordHub, "packing"),
+      moveInClean: searchSliceForKeyword(moveInKw, 28_000, keywordHub, "move_in_clean"),
     };
   }
 
@@ -191,8 +212,8 @@ export function buildDemandScopeRow(
     saleMom: rtms?.saleMom ?? tableRow.saleMom,
     jeonseCount: rtms?.jeonseCount ?? tableRow.jeonseCount,
     jeonseMom: rtms?.jeonseMom ?? tableRow.jeonseMom,
-    packing: searchSliceForKeyword(packingKw, 8_000),
-    moveInClean: searchSliceForKeyword(moveInKw, 5_500),
+    packing: searchSliceForKeyword(packingKw, 8_000, keywordHub, "packing"),
+    moveInClean: searchSliceForKeyword(moveInKw, 5_500, keywordHub, "move_in_clean"),
   };
 }
 
@@ -204,10 +225,11 @@ export function buildDemandScopeRows(selections: DemandRegionSelection[]): Deman
 
 export function buildDemandScopeRowsWithRtms(
   selections: DemandRegionSelection[],
-  rtmsOverrides: DemandRtmsDistrictOverrides
+  rtmsOverrides: DemandRtmsDistrictOverrides,
+  keywordHub?: DemandKeywordHubData | null
 ): DemandScopeTableRow[] {
   return selections
-    .map((s) => buildDemandScopeRow(s, rtmsOverrides))
+    .map((s) => buildDemandScopeRow(s, rtmsOverrides, keywordHub))
     .filter((r): r is DemandScopeTableRow => r != null);
 }
 
@@ -230,6 +252,82 @@ const MONTH_YYM = [
 function chartMonthPeriods(range: DemandChartRange): string[] {
   if (range === "3y") return MONTH_YYM;
   return MONTH_YYM.slice(-12);
+}
+
+export function demandRtmsSeriesKeyForRow(row: DemandScopeTableRow): string {
+  if (row.scope === "national") return "national:kr";
+  if (row.scope === "city") return "city:seoul";
+  if (row.slug) return `district:${row.slug}`;
+  return "district:unknown";
+}
+
+function yyyymmToChartPeriod(yyyymm: string): string {
+  const [y, m] = yyyymm.split("-");
+  if (!y || !m) return yyyymm;
+  return `${y.slice(2)}.${Number(m)}`;
+}
+
+function buildRtmsTradeChartSeries(
+  row: DemandScopeTableRow,
+  metricId: "sale" | "jeonse",
+  range: DemandTradeChartRange,
+  store: DemandRtmsSeriesStore
+): {
+  points: DemandChartPoint[];
+  chartKind: "trade";
+  subtitle: string;
+} | null {
+  const key = demandRtmsSeriesKeyForRow(row);
+  const all = store[key];
+  if (!all?.length) return null;
+
+  const months = range === "36m" ? 36 : range === "24m" ? 24 : 12;
+  const slice = all.slice(-months);
+  const isSale = metricId === "sale";
+  const tradeLabel = isSale ? "매매" : "전월세";
+
+  return {
+    chartKind: "trade",
+    subtitle: `${row.pathLabel} · RTMS 아파트 ${tradeLabel} · 최근 ${slice.length}개월`,
+    points: slice.map((p) => ({
+      period: yyyymmToChartPeriod(p.yyyymm),
+      value: isSale ? p.saleCount : p.jeonseCount,
+    })),
+  };
+}
+
+function buildDummyTradeChartSeries(
+  row: DemandScopeTableRow,
+  metricId: "sale" | "jeonse",
+  range: DemandTradeChartRange
+): {
+  points: DemandChartPoint[];
+  chartKind: "trade";
+  subtitle: string;
+} {
+  const seed = `${demandScopeChartSeed(row)}:${metricId}`;
+  const h = hashSeed(seed);
+  const isSale = metricId === "sale";
+  const count = isSale ? row.saleCount : row.jeonseCount;
+  const mom = isSale ? row.saleMom : row.jeonseMom;
+  const tradeLabel = isSale ? "매매" : "전월세";
+  const n = range === "36m" ? 36 : range === "24m" ? 24 : 12;
+  const last = n - 1;
+
+  return {
+    chartKind: "trade",
+    subtitle: `${row.pathLabel} · RTMS 아파트 ${tradeLabel} · 최근 ${n}개월 (더미)`,
+    points: Array.from({ length: n }, (_, i) => {
+      const drift = 1 + (mom / 100) * (last <= 0 ? 0 : i / last);
+      const wobble = 0.88 + ((h + i * 23) % 24) / 100;
+      const yy = 24 + Math.floor((11 + i) / 12);
+      const mm = ((11 + i) % 12) + 1;
+      return {
+        period: `${yy}.${mm}`,
+        value: Math.max(10, Math.round((count / 1.1) * drift * wobble)),
+      };
+    }),
+  };
 }
 
 /** KST 말일 기준 최근 N일 — 라벨 YY.M.D */
@@ -258,26 +356,6 @@ function buildDailyIndexDeltaPoints(
     const wobble = ((h + i * 7) % 11) * 0.1 - 0.5;
     const v = Math.round(Math.max(-2.9, Math.min(2.9, drift + wobble)) * 10) / 10;
     return { period, value: v };
-  });
-}
-
-function buildDailyTradePoints(
-  seed: string,
-  count: number,
-  mom: number,
-  periods: string[]
-): DemandChartPoint[] {
-  const h = hashSeed(seed);
-  const last = periods.length - 1;
-  const base = count / 1.05;
-  return periods.map((period, i) => {
-    const drift = 1 + (mom / 100) * (last <= 0 ? 0 : i / last);
-    const wobble = 0.9 + ((h + i * 23) % 20) / 100;
-    const noise = 0.97 + ((h + i * 11) % 7) / 100;
-    return {
-      period,
-      value: Math.max(5, Math.round(base * drift * wobble * noise)),
-    };
   });
 }
 
@@ -313,25 +391,44 @@ function buildDailyCompositePoints(
 export function buildDemandMetricChartSeries(
   row: DemandScopeTableRow,
   metricId: DemandMetricId,
-  range: DemandChartRange = "30d"
+  range: DemandAnyChartRange = "30d",
+  options?: {
+    rtmsSeries?: DemandRtmsSeriesStore;
+    keywordHub?: DemandKeywordHubData | null;
+  }
 ): {
   points: DemandChartPoint[];
   chartKind: "trade" | "index" | "indexDelta" | "volume" | "composite";
   subtitle: string;
 } {
+  if (metricId === "sale" || metricId === "jeonse") {
+    const tradeRange: DemandTradeChartRange =
+      range === "36m" ? "36m" : range === "24m" ? "24m" : "12m";
+    const fromDb =
+      options?.rtmsSeries &&
+      buildRtmsTradeChartSeries(row, metricId, tradeRange, options.rtmsSeries);
+    if (fromDb) return fromDb;
+    return buildDummyTradeChartSeries(row, metricId, tradeRange);
+  }
+
+  const searchRange: DemandChartRange =
+    range === "1y" || range === "3y" ? range : "30d";
   const seed = `${demandScopeChartSeed(row)}:${metricId}`;
   const h = hashSeed(seed);
-  const isDaily = range === "30d";
+  const isDaily = searchRange === "30d";
   const dayPeriods = lastNDayPeriodLabels(DEMAND_TODAY_META.briefingDateYmd, CHART_DAILY_POINTS);
-  const monthPeriods = chartMonthPeriods(range);
+  const monthPeriods = chartMonthPeriods(searchRange);
 
   if (metricId === "packingVolume" || metricId === "moveInVolume") {
     const slice = metricId === "packingVolume" ? row.packing : row.moveInClean;
     const vol = slice.searchVolumeMonth ?? 0;
+    const volumeLive = options?.keywordHub?.source.volume === "live";
     if (isDaily) {
       return {
         chartKind: "volume",
-        subtitle: `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 일별 추정 (더미)`,
+        subtitle: volumeLive
+          ? `키워드 「${slice.keyword}」 · 전국 · 검색광고 월 추정(30일 차트는 참고용 더미)`
+          : `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 일별 추정 (더미)`,
         points: buildDailyVolumePoints(seed, vol, dayPeriods),
       };
     }
@@ -347,6 +444,21 @@ export function buildDemandMetricChartSeries(
 
   if (metricId === "packingIndex" || metricId === "moveInIndex") {
     const slice = metricId === "packingIndex" ? row.packing : row.moveInClean;
+    const key = demandKeywordKeyForMetric(metricId);
+    const liveDaily =
+      isDaily &&
+      options?.keywordHub?.source.datalab === "live" &&
+      (options.keywordHub.dailySeries[key]?.length ?? 0) > 0;
+
+    if (liveDaily) {
+      const points = options!.keywordHub!.dailySeries[key].slice(-CHART_DAILY_POINTS);
+      return {
+        chartKind: "index",
+        subtitle: `키워드 「${slice.keyword}」 · 전국 · 데이터랩 상대지수 · 최근 ${points.length}일`,
+        points,
+      };
+    }
+
     const periods = isDaily ? dayPeriods : monthPeriods;
     return {
       chartKind: "indexDelta",
@@ -383,32 +495,7 @@ export function buildDemandMetricChartSeries(
     };
   }
 
-  const isSale = metricId === "sale";
-  const count = isSale ? row.saleCount : row.jeonseCount;
-  const mom = isSale ? row.saleMom : row.jeonseMom;
-  const tradeLabel = isSale ? "매매" : "전월세";
-
-  if (isDaily) {
-    return {
-      chartKind: "trade",
-      subtitle: `${row.pathLabel} · RTMS 아파트 ${tradeLabel} 최근 ${CHART_DAILY_POINTS}일 (더미)`,
-      points: buildDailyTradePoints(seed, count, mom, dayPeriods),
-    };
-  }
-
-  const last = monthPeriods.length - 1;
-  return {
-    chartKind: "trade",
-    subtitle: `${row.pathLabel} · RTMS 아파트 ${tradeLabel} 월별 건수 (더미)`,
-    points: monthPeriods.map((period, i) => {
-      const drift = 1 + (mom / 100) * (last <= 0 ? 0 : i / last);
-      const wobble = 0.88 + ((h + i * 23) % 24) / 100;
-      return {
-        period,
-        value: Math.max(10, Math.round((count / 1.1) * drift * wobble)),
-      };
-    }),
-  };
+  throw new Error(`Unsupported metric: ${metricId satisfies never}`);
 }
 
 function demandScopeChartSeed(row: DemandScopeTableRow): string {

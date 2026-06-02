@@ -60,10 +60,23 @@ const XML = new XMLParser({
   trimValues: true,
 });
 
-function getRtmsMonthsBack(): number {
-  const v = Number(process.env.DEMAND_RTMS_MONTHS_BACK ?? 36);
-  if (!Number.isFinite(v)) return 36;
-  return Math.min(Math.max(Math.round(v), 3), 60);
+/** 운영·크론 기본: 최근 2개월 (MoM + 늦은 신고 반영). */
+export const DEMAND_RTMS_MONTHS_BACK_DEFAULT = 2;
+/** 최초 1회 백필용. */
+export const DEMAND_RTMS_MONTHS_BACK_BACKFILL = 36;
+
+export type DemandRtmsIngestOptions = {
+  /** Override env DEMAND_RTMS_MONTHS_BACK (min 1, max 60). */
+  monthsBack?: number;
+};
+
+function resolveRtmsMonthsBack(override?: number): number {
+  const raw = override ?? Number(process.env.DEMAND_RTMS_MONTHS_BACK ?? DEMAND_RTMS_MONTHS_BACK_DEFAULT);
+  if (!Number.isFinite(raw)) {
+    return override != null ? 1 : DEMAND_RTMS_MONTHS_BACK_DEFAULT;
+  }
+  const n = Math.round(raw);
+  return Math.min(Math.max(n, 1), 60);
 }
 
 function monthKeysBackFromPreviousKstMonth(count: number): string[] {
@@ -151,7 +164,10 @@ async function fetchWithFallback(
   throw new Error(lastError);
 }
 
-export async function runDemandRtmsIngestJob(supabase: SupabaseClient): Promise<DemandRtmsIngestResult> {
+export async function runDemandRtmsIngestJob(
+  supabase: SupabaseClient,
+  options?: DemandRtmsIngestOptions
+): Promise<DemandRtmsIngestResult> {
   const tradeKey = process.env.MOLIT_RTMS_TRADE_SERVICE_KEY?.trim();
   const rentKey = process.env.MOLIT_RTMS_RENT_SERVICE_KEY?.trim();
   const sharedKey = process.env.MOLIT_RTMS_SERVICE_KEY?.trim();
@@ -167,7 +183,8 @@ export async function runDemandRtmsIngestJob(supabase: SupabaseClient): Promise<
     };
   }
 
-  const months = monthKeysBackFromPreviousKstMonth(getRtmsMonthsBack());
+  const monthsBack = resolveRtmsMonthsBack(options?.monthsBack);
+  const months = monthKeysBackFromPreviousKstMonth(monthsBack);
   const districtSlugs = Object.keys(SEOUL_GU_LAWD_CD);
   const tradeServiceKey = tradeKey || sharedKey!;
   const rentServiceKey = rentKey || sharedKey!;
