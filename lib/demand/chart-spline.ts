@@ -20,12 +20,16 @@ function controlPoints(
   };
 }
 
-export function buildSmoothLinePath(coords: ChartCoord[]): string {
+/** 데이터 점을 그대로 잇는 직선 — 스플라인 오버슈트·꺾임 방지 */
+export function buildLinePath(coords: ChartCoord[]): string {
   if (coords.length === 0) return "";
-  if (coords.length === 1) return `M ${coords[0].x} ${coords[0].y}`;
-  if (coords.length === 2) {
-    return `M ${coords[0].x} ${coords[0].y} L ${coords[1].x} ${coords[1].y}`;
-  }
+  return coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
+}
+
+/** 완만한 곡선 (tension 낮음, 4점 이상일 때만) */
+export function buildSmoothLinePath(coords: ChartCoord[], tension = 0.12): string {
+  if (coords.length === 0) return "";
+  if (coords.length <= 3) return buildLinePath(coords);
 
   let d = `M ${coords[0].x} ${coords[0].y}`;
   for (let i = 0; i < coords.length - 1; i += 1) {
@@ -33,8 +37,8 @@ export function buildSmoothLinePath(coords: ChartCoord[]): string {
     const p1 = coords[i];
     const p2 = coords[i + 1];
     const p3 = coords[Math.min(coords.length - 1, i + 2)];
-    const { cp1x, cp1y } = controlPoints(p0, p1, p2);
-    const { cp2x, cp2y } = controlPoints(p1, p2, p3);
+    const { cp1x, cp1y } = controlPoints(p0, p1, p2, tension);
+    const { cp2x, cp2y } = controlPoints(p1, p2, p3, tension);
     d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
   }
   return d;

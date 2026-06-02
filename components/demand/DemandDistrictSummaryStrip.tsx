@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { formatMomPercent } from "@/lib/demand/copy";
+import { DEMAND_COMPOSITE_CARD_SUB, DEMAND_METRIC_LABELS, formatMomPercent } from "@/lib/demand/copy";
 import SignalBadge from "@/components/demand/SignalBadge";
 import type { DemandDistrictScore } from "@/lib/demand/types";
 import type { DemandNationalKeywordMetrics } from "@/lib/demand/keyword-metrics";
@@ -67,9 +67,9 @@ export default function DemandDistrictSummaryStrip({ row, district, keywordMetri
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <SummaryCard
-          label="입주수요지수"
+          label={DEMAND_METRIC_LABELS.composite}
           value={row.indexScore ?? "—"}
-          sub="종합 (더미)"
+          sub={DEMAND_COMPOSITE_CARD_SUB}
           accent
         />
         <SummaryCard

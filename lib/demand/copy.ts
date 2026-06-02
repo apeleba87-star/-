@@ -11,8 +11,11 @@ export const DEMAND_METRIC_LABELS = {
   /** @deprecated 열 분리 전 라벨 */
   packing: "포장이사 검색량",
   moveInClean: "입주청소 검색량",
-  composite: "입주수요지수",
+  composite: "입주 온도",
 } as const;
+
+/** 종합 지표 카드 부가 설명 */
+export const DEMAND_COMPOSITE_CARD_SUB = "거래·검색 신호 종합 (더미)";
 
 /** @deprecated DEMAND_METRIC_LABELS 사용 */
 export const DEMAND_NATIONAL_KEYWORD_LABELS = {
@@ -24,6 +27,12 @@ export const DEMAND_DISCLAIMER =
   "국토부 실거래·네이버 데이터랩 검색지수(전국·상대값) 기준입니다. 검색지수는 실제 검색 건수가 아닙니다. 신고·집계 지연(통상 1~2개월)이 있을 수 있습니다. 참고용입니다.";
 
 export const DEMAND_PHASE0_BADGE = "UI 미리보기 · 더미 데이터";
+
+export const DEMAND_HUB_HERO = {
+  title: "입주수요는 어디서 시작될까?",
+  subtitle: "실거래·검색 데이터로 지역별 입주 흐름을 비교합니다.",
+  regionHint: "비교할 지역을 추가해 보세요.",
+} as const;
 
 export const SIGNAL_LABELS: Record<
   DemandSignal,

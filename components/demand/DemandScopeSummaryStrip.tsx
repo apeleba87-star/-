@@ -1,12 +1,19 @@
 "use client";
 
-import { formatMomPercent, formatSearchIndexPercent, formatSearchVolumeMonth } from "@/lib/demand/copy";
+import {
+  DEMAND_COMPOSITE_CARD_SUB,
+  DEMAND_METRIC_LABELS,
+  formatMomPercent,
+  formatSearchIndexPercent,
+  formatSearchVolumeMonth,
+} from "@/lib/demand/copy";
+import { demandMetricChartTheme, demandRegionCompareColor } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
+import { demandRegionSelectionKey } from "@/lib/demand/regions";
 import type { DemandScopeTableRow } from "@/lib/demand/scope-data";
 import SignalBadge from "@/components/demand/SignalBadge";
 import { getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 function SummaryCard({
@@ -34,8 +41,9 @@ function SummaryCard({
       onClick={() => onSelect(metricId)}
       className={cn(
         "rounded-xl border bg-white px-3 py-3 text-left transition-colors",
-        accent ? "border-teal-200 ring-1 ring-teal-100" : "border-slate-200",
-        selected && "border-teal-500 ring-2 ring-teal-200"
+        accent && !selected && "border-teal-200 ring-1 ring-teal-100",
+        !accent && !selected && "border-slate-200",
+        selected && demandMetricChartTheme(metricId).cardSelected
       )}
     >
       <p className="text-[11px] font-medium text-slate-500">{label}</p>
@@ -56,44 +64,89 @@ function SummaryCard({
 }
 
 type Props = {
-  row: DemandScopeTableRow;
+  rows: DemandScopeTableRow[];
+  focusRowKey?: string | null;
+  onFocusRow?: (rowKey: string) => void;
   selectedMetric: DemandMetricId | null;
   onSelectMetric: (id: DemandMetricId) => void;
 };
 
-export default function DemandScopeSummaryStrip({ row, selectedMetric, onSelectMetric }: Props) {
-  const district = row.slug ? getDemandDistrictBySlug(row.slug) : undefined;
-  const packing = row.packing;
-  const moveIn = row.moveInClean;
+export default function DemandScopeSummaryStrip({
+  rows,
+  focusRowKey,
+  onFocusRow,
+  selectedMetric,
+  onSelectMetric,
+}: Props) {
+  const compareMode = rows.length > 1;
+  const cardRow =
+    rows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ?? rows[0];
+  if (!cardRow) return null;
+
+  const district = cardRow.slug ? getDemandDistrictBySlug(cardRow.slug) : undefined;
+  const packing = cardRow.packing;
+  const moveIn = cardRow.moveInClean;
 
   return (
     <section className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-bold text-slate-900">{row.pathLabel}</h2>
-        {district ? <SignalBadge signal={district.signal} /> : null}
-        {row.hasDetail && row.slug ? (
-          <Link
-            href={`/demand/region/${row.slug}`}
-            className="text-xs font-semibold text-teal-700 hover:underline"
-          >
-            상세 보기
-          </Link>
-        ) : null}
-        {district ? (
-          <span className="text-xs text-slate-400">
-            서울 {district.rank}위 · 전월 {district.prevRank}위
-          </span>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-bold text-slate-900">
+            {compareMode ? `${rows.length}개 지역 비교` : cardRow.pathLabel}
+          </h2>
+          {!compareMode && district ? <SignalBadge signal={district.signal} /> : null}
+        </div>
+
+        {compareMode ? (
+          <ul className="flex flex-wrap gap-2">
+            {rows.map((r, i) => {
+              const rowKey = demandRegionSelectionKey(r.selection);
+              const focused = rowKey === focusRowKey;
+              const color = demandRegionCompareColor(i);
+              return (
+                <li key={rowKey}>
+                  <button
+                    type="button"
+                    onClick={() => onFocusRow?.(rowKey)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                      focused
+                        ? "border-slate-300 bg-white font-semibold text-slate-900 shadow-sm"
+                        : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
+                    )}
+                    aria-pressed={focused}
+                  >
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: color }}
+                      aria-hidden
+                    />
+                    {r.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         ) : null}
       </div>
 
-      <p className="text-[11px] text-slate-500">지표를 누르면 아래에 추세 그래프가 표시됩니다.</p>
+      <p className="text-[11px] text-slate-500">
+        {compareMode ? (
+          <>
+            아래 숫자는 <span className="font-medium text-slate-700">{cardRow.label}</span> 기준입니다.
+            추이 그래프는 선택한 지역을 모두 표시합니다.
+          </>
+        ) : (
+          "지표를 누르면 아래에 추세 그래프가 표시됩니다."
+        )}
+      </p>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <SummaryCard
           metricId="composite"
-          label="입주수요지수"
-          value={row.indexScore ?? "—"}
-          sub="종합 (더미)"
+          label={DEMAND_METRIC_LABELS.composite}
+          value={cardRow.indexScore ?? "—"}
+          sub={DEMAND_COMPOSITE_CARD_SUB}
           accent
           selected={selectedMetric === "composite"}
           onSelect={onSelectMetric}
@@ -101,16 +154,16 @@ export default function DemandScopeSummaryStrip({ row, selectedMetric, onSelectM
         <SummaryCard
           metricId="sale"
           label="주택매매"
-          value={`${row.saleCount.toLocaleString("ko-KR")}건`}
-          sub={formatMomPercent(row.saleMom)}
+          value={`${cardRow.saleCount.toLocaleString("ko-KR")}건`}
+          sub={formatMomPercent(cardRow.saleMom)}
           selected={selectedMetric === "sale"}
           onSelect={onSelectMetric}
         />
         <SummaryCard
           metricId="jeonse"
           label="전월세"
-          value={`${row.jeonseCount.toLocaleString("ko-KR")}건`}
-          sub={formatMomPercent(row.jeonseMom)}
+          value={`${cardRow.jeonseCount.toLocaleString("ko-KR")}건`}
+          sub={formatMomPercent(cardRow.jeonseMom)}
           selected={selectedMetric === "jeonse"}
           onSelect={onSelectMetric}
         />

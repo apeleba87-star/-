@@ -1,6 +1,6 @@
 import { guNameToSlug, SEOUL_GU_NAMES } from "@/lib/demand/slugs";
 
-export const DEMAND_MAX_REGION_COMPARE = 5;
+export const DEMAND_MAX_REGION_COMPARE = 3;
 
 export type DemandRegionScope = "national" | "city" | "district";
 

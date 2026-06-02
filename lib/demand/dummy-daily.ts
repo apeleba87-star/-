@@ -89,4 +89,4 @@ export const DEMAND_DAILY_DEFAULT_GU_ROWS: DemandDailyGuRow[] = [
 ];
 
 export const DEMAND_DAILY_INSIGHT =
-  "전국 포장이사 검색지수가 어제보다 올랐습니다. 강서·양천은 월간 입주수요지수도 상위권 — 오늘 당근·입찰 확인을 권합니다. (더미 해석)";
+  "전국 포장이사 검색지수가 어제보다 올랐습니다. 강서·양천은 월간 입주 온도도 상위권 — 오늘 당근·입찰 확인을 권합니다. (더미 해석)";

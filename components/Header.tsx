@@ -228,10 +228,24 @@ export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
-  const visiblePrimaryNavItems = primaryNavItems.filter((entry) => {
-    if (entry.kind === "link" && entry.href === "/cleanidex") return isAdmin;
-    return true;
-  });
+  const visiblePrimaryNavItems = primaryNavItems
+    .map((entry) => {
+      if (entry.kind === "link" && entry.href === "/cleanidex") {
+        return isAdmin ? entry : null;
+      }
+      if (!isAdmin && entry.kind === "mega") {
+        const columns = entry.columns
+          .map((col) => ({
+            ...col,
+            items: col.items.filter((item) => item.href !== "/demand"),
+          }))
+          .filter((col) => col.items.length > 0);
+        if (columns.length === 0) return null;
+        return { ...entry, columns };
+      }
+      return entry;
+    })
+    .filter((entry): entry is PrimaryNavEntry => entry != null);
 
   const mobileDrawerItems: MobileDrawerRow[] = [
     ...visiblePrimaryNavItems.flatMap(primaryToMobileRows),

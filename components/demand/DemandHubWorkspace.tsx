@@ -1,45 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { Search } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import DemandMetricChart from "@/components/demand/DemandMetricChart";
-import DemandNeighborSuggest from "@/components/demand/DemandNeighborSuggest";
-import DemandPopularGuChips from "@/components/demand/DemandPopularGuChips";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
 import { DemandSearchIndexCell, DemandSearchVolumeCell } from "@/components/demand/DemandSearchMetricCell";
 import DemandScopeSummaryStrip from "@/components/demand/DemandScopeSummaryStrip";
-import DemandSearchPulseBar from "@/components/demand/DemandSearchPulseBar";
 import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
-import { DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
-import { DEMAND_SNAPSHOT_META, getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
-import type { DemandNationalKeywordMetrics } from "@/lib/demand/keyword-metrics";
+import { DEMAND_HUB_HERO, DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
+import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
+import { demandMetricChartTheme } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
 import {
   DEMAND_MAX_REGION_COMPARE,
   demandRegionSelectionKey,
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
-import { buildDemandScopeRows, type DemandScopeTableRow } from "@/lib/demand/scope-data";
+import {
+  buildDemandScopeRowsWithRtms,
+  type DemandRtmsDistrictOverrides,
+  type DemandScopeTableRow,
+} from "@/lib/demand/scope-data";
 import { cn } from "@/lib/utils";
 
 function ClickableMetricCell({
+  metricId,
   active,
   onClick,
   children,
 }: {
+  metricId: DemandMetricId;
   active: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
+  const theme = demandMetricChartTheme(metricId);
   return (
     <td className="px-3 py-2.5 text-right">
       <button
         type="button"
         onClick={onClick}
         className={cn(
-          "rounded-md px-1.5 py-0.5 transition-colors hover:bg-teal-50",
-          active && "bg-teal-100 ring-1 ring-teal-300"
+          "rounded-md px-1.5 py-0.5 transition-colors",
+          theme.cellHover,
+          active && theme.cellActive
         )}
         aria-pressed={active}
       >
@@ -50,25 +54,29 @@ function ClickableMetricCell({
 }
 
 type Props = {
-  keywordMetrics: DemandNationalKeywordMetrics;
+  rtmsOverrides?: DemandRtmsDistrictOverrides;
+  rtmsBaseMonthLabel?: string | null;
 };
 
-export default function DemandHubWorkspace({ keywordMetrics }: Props) {
+export default function DemandHubWorkspace({ rtmsOverrides = {}, rtmsBaseMonthLabel = null }: Props) {
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
   const [chartRowKey, setChartRowKey] = useState<string | null>(null);
 
-  const scopeRows = useMemo(() => buildDemandScopeRows(selections), [selections]);
+  const scopeRows = useMemo(
+    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides),
+    [selections, rtmsOverrides]
+  );
   const hasSelection = selections.length > 0;
   const primaryRow = scopeRows[0];
 
-  const chartRow = useMemo(() => {
+  const focusRowKey = useMemo(() => {
     if (scopeRows.length === 0) return null;
-    if (chartRowKey) {
-      return scopeRows.find((r) => demandRegionSelectionKey(r.selection) === chartRowKey) ?? primaryRow;
+    if (chartRowKey && scopeRows.some((r) => demandRegionSelectionKey(r.selection) === chartRowKey)) {
+      return chartRowKey;
     }
-    return primaryRow;
-  }, [scopeRows, chartRowKey, primaryRow]);
+    return demandRegionSelectionKey(scopeRows[0].selection);
+  }, [scopeRows, chartRowKey]);
 
   function onAdd(sel: DemandRegionSelection) {
     const key = demandRegionSelectionKey(sel);
@@ -99,17 +107,11 @@ export default function DemandHubWorkspace({ keywordMetrics }: Props) {
           .join("&")}`
       : null;
 
-  const primaryDistrict = primaryRow?.slug ? getDemandDistrictBySlug(primaryRow.slug) : undefined;
-
   return (
     <div className="space-y-5">
-      <DemandSearchPulseBar metrics={keywordMetrics} />
-
       <div className="rounded-2xl border-2 border-teal-100 bg-white p-4 shadow-sm ring-1 ring-teal-50">
         <p className="text-sm font-semibold text-slate-800">지역 찾기</p>
-        <p className="mt-0.5 text-xs text-slate-500">
-          전국 · 서울 전체 · 서울 &gt; 구 · 최대 {DEMAND_MAX_REGION_COMPARE}곳 비교
-        </p>
+        <p className="mt-0.5 text-xs text-slate-500">{DEMAND_HUB_HERO.regionHint}</p>
         <DemandRegionPicker
           className="mt-3"
           selections={selections}
@@ -118,34 +120,34 @@ export default function DemandHubWorkspace({ keywordMetrics }: Props) {
         />
       </div>
 
-      {!hasSelection ? <DemandPopularGuChips selections={selections} onAdd={onAdd} /> : null}
-
       {hasSelection && primaryRow ? (
         <>
           <DemandScopeSummaryStrip
-            row={primaryRow}
+            rows={scopeRows}
+            focusRowKey={focusRowKey}
+            onFocusRow={setChartRowKey}
             selectedMetric={selectedMetric}
-            onSelectMetric={(id) => selectMetric(primaryRow, id)}
+            onSelectMetric={(id) => {
+              const row =
+                scopeRows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ??
+                primaryRow;
+              if (row) selectMetric(row, id);
+            }}
           />
 
-          {primaryDistrict?.drilldownExtra.similarGu ? (
-            <DemandNeighborSuggest
-              similarGu={primaryDistrict.drilldownExtra.similarGu}
-              selections={selections}
-              onAdd={onAdd}
+          {selectedMetric && scopeRows.length > 0 ? (
+            <DemandMetricChart
+              rows={scopeRows}
+              metricId={selectedMetric}
+              focusRowKey={focusRowKey}
             />
-          ) : null}
-
-          {selectedMetric && chartRow ? (
-            <DemandMetricChart row={chartRow} metricId={selectedMetric} />
           ) : null}
         </>
       ) : null}
 
       {!hasSelection ? (
         <p className="rounded-lg border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500">
-          <Search className="mx-auto mb-2 h-5 w-5 text-slate-300" aria-hidden />
-          지역을 추가하면 요약·비교표·그래프가 표시됩니다
+          지역을 추가하면 요약·비교표·그래프가 나타납니다
         </p>
       ) : scopeRows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-amber-200 bg-amber-50/50 py-8 text-center text-sm text-amber-900">
@@ -155,7 +157,9 @@ export default function DemandHubWorkspace({ keywordMetrics }: Props) {
         <div>
           <p className="mb-2 text-xs font-semibold text-slate-600">
             {scopeRows.length > 1 ? "지역 비교표" : "지표 상세"}
-            <span className="ml-2 font-normal text-slate-400">셀 클릭 → 그래프</span>
+            <span className="ml-2 font-normal text-slate-400">
+              {scopeRows.length > 1 ? "셀 클릭 → 지표 · 그래프에 지역 겹침" : "셀 클릭 → 지표"}
+            </span>
           </p>
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full min-w-[1000px] text-sm">
@@ -174,10 +178,14 @@ export default function DemandHubWorkspace({ keywordMetrics }: Props) {
               <tbody className="divide-y divide-slate-100">
                 {scopeRows.map((row) => {
                   const rowKey = demandRegionSelectionKey(row.selection);
-                  const isChartRow =
-                    chartRow != null && demandRegionSelectionKey(chartRow.selection) === rowKey;
+                  const isFocusRow = focusRowKey === rowKey;
                   return (
-                    <tr key={rowKey} className={cn(isChartRow && "bg-teal-50/40")}>
+                    <tr
+                      key={rowKey}
+                      className={cn(
+                        isFocusRow && selectedMetric && demandMetricChartTheme(selectedMetric).rowBg
+                      )}
+                    >
                       <td className="px-3 py-2.5">
                         {row.hasDetail && row.slug ? (
                           <Link
@@ -192,43 +200,50 @@ export default function DemandHubWorkspace({ keywordMetrics }: Props) {
                         <p className="mt-0.5 truncate text-[10px] text-violet-600">{row.packing.keyword}</p>
                       </td>
                       <ClickableMetricCell
-                        active={isChartRow && selectedMetric === "sale"}
+                        metricId="sale"
+                        active={isFocusRow && selectedMetric === "sale"}
                         onClick={() => selectMetric(row, "sale")}
                       >
-                        <DemandTradeMetricCell compact count={row.saleCount} momPercent={row.saleMom} />
+                        <DemandTradeMetricCell count={row.saleCount} momPercent={row.saleMom} />
                       </ClickableMetricCell>
                       <ClickableMetricCell
-                        active={isChartRow && selectedMetric === "jeonse"}
+                        metricId="jeonse"
+                        active={isFocusRow && selectedMetric === "jeonse"}
                         onClick={() => selectMetric(row, "jeonse")}
                       >
-                        <DemandTradeMetricCell compact count={row.jeonseCount} momPercent={row.jeonseMom} />
+                        <DemandTradeMetricCell count={row.jeonseCount} momPercent={row.jeonseMom} />
                       </ClickableMetricCell>
                       <ClickableMetricCell
-                        active={isChartRow && selectedMetric === "packingVolume"}
+                        metricId="packingVolume"
+                        active={isFocusRow && selectedMetric === "packingVolume"}
                         onClick={() => selectMetric(row, "packingVolume")}
                       >
                         <DemandSearchVolumeCell metric={row.packing} />
                       </ClickableMetricCell>
                       <ClickableMetricCell
-                        active={isChartRow && selectedMetric === "packingIndex"}
+                        metricId="packingIndex"
+                        active={isFocusRow && selectedMetric === "packingIndex"}
                         onClick={() => selectMetric(row, "packingIndex")}
                       >
                         <DemandSearchIndexCell metric={row.packing} />
                       </ClickableMetricCell>
                       <ClickableMetricCell
-                        active={isChartRow && selectedMetric === "moveInVolume"}
+                        metricId="moveInVolume"
+                        active={isFocusRow && selectedMetric === "moveInVolume"}
                         onClick={() => selectMetric(row, "moveInVolume")}
                       >
                         <DemandSearchVolumeCell metric={row.moveInClean} />
                       </ClickableMetricCell>
                       <ClickableMetricCell
-                        active={isChartRow && selectedMetric === "moveInIndex"}
+                        metricId="moveInIndex"
+                        active={isFocusRow && selectedMetric === "moveInIndex"}
                         onClick={() => selectMetric(row, "moveInIndex")}
                       >
                         <DemandSearchIndexCell metric={row.moveInClean} />
                       </ClickableMetricCell>
                       <ClickableMetricCell
-                        active={isChartRow && selectedMetric === "composite"}
+                        metricId="composite"
+                        active={isFocusRow && selectedMetric === "composite"}
                         onClick={() => selectMetric(row, "composite")}
                       >
                         <span className="font-semibold tabular-nums text-teal-800">
@@ -241,7 +256,8 @@ export default function DemandHubWorkspace({ keywordMetrics }: Props) {
               </tbody>
             </table>
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">
-              {DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS(구/합산) · 검색량=키워드별 30일(더미) ·
+              {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS(구/합산) ·
+              검색량=키워드별 30일(더미) ·
               검색지수=데이터랩(더미)
             </p>
           </div>
@@ -266,23 +282,6 @@ export default function DemandHubWorkspace({ keywordMetrics }: Props) {
           </p>
         </div>
       )}
-
-      <details className="rounded-xl border border-slate-200 bg-slate-50/50">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-600">
-          탐험 더보기 · TOP10 · 적중
-        </summary>
-        <div className="space-y-2 border-t border-slate-200 px-4 py-3 text-sm">
-          <Link href="/demand/top" className="block text-teal-700 hover:underline">
-            이번 달 입주수요 TOP10
-          </Link>
-          <Link href="/demand/movers" className="block text-teal-700 hover:underline">
-            급상승 구역
-          </Link>
-          <Link href="/demand/hits" className="block text-teal-700 hover:underline">
-            적중 아카이브
-          </Link>
-        </div>
-      </details>
     </div>
   );
 }

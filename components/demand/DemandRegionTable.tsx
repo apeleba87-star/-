@@ -78,10 +78,10 @@ export default function DemandRegionTable({ keywordMetrics }: Props) {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <DemandTradeMetricCell compact count={row.saleCount} momPercent={row.saleMom} />
+                    <DemandTradeMetricCell count={row.saleCount} momPercent={row.saleMom} />
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <DemandTradeMetricCell compact count={row.jeonseCount} momPercent={row.jeonseMom} />
+                    <DemandTradeMetricCell count={row.jeonseCount} momPercent={row.jeonseMom} />
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <DemandSearchVolumeCell metric={row.packing} />

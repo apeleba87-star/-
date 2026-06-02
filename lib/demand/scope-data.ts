@@ -1,5 +1,5 @@
 import { DEMAND_SNAPSHOT_META, getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
-import { DEMAND_DAILY_NATIONAL_KEYWORDS } from "@/lib/demand/dummy-daily";
+import { DEMAND_DAILY_NATIONAL_KEYWORDS, DEMAND_TODAY_META } from "@/lib/demand/dummy-daily";
 import type { DemandKeywordMetricSlice } from "@/lib/demand/keyword-metrics";
 import type { DemandMetricId } from "@/lib/demand/metrics";
 import {
@@ -26,10 +26,24 @@ export type DemandScopeTableRow = {
   moveInClean: DemandKeywordMetricSlice & { keyword: string; indexRatio?: number };
 };
 
+export type DemandRtmsDistrictOverrides = Record<
+  string,
+  {
+    saleCount: number;
+    jeonseCount: number;
+    saleMom: number;
+    jeonseMom: number;
+  }
+>;
+
 export type DemandChartPoint = {
   period: string;
   value: number;
 };
+
+export type DemandChartRange = "30d" | "1y" | "3y";
+
+const CHART_DAILY_POINTS = 30;
 
 function hashSeed(key: string): number {
   let h = 0;
@@ -109,7 +123,10 @@ function seoulCompositeIndex(): number {
   return Math.round(sum / scored.length);
 }
 
-export function buildDemandScopeRow(selection: DemandRegionSelection): DemandScopeTableRow | null {
+export function buildDemandScopeRow(
+  selection: DemandRegionSelection,
+  rtmsOverrides?: DemandRtmsDistrictOverrides
+): DemandScopeTableRow | null {
   const pathLabel = formatDemandRegionLabel(selection);
   if (!pathLabel) return null;
 
@@ -161,6 +178,7 @@ export function buildDemandScopeRow(selection: DemandRegionSelection): DemandSco
   const packingKw = packingKeywordForScope("district", tableRow.gu);
   const moveInKw = moveInKeywordForScope("district", tableRow.gu);
 
+  const rtms = rtmsOverrides?.[tableRow.slug];
   return {
     selection,
     scope: "district",
@@ -169,10 +187,10 @@ export function buildDemandScopeRow(selection: DemandRegionSelection): DemandSco
     slug: tableRow.slug,
     hasDetail: tableRow.hasDetail,
     indexScore: tableRow.indexScore,
-    saleCount: tableRow.saleCount,
-    saleMom: tableRow.saleMom,
-    jeonseCount: tableRow.jeonseCount,
-    jeonseMom: tableRow.jeonseMom,
+    saleCount: rtms?.saleCount ?? tableRow.saleCount,
+    saleMom: rtms?.saleMom ?? tableRow.saleMom,
+    jeonseCount: rtms?.jeonseCount ?? tableRow.jeonseCount,
+    jeonseMom: rtms?.jeonseMom ?? tableRow.jeonseMom,
     packing: searchSliceForKeyword(packingKw, 8_000),
     moveInClean: searchSliceForKeyword(moveInKw, 5_500),
   };
@@ -180,7 +198,16 @@ export function buildDemandScopeRow(selection: DemandRegionSelection): DemandSco
 
 export function buildDemandScopeRows(selections: DemandRegionSelection[]): DemandScopeTableRow[] {
   return selections
-    .map(buildDemandScopeRow)
+    .map((s) => buildDemandScopeRow(s))
+    .filter((r): r is DemandScopeTableRow => r != null);
+}
+
+export function buildDemandScopeRowsWithRtms(
+  selections: DemandRegionSelection[],
+  rtmsOverrides: DemandRtmsDistrictOverrides
+): DemandScopeTableRow[] {
+  return selections
+    .map((s) => buildDemandScopeRow(s, rtmsOverrides))
     .filter((r): r is DemandScopeTableRow => r != null);
 }
 
@@ -200,9 +227,93 @@ const MONTH_YYM = [
   "25.10",
 ];
 
+function chartMonthPeriods(range: DemandChartRange): string[] {
+  if (range === "3y") return MONTH_YYM;
+  return MONTH_YYM.slice(-12);
+}
+
+/** KST 말일 기준 최근 N일 — 라벨 YY.M.D */
+function lastNDayPeriodLabels(endYmd: string, n: number): string[] {
+  const [y, m, d] = endYmd.split("-").map(Number);
+  const end = new Date(y, m - 1, d);
+  const labels: string[] = [];
+  for (let offset = n - 1; offset >= 0; offset -= 1) {
+    const date = new Date(end);
+    date.setDate(date.getDate() - offset);
+    const yy = String(date.getFullYear()).slice(2);
+    labels.push(`${yy}.${date.getMonth() + 1}.${date.getDate()}`);
+  }
+  return labels;
+}
+
+function buildDailyIndexDeltaPoints(
+  seed: string,
+  anchorPercent: number,
+  periods: string[]
+): DemandChartPoint[] {
+  const h = hashSeed(seed);
+  const last = periods.length - 1;
+  return periods.map((period, i) => {
+    const drift = anchorPercent + (i - last) * 0.04;
+    const wobble = ((h + i * 7) % 11) * 0.1 - 0.5;
+    const v = Math.round(Math.max(-2.9, Math.min(2.9, drift + wobble)) * 10) / 10;
+    return { period, value: v };
+  });
+}
+
+function buildDailyTradePoints(
+  seed: string,
+  count: number,
+  mom: number,
+  periods: string[]
+): DemandChartPoint[] {
+  const h = hashSeed(seed);
+  const last = periods.length - 1;
+  const base = count / 1.05;
+  return periods.map((period, i) => {
+    const drift = 1 + (mom / 100) * (last <= 0 ? 0 : i / last);
+    const wobble = 0.9 + ((h + i * 23) % 20) / 100;
+    const noise = 0.97 + ((h + i * 11) % 7) / 100;
+    return {
+      period,
+      value: Math.max(5, Math.round(base * drift * wobble * noise)),
+    };
+  });
+}
+
+function buildDailyVolumePoints(
+  seed: string,
+  volumeMonth: number,
+  periods: string[]
+): DemandChartPoint[] {
+  const h = hashSeed(seed);
+  const dailyMean = volumeMonth / Math.max(periods.length, 1);
+  return periods.map((period, i) => ({
+    period,
+    value: Math.max(0, Math.round(dailyMean * (0.72 + ((h + i * 17) % 56) / 100))),
+  }));
+}
+
+function buildDailyCompositePoints(
+  seed: string,
+  base: number,
+  periods: string[]
+): DemandChartPoint[] {
+  const h = hashSeed(seed);
+  const last = periods.length - 1;
+  return periods.map((period, i) => ({
+    period,
+    value: Math.max(
+      70,
+      Math.round(base - 8 + (last <= 0 ? 0 : (i / last) * 10) + ((h + i * 3) % 5))
+    ),
+  }));
+}
+
 export function buildDemandMetricChartSeries(
   row: DemandScopeTableRow,
-  metricId: DemandMetricId
+  metricId: DemandMetricId,
+  range: DemandChartRange = "30d"
 ): {
   points: DemandChartPoint[];
   chartKind: "trade" | "index" | "indexDelta" | "volume" | "composite";
@@ -210,14 +321,24 @@ export function buildDemandMetricChartSeries(
 } {
   const seed = `${demandScopeChartSeed(row)}:${metricId}`;
   const h = hashSeed(seed);
+  const isDaily = range === "30d";
+  const dayPeriods = lastNDayPeriodLabels(DEMAND_TODAY_META.briefingDateYmd, CHART_DAILY_POINTS);
+  const monthPeriods = chartMonthPeriods(range);
 
   if (metricId === "packingVolume" || metricId === "moveInVolume") {
     const slice = metricId === "packingVolume" ? row.packing : row.moveInClean;
     const vol = slice.searchVolumeMonth ?? 0;
+    if (isDaily) {
+      return {
+        chartKind: "volume",
+        subtitle: `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 일별 추정 (더미)`,
+        points: buildDailyVolumePoints(seed, vol, dayPeriods),
+      };
+    }
     return {
       chartKind: "volume",
-      subtitle: `키워드 「${slice.keyword}」 · 최근 30일 롤링 (더미)`,
-      points: MONTH_YYM.slice(-10).map((period, i) => ({
+      subtitle: `키워드 「${slice.keyword}」 · 월별 검색량 추정 (더미)`,
+      points: monthPeriods.map((period, i) => ({
         period,
         value: Math.max(0, Math.round(vol * (0.82 + ((h + i * 17) % 28) / 100))),
       })),
@@ -226,25 +347,36 @@ export function buildDemandMetricChartSeries(
 
   if (metricId === "packingIndex" || metricId === "moveInIndex") {
     const slice = metricId === "packingIndex" ? row.packing : row.moveInClean;
-    const dayLabels = ["25.4.14", "25.4.21", "25.4.28", "25.5.5", "25.5.12", "25.5.19", "25.5.20"];
+    const periods = isDaily ? dayPeriods : monthPeriods;
     return {
       chartKind: "indexDelta",
-      subtitle: `키워드 「${slice.keyword}」 · 전일 대비 % (데이터랩·더미)`,
-      points: dayLabels.map((period, i) => {
-        const drift = slice.indexDodPercent + (i - dayLabels.length + 1) * 0.08;
-        const wobble = ((h + i * 7) % 11) * 0.1 - 0.5;
-        const v = Math.round(Math.max(-2.9, Math.min(2.9, drift + wobble)) * 10) / 10;
-        return { period, value: v };
-      }),
+      subtitle: isDaily
+        ? `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 전일 대비 % (더미)`
+        : `키워드 「${slice.keyword}」 · 월별 지수 변화 (더미)`,
+      points: isDaily
+        ? buildDailyIndexDeltaPoints(seed, slice.indexDodPercent, periods)
+        : periods.map((period, i) => {
+            const drift = slice.indexDodPercent + (i - periods.length + 1) * 0.15;
+            const wobble = ((h + i * 7) % 11) * 0.15 - 0.75;
+            const v = Math.round(Math.max(-2.9, Math.min(2.9, drift + wobble)) * 10) / 10;
+            return { period, value: v };
+          }),
     };
   }
 
   if (metricId === "composite") {
     const base = row.indexScore ?? 100;
+    if (isDaily) {
+      return {
+        chartKind: "composite",
+        subtitle: `입주 온도 · 최근 ${CHART_DAILY_POINTS}일 (더미)`,
+        points: buildDailyCompositePoints(seed, base, dayPeriods),
+      };
+    }
     return {
       chartKind: "composite",
-      subtitle: "입주수요지수 · 종합 (더미)",
-      points: MONTH_YYM.slice(-10).map((period, i) => ({
+      subtitle: "입주 온도 · 월별 (더미)",
+      points: monthPeriods.map((period, i) => ({
         period,
         value: Math.max(70, base - 12 + i * 2 + ((h + i) % 6)),
       })),
@@ -254,11 +386,22 @@ export function buildDemandMetricChartSeries(
   const isSale = metricId === "sale";
   const count = isSale ? row.saleCount : row.jeonseCount;
   const mom = isSale ? row.saleMom : row.jeonseMom;
+  const tradeLabel = isSale ? "매매" : "전월세";
+
+  if (isDaily) {
+    return {
+      chartKind: "trade",
+      subtitle: `${row.pathLabel} · RTMS 아파트 ${tradeLabel} 최근 ${CHART_DAILY_POINTS}일 (더미)`,
+      points: buildDailyTradePoints(seed, count, mom, dayPeriods),
+    };
+  }
+
+  const last = monthPeriods.length - 1;
   return {
     chartKind: "trade",
-    subtitle: `${row.pathLabel} · RTMS 아파트 ${isSale ? "매매" : "전월세"} 월별 건수 (더미)`,
-    points: MONTH_YYM.slice(-10).map((period, i) => {
-      const drift = 1 + (mom / 100) * (i / 9);
+    subtitle: `${row.pathLabel} · RTMS 아파트 ${tradeLabel} 월별 건수 (더미)`,
+    points: monthPeriods.map((period, i) => {
+      const drift = 1 + (mom / 100) * (last <= 0 ? 0 : i / last);
       const wobble = 0.88 + ((h + i * 23) % 24) / 100;
       return {
         period,

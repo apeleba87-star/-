@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
 import { DEMAND_PHASE0_BADGE } from "@/lib/demand/copy";
+import { cn } from "@/lib/utils";
 import DemandNav from "@/components/demand/DemandNav";
 import DemandSearch from "@/components/demand/DemandSearch";
 import DemandDisclaimer from "@/components/demand/DemandDisclaimer";
+import { isDemandAdmin } from "@/lib/demand/access";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 
 type Props = {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  hideNav?: boolean;
   /** 허브: 판다랭크식 훅 문구 (title 대신 또는 함께) */
   heroTagline?: string;
   /** 허브: 헤더·배경 최소화 */
@@ -20,16 +21,16 @@ type Props = {
   searchVariant?: false | "bar";
 };
 
-export default function DemandShell({
+export default async function DemandShell({
   title,
   subtitle,
   children,
-  hideNav,
   variant = "default",
   heroTagline,
   metaVariant = "default",
   searchVariant = "bar",
 }: Props) {
+  const showDemandNav = await isDemandAdmin();
   const minimal = variant === "minimal";
 
   return (
@@ -59,22 +60,31 @@ export default function DemandShell({
             </span>
           )}
           {heroTagline ? (
-            <p className={minimal ? "mt-3 text-lg font-bold text-slate-900 sm:text-xl" : "mt-2 text-lg font-bold text-slate-900"}>
+            <h1
+              className={
+                minimal
+                  ? "mt-3 text-lg font-bold text-slate-900 sm:text-xl"
+                  : "mt-2 text-lg font-bold text-slate-900"
+              }
+            >
               {heroTagline}
-            </p>
-          ) : null}
-          <h1
-            className={
-              heroTagline
-                ? "sr-only"
-                : minimal
+            </h1>
+          ) : (
+            <h1
+              className={
+                minimal
                   ? "text-xl font-bold text-slate-900"
                   : "mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl"
-            }
-          >
-            {title}
-          </h1>
-          {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
+              }
+            >
+              {title}
+            </h1>
+          )}
+          {subtitle ? (
+            <p className={cn("text-sm leading-relaxed text-slate-600", heroTagline ? "mt-2" : "mt-1")}>
+              {subtitle}
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-slate-500">
             {metaVariant === "hub" ? (
               <>
@@ -90,7 +100,7 @@ export default function DemandShell({
 
         {searchVariant === "bar" ? <DemandSearch variant="bar" /> : null}
 
-        {!hideNav ? <DemandNav className="mb-6" /> : null}
+        {showDemandNav ? <DemandNav className="mb-6" /> : null}
 
         {children}
 

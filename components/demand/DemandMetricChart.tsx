@@ -1,253 +1,276 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
-import { formatChartMetricValue, formatSearchVolumeMonth } from "@/lib/demand/copy";
-import { buildAreaPath, buildSmoothLinePath } from "@/lib/demand/chart-spline";
-import { buildLinearTicks, linearMap, niceLinearDomain } from "@/lib/demand/chart-scale";
-import { buildDemandMetricChartSeries, type DemandScopeTableRow } from "@/lib/demand/scope-data";
+import { useEffect, useMemo, useState } from "react";
+import { formatChartMetricValue } from "@/lib/demand/copy";
+import { buildAreaPath, buildLinePath } from "@/lib/demand/chart-spline";
+import { linearMap, niceChartScale } from "@/lib/demand/chart-scale";
+import {
+  DEMAND_CHART_ACTIVE_RING,
+  demandMetricChartTheme,
+  demandRegionCompareColor,
+} from "@/lib/demand/metric-chart-theme";
 import { demandMetricLabel, type DemandMetricId } from "@/lib/demand/metrics";
+import {
+  buildDemandMetricChartSeries,
+  type DemandChartPoint,
+  type DemandScopeTableRow,
+} from "@/lib/demand/scope-data";
+import { demandRegionSelectionKey } from "@/lib/demand/regions";
 import { cn } from "@/lib/utils";
 
 const W = 640;
-const H = 220;
-const PAD = { top: 28, right: 24, bottom: 36, left: 52 };
+const H = 200;
+const PAD = { top: 14, right: 16, bottom: 14, left: 48 };
 const PLOT_W = W - PAD.left - PAD.right;
 const PLOT_H = H - PAD.top - PAD.bottom;
 
 type RangeKey = "30d" | "1y" | "3y";
-type Granularity = "month" | "week";
 
-type ChartTheme = {
-  stroke: string;
-  fillId: string;
-  fillFrom: string;
-  fillTo: string;
-  dot: string;
-  tag: string;
+type ChartKind = "trade" | "index" | "indexDelta" | "volume" | "composite";
+
+type SeriesBundle = {
+  row: DemandScopeTableRow;
+  rowKey: string;
+  label: string;
+  color: string;
+  points: DemandChartPoint[];
+  linePath: string;
+  coords: Array<DemandChartPoint & { x: number; y: number }>;
 };
 
-const THEMES: Record<string, ChartTheme> = {
-  volume: {
-    stroke: "#10b981",
-    fillId: "demand-fill-emerald",
-    fillFrom: "#10b981",
-    fillTo: "#ffffff",
-    dot: "#059669",
-    tag: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-  },
-  indexDelta: {
-    stroke: "#8b5cf6",
-    fillId: "demand-fill-violet",
-    fillFrom: "#8b5cf6",
-    fillTo: "#ffffff",
-    dot: "#7c3aed",
-    tag: "bg-violet-50 text-violet-800 ring-violet-200",
-  },
-  trade: {
-    stroke: "#0d9488",
-    fillId: "demand-fill-teal",
-    fillFrom: "#14b8a6",
-    fillTo: "#ffffff",
-    dot: "#0f766e",
-    tag: "bg-teal-50 text-teal-800 ring-teal-200",
-  },
-  composite: {
-    stroke: "#115e59",
-    fillId: "demand-fill-teal-dark",
-    fillFrom: "#0f766e",
-    fillTo: "#ffffff",
-    dot: "#134e4a",
-    tag: "bg-teal-50 text-teal-900 ring-teal-300",
-  },
-};
+function chartRangeOptions(): { key: RangeKey; label: string; disabled?: boolean }[] {
+  return [
+    { key: "30d", label: "30일" },
+    { key: "1y", label: "1년" },
+    { key: "3y", label: "3년", disabled: true },
+  ];
+}
 
 type Props = {
-  row: DemandScopeTableRow;
+  rows: DemandScopeTableRow[];
   metricId: DemandMetricId;
+  /** 표에서 클릭한 행 — 비교 차트에서 강조 */
+  focusRowKey?: string | null;
 };
 
-function summaryLabel(metricId: DemandMetricId, chartKind: string): string {
-  if (metricId === "packingVolume" || metricId === "moveInVolume") return "월 검색량";
-  if (metricId === "packingIndex" || metricId === "moveInIndex") return "최근 전일 지수";
-  if (metricId === "composite") return "입주수요지수";
-  if (chartKind === "trade") return "최근 월 건수";
-  return "값";
+function pctX(svgX: number): string {
+  return `${(svgX / W) * 100}%`;
 }
 
-function slicePoints<T extends { period: string }>(points: T[], range: RangeKey): T[] {
-  const n = range === "30d" ? 6 : range === "1y" ? 10 : points.length;
-  return points.slice(-n);
+function pctY(svgY: number): string {
+  return `${(svgY / H) * 100}%`;
 }
 
-export default function DemandMetricChart({ row, metricId }: Props) {
-  const [range, setRange] = useState<RangeKey>("1y");
-  const [granularity, setGranularity] = useState<Granularity>("month");
+function buildCoords(
+  points: DemandChartPoint[],
+  min: number,
+  max: number
+): Array<DemandChartPoint & { x: number; y: number }> {
+  const n = points.length;
+  return points.map((p, i) => ({
+    ...p,
+    x: PAD.left + (n <= 1 ? PLOT_W / 2 : (i / (n - 1)) * PLOT_W),
+    y: PAD.top + linearMap(p.value, min, max, PLOT_H, 0),
+  }));
+}
 
-  const series = buildDemandMetricChartSeries(row, metricId);
-  const { chartKind, subtitle } = series;
-  const label = demandMetricLabel(metricId);
-  const theme = THEMES[chartKind] ?? THEMES.trade;
+export default function DemandMetricChart({ rows, metricId, focusRowKey }: Props) {
+  const [range, setRange] = useState<RangeKey>("30d");
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const keyword =
-    metricId === "packingVolume" || metricId === "packingIndex"
-      ? row.packing.keyword
-      : metricId === "moveInVolume" || metricId === "moveInIndex"
-        ? row.moveInClean.keyword
-        : row.pathLabel;
+  const compareMode = rows.length > 1;
+  const rowKeysSig = rows.map((r) => demandRegionSelectionKey(r.selection)).join(",");
+  const chartUid = `${metricId}-${range}-${rowKeysSig}`;
+  const metricTheme = demandMetricChartTheme(metricId);
 
-  const points = useMemo(() => slicePoints(series.points, range), [series.points, range]);
-
-  const chart = useMemo(() => {
-    const values = points.map((p) => p.value);
-    if (values.length === 0) return null;
-
-    const symmetric = chartKind === "indexDelta";
-    const domain = symmetric
-      ? { min: Math.min(-3, ...values), max: Math.max(3, ...values) }
-      : niceLinearDomain(values, { floorAtZero: chartKind === "trade" || chartKind === "volume" });
-
-    const yTicks = buildLinearTicks(domain.min, domain.max, 5);
-    const baselineY = PAD.top + PLOT_H;
-
-    const coords = points.map((p, i) => ({
-      ...p,
-      x: PAD.left + (points.length <= 1 ? PLOT_W / 2 : (i / (points.length - 1)) * PLOT_W),
-      y: PAD.top + linearMap(p.value, domain.min, domain.max, PLOT_H, 0),
-    }));
-
-    const linePath = buildSmoothLinePath(coords);
-    const areaPath = buildAreaPath(linePath, coords, baselineY);
-
-    let maxIdx = 0;
-    let minIdx = 0;
-    for (let i = 1; i < values.length; i += 1) {
-      if (values[i] > values[maxIdx]) maxIdx = i;
-      if (values[i] < values[minIdx]) minIdx = i;
-    }
-
-    const zeroY =
-      chartKind === "indexDelta" && domain.min < 0 && domain.max > 0
-        ? PAD.top + linearMap(0, domain.min, domain.max, PLOT_H, 0)
+  const focusKey =
+    focusRowKey && rows.some((r) => demandRegionSelectionKey(r.selection) === focusRowKey)
+      ? focusRowKey
+      : rows[0]
+        ? demandRegionSelectionKey(rows[0].selection)
         : null;
 
-    const latest = values[values.length - 1];
+  const { chartKind, subtitle, seriesList } = useMemo(() => {
+    const bundles = rows.map((row, i) => {
+      const series = buildDemandMetricChartSeries(row, metricId, range);
+      return {
+        row,
+        rowKey: demandRegionSelectionKey(row.selection),
+        label: row.label,
+        color: compareMode ? demandRegionCompareColor(i) : metricTheme.stroke,
+        points: series.points,
+        chartKind: series.chartKind,
+        subtitle: series.subtitle,
+      };
+    });
+    const kind = bundles[0]?.chartKind ?? "trade";
+    const sub = compareMode
+      ? bundles.map((b) => b.subtitle).find(Boolean) ?? ""
+      : bundles[0]?.subtitle ?? "";
+    return { chartKind: kind, subtitle: sub, seriesList: bundles };
+  }, [rows, metricId, range, compareMode, metricTheme.stroke]);
 
-    return { domain, yTicks, coords, linePath, areaPath, maxIdx, minIdx, zeroY, latest, fmt: chartKind };
-  }, [points, chartKind]);
+  const chart = useMemo(() => {
+    if (seriesList.length === 0 || seriesList[0].points.length === 0) return null;
 
-  const summaryValue = useMemo(() => {
-    if (!chart) return "—";
-    if (metricId === "packingVolume") {
-      const v = row.packing.searchVolumeMonth;
-      return v != null ? formatSearchVolumeMonth(v) : row.packing.searchVolumeBelowTen ? "<10" : "—";
-    }
-    if (metricId === "moveInVolume") {
-      const v = row.moveInClean.searchVolumeMonth;
-      return v != null ? formatSearchVolumeMonth(v) : row.moveInClean.searchVolumeBelowTen ? "<10" : "—";
-    }
-    return formatChartMetricValue(chart.latest, chart.fmt);
-  }, [chart, metricId, row]);
+    const pointCount = Math.min(...seriesList.map((s) => s.points.length));
+    const trimmed = seriesList.map((s) => ({
+      ...s,
+      points: s.points.slice(-pointCount),
+    }));
 
-  if (!chart) return null;
+    const allValues = trimmed.flatMap((s) => s.points.map((p) => p.value));
+    const symmetric = chartKind === "indexDelta";
+    const { min, max, ticks } = niceChartScale(allValues, {
+      floorAtZero: chartKind === "trade" || chartKind === "volume",
+      symmetric,
+    });
 
-  const { yTicks, coords, linePath, areaPath, maxIdx, minIdx, zeroY, fmt } = chart;
+    const baselineY = PAD.top + PLOT_H;
+    const zeroY =
+      symmetric && min < 0 && max > 0 ? PAD.top + linearMap(0, min, max, PLOT_H, 0) : null;
+
+    const series: SeriesBundle[] = trimmed.map((s) => {
+      const coords = buildCoords(s.points, min, max);
+      return {
+        row: s.row,
+        rowKey: s.rowKey,
+        label: s.label,
+        color: s.color,
+        points: s.points,
+        coords,
+        linePath: buildLinePath(coords),
+      };
+    });
+
+    const primary = series.find((s) => s.rowKey === focusKey) ?? series[0];
+    const areaPath =
+      !compareMode && primary
+        ? buildAreaPath(primary.linePath, primary.coords, baselineY)
+        : null;
+
+    return { min, max, ticks, series, zeroY, fmt: chartKind as ChartKind, pointCount, areaPath };
+  }, [seriesList, chartKind, focusKey, compareMode]);
+
+  const pointsSignature = useMemo(
+    () =>
+      chart?.series.map((s) => s.points.map((p) => `${p.period}:${p.value}`).join("|")).join(";") ?? "",
+    [chart]
+  );
+
+  useEffect(() => {
+    if (!chart) return;
+    setSelectedIndex(Math.max(0, chart.pointCount - 1));
+  }, [chartUid, pointsSignature, chart?.pointCount]);
+
+  const label = demandMetricLabel(metricId);
+  const compareSubtitle = compareMode ? rows.map((r) => r.label).join(" · ") : null;
+
+  if (!chart || chart.pointCount === 0) return null;
+
+  const { ticks, series, zeroY, fmt, areaPath } = chart;
+  const activeIdx = Math.min(Math.max(0, selectedIndex), chart.pointCount - 1);
+  const activeX = series[0]?.coords[activeIdx]?.x ?? PAD.left;
+  const densePoints = chart.pointCount > 15;
+  const dotRadius = densePoints ? 2 : 3;
+  const gradientId = `demand-grad-${chartUid}`;
+
+  const primaryRow = rows.find((r) => demandRegionSelectionKey(r.selection) === focusKey) ?? rows[0];
+  const keyword =
+    metricId === "packingVolume" || metricId === "packingIndex"
+      ? primaryRow.packing.keyword
+      : metricId === "moveInVolume" || metricId === "moveInIndex"
+        ? primaryRow.moveInClean.keyword
+        : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md shadow-slate-200/40">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">{label}</h3>
-            <p className="mt-0.5 text-xs text-slate-500">{row.pathLabel} · {subtitle}</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {compareSubtitle ?? primaryRow.pathLabel}
+              {!compareMode && keyword ? ` · ${keyword}` : null}
+            </p>
+            {compareMode ? (
+              <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                {series.map((s) => {
+                  const focused = s.rowKey === focusKey;
+                  return (
+                    <li
+                      key={s.rowKey}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-xs",
+                        focused ? "font-semibold text-slate-800" : "text-slate-600"
+                      )}
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: s.color }}
+                        aria-hidden
+                      />
+                      {s.label}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
-              {(
-                [
-                  { key: "30d" as const, label: "30일" },
-                  { key: "1y" as const, label: "1년" },
-                  { key: "3y" as const, label: "3년" },
-                ] as const
-              ).map(({ key, label: rangeLabel }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setRange(key)}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 transition-colors",
-                    range === key
-                      ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                      : "text-slate-500 hover:text-slate-700"
-                  )}
-                >
-                  {rangeLabel}
-                </button>
-              ))}
-            </div>
+          <div className="inline-flex shrink-0 rounded-lg border border-slate-200 p-0.5 text-xs">
+            {chartRangeOptions().map(({ key, label: rangeLabel, disabled }) => (
+              <button
+                key={key}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  if (!disabled) setRange(key);
+                }}
+                className={cn(
+                  "rounded-md px-2.5 py-1 transition-colors",
+                  disabled && "cursor-not-allowed opacity-40",
+                  !disabled && range === key && "bg-slate-100 font-medium text-slate-900",
+                  !disabled && range !== key && "text-slate-500 hover:text-slate-700",
+                  disabled && "text-slate-400"
+                )}
+                aria-disabled={disabled}
+              >
+                {rangeLabel}
+              </button>
+            ))}
           </div>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1",
-                theme.tag
-              )}
-            >
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: theme.dot }} aria-hidden />
-              {keyword}
-            </span>
-            <button
-              type="button"
-              disabled
-              className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-200 px-2.5 py-1 text-xs text-slate-400"
-            >
-              <Plus className="h-3 w-3" />
-              비교 키워드 추가
-            </button>
-          </div>
-          <label className="inline-flex items-center gap-1 text-xs text-slate-600">
-            <span className="sr-only">집계 단위</span>
-            <select
-              value={granularity}
-              onChange={(e) => setGranularity(e.target.value as Granularity)}
-              className="appearance-none rounded-lg border border-slate-200 bg-white py-1 pl-2 pr-6 text-xs font-medium text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-200"
-            >
-              <option value="month">월별</option>
-              <option value="week">주별</option>
-            </select>
-            <ChevronDown className="-ml-5 h-3.5 w-3.5 pointer-events-none text-slate-400" aria-hidden />
-          </label>
         </div>
       </div>
 
-      <div className="px-2 pb-2 pt-1 sm:px-4">
+      <div className="relative mx-3 mb-3 mt-2 aspect-[640/200] w-[calc(100%-1.5rem)] max-w-full sm:mx-4">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full text-slate-400"
-          role="img"
-          aria-label={`${row.pathLabel} ${label} 추세`}
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          aria-hidden
         >
-          <defs>
-            <linearGradient id={theme.fillId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={theme.fillFrom} stopOpacity={0.22} />
-              <stop offset="100%" stopColor={theme.fillTo} stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
+          {!compareMode ? (
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={metricTheme.fillFrom} stopOpacity={0.28} />
+                <stop offset="85%" stopColor={metricTheme.fillFrom} stopOpacity={0.04} />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+          ) : null}
 
-          {yTicks.map((tick) => {
-            const y = PAD.top + linearMap(tick, chart.domain.min, chart.domain.max, PLOT_H, 0);
+          {ticks.map((tick) => {
+            const y = PAD.top + linearMap(tick, chart.min, chart.max, PLOT_H, 0);
             return (
               <g key={tick}>
-                <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-                <text
-                  x={PAD.left - 8}
-                  y={y + 4}
-                  textAnchor="end"
-                  className="fill-slate-400 text-[10px] tabular-nums"
-                >
+                <line
+                  x1={PAD.left}
+                  y1={y}
+                  x2={W - PAD.right}
+                  y2={y}
+                  stroke="#e2e8f0"
+                  strokeDasharray="4 4"
+                />
+                <text x={PAD.left - 6} y={y + 3.5} textAnchor="end" fill="#94a3b8" fontSize={9}>
                   {formatChartMetricValue(tick, fmt)}
                 </text>
               </g>
@@ -261,91 +284,185 @@ export default function DemandMetricChart({ row, metricId }: Props) {
               x2={W - PAD.right}
               y2={zeroY}
               stroke="#cbd5e1"
-              strokeWidth={1}
-              strokeDasharray="5 4"
+              strokeDasharray="4 4"
             />
           ) : null}
 
-          <path d={areaPath} fill={`url(#${theme.fillId})`} />
-          <path d={linePath} fill="none" stroke={theme.stroke} strokeWidth={2.5} strokeLinecap="round" />
+          {areaPath ? <path d={areaPath} fill={`url(#${gradientId})`} /> : null}
 
-          {coords.map((c, i) => {
-            const showX = i === 0 || i === coords.length - 1 || i % 2 === 0;
-            return showX ? (
-              <text
-                key={c.period}
-                x={c.x}
-                y={H - 10}
-                textAnchor="middle"
-                className="fill-slate-500 text-[10px] tabular-nums"
-              >
-                {c.period}
-              </text>
-            ) : null;
+          <line
+            x1={activeX}
+            y1={PAD.top}
+            x2={activeX}
+            y2={PAD.top + PLOT_H}
+            stroke={compareMode ? "#94a3b8" : metricTheme.stroke}
+            strokeOpacity={0.25}
+            strokeDasharray="3 3"
+          />
+
+          {series.map((s) => {
+            const focused = s.rowKey === focusKey;
+            return (
+              <path
+                key={`line-${s.rowKey}`}
+                d={s.linePath}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={focused ? 2.5 : compareMode ? 2 : 2.25}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeOpacity={compareMode && !focused ? 0.85 : 1}
+              />
+            );
           })}
 
-          {[maxIdx, minIdx]
-            .filter((idx, pos, arr) => arr.indexOf(idx) === pos)
-            .map((idx) => {
-              const c = coords[idx];
-              const isMax = idx === maxIdx;
-              const tag = isMax ? "최대" : "최소";
-              const labelY = isMax ? c.y - 14 : c.y + 20;
+          {series.map((s) => {
+            const focused = s.rowKey === focusKey;
+            const c = s.coords[activeIdx];
+            if (!c) return null;
+
+            if (compareMode) {
+              if (!focused) {
+                return (
+                  <circle
+                    key={`dot-${s.rowKey}`}
+                    cx={c.x}
+                    cy={c.y}
+                    r={dotRadius}
+                    fill={s.color}
+                    stroke="white"
+                    strokeWidth={1}
+                  />
+                );
+              }
               return (
-                <g key={`${tag}-${idx}`}>
-                  <circle cx={c.x} cy={c.y} r={5} fill="white" stroke={theme.stroke} strokeWidth={2} />
-                  <circle cx={c.x} cy={c.y} r={2.5} fill={theme.dot} />
-                  <text
-                    x={c.x}
-                    y={labelY}
-                    textAnchor="middle"
-                    className="fill-slate-600 text-[10px] font-semibold tabular-nums"
-                  >
-                    {tag} {c.period}
-                  </text>
-                  <text
-                    x={c.x}
-                    y={labelY + (isMax ? -11 : 11)}
-                    textAnchor="middle"
-                    className="fill-slate-500 text-[9px] tabular-nums"
-                  >
-                    {formatChartMetricValue(c.value, fmt)}
-                  </text>
+                <g key={`dot-${s.rowKey}`}>
+                  <circle
+                    cx={c.x}
+                    cy={c.y}
+                    r={8}
+                    fill="none"
+                    stroke={DEMAND_CHART_ACTIVE_RING}
+                    strokeWidth={2}
+                  />
+                  <circle cx={c.x} cy={c.y} r={4.5} fill={s.color} stroke="white" strokeWidth={2} />
                 </g>
               );
-            })}
+            }
+
+            return s.coords.map((pt, i) => {
+              const isActive = i === activeIdx;
+              if (isActive) {
+                return (
+                  <g key={`dot-${s.rowKey}-${i}`}>
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={8}
+                      fill="none"
+                      stroke={DEMAND_CHART_ACTIVE_RING}
+                      strokeWidth={2}
+                    />
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={4.5}
+                      fill={s.color}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
+                  </g>
+                );
+              }
+              return (
+                <circle
+                  key={`dot-${s.rowKey}-${i}`}
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={dotRadius}
+                  fill={s.color}
+                  stroke="white"
+                  strokeWidth={densePoints ? 1 : 1.5}
+                />
+              );
+            });
+          })}
         </svg>
+
+        {series[0]?.coords.map((c, i) => {
+          const isActive = i === activeIdx;
+          return (
+            <button
+              key={`hit-${i}`}
+              type="button"
+              className={cn(
+                "absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full touch-manipulation",
+                densePoints ? "h-6 w-6" : "h-9 w-9",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
+                !isActive && "hover:bg-slate-500/5"
+              )}
+              style={{ left: pctX(c.x), top: pctY(c.y) }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedIndex(i);
+              }}
+              aria-label={`${c.period}`}
+              aria-pressed={isActive}
+            >
+              <span className="sr-only">{c.period}</span>
+            </button>
+          );
+        })}
+
+        <div
+          className={cn(
+            "pointer-events-none absolute z-20 rounded-lg border border-slate-200/90 bg-white px-2.5 py-1.5 shadow-md",
+            compareMode ? "min-w-[7.5rem]" : "min-w-[4.75rem] text-center"
+          )}
+          style={{
+            left: pctX(activeX),
+            top: pctY(series[0].coords[activeIdx].y),
+            transform: "translate(-50%, 12px)",
+          }}
+        >
+          <p className="text-[10px] text-slate-500">{series[0].coords[activeIdx].period}</p>
+          {compareMode ? (
+            <ul className="mt-1 space-y-0.5">
+              {series.map((s) => {
+                const pt = s.coords[activeIdx];
+                return (
+                  <li
+                    key={s.rowKey}
+                    className={cn(
+                      "flex items-center justify-between gap-3 text-xs tabular-nums",
+                      s.rowKey === focusKey ? "font-semibold text-slate-900" : "text-slate-700"
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: s.color }}
+                        aria-hidden
+                      />
+                      {s.label}
+                    </span>
+                    <span>{formatChartMetricValue(pt.value, fmt)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-xs font-semibold tabular-nums text-slate-900">
+              {formatChartMetricValue(series[0].coords[activeIdx].value, fmt)}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-slate-500">
-              <th className="w-24 pb-2 text-left font-medium" />
-              <th className="pb-2 text-left font-medium">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: theme.dot }} />
-                  {keyword}
-                </span>
-              </th>
-              <th className="pb-2 text-right font-medium text-slate-400">더미</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="py-1.5 font-medium text-slate-600">{summaryLabel(metricId, chartKind)}</td>
-              <td className="py-1.5 font-bold tabular-nums text-slate-900">{summaryValue}</td>
-              <td className="py-1.5 text-right text-slate-400">{granularity === "month" ? "월별" : "주별"}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {(metricId === "packingVolume" || metricId === "moveInVolume") && (
-        <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400 sm:px-5">
-          검색광고 API는 일별 원본이 없어, 검색량은 최근 30일 스냅샷·월별 추정치로 표시합니다.
-        </p>
-      )}
+      {!compareMode && (metricId === "packingVolume" || metricId === "moveInVolume") && subtitle ? (
+        <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400 sm:px-5">{subtitle}</p>
+      ) : null}
     </div>
   );
 }

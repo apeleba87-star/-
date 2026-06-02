@@ -71,7 +71,7 @@ export function searchDemand(query: string, limit = 12): DemandSearchResult[] {
       title: gu,
       subtitle: district
         ? inTop
-          ? `입주수요지수 ${district.indexScore} · 서울 ${district.rank}위`
+          ? `입주 온도 ${district.indexScore} · 서울 ${district.rank}위`
           : "데이터 준비 중"
         : "서울",
       href: `/demand/region/${slug}`,

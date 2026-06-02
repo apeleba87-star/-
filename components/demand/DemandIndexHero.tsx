@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import SignalBadge from "@/components/demand/SignalBadge";
 import { DemandRevealInline } from "@/components/demand/DemandReveal";
-import { formatRankChange } from "@/lib/demand/copy";
+import { DEMAND_METRIC_LABELS, formatRankChange } from "@/lib/demand/copy";
 import type { DemandDistrictScore } from "@/lib/demand/types";
 
 export default function DemandIndexHero({ district }: { district: DemandDistrictScore }) {
@@ -20,7 +20,7 @@ export default function DemandIndexHero({ district }: { district: DemandDistrict
           onClick={() => setShowIndex(true)}
           className="mt-4 inline-flex min-h-11 items-center rounded-xl border-2 border-dashed border-teal-300 bg-teal-50/50 px-5 text-sm font-semibold text-teal-900 hover:bg-teal-50"
         >
-          입주수요지수 확인
+          {DEMAND_METRIC_LABELS.composite} 확인
         </button>
       ) : (
         <div className="mt-4">
