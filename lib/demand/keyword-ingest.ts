@@ -29,7 +29,7 @@ export async function runDemandKeywordIngestJob(
       datalab = {
         ...synced,
         warning:
-          "구별 검색지수 없음 — NAVER_CLIENT_ID/SECRET 없어 마케팅 트렌드 DB의 전국 키워드만 복사했습니다. 구별(강남구입주청소 등)은 데이터랩 API 직접 수집이 필요합니다.",
+          "구별 검색지수 없음 — NAVER_CLIENT_ID/SECRET 없어 마케팅 트렌드 DB의 전국 키워드만 복사했습니다. 구별(강남구입주청소·강남구포장이사 등)은 데이터랩 API 직접 수집이 필요합니다.",
       };
     }
   }

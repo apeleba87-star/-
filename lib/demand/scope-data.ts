@@ -8,7 +8,10 @@ import {
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
 import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
-import { demandKeywordKeyForMetric } from "@/lib/demand/keyword-hub-data";
+import {
+  demandKeywordHasIndexData,
+  demandKeywordKeyForMetric,
+} from "@/lib/demand/keyword-hub-data";
 import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import {
   demandKeywordIndexLevelHint,
@@ -551,12 +554,11 @@ export function buildDemandMetricChartSeries(
     const key = demandKeywordKeyForMetric(metricId);
     const rowSeries = row.keywordDailySeries?.[key];
     const monthlySeries = row.keywordMonthlyIndexSeries?.[key];
-    const liveDaily =
-      isDaily && row.keywordSource?.datalab === "live" && (rowSeries?.length ?? 0) > 0;
-    const levelHint = demandKeywordIndexLevelHint(
-      row.selection,
-      row.keywordIndexLevelByKey?.[key] ?? row.keywordIndexLevel ?? "dummy"
-    );
+    const indexLevel =
+      row.keywordIndexLevelByKey?.[key] ?? row.keywordIndexLevel ?? "dummy";
+    const indexLive = demandKeywordHasIndexData(row, key);
+    const liveDaily = isDaily && indexLive && (rowSeries?.length ?? 0) > 0;
+    const levelHint = demandKeywordIndexLevelHint(row.selection, indexLevel);
 
     if (liveDaily && rowSeries && isDaily) {
       const points = rowSeries.slice(-CHART_DAILY_POINTS);
@@ -569,7 +571,7 @@ export function buildDemandMetricChartSeries(
 
     if (
       searchRange === "1y" &&
-      liveDaily &&
+      indexLive &&
       rowSeries &&
       rowSeries.length > 0 &&
       (!monthlySeries || monthlySeries.length < MIN_MONTHLY_POINTS_FOR_YEAR_CHART)
@@ -583,7 +585,7 @@ export function buildDemandMetricChartSeries(
     }
 
     if (
-      row.keywordSource?.datalab === "live" &&
+      indexLive &&
       monthlySeries &&
       monthlySeries.length >= MIN_MONTHLY_POINTS_FOR_YEAR_CHART
     ) {
@@ -596,11 +598,15 @@ export function buildDemandMetricChartSeries(
     }
 
     const periods = isDaily ? dayPeriods : monthPeriods;
+    const noDataNote =
+      indexLevel === "dummy"
+        ? " · 구별·전국 지수 미수집(데이터랩 수집 필요)"
+        : "";
     return {
       chartKind: "indexDelta",
       subtitle: isDaily
-        ? `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 전일 대비 % (더미)`
-        : `키워드 「${slice.keyword}」 · 월별 지수 변화 (더미)`,
+        ? `키워드 「${slice.keyword}」 · 최근 ${CHART_DAILY_POINTS}일 전일 대비 % (더미)${noDataNote}${levelHint}`
+        : `키워드 「${slice.keyword}」 · 월별 지수 변화 (더미)${noDataNote}${levelHint}`,
       points: isDaily
         ? buildDailyIndexDeltaPoints(seed, slice.indexDodPercent, periods)
         : periods.map((period, i) => {

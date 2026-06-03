@@ -1,4 +1,5 @@
 import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
+import type { DemandKeywordIndexLevel } from "@/lib/demand/keyword-resolve";
 import type { DemandKeywordMetricSlice } from "@/lib/demand/keyword-metrics";
 
 export type DemandKeywordChartPoint = { period: string; value: number };
@@ -27,4 +28,20 @@ export function demandKeywordKeyForMetric(
   metricId: "packingIndex" | "moveInIndex" | "packingVolume" | "moveInVolume"
 ): DemandKeywordKey {
   return metricId === "packingIndex" || metricId === "packingVolume" ? "packing" : "move_in_clean";
+}
+
+/** 입주청소·포장이사 각각 — 구/시/전국 fallback·시계열 유무 (차트·푸터용) */
+export function demandKeywordHasIndexData(
+  row: {
+    keywordIndexLevelByKey?: Partial<Record<DemandKeywordKey, DemandKeywordIndexLevel>>;
+    keywordDailySeries?: Partial<Record<DemandKeywordKey, { length: number }[]>>;
+    keywordMonthlyIndexSeries?: Partial<Record<DemandKeywordKey, { length: number }[]>>;
+  },
+  key: DemandKeywordKey
+): boolean {
+  const level = row.keywordIndexLevelByKey?.[key] ?? "dummy";
+  if (level === "dummy") return false;
+  const daily = row.keywordDailySeries?.[key]?.length ?? 0;
+  const monthly = row.keywordMonthlyIndexSeries?.[key]?.length ?? 0;
+  return daily > 0 || monthly > 0;
 }

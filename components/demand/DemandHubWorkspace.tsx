@@ -78,11 +78,23 @@ export default function DemandHubWorkspace({
   );
 
   const keywordSourceSummary = useMemo(() => {
-    if (!scopeRows.length) return { datalab: "dummy" as const, volume: "dummy" as const };
-    const datalabLive = scopeRows.some((r) => r.keywordSource?.datalab === "live");
+    if (!scopeRows.length) {
+      return {
+        packingIndex: "dummy" as const,
+        moveInIndex: "dummy" as const,
+        volume: "dummy" as const,
+      };
+    }
+    const packingLive = scopeRows.some(
+      (r) => (r.keywordIndexLevelByKey?.packing ?? "dummy") !== "dummy"
+    );
+    const moveInLive = scopeRows.some(
+      (r) => (r.keywordIndexLevelByKey?.move_in_clean ?? "dummy") !== "dummy"
+    );
     const volumeLive = scopeRows.some((r) => r.keywordSource?.volume === "live");
     return {
-      datalab: datalabLive ? ("live" as const) : ("dummy" as const),
+      packingIndex: packingLive ? ("live" as const) : ("dummy" as const),
+      moveInIndex: moveInLive ? ("live" as const) : ("dummy" as const),
       volume: volumeLive ? ("live" as const) : ("dummy" as const),
     };
   }, [scopeRows]);
@@ -277,8 +289,9 @@ export default function DemandHubWorkspace({
             </table>
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">
               {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS · 검색지수=
-              검색지수=
-              {keywordSourceSummary.datalab === "live" ? "데이터랩(지역)" : "더미"} · 검색량=
+              포장이사{" "}
+              {keywordSourceSummary.packingIndex === "live" ? "데이터랩(지역)" : "더미"} · 입주청소{" "}
+              {keywordSourceSummary.moveInIndex === "live" ? "데이터랩(지역)" : "더미"} · 검색량=
               {keywordSourceSummary.volume === "live" ? "검색광고(지역)" : "더미"}
             </p>
           </div>
