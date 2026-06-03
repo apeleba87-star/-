@@ -34,8 +34,8 @@ export function demandKeywordKeyForMetric(
 export function demandKeywordHasIndexData(
   row: {
     keywordIndexLevelByKey?: Partial<Record<DemandKeywordKey, DemandKeywordIndexLevel>>;
-    keywordDailySeries?: Partial<Record<DemandKeywordKey, { length: number }[]>>;
-    keywordMonthlyIndexSeries?: Partial<Record<DemandKeywordKey, { length: number }[]>>;
+    keywordDailySeries?: Partial<Record<DemandKeywordKey, DemandKeywordChartPoint[]>>;
+    keywordMonthlyIndexSeries?: Partial<Record<DemandKeywordKey, DemandKeywordChartPoint[]>>;
   },
   key: DemandKeywordKey
 ): boolean {
