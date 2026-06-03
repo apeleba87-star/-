@@ -4,7 +4,7 @@ import { runDemandKeywordIngestJob } from "@/lib/demand/keyword-ingest";
 import { getSearchAdCredentialsStatus } from "@/lib/naver/searchad-keyword-client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 async function requireAdminEditor() {
   const supabase = await createServerSupabase();
@@ -26,10 +26,22 @@ export async function GET() {
   }
   try {
     const service = createServiceSupabase();
-    const [dailyRes, monthlyRes] = await Promise.all([
+    const [dailyRes, monthlyRes, districtDailyRes, datalabDistrictRes] = await Promise.all([
       service.from("demand_keyword_daily").select("*", { count: "exact", head: true }),
       service.from("demand_keyword_monthly").select("*", { count: "exact", head: true }),
+      service
+        .from("demand_keyword_daily")
+        .select("*", { count: "exact", head: true })
+        .eq("region_scope", "district"),
+      service
+        .from("demand_keyword_daily")
+        .select("*", { count: "exact", head: true })
+        .eq("region_scope", "district")
+        .eq("source", "datalab"),
     ]);
+    const datalabConfigured = Boolean(
+      process.env.NAVER_CLIENT_ID?.trim() && process.env.NAVER_CLIENT_SECRET?.trim()
+    );
     const searchadMonthly = await service
       .from("demand_keyword_monthly")
       .select("*", { count: "exact", head: true })
@@ -45,6 +57,9 @@ export async function GET() {
       ok: true,
       dailyRows: dailyRes.count ?? 0,
       monthlyRows: monthlyRes.count ?? 0,
+      districtDailyRows: districtDailyRes.count ?? 0,
+      datalabDistrictRows: datalabDistrictRes.count ?? 0,
+      datalabConfigured,
       searchadMonthlyRows: searchadMonthly.count ?? 0,
       searchadDistinctMonths,
       searchAdCredentials: getSearchAdCredentialsStatus(),

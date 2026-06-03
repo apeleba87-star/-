@@ -61,6 +61,30 @@ function normalizePeriodDate(period: string): string {
   return period.slice(0, 10);
 }
 
+const DATALAB_UPSERT_CHUNK = 400;
+const DATALAB_BATCH_DELAY_MS = 350;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function upsertDemandKeywordDailyBatched(
+  supabase: SupabaseClient,
+  allRows: DailyUpsertRow[]
+): Promise<{ inserted: number } | { error: string }> {
+  let inserted = 0;
+  for (let i = 0; i < allRows.length; i += DATALAB_UPSERT_CHUNK) {
+    const chunk = allRows.slice(i, i + DATALAB_UPSERT_CHUNK);
+    const { error, count } = await supabase.from("demand_keyword_daily").upsert(chunk, {
+      onConflict: "keyword_key,region_scope,region_key,period_date,source",
+      count: "exact",
+    });
+    if (error) return { error: error.message };
+    inserted += count ?? chunk.length;
+  }
+  return { inserted };
+}
+
 function encodeGroupName(region: DemandKeywordRegionRef, keywordKey: DemandKeywordKey): string {
   return `d|${region.regionScope}|${region.regionKey}|${keywordKey}`;
 }
@@ -171,47 +195,34 @@ async function collectAllRegionRows(
   const allRows: DailyUpsertRow[] = [];
   let regionBatches = 0;
 
-  allRows.push(
-    ...(await fetchDatalabBatch(
-      clientId,
-      clientSecret,
-      startDate,
-      endDate,
-      timeUnit,
-      source,
-      buildNationalGroups()
-    ))
-  );
-  regionBatches += 1;
+  const batches: DatalabGroup[][] = [
+    buildNationalGroups(),
+    buildCityGroups(),
+    ...(["packing", "move_in_clean"] as const).flatMap((keywordKey) => {
+      const districts = buildDistrictGroups(keywordKey);
+      const chunks: DatalabGroup[][] = [];
+      for (let i = 0; i < districts.length; i += 5) {
+        chunks.push(districts.slice(i, i + 5));
+      }
+      return chunks;
+    }),
+  ];
 
-  allRows.push(
-    ...(await fetchDatalabBatch(
-      clientId,
-      clientSecret,
-      startDate,
-      endDate,
-      timeUnit,
-      source,
-      buildCityGroups()
-    ))
-  );
-  regionBatches += 1;
-
-  for (const keywordKey of ["packing", "move_in_clean"] as const) {
-    const districts = buildDistrictGroups(keywordKey);
-    for (let i = 0; i < districts.length; i += 5) {
-      allRows.push(
-        ...(await fetchDatalabBatch(
-          clientId,
-          clientSecret,
-          startDate,
-          endDate,
-          timeUnit,
-          source,
-          districts.slice(i, i + 5)
-        ))
-      );
-    }
+  for (let b = 0; b < batches.length; b++) {
+    if (b > 0) await sleep(DATALAB_BATCH_DELAY_MS);
+    const groups = batches[b];
+    if (groups.length === 0) continue;
+    allRows.push(
+      ...(await fetchDatalabBatch(
+        clientId,
+        clientSecret,
+        startDate,
+        endDate,
+        timeUnit,
+        source,
+        groups
+      ))
+    );
     regionBatches += 1;
   }
 
@@ -262,20 +273,14 @@ export async function runDemandDatalabDailyIngestJob(
       return { ok: false, error: "DataLab returned no rows" };
     }
 
-    const { error, count } = await supabase
-      .from("demand_keyword_daily")
-      .upsert(allRows, {
-        onConflict: "keyword_key,region_scope,region_key,period_date,source",
-        count: "exact",
-      });
-
-    if (error) {
-      return { ok: false, error: error.message };
+    const upserted = await upsertDemandKeywordDailyBatched(supabase, allRows);
+    if ("error" in upserted) {
+      return { ok: false, error: upserted.error };
     }
 
     return {
       ok: true,
-      inserted: count ?? allRows.length,
+      inserted: upserted.inserted,
       startDate,
       endDate,
       days,

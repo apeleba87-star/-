@@ -7,6 +7,9 @@ type Stats =
       ok: true;
       dailyRows: number;
       monthlyRows: number;
+      districtDailyRows?: number;
+      datalabDistrictRows?: number;
+      datalabConfigured?: boolean;
       searchadMonthlyRows?: number;
       searchadDistinctMonths?: number;
       searchAdCredentials?: { configured: boolean; customerId: string | null };
@@ -75,14 +78,49 @@ export default function DemandKeywordIngestPanel() {
   const runIngest = useCallback(async () => {
     setRunning(true);
     setLastRun(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
     try {
-      const res = await fetch("/api/admin/ingest-demand-keywords", { method: "POST" });
-      const j = (await res.json()) as RunResult;
-      setLastRun(j);
+      const res = await fetch("/api/admin/ingest-demand-keywords", {
+        method: "POST",
+        signal: controller.signal,
+      });
+      const text = await res.text();
+      let j: RunResult;
+      try {
+        j = JSON.parse(text) as RunResult;
+      } catch {
+        setLastRun({
+          ok: false,
+          error: `서버 응답 파싱 실패 (HTTP ${res.status}). ${text.slice(0, 200)}`,
+        });
+        return;
+      }
+      if (!res.ok) {
+        setLastRun({
+          ok: false,
+          error:
+            j.error ??
+            j.datalab?.error ??
+            (j as { error?: string }).error ??
+            `HTTP ${res.status}`,
+          datalab: j.datalab,
+        });
+      } else {
+        setLastRun(j);
+      }
       await loadStats();
     } catch (e) {
-      setLastRun({ ok: false, error: e instanceof Error ? e.message : String(e) });
+      const msg = e instanceof Error ? e.message : String(e);
+      setLastRun({
+        ok: false,
+        error:
+          msg === "fetch failed" || msg.includes("aborted")
+            ? "요청이 끊겼습니다. 구별 수집은 2~5분 걸립니다. Vercel(또는 dev) Functions 로그·터미널을 확인하고, 최신 코드 배포 후 다시 시도하세요."
+            : msg,
+      });
     } finally {
+      clearTimeout(timeoutId);
       setRunning(false);
     }
   }, [loadStats]);
@@ -122,6 +160,11 @@ export default function DemandKeywordIngestPanel() {
   }, []);
 
   const searchAdConfigured = stats?.ok ? stats.searchAdCredentials?.configured : false;
+  const datalabConfigured = stats?.ok ? Boolean(stats.datalabConfigured) : false;
+  const lastDatalabTrendOnly =
+    lastRun?.datalab &&
+    "source" in lastRun.datalab &&
+    lastRun.datalab.source === "naver_trend_datapoints";
 
   return (
     <div className="card mt-8 space-y-4">
@@ -134,6 +177,38 @@ export default function DemandKeywordIngestPanel() {
           <strong>검색광고 검색량</strong> → 매월 1회 스냅샷(그때의 최근 30일 롤링) →{" "}
           <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_monthly</code>
           · 월마다 1행씩 누적 → 1년 차트
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-950">
+        <p className="font-semibold">데이터랩 API (구별 검색지수)</p>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-xs">
+          <li>
+            <code>NAVER_CLIENT_ID</code> · <code>NAVER_CLIENT_SECRET</code> — developers.naver.com 앱
+            (데이터랩 검색어트렌드)
+          </li>
+          <li>
+            키 없으면 마케팅 트렌드 DB의 <strong>전국 입주청소</strong>만 복사 → 25구 비교 차트가
+            모두 같은 선
+          </li>
+        </ul>
+        <p className="mt-2 text-xs font-medium">
+          데이터랩 키:{" "}
+          {statsLoading
+            ? "…"
+            : stats?.ok
+              ? stats.datalabConfigured
+                ? "설정됨"
+                : "이 서버 미설정 (Vercel prod에는 있을 수 있음 — .env.local 복사 또는 prod에서 수집)"
+              : "—"}
+          {stats?.ok ? (
+            <>
+              {" "}
+              · 구별 일별 행{" "}
+              <strong>{(stats.datalabDistrictRows ?? 0).toLocaleString()}</strong>
+              {(stats.datalabDistrictRows ?? 0) === 0 ? " (구별 지수 없음)" : ""}
+            </>
+          ) : null}
         </p>
       </div>
 
@@ -178,10 +253,15 @@ export default function DemandKeywordIngestPanel() {
         <button
           type="button"
           onClick={() => void runIngest()}
-          disabled={running || runningSearchAd}
+          disabled={running || runningSearchAd || !datalabConfigured}
+          title={
+            datalabConfigured
+              ? "전국·서울·25구 입주청소·포장이사 검색지수 (DataLab API)"
+              : ".env.local 또는 Vercel에 NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 추가 후 dev 재시작"
+          }
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {running ? "수집 중…" : "데이터랩 수집 (지수)"}
+          {running ? "수집 중 (2~5분)…" : "데이터랩 수집 (구별 지수)"}
         </button>
         <button
           type="button"
@@ -215,6 +295,14 @@ export default function DemandKeywordIngestPanel() {
         <ul className="list-inside list-disc text-sm text-slate-600">
           <li>
             일별 지수 행: <strong>{stats.dailyRows.toLocaleString()}</strong>
+            {(stats.datalabDistrictRows ?? 0) === 0 && stats.dailyRows > 0 ? (
+              <span className="text-amber-800"> — 전국/트렌드만 있을 수 있음</span>
+            ) : null}
+          </li>
+          <li>
+            구별 일별 행: <strong>{(stats.districtDailyRows ?? 0).toLocaleString()}</strong>
+            {" "}
+            (데이터랩 source: <strong>{(stats.datalabDistrictRows ?? 0).toLocaleString()}</strong>)
           </li>
           <li>
             월별 행(전체): <strong>{stats.monthlyRows.toLocaleString()}</strong>
@@ -247,21 +335,49 @@ export default function DemandKeywordIngestPanel() {
         </div>
       ) : null}
 
+      {!datalabConfigured && !statsLoading ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <strong>이 서버(보통 localhost)에는 데이터랩 키가 없습니다.</strong> Vercel에{" "}
+          <code className="text-xs">NAVER_CLIENT_ID</code> / <code className="text-xs">SECRET</code> 이
+          있어도 <strong>배포 사이트 환경</strong>에만 적용됩니다. 구별 지수 수집은 (1) Vercel과 동일
+          값을 <code className="text-xs">.env.local</code>에 넣고 dev 재시작 후 여기서 실행, 또는 (2){" "}
+          <strong>프로덕션 URL</strong> 관리자에서 「데이터랩 수집」을 실행하세요. 검색광고 키만으로는
+          구별 지수가 수집되지 않습니다.
+        </p>
+      ) : null}
+
       {lastRun ? (
         <div
           className={`rounded-lg border p-3 text-sm ${
-            lastRun.ok ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"
+            lastRun.ok && !lastDatalabTrendOnly
+              ? "border-emerald-200 bg-emerald-50"
+              : lastRun.ok && lastDatalabTrendOnly
+                ? "border-amber-300 bg-amber-50"
+                : "border-red-200 bg-red-50"
           }`}
         >
           {lastRun.ok ? (
             <div className="space-y-1">
               <p>
-                DataLab: {lastRun.datalab?.ok ? "OK" : "실패"} ·{" "}
-                {"source" in (lastRun.datalab ?? {}) && lastRun.datalab?.source === "naver_trend_datapoints"
+                DataLab:{" "}
+                {lastDatalabTrendOnly ? (
+                  <strong className="text-amber-900">전국만 반영됨 (구별 아님)</strong>
+                ) : lastRun.datalab?.ok ? (
+                  "구별·전국 수집 OK"
+                ) : (
+                  "실패"
+                )}{" "}
+                ·{" "}
+                {lastDatalabTrendOnly
                   ? `트렌드 DB 복사 · ${(lastRun.datalab as { matched?: string[] }).matched?.join(", ") ?? ""}`
                   : `${(lastRun.datalab as { startDate?: string }).startDate ?? ""}~${(lastRun.datalab as { endDate?: string }).endDate ?? ""}`}{" "}
                 · {lastRun.datalab && "inserted" in lastRun.datalab ? lastRun.datalab.inserted : 0}행
               </p>
+              {"warning" in (lastRun.datalab ?? {}) && (lastRun.datalab as { warning?: string }).warning ? (
+                <p className="text-amber-900">
+                  {(lastRun.datalab as { warning?: string }).warning}
+                </p>
+              ) : null}
               <p>
                 검색광고:{" "}
                 {lastRun.searchAd?.skipped

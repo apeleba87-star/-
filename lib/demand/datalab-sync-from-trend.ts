@@ -2,7 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEMAND_KEYWORD_KEYS, type DemandKeywordKey } from "@/lib/demand/keyword-keys";
 
 export type DemandDatalabSyncFromTrendResult =
-  | { ok: true; inserted: number; source: "naver_trend_datapoints"; matched: string[] }
+  | {
+      ok: true;
+      inserted: number;
+      source: "naver_trend_datapoints";
+      matched: string[];
+      /** API 키 없이 트렌드만 복사했을 때 */
+      warning?: string;
+    }
   | { ok: false; error: string };
 
 const KEYWORD_MATCHERS: { key: DemandKeywordKey; test: (text: string) => boolean }[] = [

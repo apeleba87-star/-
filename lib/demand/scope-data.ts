@@ -499,8 +499,8 @@ export function buildDemandMetricChartSeries(
     if (!isDaily && volumeLive && monthlyVol?.length === 1) {
       return {
         chartKind: "volume",
-        subtitle: `키워드 「${slice.keyword}」 · 검색광고 스냅샷 1개월(${monthlyVol[0].period})${volumeHint} · 1년 그래프는 매월 수집 후 채워짐 · API는 콘솔 「월별 검색수」12개월 미제공`,
-        points: monthlyVol,
+        subtitle: `키워드 「${slice.keyword}」 · DB에 월 스냅샷 1개월(${monthlyVol[0].period}, ${monthlyVol[0].value.toLocaleString("ko-KR")})${volumeHint} · 1년 추이는 매월 「검색광고만 수집」 또는 cron(매월 1일)으로 2개월 이상 쌓인 뒤 표시 · 검색광고 API는 과거 12개월 일괄 조회 불가`,
+        points: [],
       };
     }
 

@@ -4,7 +4,8 @@ import { runDemandKeywordIngestJob } from "@/lib/demand/keyword-ingest";
 import { createServiceSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+/** 25구×2키워드×(일+월) DataLab 배치 — 120초면 구별 수집 전에 끊길 수 있음 */
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   return handleIngest(req);

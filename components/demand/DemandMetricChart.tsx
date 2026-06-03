@@ -16,6 +16,7 @@ import {
   type DemandChartPoint,
   type DemandScopeTableRow,
 } from "@/lib/demand/scope-data";
+import { demandKeywordKeyForMetric } from "@/lib/demand/keyword-hub-data";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
@@ -150,11 +151,48 @@ export default function DemandMetricChart({
     return { chartKind: kind, subtitle: sub, seriesList: bundles };
   }, [rows, metricId, range, compareMode, metricTheme.stroke, rtmsSeries]);
 
-  const chart = useMemo(() => {
-    if (seriesList.length === 0 || seriesList[0].points.length === 0) return null;
+  const indexNationalFallbackNote = useMemo(() => {
+    if (!isSearchIndexMetric(metricId) || rows.length === 0) return null;
+    const key = demandKeywordKeyForMetric(metricId);
+    const kwLabel = key === "packing" ? "포장이사" : "입주청소";
+    const districtRows = rows.filter((r) => r.selection.scope === "district");
+    if (districtRows.length === 0) return null;
+    const levels = districtRows.map(
+      (r) => r.keywordIndexLevelByKey?.[key] ?? r.keywordIndexLevel ?? "dummy"
+    );
+    if (!levels.every((l) => l === "national")) return null;
+    if (compareMode && districtRows.length >= 2) {
+      return `구별 ${kwLabel} 검색지수 미수집 — 선택한 ${districtRows.length}개 구 모두 전국 「${kwLabel}」 동일 추이입니다. Vercel에 NAVER_CLIENT_ID/SECRET 설정 후 관리자 「데이터랩 수집」을 실행하세요.`;
+    }
+    if (!compareMode && districtRows.length === 1) {
+      return `${districtRows[0].label} 구별 검색지수 미수집 — 전국 「${kwLabel}」 추이를 표시합니다. 구별 비교·차트는 데이터랩(구별 키워드) 수집 후 가능합니다.`;
+    }
+    return null;
+  }, [compareMode, metricId, rows]);
 
-    const pointCount = Math.min(...seriesList.map((s) => s.points.length));
-    const trimmed = seriesList.map((s) => ({
+  const displaySeriesList = useMemo(() => {
+    if (!indexNationalFallbackNote || !compareMode || seriesList.length < 2) {
+      return seriesList;
+    }
+    const sig = (pts: DemandChartPoint[]) => pts.map((p) => `${p.period}:${p.value}`).join("|");
+    const ref = sig(seriesList[0].points);
+    if (!seriesList.every((s) => sig(s.points) === ref)) return seriesList;
+    const key = demandKeywordKeyForMetric(metricId);
+    const kwLabel = key === "packing" ? "포장이사" : "입주청소";
+    return [
+      {
+        ...seriesList[0],
+        label: `전국 · ${kwLabel}`,
+        color: demandRegionCompareColor(0),
+      },
+    ];
+  }, [indexNationalFallbackNote, compareMode, seriesList, metricId]);
+
+  const chart = useMemo(() => {
+    if (displaySeriesList.length === 0 || displaySeriesList[0].points.length === 0) return null;
+
+    const pointCount = Math.min(...displaySeriesList.map((s) => s.points.length));
+    const trimmed = displaySeriesList.map((s) => ({
       ...s,
       points: s.points.slice(-pointCount),
     }));
@@ -190,7 +228,7 @@ export default function DemandMetricChart({
         : null;
 
     return { min, max, ticks, series, zeroY, fmt: chartKind as ChartKind, pointCount, areaPath };
-  }, [seriesList, chartKind, focusKey, compareMode]);
+  }, [displaySeriesList, chartKind, focusKey, compareMode]);
 
   const pointsSignature = useMemo(
     () =>
@@ -212,14 +250,16 @@ export default function DemandMetricChart({
       : metricId === "moveInVolume" || metricId === "moveInIndex"
         ? primaryRow?.moveInClean.keyword
         : null;
+  const footerNote = indexNationalFallbackNote ?? subtitle;
   const showFooterSubtitle =
-    !compareMode &&
-    subtitle &&
-    (isDemandTradeMetric(metricId) ||
-      metricId === "packingVolume" ||
-      metricId === "moveInVolume" ||
-      metricId === "packingIndex" ||
-      metricId === "moveInIndex");
+    footerNote &&
+    (indexNationalFallbackNote != null ||
+      (!compareMode &&
+        (isDemandTradeMetric(metricId) ||
+          metricId === "packingVolume" ||
+          metricId === "moveInVolume" ||
+          metricId === "packingIndex" ||
+          metricId === "moveInIndex")));
 
   if (!chart || chart.pointCount === 0) {
     const emptySub = subtitle || seriesList[0]?.subtitle;
@@ -307,6 +347,12 @@ export default function DemandMetricChart({
           </div>
         </div>
       </div>
+
+      {indexNationalFallbackNote ? (
+        <p className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs leading-relaxed text-amber-900 sm:px-5">
+          {indexNationalFallbackNote}
+        </p>
+      ) : null}
 
       <div className="relative mx-3 mb-3 mt-2 aspect-[640/200] w-[calc(100%-1.5rem)] max-w-full sm:mx-4">
         <svg
@@ -527,7 +573,14 @@ export default function DemandMetricChart({
       </div>
 
       {showFooterSubtitle ? (
-        <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400 sm:px-5">{subtitle}</p>
+        <p
+          className={cn(
+            "border-t border-slate-100 px-4 py-2 text-[11px] sm:px-5",
+            indexNationalFallbackNote ? "text-amber-800" : "text-slate-400"
+          )}
+        >
+          {footerNote}
+        </p>
       ) : null}
     </div>
   );
