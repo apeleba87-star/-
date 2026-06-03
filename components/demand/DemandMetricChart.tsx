@@ -43,7 +43,9 @@ function defaultRangeForMetric(metricId: DemandMetricId): DemandAnyChartRange {
   return isDemandTradeMetric(metricId) ? "12m" : "30d";
 }
 
-function isSearchIndexMetric(metricId: DemandMetricId): boolean {
+function isSearchIndexMetric(
+  metricId: DemandMetricId
+): metricId is "packingIndex" | "moveInIndex" {
   return metricId === "packingIndex" || metricId === "moveInIndex";
 }
 
@@ -171,7 +173,12 @@ export default function DemandMetricChart({
   }, [compareMode, metricId, rows]);
 
   const displaySeriesList = useMemo(() => {
-    if (!indexNationalFallbackNote || !compareMode || seriesList.length < 2) {
+    if (
+      !indexNationalFallbackNote ||
+      !compareMode ||
+      seriesList.length < 2 ||
+      !isSearchIndexMetric(metricId)
+    ) {
       return seriesList;
     }
     const sig = (pts: DemandChartPoint[]) => pts.map((p) => `${p.period}:${p.value}`).join("|");
