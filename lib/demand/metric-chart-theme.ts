@@ -37,6 +37,14 @@ export const DEMAND_METRIC_CHART_THEMES: Record<DemandMetricId, DemandMetricChar
     cellHover: "hover:bg-amber-50",
     rowBg: "bg-amber-50/50",
   },
+  packingInterest: {
+    stroke: "#059669",
+    fillFrom: "#10b981",
+    cardSelected: "border-emerald-500 ring-2 ring-emerald-200",
+    cellActive: "bg-emerald-100 ring-1 ring-emerald-300",
+    cellHover: "hover:bg-emerald-50",
+    rowBg: "bg-emerald-50/50",
+  },
   packingVolume: {
     stroke: "#059669",
     fillFrom: "#10b981",

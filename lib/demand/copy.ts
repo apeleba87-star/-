@@ -4,6 +4,7 @@ import type { DemandSignal } from "@/lib/demand/types";
 export const DEMAND_METRIC_LABELS = {
   sale: "주택매매 지수",
   jeonse: "전월세 거래지수",
+  packingInterest: "포장이사 관심지수",
   packingVolume: "포장이사 검색량",
   packingIndex: "포장이사 검색지수",
   moveInVolume: "입주청소 검색량",
@@ -14,8 +15,21 @@ export const DEMAND_METRIC_LABELS = {
   composite: "입주 온도",
 } as const;
 
-/** 종합 지표 카드 부가 설명 */
-export const DEMAND_COMPOSITE_CARD_SUB = "거래·검색 신호 종합 (더미)";
+/** 종합 지표 카드 부가 설명 (표면 — 선행·가중치 비노출) */
+export const DEMAND_COMPOSITE_CARD_SUB = "거래·검색 신호를 모은 참고 지표";
+
+/** 「입주 온도 안내」 펼침용 */
+export const DEMAND_PACKING_INTEREST_CARD_SUB = "검색 규모·변화를 모은 참고 지표";
+
+export const DEMAND_PACKING_INTEREST_ABOUT =
+  "포장이사 관심지수는 해당 지역 포장이사 검색 규모와 변화를 함께 본 참고 점수입니다. 실제 검색 건수가 아니며, 입주 온도와 별도로 계산됩니다.";
+
+export const DEMAND_COMPOSITE_ABOUT =
+  "입주 온도는 해당 지역의 주택 거래와 검색 지표 변화를 함께 본 종합 신호입니다. 상승·하락을 단정하지 않으며, 아래 포장이사 관심지수·입주청소 검색·거래 지표를 나란히 비교해 보시면 됩니다.";
+
+/** 산식 세부 — 가중치·선행 가설은 노출하지 않음 */
+export const DEMAND_COMPOSITE_METHOD_NOTE =
+  "최근 월별 거래·검색 변화를 합산한 참고 점수입니다. 데이터 수집·지역 범위에 따라 달라질 수 있습니다.";
 
 /** @deprecated DEMAND_METRIC_LABELS 사용 */
 export const DEMAND_NATIONAL_KEYWORD_LABELS = {
@@ -71,7 +85,7 @@ export function formatSearchIndexPercent(n: number): string {
 /** 선형 차트 축·툴팁용 */
 export function formatChartMetricValue(
   value: number,
-  kind: "trade" | "index" | "indexDelta" | "volume" | "composite"
+  kind: "trade" | "index" | "indexDelta" | "volume" | "composite" | "packingInterest"
 ): string {
   switch (kind) {
     case "trade":
@@ -85,6 +99,7 @@ export function formatChartMetricValue(
     case "index":
       return Math.round(value).toLocaleString("ko-KR");
     case "composite":
+    case "packingInterest":
       return String(Math.round(value));
   }
 }

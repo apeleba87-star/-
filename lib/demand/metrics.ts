@@ -4,15 +4,28 @@ import { DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
 export type DemandMetricId =
   | "sale"
   | "jeonse"
+  /** 표시 전용 — 포장이사 검색량·검색지수 통합 */
+  | "packingInterest"
   | "packingVolume"
   | "packingIndex"
   | "moveInVolume"
   | "moveInIndex"
   | "composite";
 
+/** 허브·비교표에 노출하는 지표 (포장이사는 관심지수 1개만) */
+export const DEMAND_HUB_METRIC_IDS: DemandMetricId[] = [
+  "composite",
+  "sale",
+  "jeonse",
+  "packingInterest",
+  "moveInVolume",
+  "moveInIndex",
+];
+
 export const DEMAND_METRIC_IDS: DemandMetricId[] = [
   "sale",
   "jeonse",
+  "packingInterest",
   "packingVolume",
   "packingIndex",
   "moveInVolume",
@@ -26,6 +39,8 @@ export function demandMetricLabel(id: DemandMetricId): string {
       return DEMAND_METRIC_LABELS.sale;
     case "jeonse":
       return DEMAND_METRIC_LABELS.jeonse;
+    case "packingInterest":
+      return DEMAND_METRIC_LABELS.packingInterest;
     case "packingVolume":
       return DEMAND_METRIC_LABELS.packingVolume;
     case "packingIndex":

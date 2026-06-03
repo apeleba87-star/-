@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import DemandMetricChart from "@/components/demand/DemandMetricChart";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
+import { DemandPackingInterestCell } from "@/components/demand/DemandPackingInterestCell";
 import { DemandSearchIndexCell, DemandSearchVolumeCell } from "@/components/demand/DemandSearchMetricCell";
 import DemandScopeSummaryStrip from "@/components/demand/DemandScopeSummaryStrip";
 import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
 import { DEMAND_HUB_HERO, DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
+import { demandShowPackingSearchBreakdown } from "@/lib/demand/feature-flags";
+import DemandDevMetricBadge from "@/components/demand/DemandDevMetricBadge";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 import { demandMetricChartTheme } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
@@ -120,14 +123,24 @@ export default function DemandHubWorkspace({
   }
 
   function onRemove(key: string) {
-    setSelections((prev) => prev.filter((s) => demandRegionSelectionKey(s) !== key));
-    if (chartRowKey === key) setChartRowKey(null);
+    setSelections((prev) => {
+      const next = prev.filter((s) => demandRegionSelectionKey(s) !== key);
+      setChartRowKey((fk) => {
+        if (fk && fk !== key && next.some((s) => demandRegionSelectionKey(s) === fk)) {
+          return fk;
+        }
+        return next[0] ? demandRegionSelectionKey(next[0]) : null;
+      });
+      return next;
+    });
   }
 
   function selectMetric(row: DemandScopeTableRow, metricId: DemandMetricId) {
     setSelectedMetric(metricId);
     setChartRowKey(demandRegionSelectionKey(row.selection));
   }
+
+  const showPackingBreakdown = demandShowPackingSearchBreakdown();
 
   const compareHref =
     scopeRows.length >= 2
@@ -156,7 +169,6 @@ export default function DemandHubWorkspace({
           <DemandScopeSummaryStrip
             rows={scopeRows}
             focusRowKey={focusRowKey}
-            onFocusRow={setChartRowKey}
             selectedMetric={selectedMetric}
             onSelectMetric={(id) => {
               const row =
@@ -200,8 +212,19 @@ export default function DemandHubWorkspace({
                   <th className="px-3 py-2.5 font-medium">지역</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.sale}</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.jeonse}</th>
-                  <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingVolume}</th>
-                  <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingIndex}</th>
+                  <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingInterest}</th>
+                  {showPackingBreakdown ? (
+                    <>
+                      <th className="px-3 py-2.5 text-right font-medium">
+                        {DEMAND_METRIC_LABELS.packingVolume}
+                        <DemandDevMetricBadge />
+                      </th>
+                      <th className="px-3 py-2.5 text-right font-medium">
+                        {DEMAND_METRIC_LABELS.packingIndex}
+                        <DemandDevMetricBadge />
+                      </th>
+                    </>
+                  ) : null}
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.moveInVolume}</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.moveInIndex}</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.composite}</th>
@@ -219,7 +242,21 @@ export default function DemandHubWorkspace({
                       )}
                     >
                       <td className="px-3 py-2.5">
-                        {row.hasDetail && row.slug ? (
+                        {scopeRows.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setChartRowKey(rowKey)}
+                            className={cn(
+                              "font-medium text-left transition-colors",
+                              isFocusRow
+                                ? "text-teal-900 underline decoration-teal-400 decoration-2 underline-offset-2"
+                                : "text-slate-800 hover:text-teal-800"
+                            )}
+                            aria-pressed={isFocusRow}
+                          >
+                            {row.label}
+                          </button>
+                        ) : row.hasDetail && row.slug ? (
                           <Link
                             href={`/demand/region/${row.slug}`}
                             className="font-medium text-teal-800 hover:underline"
@@ -229,7 +266,11 @@ export default function DemandHubWorkspace({
                         ) : (
                           <span className="font-medium text-slate-800">{row.label}</span>
                         )}
-                        <p className="mt-0.5 truncate text-[10px] text-violet-600">{row.packing.keyword}</p>
+                        {scopeRows.length === 1 ? (
+                          <p className="mt-0.5 truncate text-[10px] text-violet-600">
+                            {row.packing.keyword}
+                          </p>
+                        ) : null}
                       </td>
                       <ClickableMetricCell
                         metricId="sale"
@@ -246,19 +287,30 @@ export default function DemandHubWorkspace({
                         <DemandTradeMetricCell count={row.jeonseCount} momPercent={row.jeonseMom} />
                       </ClickableMetricCell>
                       <ClickableMetricCell
-                        metricId="packingVolume"
-                        active={isFocusRow && selectedMetric === "packingVolume"}
-                        onClick={() => selectMetric(row, "packingVolume")}
+                        metricId="packingInterest"
+                        active={isFocusRow && selectedMetric === "packingInterest"}
+                        onClick={() => selectMetric(row, "packingInterest")}
                       >
-                        <DemandSearchVolumeCell metric={row.packing} />
+                        <DemandPackingInterestCell metric={row.packing} />
                       </ClickableMetricCell>
-                      <ClickableMetricCell
-                        metricId="packingIndex"
-                        active={isFocusRow && selectedMetric === "packingIndex"}
-                        onClick={() => selectMetric(row, "packingIndex")}
-                      >
-                        <DemandSearchIndexCell metric={row.packing} />
-                      </ClickableMetricCell>
+                      {showPackingBreakdown ? (
+                        <>
+                          <ClickableMetricCell
+                            metricId="packingVolume"
+                            active={isFocusRow && selectedMetric === "packingVolume"}
+                            onClick={() => selectMetric(row, "packingVolume")}
+                          >
+                            <DemandSearchVolumeCell metric={row.packing} />
+                          </ClickableMetricCell>
+                          <ClickableMetricCell
+                            metricId="packingIndex"
+                            active={isFocusRow && selectedMetric === "packingIndex"}
+                            onClick={() => selectMetric(row, "packingIndex")}
+                          >
+                            <DemandSearchIndexCell metric={row.packing} />
+                          </ClickableMetricCell>
+                        </>
+                      ) : null}
                       <ClickableMetricCell
                         metricId="moveInVolume"
                         active={isFocusRow && selectedMetric === "moveInVolume"}
@@ -288,9 +340,12 @@ export default function DemandHubWorkspace({
               </tbody>
             </table>
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">
-              {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS · 검색지수=
-              포장이사{" "}
-              {keywordSourceSummary.packingIndex === "live" ? "데이터랩(지역)" : "더미"} · 입주청소{" "}
+              {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS · 포장이사 관심지수=
+              {keywordSourceSummary.packingIndex === "live" ||
+              keywordSourceSummary.volume === "live"
+                ? "검색·지수(지역)"
+                : "더미"}{" "}
+              · 입주청소{" "}
               {keywordSourceSummary.moveInIndex === "live" ? "데이터랩(지역)" : "더미"} · 검색량=
               {keywordSourceSummary.volume === "live" ? "검색광고(지역)" : "더미"}
             </p>

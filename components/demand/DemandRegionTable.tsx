@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
+import { DemandPackingInterestCell } from "@/components/demand/DemandPackingInterestCell";
 import { DemandSearchIndexCell, DemandSearchVolumeCell } from "@/components/demand/DemandSearchMetricCell";
 import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
 import { DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
+import { demandShowPackingSearchBreakdown } from "@/lib/demand/feature-flags";
+import DemandDevMetricBadge from "@/components/demand/DemandDevMetricBadge";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 import type { DemandNationalKeywordMetrics } from "@/lib/demand/keyword-metrics";
 import {
@@ -20,6 +23,7 @@ type Props = {
 };
 
 export default function DemandRegionTable({ keywordMetrics }: Props) {
+  const showPackingBreakdown = demandShowPackingSearchBreakdown();
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
 
   const scopeRows = useMemo(() => buildDemandScopeRows(selections), [selections]);
@@ -58,8 +62,19 @@ export default function DemandRegionTable({ keywordMetrics }: Props) {
                 <th className="px-3 py-2.5 font-medium">지역</th>
                 <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.sale}</th>
                 <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.jeonse}</th>
-                <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingVolume}</th>
-                <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingIndex}</th>
+                <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingInterest}</th>
+                {showPackingBreakdown ? (
+                  <>
+                    <th className="px-3 py-2.5 text-right font-medium">
+                      {DEMAND_METRIC_LABELS.packingVolume}
+                      <DemandDevMetricBadge />
+                    </th>
+                    <th className="px-3 py-2.5 text-right font-medium">
+                      {DEMAND_METRIC_LABELS.packingIndex}
+                      <DemandDevMetricBadge />
+                    </th>
+                  </>
+                ) : null}
                 <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.moveInVolume}</th>
                 <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.moveInIndex}</th>
                 <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.composite}</th>
@@ -84,11 +99,18 @@ export default function DemandRegionTable({ keywordMetrics }: Props) {
                     <DemandTradeMetricCell count={row.jeonseCount} momPercent={row.jeonseMom} />
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <DemandSearchVolumeCell metric={row.packing} />
+                    <DemandPackingInterestCell metric={row.packing} />
                   </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <DemandSearchIndexCell metric={row.packing} />
-                  </td>
+                  {showPackingBreakdown ? (
+                    <>
+                      <td className="px-3 py-2.5 text-right">
+                        <DemandSearchVolumeCell metric={row.packing} />
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <DemandSearchIndexCell metric={row.packing} />
+                      </td>
+                    </>
+                  ) : null}
                   <td className="px-3 py-2.5 text-right">
                     <DemandSearchVolumeCell metric={row.moveInClean} />
                   </td>

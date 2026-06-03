@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { DEMAND_COMPOSITE_CARD_SUB, DEMAND_METRIC_LABELS, formatMomPercent } from "@/lib/demand/copy";
+import {
+  DEMAND_COMPOSITE_CARD_SUB,
+  DEMAND_METRIC_LABELS,
+  DEMAND_PACKING_INTEREST_CARD_SUB,
+  formatMomPercent,
+  formatSearchIndexPercent,
+} from "@/lib/demand/copy";
+import { demandShowPackingSearchBreakdown } from "@/lib/demand/feature-flags";
+import { computePackingInterestScore, formatPackingInterestSub } from "@/lib/demand/packing-interest";
+import DemandDevMetricBadge from "@/components/demand/DemandDevMetricBadge";
 import SignalBadge from "@/components/demand/SignalBadge";
 import type { DemandDistrictScore } from "@/lib/demand/types";
 import type { DemandNationalKeywordMetrics } from "@/lib/demand/keyword-metrics";
@@ -13,7 +22,7 @@ function SummaryCard({
   sub,
   accent,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   sub?: string;
   accent?: boolean;
@@ -42,6 +51,7 @@ type Props = {
 };
 
 export default function DemandDistrictSummaryStrip({ row, district, keywordMetrics, pathLabel }: Props) {
+  const showPackingBreakdown = demandShowPackingSearchBreakdown();
   const packing = keywordMetrics.packing;
   const moveIn = keywordMetrics.moveInClean;
 
@@ -65,7 +75,12 @@ export default function DemandDistrictSummaryStrip({ row, district, keywordMetri
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-2 sm:grid-cols-3",
+          showPackingBreakdown ? "lg:grid-cols-7" : "lg:grid-cols-5"
+        )}
+      >
         <SummaryCard
           label={DEMAND_METRIC_LABELS.composite}
           value={row.indexScore ?? "—"}
@@ -83,19 +98,38 @@ export default function DemandDistrictSummaryStrip({ row, district, keywordMetri
           sub={formatMomPercent(row.jeonseMom)}
         />
         <SummaryCard
-          label="포장이사 검색량"
-          value={
-            packing.searchVolumeMonth != null
-              ? packing.searchVolumeMonth.toLocaleString("ko-KR")
-              : "<10"
-          }
-          sub="전월 · 전국"
+          label={DEMAND_METRIC_LABELS.packingInterest}
+          value={computePackingInterestScore(packing)}
+          sub={`${DEMAND_PACKING_INTEREST_CARD_SUB} · ${formatPackingInterestSub(packing)}`}
         />
-        <SummaryCard
-          label="포장이사 검색지수"
-          value={formatMomPercent(packing.indexDodPercent)}
-          sub="전일 · 전국"
-        />
+        {showPackingBreakdown ? (
+          <>
+            <SummaryCard
+              label={
+                <>
+                  {DEMAND_METRIC_LABELS.packingVolume}
+                  <DemandDevMetricBadge />
+                </>
+              }
+              value={
+                packing.searchVolumeMonth != null
+                  ? packing.searchVolumeMonth.toLocaleString("ko-KR")
+                  : "<10"
+              }
+              sub="전월 · 전국"
+            />
+            <SummaryCard
+              label={
+                <>
+                  {DEMAND_METRIC_LABELS.packingIndex}
+                  <DemandDevMetricBadge />
+                </>
+              }
+              value={formatSearchIndexPercent(packing.indexDodPercent)}
+              sub="전일 · 전국"
+            />
+          </>
+        ) : null}
         <SummaryCard
           label="입주청소 검색량"
           value={

@@ -24,6 +24,16 @@ import {
   formatRegionSearchPhraseDisplay,
 } from "@/lib/demand/region-search-keywords";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
+import {
+  computeDemandCompositeIndex,
+  momPercentFromChartPoints,
+  compositeScoreFromScopeSignals,
+} from "@/lib/demand/composite-index";
+import {
+  buildPackingInterestDummyMonthlyPoints,
+  buildPackingInterestMonthlyChartPoints,
+  computePackingInterestScore,
+} from "@/lib/demand/packing-interest";
 import { DEMAND_TABLE_ROWS } from "@/lib/demand/table-data";
 
 export type DemandScopeTableRow = {
@@ -134,10 +144,26 @@ function seoulAggregateTrade(): { saleCount: number; jeonseCount: number; saleMo
 }
 
 function seoulCompositeIndex(): number {
-  const scored = DEMAND_TABLE_ROWS.filter((r) => r.indexScore != null);
-  if (scored.length === 0) return 100;
-  const sum = scored.reduce((s, r) => s + (r.indexScore ?? 0), 0);
-  return Math.round(sum / scored.length);
+  if (DEMAND_TABLE_ROWS.length === 0) return 100;
+  const sum = DEMAND_TABLE_ROWS.reduce((s, r) => s + (r.indexScore ?? 100), 0);
+  return Math.round(sum / DEMAND_TABLE_ROWS.length);
+}
+
+type KeywordFields = ReturnType<typeof keywordFieldsForSelection>;
+
+function compositeIndexForKeywordBundle(
+  saleMom: number,
+  jeonseMom: number,
+  kw: KeywordFields
+): number {
+  return compositeScoreFromScopeSignals({
+    packing: kw.packing,
+    moveInClean: kw.moveInClean,
+    packingVolumeMonthly: kw.keywordVolumeMonthlySeries?.packing,
+    moveInVolumeMonthly: kw.keywordVolumeMonthlySeries?.move_in_clean,
+    saleMom,
+    jeonseMom,
+  });
 }
 
 function volumeBaseForScope(scope: DemandRegionScope): { packing: number; moveIn: number } {
@@ -198,6 +224,8 @@ export function buildDemandScopeRow(
 
   if (selection.scope === "national") {
     const agg = seoulAggregateTrade();
+    const saleMom = 9;
+    const jeonseMom = 11;
     return {
       selection,
       scope: "national",
@@ -205,11 +233,11 @@ export function buildDemandScopeRow(
       pathLabel,
       slug: null,
       hasDetail: false,
-      indexScore: 108,
+      indexScore: compositeIndexForKeywordBundle(saleMom, jeonseMom, kw),
       saleCount: Math.round(agg.saleCount * 4.2),
-      saleMom: 9,
+      saleMom,
       jeonseCount: Math.round(agg.jeonseCount * 4.1),
-      jeonseMom: 11,
+      jeonseMom,
       ...kw,
     };
   }
@@ -235,6 +263,8 @@ export function buildDemandScopeRow(
   const tableRow = DEMAND_TABLE_ROWS.find((r) => r.slug === selection.guSlug);
   if (!tableRow) return null;
   const rtms = rtmsOverrides?.[tableRow.slug];
+  const saleMom = rtms?.saleMom ?? tableRow.saleMom;
+  const jeonseMom = rtms?.jeonseMom ?? tableRow.jeonseMom;
   return {
     selection,
     scope: "district",
@@ -242,11 +272,11 @@ export function buildDemandScopeRow(
     pathLabel,
     slug: tableRow.slug,
     hasDetail: tableRow.hasDetail,
-    indexScore: tableRow.indexScore,
+    indexScore: compositeIndexForKeywordBundle(saleMom, jeonseMom, kw),
     saleCount: rtms?.saleCount ?? tableRow.saleCount,
-    saleMom: rtms?.saleMom ?? tableRow.saleMom,
+    saleMom,
     jeonseCount: rtms?.jeonseCount ?? tableRow.jeonseCount,
-    jeonseMom: rtms?.jeonseMom ?? tableRow.jeonseMom,
+    jeonseMom,
     ...kw,
   };
 }
@@ -433,20 +463,54 @@ function distributeSearchVolume30d(
   }));
 }
 
-function buildDailyCompositePoints(
-  seed: string,
-  base: number,
-  periods: string[]
-): DemandChartPoint[] {
+function buildCompositeYearChartSeries(row: DemandScopeTableRow): {
+  points: DemandChartPoint[];
+  subtitle: string;
+} {
+  const packingMonths = row.keywordVolumeMonthlySeries?.packing ?? [];
+  const moveInMonths = row.keywordVolumeMonthlySeries?.move_in_clean ?? [];
+  const moveInByPeriod = new Map(moveInMonths.map((p) => [p.period, p]));
+
+  if (packingMonths.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART) {
+    const slice = packingMonths.slice(-12);
+    const points = slice.map((pt, i) => {
+      const packingVolumeMom =
+        i === 0 ? 0 : (momPercentFromChartPoints([slice[i - 1], pt]) ?? 0);
+      const moveInPt = moveInByPeriod.get(pt.period);
+      const prevMoveInPt = i > 0 ? moveInByPeriod.get(slice[i - 1].period) : undefined;
+      const moveInConfirmMom =
+        i === 0 || !moveInPt || !prevMoveInPt
+          ? row.moveInClean.indexMomPercent
+          : (momPercentFromChartPoints([prevMoveInPt, moveInPt]) ??
+            row.moveInClean.indexMomPercent);
+
+      return {
+        period: pt.period,
+        value: computeDemandCompositeIndex({
+          packingVolumeMom,
+          jeonseMom: row.jeonseMom,
+          saleMom: row.saleMom,
+          moveInConfirmMom,
+        }),
+      };
+    });
+    return {
+      points,
+      subtitle: `입주 온도 · 최근 ${points.length}개월`,
+    };
+  }
+
+  const seed = `${demandScopeChartSeed(row)}:composite`;
   const h = hashSeed(seed);
-  const last = periods.length - 1;
-  return periods.map((period, i) => ({
-    period,
-    value: Math.max(
-      70,
-      Math.round(base - 8 + (last <= 0 ? 0 : (i / last) * 10) + ((h + i * 3) % 5))
-    ),
-  }));
+  const base = row.indexScore ?? 100;
+  const monthPeriods = chartMonthPeriods("1y");
+  return {
+    subtitle: "입주 온도 · 월별 추이 (참고용)",
+    points: monthPeriods.map((period, i) => ({
+      period,
+      value: Math.max(70, base - 12 + i * 2 + ((h + i) % 6)),
+    })),
+  };
 }
 
 export function buildDemandMetricChartSeries(
@@ -458,7 +522,7 @@ export function buildDemandMetricChartSeries(
   }
 ): {
   points: DemandChartPoint[];
-  chartKind: "trade" | "index" | "indexDelta" | "volume" | "composite";
+  chartKind: "trade" | "index" | "indexDelta" | "volume" | "composite" | "packingInterest";
   subtitle: string;
 } {
   if (metricId === "sale" || metricId === "jeonse") {
@@ -619,21 +683,35 @@ export function buildDemandMetricChartSeries(
   }
 
   if (metricId === "composite") {
-    const base = row.indexScore ?? 100;
-    if (isDaily) {
-      return {
-        chartKind: "composite",
-        subtitle: `입주 온도 · 최근 ${CHART_DAILY_POINTS}일 (더미)`,
-        points: buildDailyCompositePoints(seed, base, dayPeriods),
-      };
-    }
+    const yearSeries = buildCompositeYearChartSeries(row);
     return {
       chartKind: "composite",
-      subtitle: "입주 온도 · 월별 (더미)",
-      points: monthPeriods.map((period, i) => ({
-        period,
-        value: Math.max(70, base - 12 + i * 2 + ((h + i) % 6)),
-      })),
+      subtitle: yearSeries.subtitle,
+      points: yearSeries.points,
+    };
+  }
+
+  if (metricId === "packingInterest") {
+    const volMonths = row.keywordVolumeMonthlySeries?.packing ?? [];
+    const idxMonths = row.keywordMonthlyIndexSeries?.packing ?? [];
+    const livePoints = buildPackingInterestMonthlyChartPoints(volMonths, idxMonths);
+    if (livePoints.length >= 2) {
+      return {
+        chartKind: "packingInterest",
+        subtitle: `포장이사 관심지수 · 최근 ${livePoints.length}개월 (참고용)`,
+        points: livePoints,
+      };
+    }
+    const anchor = computePackingInterestScore(row.packing);
+    const months = chartMonthPeriods("1y");
+    return {
+      chartKind: "packingInterest",
+      subtitle: "포장이사 관심지수 · 월별 추이 (참고용)",
+      points: buildPackingInterestDummyMonthlyPoints(
+        `${demandScopeChartSeed(row)}:packing-interest`,
+        anchor,
+        months
+      ),
     };
   }
 

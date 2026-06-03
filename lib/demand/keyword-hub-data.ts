@@ -25,9 +25,16 @@ export type DemandKeywordStore = {
 export type DemandKeywordHubData = DemandKeywordRegionBundle;
 
 export function demandKeywordKeyForMetric(
-  metricId: "packingIndex" | "moveInIndex" | "packingVolume" | "moveInVolume"
+  metricId:
+    | "packingInterest"
+    | "packingIndex"
+    | "moveInIndex"
+    | "packingVolume"
+    | "moveInVolume"
 ): DemandKeywordKey {
-  return metricId === "packingIndex" || metricId === "packingVolume" ? "packing" : "move_in_clean";
+  return metricId === "moveInIndex" || metricId === "moveInVolume"
+    ? "move_in_clean"
+    : "packing";
 }
 
 /** 입주청소·포장이사 각각 — 구/시/전국 fallback·시계열 유무 (차트·푸터용) */

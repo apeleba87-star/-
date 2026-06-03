@@ -6,9 +6,11 @@ import SignalBadge from "@/components/demand/SignalBadge";
 import { DemandRevealInline } from "@/components/demand/DemandReveal";
 import { DEMAND_METRIC_LABELS, formatRankChange } from "@/lib/demand/copy";
 import type { DemandDistrictScore } from "@/lib/demand/types";
+import { demandIndexScoreBySlug } from "@/lib/demand/table-data";
 
 export default function DemandIndexHero({ district }: { district: DemandDistrictScore }) {
   const [showIndex, setShowIndex] = useState(false);
+  const indexScore = demandIndexScoreBySlug(district.slug) ?? district.indexScore;
 
   return (
     <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-md ring-1 ring-slate-100/80 sm:p-8">
@@ -25,7 +27,7 @@ export default function DemandIndexHero({ district }: { district: DemandDistrict
       ) : (
         <div className="mt-4">
           <div className="flex flex-wrap items-baseline gap-3">
-            <span className="text-4xl font-black tabular-nums text-teal-700 sm:text-5xl">{district.indexScore}</span>
+            <span className="text-4xl font-black tabular-nums text-teal-700 sm:text-5xl">{indexScore}</span>
             <SignalBadge signal={district.signal} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-sm text-slate-600">

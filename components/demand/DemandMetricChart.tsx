@@ -9,6 +9,12 @@ import {
   demandMetricChartTheme,
   demandRegionCompareColor,
 } from "@/lib/demand/metric-chart-theme";
+import {
+  DEMAND_COMPOSITE_ABOUT,
+  DEMAND_COMPOSITE_METHOD_NOTE,
+  DEMAND_PACKING_INTEREST_ABOUT,
+} from "@/lib/demand/copy";
+import { DemandRevealInline } from "@/components/demand/DemandReveal";
 import { demandMetricLabel, isDemandTradeMetric, type DemandMetricId } from "@/lib/demand/metrics";
 import {
   buildDemandMetricChartSeries,
@@ -22,12 +28,12 @@ import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
 
 const W = 640;
-const H = 200;
-const PAD = { top: 14, right: 16, bottom: 14, left: 48 };
+const H = 216;
+const PAD = { top: 14, right: 16, bottom: 28, left: 48 };
 const PLOT_W = W - PAD.left - PAD.right;
 const PLOT_H = H - PAD.top - PAD.bottom;
 
-type ChartKind = "trade" | "index" | "indexDelta" | "volume" | "composite";
+type ChartKind = "trade" | "index" | "indexDelta" | "volume" | "composite" | "packingInterest";
 
 type SeriesBundle = {
   row: DemandScopeTableRow;
@@ -40,7 +46,9 @@ type SeriesBundle = {
 };
 
 function defaultRangeForMetric(metricId: DemandMetricId): DemandAnyChartRange {
-  return isDemandTradeMetric(metricId) ? "12m" : "30d";
+  if (isDemandTradeMetric(metricId)) return "12m";
+  if (metricId === "composite" || metricId === "packingInterest") return "1y";
+  return "30d";
 }
 
 function isSearchIndexMetric(
@@ -73,6 +81,12 @@ function chartRangeOptions(
       { key: "3y", label: "3년", disabled: true },
     ];
   }
+  if (metricId === "composite" || metricId === "packingInterest") {
+    return [
+      { key: "1y", label: "1년" },
+      { key: "3y", label: "3년", disabled: true },
+    ];
+  }
   return [
     { key: "30d", label: "30일" },
     { key: "1y", label: "1년", disabled: true },
@@ -93,6 +107,34 @@ function pctX(svgX: number): string {
 
 function pctY(svgY: number): string {
   return `${(svgY / H) * 100}%`;
+}
+
+const PLOT_TOP_PCT = (PAD.top / H) * 100;
+const PLOT_HEIGHT_PCT = (PLOT_H / H) * 100;
+
+/** 날짜 열 터치·클릭 폭(%) — 포인트 수에 따라 */
+function hitColumnWidthPct(pointCount: number): number {
+  if (pointCount <= 1) return 20;
+  return Math.min(14, Math.max(6, 72 / pointCount));
+}
+
+/** X축에 표시할 인덱스(시작·끝 포함, 균등 간격) */
+function pickXAxisLabelIndices(pointCount: number, maxLabels: number): number[] {
+  if (pointCount <= 0) return [];
+  if (pointCount <= maxLabels) {
+    return Array.from({ length: pointCount }, (_, i) => i);
+  }
+  const cap = Math.max(2, maxLabels);
+  const indices = new Set<number>([0, pointCount - 1]);
+  for (let k = 1; k < cap - 1; k += 1) {
+    indices.add(Math.round((k * (pointCount - 1)) / (cap - 1)));
+  }
+  return [...indices].sort((a, b) => a - b);
+}
+
+function isMonthlyPeriodLabel(period: string): boolean {
+  const parts = period.split(".");
+  return parts.length === 2;
 }
 
 function buildCoords(
@@ -249,10 +291,14 @@ export default function DemandMetricChart({
   }, [chartUid, pointsSignature, chart?.pointCount]);
 
   const label = demandMetricLabel(metricId);
-  const compareSubtitle = compareMode ? rows.map((r) => r.label).join(" · ") : null;
   const primaryRow = rows.find((r) => demandRegionSelectionKey(r.selection) === focusKey) ?? rows[0];
+  const headerScopeHint = compareMode
+    ? `${rows.length}개 지역 비교`
+    : (primaryRow?.pathLabel ?? "");
   const keyword =
-    metricId === "packingVolume" || metricId === "packingIndex"
+    metricId === "packingInterest" ||
+      metricId === "packingVolume" ||
+      metricId === "packingIndex"
       ? primaryRow?.packing.keyword
       : metricId === "moveInVolume" || metricId === "moveInIndex"
         ? primaryRow?.moveInClean.keyword
@@ -275,7 +321,7 @@ export default function DemandMetricChart({
         <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
           <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
           <p className="mt-0.5 truncate text-xs text-slate-500">
-            {compareSubtitle ?? primaryRow?.pathLabel}
+            {headerScopeHint}
             {!compareMode && keyword ? ` · ${keyword}` : null}
           </p>
         </div>
@@ -295,6 +341,10 @@ export default function DemandMetricChart({
   const densePoints = chart.pointCount > 15;
   const dotRadius = densePoints ? 2 : 3;
   const gradientId = `demand-grad-${chartUid}`;
+  const xAxisLabelIndices = pickXAxisLabelIndices(chart.pointCount, densePoints ? 5 : 7);
+  const xAxisIsMonthly =
+    series[0]?.points.length > 0 && isMonthlyPeriodLabel(series[0].points[0].period);
+  const xAxisBaselineY = PAD.top + PLOT_H;
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -303,32 +353,9 @@ export default function DemandMetricChart({
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
             <p className="mt-0.5 truncate text-xs text-slate-500">
-              {compareSubtitle ?? primaryRow.pathLabel}
+              {headerScopeHint}
               {!compareMode && keyword ? ` · ${keyword}` : null}
             </p>
-            {compareMode ? (
-              <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                {series.map((s) => {
-                  const focused = s.rowKey === focusKey;
-                  return (
-                    <li
-                      key={s.rowKey}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 text-xs",
-                        focused ? "font-semibold text-slate-800" : "text-slate-600"
-                      )}
-                    >
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: s.color }}
-                        aria-hidden
-                      />
-                      {s.label}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : null}
           </div>
           <div className="inline-flex shrink-0 rounded-lg border border-slate-200 p-0.5 text-xs">
             {chartRangeOptions(metricId).map(({ key, label: rangeLabel, disabled }) => (
@@ -361,7 +388,61 @@ export default function DemandMetricChart({
         </p>
       ) : null}
 
-      <div className="relative mx-3 mb-3 mt-2 aspect-[640/200] w-[calc(100%-1.5rem)] max-w-full sm:mx-4">
+      <div
+        className="mx-3 mt-2 border-y border-slate-200 bg-gradient-to-b from-slate-50 to-white px-3 py-2.5 sm:mx-4"
+        aria-live="polite"
+      >
+        <p className="text-[10px] text-slate-400">
+          그래프에서 날짜 열을 탭하면 수치가 갱신됩니다.
+        </p>
+        <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+          <div className="flex shrink-0 items-baseline gap-2">
+            <span className="text-[10px] font-medium text-slate-500">선택</span>
+            <span className="text-base font-bold tabular-nums text-teal-800">
+              {series[0].coords[activeIdx].period}
+            </span>
+            <span className="text-[10px] tabular-nums text-slate-400">
+              ({activeIdx + 1}/{chart.pointCount}
+              {xAxisIsMonthly ? "월" : "일"})
+            </span>
+          </div>
+          {compareMode ? (
+            <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              {series.map((s) => {
+                const pt = s.coords[activeIdx];
+                const focused = s.rowKey === focusKey;
+                return (
+                  <li
+                    key={s.rowKey}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 tabular-nums",
+                      focused
+                        ? "border-slate-300 bg-white font-semibold text-slate-900 shadow-sm"
+                        : "border-slate-200/80 bg-white/70 text-slate-700"
+                    )}
+                  >
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: s.color }}
+                      aria-hidden
+                    />
+                    <span className="text-xs">{s.label}</span>
+                    <span className="text-sm font-semibold">
+                      {formatChartMetricValue(pt.value, fmt)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-xl font-bold tabular-nums text-slate-900 sm:ml-auto">
+              {formatChartMetricValue(series[0].coords[activeIdx].value, fmt)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="relative mx-3 mb-1 mt-0 aspect-[640/216] w-[calc(100%-1.5rem)] max-w-full sm:mx-4">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="pointer-events-none absolute inset-0 h-full w-full"
@@ -406,6 +487,40 @@ export default function DemandMetricChart({
               strokeDasharray="4 4"
             />
           ) : null}
+
+          <line
+            x1={PAD.left}
+            y1={xAxisBaselineY}
+            x2={W - PAD.right}
+            y2={xAxisBaselineY}
+            stroke="#cbd5e1"
+          />
+
+          {xAxisLabelIndices.map((i) => {
+            const c = series[0]?.coords[i];
+            if (!c) return null;
+            const isActive = i === activeIdx;
+            return (
+              <g key={`x-guide-${i}`}>
+                <line
+                  x1={c.x}
+                  y1={PAD.top}
+                  x2={c.x}
+                  y2={xAxisBaselineY}
+                  stroke={isActive ? "#99f6e4" : "#e2e8f0"}
+                  strokeDasharray={isActive ? undefined : "3 4"}
+                  strokeOpacity={isActive ? 0.9 : 0.65}
+                />
+                <line
+                  x1={c.x}
+                  y1={xAxisBaselineY}
+                  x2={c.x}
+                  y2={xAxisBaselineY + 4}
+                  stroke={isActive ? "#0d9488" : "#94a3b8"}
+                />
+              </g>
+            );
+          })}
 
           {areaPath ? <path d={areaPath} fill={`url(#${gradientId})`} /> : null}
 
@@ -506,77 +621,62 @@ export default function DemandMetricChart({
               );
             });
           })}
+
+          {xAxisLabelIndices.map((i) => {
+            const c = series[0]?.coords[i];
+            const pt = series[0]?.points[i];
+            if (!c || !pt) return null;
+            const isActive = i === activeIdx;
+            return (
+              <text
+                key={`x-label-${i}`}
+                x={c.x}
+                y={H - 8}
+                textAnchor="middle"
+                fill={isActive ? "#0f766e" : "#64748b"}
+                fontSize={9}
+                fontWeight={isActive ? 600 : 400}
+              >
+                {pt.period}
+              </text>
+            );
+          })}
+
+          <text x={PAD.left} y={H - 1} textAnchor="start" fill="#94a3b8" fontSize={8}>
+            {xAxisIsMonthly ? "월" : "일"}
+          </text>
         </svg>
 
         {series[0]?.coords.map((c, i) => {
           const isActive = i === activeIdx;
+          const colW = hitColumnWidthPct(chart.pointCount);
           return (
             <button
               key={`hit-${i}`}
               type="button"
               className={cn(
-                "absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full touch-manipulation",
-                densePoints ? "h-6 w-6" : "h-9 w-9",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
-                !isActive && "hover:bg-slate-500/5"
+                "absolute z-10 -translate-x-1/2 touch-manipulation rounded-md border-0 bg-transparent p-0",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-1",
+                isActive ? "bg-teal-500/10 ring-1 ring-teal-400/40" : "hover:bg-slate-500/8"
               )}
-              style={{ left: pctX(c.x), top: pctY(c.y) }}
+              style={{
+                left: pctX(c.x),
+                top: `${PLOT_TOP_PCT}%`,
+                width: `${colW}%`,
+                height: `${PLOT_HEIGHT_PCT}%`,
+              }}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setSelectedIndex(i);
               }}
-              aria-label={`${c.period}`}
+              aria-label={`${c.period} 데이터 보기`}
               aria-pressed={isActive}
             >
               <span className="sr-only">{c.period}</span>
             </button>
           );
         })}
-
-        <div
-          className={cn(
-            "pointer-events-none absolute z-20 rounded-lg border border-slate-200/90 bg-white px-2.5 py-1.5 shadow-md",
-            compareMode ? "min-w-[7.5rem]" : "min-w-[4.75rem] text-center"
-          )}
-          style={{
-            left: pctX(activeX),
-            top: pctY(series[0].coords[activeIdx].y),
-            transform: "translate(-50%, 12px)",
-          }}
-        >
-          <p className="text-[10px] text-slate-500">{series[0].coords[activeIdx].period}</p>
-          {compareMode ? (
-            <ul className="mt-1 space-y-0.5">
-              {series.map((s) => {
-                const pt = s.coords[activeIdx];
-                return (
-                  <li
-                    key={s.rowKey}
-                    className={cn(
-                      "flex items-center justify-between gap-3 text-xs tabular-nums",
-                      s.rowKey === focusKey ? "font-semibold text-slate-900" : "text-slate-700"
-                    )}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      <span
-                        className="h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: s.color }}
-                        aria-hidden
-                      />
-                      {s.label}
-                    </span>
-                    <span>{formatChartMetricValue(pt.value, fmt)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="text-xs font-semibold tabular-nums text-slate-900">
-              {formatChartMetricValue(series[0].coords[activeIdx].value, fmt)}
-            </p>
-          )}
-        </div>
       </div>
 
       {showFooterSubtitle ? (
@@ -588,6 +688,23 @@ export default function DemandMetricChart({
         >
           {footerNote}
         </p>
+      ) : null}
+
+      {metricId === "composite" ? (
+        <div className="border-t border-slate-100 px-4 py-2 sm:px-5">
+          <DemandRevealInline closedLabel="입주 온도 안내">
+            <p className="text-[11px] leading-relaxed text-slate-600">{DEMAND_COMPOSITE_ABOUT}</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{DEMAND_COMPOSITE_METHOD_NOTE}</p>
+          </DemandRevealInline>
+        </div>
+      ) : null}
+
+      {metricId === "packingInterest" ? (
+        <div className="border-t border-slate-100 px-4 py-2 sm:px-5">
+          <DemandRevealInline closedLabel="관심지수 안내">
+            <p className="text-[11px] leading-relaxed text-slate-600">{DEMAND_PACKING_INTEREST_ABOUT}</p>
+          </DemandRevealInline>
+        </div>
       ) : null}
     </div>
   );

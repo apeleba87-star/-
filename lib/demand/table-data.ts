@@ -1,3 +1,7 @@
+import {
+  compositeInputsFromTableMoms,
+  computeDemandCompositeIndex,
+} from "@/lib/demand/composite-index";
 import { DEMAND_SNAPSHOT_META, DEMAND_TOP10, getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
 import { SEOUL_GU_NAMES, guNameToSlug } from "@/lib/demand/slugs";
 
@@ -48,6 +52,15 @@ function pseudoMom(slug: string, salt: number, spread = 18): number {
   return (Math.abs(h) % (spread * 2 + 1)) - spread;
 }
 
+function tableRowCompositeScore(moms: {
+  packingMom: number;
+  moveInCleanMom: number;
+  jeonseMom: number;
+  saleMom: number;
+}): number {
+  return computeDemandCompositeIndex(compositeInputsFromTableMoms(moms));
+}
+
 function rowFromDistrict(d: (typeof DEMAND_TOP10)[0]): DemandDistrictTableRow {
   const packing = driverField(d, "packing_search");
   const jeonse = driverField(d, "jeonse_wolse_trade");
@@ -56,7 +69,12 @@ function rowFromDistrict(d: (typeof DEMAND_TOP10)[0]): DemandDistrictTableRow {
   return {
     gu: d.gu,
     slug: d.slug,
-    indexScore: d.indexScore,
+    indexScore: tableRowCompositeScore({
+      packingMom: packing.mom,
+      moveInCleanMom: moveIn.mom,
+      jeonseMom: jeonse.mom,
+      saleMom: sale.mom,
+    }),
     hasDetail: true,
     packingMom: packing.mom,
     jeonseMom: jeonse.mom,
@@ -72,17 +90,21 @@ function rowFromDistrict(d: (typeof DEMAND_TOP10)[0]): DemandDistrictTableRow {
 function rowFromSlug(gu: string, slug: string): DemandDistrictTableRow {
   const baseP = DEMAND_SNAPSHOT_META.nationalKeywords.packingMom;
   const baseM = DEMAND_SNAPSHOT_META.nationalKeywords.moveInCleanMom;
+  const packingMom = baseP + pseudoMom(slug, 3);
+  const jeonseMom = pseudoMom(slug, 5, 12);
+  const saleMom = pseudoMom(slug, 7, 10);
+  const moveInCleanMom = baseM + pseudoMom(slug, 11);
   return {
     gu,
     slug,
-    indexScore: null,
+    indexScore: tableRowCompositeScore({ packingMom, moveInCleanMom, jeonseMom, saleMom }),
     hasDetail: false,
-    packingMom: baseP + pseudoMom(slug, 3),
-    jeonseMom: pseudoMom(slug, 5, 12),
-    saleMom: pseudoMom(slug, 7, 10),
+    packingMom,
+    jeonseMom,
+    saleMom,
     jeonseCount: pseudoTradeCount(slug, "jeonse"),
     saleCount: pseudoTradeCount(slug, "sale"),
-    moveInCleanMom: baseM + pseudoMom(slug, 11),
+    moveInCleanMom,
     packingIsNational: false,
     moveInIsNational: false,
   };
@@ -100,3 +122,7 @@ export function buildDemandTableRows(): DemandDistrictTableRow[] {
 }
 
 export const DEMAND_TABLE_ROWS = buildDemandTableRows();
+
+export function demandIndexScoreBySlug(slug: string): number | null {
+  return DEMAND_TABLE_ROWS.find((r) => r.slug === slug)?.indexScore ?? null;
+}
