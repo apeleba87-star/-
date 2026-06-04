@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
 import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
+import { listNationalBasketIngestPhrases } from "@/lib/demand/keyword-baskets";
 import {
   buildRegionSearchPhrases,
   demandKeywordRegionRefFromSelection,
@@ -52,12 +53,14 @@ function buildIngestTargets(): IngestTarget[] {
   const targets: IngestTarget[] = [];
 
   const nationalRef = demandKeywordRegionRefFromSelection({ scope: "national" });
-  const nationalPhrases = buildRegionSearchPhrases({ scope: "national" });
-  if (nationalRef && nationalPhrases) {
-    targets.push(
-      { region: nationalRef, keywordKey: "packing", phrase: nationalPhrases.packing },
-      { region: nationalRef, keywordKey: "move_in_clean", phrase: nationalPhrases.moveInClean }
-    );
+  if (nationalRef) {
+    for (const item of listNationalBasketIngestPhrases()) {
+      targets.push({
+        region: nationalRef,
+        keywordKey: item.keywordKey,
+        phrase: item.phrase,
+      });
+    }
   }
 
   const cityPhrases = buildRegionSearchPhrases({ scope: "city", cityId: "seoul" });
@@ -135,7 +138,7 @@ export async function runDemandSearchAdMonthlyIngestJob(
     const regionKeys = new Set(targets.map((t) => `${t.region.regionScope}:${t.region.regionKey}`));
 
     const { error, count } = await supabase.from("demand_keyword_monthly").upsert(rows, {
-      onConflict: "keyword_key,region_scope,region_key,yyyymm",
+      onConflict: "keyword_key,region_scope,region_key,search_phrase,yyyymm",
       count: "exact",
     });
 

@@ -26,8 +26,7 @@ import {
 } from "@/lib/demand/keyword-resolve";
 import { demandShowPackingSearchBreakdown } from "@/lib/demand/feature-flags";
 import DemandDevMetricBadge from "@/components/demand/DemandDevMetricBadge";
-import SignalBadge from "@/components/demand/SignalBadge";
-import { getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
+import DemandOutlookBadge from "@/components/demand/DemandOutlookBadge";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -96,7 +95,6 @@ export default function DemandScopeSummaryStrip({
     rows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ?? rows[0];
   if (!cardRow) return null;
 
-  const district = cardRow.slug ? getDemandDistrictBySlug(cardRow.slug) : undefined;
   const packing = cardRow.packing;
   const moveIn = cardRow.moveInClean;
   const packingInterestHint = demandKeywordIndexLevelHint(
@@ -124,8 +122,11 @@ export default function DemandScopeSummaryStrip({
           <h2 className="text-sm font-bold text-slate-900">
             {compareMode ? `${rows.length}개 지역 비교` : cardRow.pathLabel}
           </h2>
-          {!compareMode && district ? <SignalBadge signal={district.signal} /> : null}
+          {!compareMode ? <DemandOutlookBadge outlook={cardRow.outlook.outlook} /> : null}
         </div>
+        {!compareMode ? (
+          <p className="text-xs text-slate-600">{cardRow.outlook.reasons.join(" · ")}</p>
+        ) : null}
 
         {compareMode ? (
           <p className="text-xs text-slate-500">

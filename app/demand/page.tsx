@@ -6,7 +6,7 @@ import { getDemandRtmsDistrictSnapshot, getDemandRtmsMonthlySeries } from "@/lib
 
 export const metadata = {
   title: "입주수요 · 지역 탐색 | 클린아이덱스",
-  description: `${DEMAND_HUB_HERO.subtitle} ${DEMAND_HUB_HERO.title}`,
+  description: `${DEMAND_HUB_HERO.subtitle}`,
 };
 
 export default async function DemandHubPage() {

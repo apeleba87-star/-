@@ -11,6 +11,7 @@ import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
 import { DEMAND_HUB_HERO, DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
 import { demandShowPackingSearchBreakdown } from "@/lib/demand/feature-flags";
 import DemandDevMetricBadge from "@/components/demand/DemandDevMetricBadge";
+import DemandOutlookBadge from "@/components/demand/DemandOutlookBadge";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 import { demandMetricChartTheme } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
@@ -210,6 +211,7 @@ export default function DemandHubWorkspace({
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-600">
                   <th className="px-3 py-2.5 font-medium">지역</th>
+                  <th className="px-3 py-2.5 font-medium">판단</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.sale}</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.jeonse}</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingInterest}</th>
@@ -271,6 +273,9 @@ export default function DemandHubWorkspace({
                             {row.packing.keyword}
                           </p>
                         ) : null}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <DemandOutlookBadge outlook={row.outlook.outlook} compact />
                       </td>
                       <ClickableMetricCell
                         metricId="sale"

@@ -34,6 +34,8 @@ import {
   buildPackingInterestMonthlyChartPoints,
   computePackingInterestScore,
 } from "@/lib/demand/packing-interest";
+import { outlookFromScopeSignals, type DemandOutlookResult } from "@/lib/demand/outlook";
+import { demandKeywordRegionStoreKey } from "@/lib/demand/region-search-keywords";
 import { DEMAND_TABLE_ROWS } from "@/lib/demand/table-data";
 
 export type DemandScopeTableRow = {
@@ -58,6 +60,8 @@ export type DemandScopeTableRow = {
   keywordVolumeLevel?: DemandKeywordIndexLevel;
   keywordIndexLevelByKey?: Record<DemandKeywordKey, DemandKeywordIndexLevel>;
   keywordVolumeLevelByKey?: Record<DemandKeywordKey, DemandKeywordIndexLevel>;
+  /** RTMS + Basket 교차확인 — 입주·청소 수요 가능성 (예측 아님) */
+  outlook: DemandOutlookResult;
 };
 
 export type DemandRtmsDistrictOverrides = Record<
@@ -151,6 +155,44 @@ function seoulCompositeIndex(): number {
 
 type KeywordFields = ReturnType<typeof keywordFieldsForSelection>;
 
+function resolveOutlookForRow(
+  selection: DemandRegionSelection,
+  saleMom: number,
+  jeonseMom: number,
+  kw: KeywordFields,
+  keywordStore?: DemandKeywordStore | null
+): DemandOutlookResult {
+  const nationalKey = demandKeywordRegionStoreKey({ regionScope: "national", regionKey: "kr" });
+  const nationalBundle = keywordStore?.byRegion[nationalKey];
+  const nationalPacking = nationalBundle?.volumeMonthlySeries.packing ?? [];
+  const nationalMoveIn = nationalBundle?.volumeMonthlySeries.move_in_clean ?? [];
+
+  let packingSeries = kw.keywordVolumeMonthlySeries?.packing ?? [];
+  let moveInSeries = kw.keywordVolumeMonthlySeries?.move_in_clean ?? [];
+  let searchProxyNational = false;
+
+  if (selection.scope !== "national") {
+    const useNational =
+      nationalPacking.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART ||
+      nationalMoveIn.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART;
+    if (useNational) {
+      packingSeries = nationalPacking.length ? nationalPacking : packingSeries;
+      moveInSeries = nationalMoveIn.length ? nationalMoveIn : moveInSeries;
+      searchProxyNational = selection.scope === "district";
+    }
+  }
+
+  return outlookFromScopeSignals({
+    saleMom,
+    jeonseMom,
+    packingVolumeMonthly: packingSeries,
+    moveInVolumeMonthly: moveInSeries,
+    packingIndexMom: kw.packing.indexMomPercent,
+    moveInIndexMom: kw.moveInClean.indexMomPercent,
+    searchProxyNational,
+  });
+}
+
 function compositeIndexForKeywordBundle(
   saleMom: number,
   jeonseMom: number,
@@ -238,6 +280,7 @@ export function buildDemandScopeRow(
       saleMom,
       jeonseCount: Math.round(agg.jeonseCount * 4.1),
       jeonseMom,
+      outlook: resolveOutlookForRow(selection, saleMom, jeonseMom, kw, keywordStore),
       ...kw,
     };
   }
@@ -256,6 +299,7 @@ export function buildDemandScopeRow(
       saleMom: agg.saleMom,
       jeonseCount: agg.jeonseCount,
       jeonseMom: agg.jeonseMom,
+      outlook: resolveOutlookForRow(selection, agg.saleMom, agg.jeonseMom, kw, keywordStore),
       ...kw,
     };
   }
@@ -277,6 +321,7 @@ export function buildDemandScopeRow(
     saleMom,
     jeonseCount: rtms?.jeonseCount ?? tableRow.jeonseCount,
     jeonseMom,
+    outlook: resolveOutlookForRow(selection, saleMom, jeonseMom, kw, keywordStore),
     ...kw,
   };
 }

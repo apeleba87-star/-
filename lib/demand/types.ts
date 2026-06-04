@@ -1,3 +1,5 @@
+export type { DemandOutlook, DemandOutlookResult } from "@/lib/demand/outlook";
+
 export type DemandSignal = "strong" | "neutral" | "weak";
 
 export type DemandScope = "national" | "district";

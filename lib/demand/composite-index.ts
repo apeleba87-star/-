@@ -1,20 +1,17 @@
 import type { DemandChartPoint } from "@/lib/demand/scope-data";
 
 /**
- * 입주 온도 — 다음 달 입주·청소 수요 신호 추정 (참고용).
- *
- * 가설: 포장이사 검색량(선행)이 먼저 오르고 → 다음 달 입주청소 검색량이 따라온다.
- * 현재(전월·최근) 데이터만 사용하며, 가중치는 포장이사 검색량 변화에 가장 크다.
+ * 입주 온도 — 거래·Basket 검색 변화를 합산한 참고 지표 (예측 아님).
  */
 export const DEMAND_COMPOSITE_WEIGHTS = {
-  /** 포장이사 검색량 전월 대비 — 선행 지표 (최우선) */
-  packingVolumeMom: 0.55,
+  /** 입주청소 Basket — 현재 수요 확인 */
+  moveInConfirmMom: 0.25,
   /** 전월세 거래량 전월 대비 */
-  jeonseMom: 0.2,
+  jeonseMom: 0.25,
   /** 주택매매 거래량 전월 대비 */
-  saleMom: 0.15,
-  /** 입주청소 검색(확인·후행) — 낮은 비중 */
-  moveInConfirmMom: 0.1,
+  saleMom: 0.2,
+  /** 포장이사 Basket — 이사 관심 */
+  packingVolumeMom: 0.3,
 } as const;
 
 export type DemandCompositeInputs = {
@@ -103,4 +100,4 @@ export function compositeScoreFromScopeSignals(signals: DemandCompositeScopeSign
 
 /** UI 비노출 — 내부 가중치 문서용 */
 export const DEMAND_COMPOSITE_FORMULA_HINT =
-  "포장이사 검색량(전월) 55% · 전월세 20% · 매매 15% · 입주청소(확인) 10%";
+  "입주청소 Basket 25% · 전월세 25% · 매매 20% · 포장 Basket 30%";

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { runDemandKeywordIngestJob } from "@/lib/demand/keyword-ingest";
 import { getSearchAdCredentialsStatus } from "@/lib/naver/searchad-keyword-client";
+import { listNationalBasketIngestPhrases } from "@/lib/demand/keyword-baskets";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -53,6 +54,17 @@ export async function GET() {
       .eq("source", "searchad");
     const searchadDistinctMonths = new Set((yyyymmRows ?? []).map((r) => r.yyyymm)).size;
 
+    const basketPhrases = listNationalBasketIngestPhrases().map((p) => p.phrase);
+    const { data: nationalBasketRows } = await service
+      .from("demand_keyword_monthly")
+      .select("search_phrase")
+      .eq("source", "searchad")
+      .eq("region_scope", "national")
+      .in("search_phrase", basketPhrases);
+    const searchadBasketPhrases = new Set(
+      (nationalBasketRows ?? []).map((r) => r.search_phrase).filter(Boolean)
+    ).size;
+
     return NextResponse.json({
       ok: true,
       dailyRows: dailyRes.count ?? 0,
@@ -62,6 +74,8 @@ export async function GET() {
       datalabConfigured,
       searchadMonthlyRows: searchadMonthly.count ?? 0,
       searchadDistinctMonths,
+      searchadBasketPhrases,
+      searchadBasketPhraseTarget: basketPhrases.length,
       searchAdCredentials: getSearchAdCredentialsStatus(),
     });
   } catch (e) {

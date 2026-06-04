@@ -49,6 +49,32 @@ type RawMonthly = {
 const SEARCHAD_HISTORY_MONTHS = 12;
 const DATALAB_DAILY_SOURCES = new Set(["datalab", "naver_trend"]);
 
+type VolumeMonthAccum = { sum: number; belowTenOnly: boolean };
+
+function accumulateVolumeMonth(
+  map: Map<string, VolumeMonthAccum>,
+  yyyymm: string,
+  volume: number | null,
+  belowTen: boolean
+): void {
+  const add = belowTen || volume == null || !Number.isFinite(volume) ? 0 : volume;
+  const cur = map.get(yyyymm) ?? { sum: 0, belowTenOnly: true };
+  map.set(yyyymm, {
+    sum: cur.sum + add,
+    belowTenOnly: cur.belowTenOnly && add === 0,
+  });
+}
+
+function volumeMapToRows(map: Map<string, VolumeMonthAccum>): VolumeMonthRow[] {
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([yyyymm, { sum, belowTenOnly }]) => ({
+      yyyymm,
+      volume: belowTenOnly ? null : sum,
+      belowTen: belowTenOnly,
+    }));
+}
+
 function latestVolumeSnapshot(
   rows: VolumeMonthRow[]
 ): { volume: number | null; belowTen: boolean } | undefined {
@@ -66,7 +92,7 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
   const monthlyGrouped: Record<string, Record<DemandKeywordKey, DemandKeywordDailyRow[]>> = {};
   const volumeMonthlyGrouped: Record<
     string,
-    Record<DemandKeywordKey, VolumeMonthRow[]>
+    Record<DemandKeywordKey, Map<string, VolumeMonthAccum>>
   > = {};
   const phrasesByRegion: Record<string, { packing: string; moveInClean: string }> = {};
 
@@ -132,22 +158,27 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
         const kw = row.keyword_key as DemandKeywordKey;
         if (!DEMAND_KEYWORD_KEYS.includes(kw)) continue;
         if (!volumeMonthlyGrouped[k]) {
-          volumeMonthlyGrouped[k] = { packing: [], move_in_clean: [] };
+          volumeMonthlyGrouped[k] = {
+            packing: new Map(),
+            move_in_clean: new Map(),
+          };
         }
-        const list = volumeMonthlyGrouped[k][kw];
-        if (list.some((x) => x.yyyymm === row.yyyymm)) continue;
-        list.push({
-          yyyymm: row.yyyymm,
-          volume:
-            row.search_volume_month != null ? Number(row.search_volume_month) : null,
-          belowTen: Boolean(row.search_volume_below_ten),
-        });
+        accumulateVolumeMonth(
+          volumeMonthlyGrouped[k][kw],
+          row.yyyymm,
+          row.search_volume_month != null ? Number(row.search_volume_month) : null,
+          Boolean(row.search_volume_below_ten)
+        );
         if (row.search_phrase) {
           if (!phrasesByRegion[k]) {
             phrasesByRegion[k] = { packing: "", moveInClean: "" };
           }
-          if (kw === "packing") phrasesByRegion[k].packing = row.search_phrase;
-          if (kw === "move_in_clean") phrasesByRegion[k].moveInClean = row.search_phrase;
+          if (kw === "packing" && !phrasesByRegion[k].packing) {
+            phrasesByRegion[k].packing = row.search_phrase;
+          }
+          if (kw === "move_in_clean" && !phrasesByRegion[k].moveInClean) {
+            phrasesByRegion[k].moveInClean = row.search_phrase;
+          }
         }
       }
     }
@@ -161,9 +192,13 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
         packing: "포장이사",
         moveInClean: "입주청소",
       };
-      const volMonths = volumeMonthlyGrouped[storeKey] ?? {
-        packing: [],
-        move_in_clean: [],
+      const volMaps = volumeMonthlyGrouped[storeKey] ?? {
+        packing: new Map(),
+        move_in_clean: new Map(),
+      };
+      const volMonths = {
+        packing: volumeMapToRows(volMaps.packing),
+        move_in_clean: volumeMapToRows(volMaps.move_in_clean),
       };
       byRegion[storeKey] = bundleDemandKeywordFromRows(
         phrases,

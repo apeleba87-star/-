@@ -1,4 +1,5 @@
 import type { DemandSignal } from "@/lib/demand/types";
+import type { DemandOutlook } from "@/lib/demand/outlook";
 
 /** 표·근거 카드 공통 지표명 (열 순서와 동일) */
 export const DEMAND_METRIC_LABELS = {
@@ -7,7 +8,7 @@ export const DEMAND_METRIC_LABELS = {
   packingInterest: "포장이사 관심지수",
   packingVolume: "포장이사 검색량",
   packingIndex: "포장이사 검색지수",
-  moveInVolume: "입주청소 검색량",
+  moveInVolume: "입주청소 Basket",
   moveInIndex: "입주청소 검색지수",
   /** @deprecated 열 분리 전 라벨 */
   packing: "포장이사 검색량",
@@ -38,15 +39,45 @@ export const DEMAND_NATIONAL_KEYWORD_LABELS = {
 } as const;
 
 export const DEMAND_DISCLAIMER =
-  "국토부 실거래·네이버 데이터랩 검색지수(전국·상대값) 기준입니다. 검색지수는 실제 검색 건수가 아닙니다. 신고·집계 지연(통상 1~2개월)이 있을 수 있습니다. 참고용입니다.";
+  "국토부 실거래·네이버 검색광고·DataLab 기준입니다. Basket은 핵심 키워드 합산 추정치이며, 입주·청소 수요 「가능성」 참고용입니다(예측 아님). 신고·집계 지연(통상 1~2개월)이 있을 수 있습니다.";
 
 export const DEMAND_PHASE0_BADGE = "UI 미리보기 · 더미 데이터";
 
 export const DEMAND_HUB_HERO = {
-  title: "입주수요는 어디서 시작될까?",
-  subtitle: "실거래·검색 데이터로 지역별 입주 흐름을 비교합니다.",
+  title: "이번 달, 어디 구에 입주청소 영업을 집중할까?",
+  subtitle: "실거래·검색 Basket으로 지역별 입주·청소 수요 가능성을 비교합니다.",
   regionHint: "비교할 지역을 추가해 보세요.",
 } as const;
+
+export const OUTLOOK_LABELS: Record<
+  DemandOutlook,
+  { label: string; emoji: string; className: string; description: string }
+> = {
+  rising: {
+    label: "수요 상승",
+    emoji: "🟢",
+    className: "bg-emerald-50 text-emerald-800 ring-emerald-200/80",
+    description: "입주청소 Basket과 거래·포장 신호가 함께 올라온 구간입니다.",
+  },
+  watch: {
+    label: "잠재 후보",
+    emoji: "🔵",
+    className: "bg-sky-50 text-sky-900 ring-sky-200/80",
+    description: "거래·포장 관심은 있으나 입주청소 Basket은 아직 약합니다. 1~2개월 관찰 후보입니다.",
+  },
+  neutral: {
+    label: "관망",
+    emoji: "🟡",
+    className: "bg-amber-50 text-amber-900 ring-amber-200/80",
+    description: "신호가 뚜렷하지 않습니다. 표·차트를 함께 확인하세요.",
+  },
+  low: {
+    label: "우선 낮음",
+    emoji: "🔴",
+    className: "bg-rose-50 text-rose-800 ring-rose-200/80",
+    description: "포장이사만 오르고 거래·입주청소는 약합니다. 단독 판단을 피하세요.",
+  },
+};
 
 export const SIGNAL_LABELS: Record<
   DemandSignal,

@@ -12,6 +12,8 @@ type Stats =
       datalabConfigured?: boolean;
       searchadMonthlyRows?: number;
       searchadDistinctMonths?: number;
+      searchadBasketPhrases?: number;
+      searchadBasketPhraseTarget?: number;
       searchAdCredentials?: { configured: boolean; customerId: string | null };
     }
   | { ok: false; error?: string };
@@ -229,8 +231,8 @@ export default function DemandKeywordIngestPanel() {
           설정 후 dev 서버 재시작 · Vercel에도 동일 3개 변수 추가
         </p>
         <p className="mt-1 text-xs text-amber-800">
-          구별 문구: <strong>강북구입주청소</strong> · <strong>강북구포장이사</strong> (쌍으로 동일 구
-          접두). DB·API는 붙여쓰기, 허브 UI는 「강북구 입주청소」처럼 표시.
+          전국 Basket 8문구(포장 4 + 입주 4) · 구별은 레거시 2문구(강북구입주청소 등). 허브 UI는
+          「강북구 입주청소」처럼 표시.
         </p>
         <p className="mt-1 text-xs text-slate-600">
           검색광고 API는 과거 12개월을 한 번에 주지 않습니다.{" "}
@@ -309,7 +311,11 @@ export default function DemandKeywordIngestPanel() {
           </li>
           <li>
             검색광고 월 스냅샷: <strong>{(stats.searchadMonthlyRows ?? 0).toLocaleString()}</strong>행 ·
-            누적 <strong>{stats.searchadDistinctMonths ?? 0}</strong>개월
+            누적 <strong>{stats.searchadDistinctMonths ?? 0}</strong>개월 · 전국 Basket{" "}
+            <strong>
+              {stats.searchadBasketPhrases ?? 0}/{stats.searchadBasketPhraseTarget ?? 8}
+            </strong>
+            문구
           </li>
         </ul>
       ) : (
