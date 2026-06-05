@@ -85,7 +85,14 @@ export async function runDemandSearchAdDailyIngestJob(
     });
 
     if (error) {
-      return { ok: false, error: error.message };
+      const msg = error.message;
+      if (/search_volume_rolling_30d|search_volume_below_ten/i.test(msg)) {
+        return {
+          ok: false,
+          error: `${msg} — Supabase에 migration 154_demand_keyword_daily_rolling_volume.sql 을 적용하세요.`,
+        };
+      }
+      return { ok: false, error: msg };
     }
 
     const regionKeys = new Set(targets.map((t) => `${t.region.regionScope}:${t.region.regionKey}`));

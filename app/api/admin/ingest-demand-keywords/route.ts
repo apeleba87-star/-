@@ -66,6 +66,12 @@ export async function GET() {
       .in("source", ["searchad", "searchad_console"]);
     const searchadDistinctMonths = new Set((yyyymmRows ?? []).map((r) => r.yyyymm)).size;
 
+    const { error: rollingColErr } = await service
+      .from("demand_keyword_daily")
+      .select("search_volume_rolling_30d")
+      .limit(1);
+    const rollingMigrationReady = !rollingColErr;
+
     const basketPhrases = listNationalBasketIngestPhrases().map((p) => p.phrase);
     const { data: nationalBasketRows } = await service
       .from("demand_keyword_monthly")
@@ -109,9 +115,8 @@ export async function POST() {
   try {
     const service = createServiceSupabase();
     const result = await runDemandKeywordIngestJob(service);
-    return NextResponse.json(result, {
-      status: result.ok ? 200 : 500,
-    });
+    const status = result.ok ? 200 : result.datalab.ok ? 200 : 500;
+    return NextResponse.json(result, { status });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

@@ -148,12 +148,15 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
       7
     );
 
-    const [dailyRes, monthlyRes] = await Promise.all([
+    const dailySelectWithRolling =
+      "keyword_key, region_scope, region_key, search_phrase, period_date, index_ratio, source, search_volume_rolling_30d, search_volume_below_ten";
+    const dailySelectBase =
+      "keyword_key, region_scope, region_key, search_phrase, period_date, index_ratio, source";
+
+    const [dailyResInitial, monthlyRes] = await Promise.all([
       supabase
         .from("demand_keyword_daily")
-        .select(
-          "keyword_key, region_scope, region_key, search_phrase, period_date, index_ratio, source, search_volume_rolling_30d, search_volume_below_ten"
-        )
+        .select(dailySelectWithRolling)
         .gte("period_date", sinceDate)
         .order("period_date", { ascending: true })
         .limit(20000),
@@ -167,8 +170,22 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
         .limit(8000),
     ]);
 
-    if (dailyRes.data) {
-      for (const row of dailyRes.data as RawDaily[]) {
+    let dailyRows: RawDaily[] | null = dailyResInitial.data as RawDaily[] | null;
+    if (
+      dailyResInitial.error &&
+      /search_volume_rolling_30d|search_volume_below_ten/i.test(dailyResInitial.error.message)
+    ) {
+      const fallbackRes = await supabase
+        .from("demand_keyword_daily")
+        .select(dailySelectBase)
+        .gte("period_date", sinceDate)
+        .order("period_date", { ascending: true })
+        .limit(20000);
+      dailyRows = fallbackRes.data as RawDaily[] | null;
+    }
+
+    if (dailyRows) {
+      for (const row of dailyRows) {
         const k = demandKeywordRegionStoreKey({
           regionScope: row.region_scope as "national" | "city" | "district",
           regionKey: row.region_key,

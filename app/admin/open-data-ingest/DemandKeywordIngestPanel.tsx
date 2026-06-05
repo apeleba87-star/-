@@ -16,6 +16,8 @@ type Stats =
       searchadBasketPhraseTarget?: number;
       searchadRollingRows?: number;
       searchadRollingLatestDate?: string | null;
+      rollingMigrationReady?: boolean;
+      rollingMigrationError?: string | null;
       searchAdCredentials?: { configured: boolean; customerId: string | null };
     }
   | { ok: false; error?: string };
@@ -119,18 +121,24 @@ export default function DemandKeywordIngestPanel() {
         });
         return;
       }
-      if (!res.ok) {
+      const partialOk = Boolean(j.datalab?.ok) && !j.searchAdDaily?.ok;
+      if (!res.ok && !partialOk) {
         setLastRun({
           ok: false,
           error:
-            j.error ??
+            j.searchAdDaily?.error ??
             j.datalab?.error ??
-            (j as { error?: string }).error ??
+            j.error ??
             `HTTP ${res.status}`,
           datalab: j.datalab,
+          searchAdDaily: j.searchAdDaily,
+          searchAdMonthly: j.searchAdMonthly,
         });
       } else {
-        setLastRun(j);
+        setLastRun({
+          ...j,
+          ok: j.ok ?? (j.datalab?.ok && j.searchAdDaily?.ok),
+        });
       }
       await loadStats();
     } catch (e) {
@@ -316,6 +324,20 @@ export default function DemandKeywordIngestPanel() {
         </button>
       </div>
 
+      {stats?.ok && stats.rollingMigrationReady === false ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <strong>롤링 30일 컬럼 없음.</strong> Supabase SQL Editor에서{" "}
+          <code className="text-xs">154_demand_keyword_daily_rolling_volume.sql</code> migration을
+          적용하세요.
+          {stats.rollingMigrationError ? (
+            <>
+              <br />
+              <span className="text-xs">{stats.rollingMigrationError}</span>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
       {statsLoading ? (
         <p className="text-sm text-slate-500">통계 불러오는 중…</p>
       ) : stats?.ok ? (
@@ -391,9 +413,11 @@ export default function DemandKeywordIngestPanel() {
           className={`rounded-lg border p-3 text-sm ${
             lastRun.ok && !lastDatalabTrendOnly
               ? "border-emerald-200 bg-emerald-50"
-              : lastRun.ok && lastDatalabTrendOnly
+              : lastRun.datalab?.ok && !lastRun.searchAdDaily?.ok
                 ? "border-amber-300 bg-amber-50"
-                : "border-red-200 bg-red-50"
+                : lastRun.ok && lastDatalabTrendOnly
+                  ? "border-amber-300 bg-amber-50"
+                  : "border-red-200 bg-red-50"
           }`}
         >
           {lastRun.ok ? (
