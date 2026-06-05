@@ -10,6 +10,23 @@ import {
 import { DEMAND_RTMS_MONTHS_BACK_BACKFILL } from "@/lib/demand/rtms-ingest";
 
 const DONE_STORAGE_KEY = "demand-rtms-backfill-done-v1";
+const PROD_FETCH_TIMEOUT_MIN = 5;
+const LOCAL_FETCH_TIMEOUT_MIN = 10;
+
+function isLocalAdminHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+}
+
+function backfillFetchTimeoutMs(): number {
+  return (isLocalAdminHost() ? LOCAL_FETCH_TIMEOUT_MIN : PROD_FETCH_TIMEOUT_MIN) * 60 * 1000;
+}
+
+function backfillFetchTimeoutLabel(): string {
+  const min = isLocalAdminHost() ? LOCAL_FETCH_TIMEOUT_MIN : PROD_FETCH_TIMEOUT_MIN;
+  return `${min}분`;
+}
 
 type RunResult = {
   ok: boolean;
@@ -55,7 +72,8 @@ export default function DemandRtmsBackfillPanel() {
     setRunningId(batch.id);
     setLastRun(null);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+    const timeoutMs = backfillFetchTimeoutMs();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const res = await fetch("/api/admin/ingest-demand-rtms", {
@@ -96,7 +114,7 @@ export default function DemandRtmsBackfillPanel() {
           ok: false,
           error:
             msg.includes("aborted") || msg === "fetch failed"
-              ? "요청 시간 초과(5분). 경기·경북 등은 재시도하세요."
+              ? `요청 시간 초과(${backfillFetchTimeoutLabel()}). 경기·경북 등은 재시도하세요.`
               : msg,
         },
       });
@@ -129,8 +147,8 @@ export default function DemandRtmsBackfillPanel() {
           구) — {DEMAND_RTMS_BACKFILL_EXCLUDED.reason}
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          각 시·도 버튼: 최근 {DEMAND_RTMS_MONTHS_BACK_BACKFILL}개월 · 5분 제한 · 완료 체크는 이
-          브라우저에만 저장됩니다.
+          각 시·도 버튼: 최근 {DEMAND_RTMS_MONTHS_BACK_BACKFILL}개월 ·{" "}
+          {backfillFetchTimeoutLabel()} 제한 · 완료 체크는 이 브라우저에만 저장됩니다.
         </p>
       </div>
 
@@ -187,7 +205,9 @@ export default function DemandRtmsBackfillPanel() {
                     : `${batch.districtCount}구 · ${batch.monthsBack}개월`}
                 </span>
                 {isRunning ? (
-                  <span className="mt-1 text-xs font-medium text-teal-700">수집 중 (최대 5분)…</span>
+                  <span className="mt-1 text-xs font-medium text-teal-700">
+                    수집 중 (최대 {backfillFetchTimeoutLabel()})…
+                  </span>
                 ) : null}
               </button>
             </li>
