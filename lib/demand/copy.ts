@@ -32,7 +32,7 @@ export const DEMAND_SEARCH_VOLUME_UNCOLLECTED = "미수집";
 export const DEMAND_SEARCH_INDEX_CARD_SUB = "전일 대비";
 
 export const DEMAND_RTMS_HERO_NOTE =
-  "점수는 이 구 거래 + 전국 이사 검색입니다.";
+  "점수는 직전월 RTMS·전국 검색 → 이번 달 입주 참고입니다.";
 
 export const DEMAND_SCOPE_SIMPLE_HINT = "카드를 누르면 30일·1년 추이를 봅니다.";
 
@@ -60,13 +60,13 @@ export const DEMAND_BASKET_DISPLAY_LABELS = {
   moveIn: DEMAND_METRIC_LABELS.moveInVolume,
 } as const;
 
-export const DEMAND_SCORE_CARD_SUB = "전국 관심 × 이 구 거래 참고";
+export const DEMAND_SCORE_CARD_SUB = "직전월 RTMS·검색 → 이번 달 입주 참고";
 
 export const DEMAND_SCORE_ABOUT =
-  "전국 이사·입주청소 검색 변화(이사 관심)와 해당 구 전월세·매매 거래 변화를 곱한 참고 점수입니다. 구별 키워드 검색은 점수에 넣지 않고 DB에만 축적합니다. 손없는날 키워드는 지수에 넣지 않고 보조 참고로만 표시합니다. 정확한 입주 건수 예측이 아니라 이번 달 영업·광고 우선순위용입니다.";
+  "직전 확정월(신호월)의 구 RTMS 거래 규모·모멘텀과 전국 이사·입주청소 검색량·검색지수를 합쳐, KST 이번 달(대상월) 입주·청소 수요가 어느 구에서 상대적으로 클지 보는 참고 점수입니다. RTMS는 아파트 매매·전월세 신고 건수이며, 신호월 데이터는 약 1개월 뒤 입주·청소 수요의 선행 지표로 봅니다. 구별 키워드 검색은 점수에 넣지 않고 DB에만 축적합니다. 정확한 입주 건수 예측이 아니라 이번 달 영업·광고 우선순위용입니다.";
 
 export const DEMAND_SCORE_METHOD_NOTE =
-  "전국 관심도 = 100 + (포장 Basket MoM×4/7 + 입주 Basket MoM×3/7). 손없는날(앞 2달 키워드)은 보조 지표로만 표시·지수 미반영. 구 RTMS 지수 = 100 + (전월세 MoM×70% + 매매 MoM×30%). 최종 = (관심도 × RTMS) ÷ 100.";
+  "대상월 T = KST 이번 달 · 신호월 S = T−1개월. 전국 = (포장검색량×25% + 입주검색량×25% + 포장검색지수×25% + 입주검색지수×25%), 각 항목은 최근 12개월 중앙값=100 정규화. 구 = (RTMS규모×70% + RTMS MoM×30%), RTMS규모=전월세×70%+매매×30% 건수, 25구 중앙값=100. 최종 = 전국 × 구 ÷ 100.";
 
 export const DEMAND_HAND_FREE_SUPPLEMENTARY_NOTE =
   "보조 — 앞 2달 손없는날 검색 MoM (이사 계획 선행 신호, 지역수요점수·전국 관심도에 미포함)";
@@ -117,10 +117,21 @@ export const DEMAND_DISCLAIMER =
 export const DEMAND_PHASE0_BADGE = "UI 미리보기 · 더미 데이터";
 
 export const DEMAND_HUB_HERO = {
-  title: "이번 달, 어디 구에 입주청소 영업을 집중할까?",
-  subtitle: "전국 이사 관련 검색 × 구 RTMS로 지역수요점수를 비교합니다.",
+  title: "이번 달, 입주가 많은 지역을 찾아보세요",
+  subtitle:
+    "국토부 거래와 검색엔진의 신호로 각 지역 입주·이사 우선순위를 비교합니다.",
   regionHint: "비교할 지역을 추가하거나 아래 서울 순위를 확인하세요.",
 } as const;
+
+export const DEMAND_HUB_SEARCH_PLACEHOLDER = "구 이름 검색 (예: 강남, 강서, 양천)";
+
+export const DEMAND_HUB_SEARCH_HINT =
+  "구를 검색하면 비교 목록에 바로 추가됩니다. 최대 3곳까지 나란히 볼 수 있습니다.";
+
+export const DEMAND_HUB_TOP_DISTRICTS_LABEL = "이번 달 수요 상위 구";
+
+export const DEMAND_PULSE_CADENCE_MONTHLY = "월간";
+export const DEMAND_PULSE_CADENCE_DAILY = "일간";
 
 function formatRollingCollectedLabel(ymd: string): string {
   const [, m, d] = ymd.split("-");
@@ -233,6 +244,26 @@ export function formatChartMonthPeriodLabel(period: string): string {
   if (kr) return period;
   const legacy = period.match(/^(\d{2})\.(\d{1,2})$/);
   if (legacy) return `${2000 + Number(legacy[1])}년 ${Number(legacy[2])}월`;
+  return period;
+}
+
+/** YYYY-MM-DD → 「2026년 4월 15일」 */
+export function ymdToChartDayPeriodLabel(ymd: string): string {
+  const [y, m, d] = ymd.split("-");
+  if (!y || !m || !d) return ymd;
+  return `${Number(y)}년 ${Number(m)}월 ${Number(d)}일`;
+}
+
+/** 30일 차트 라벨 — legacy YY.M.D · ISO · 이미 한글 형식 */
+export function formatChartDayPeriodLabel(period: string): string {
+  const kr = period.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일$/);
+  if (kr) return period;
+  const iso = period.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return ymdToChartDayPeriodLabel(period);
+  const legacy = period.match(/^(\d{2})\.(\d{1,2})\.(\d{1,2})$/);
+  if (legacy) {
+    return `${2000 + Number(legacy[1])}년 ${Number(legacy[2])}월 ${Number(legacy[3])}일`;
+  }
   return period;
 }
 

@@ -1,7 +1,17 @@
 import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
+import { DEMAND_REGION_REGISTRY } from "@/lib/demand/region-registry.generated";
 import type { DemandRegionSelection } from "@/lib/demand/regions";
 import { getDemandCity, getDemandDistrictRef } from "@/lib/demand/regions";
 import { guSlugToName } from "@/lib/demand/slugs";
+
+export type DistrictKeywordTarget = {
+  regionScope: "district";
+  regionKey: string;
+  cityId: string;
+  guSlug: string;
+  guName: string;
+  phrases: { packing: string; moveInClean: string };
+};
 
 export type DemandKeywordRegionRef = {
   regionScope: "national" | "city" | "district";
@@ -52,9 +62,18 @@ function keywordSuffix(keywordKey: DemandKeywordKey): string {
   return keywordKey === "packing" ? "포장이사" : "입주청소";
 }
 
-/** 구·시 + 키워드 (검색광고 API 호환 — 띄어쓰기 없음). 예: 강북구입주청소, 강북구포장이사 */
+/** 구·시 + 키워드 (검색광고 API 호환 — 띄어쓰기 없음). 예: 강북구입주청소, 분당구포장이사 */
+export function districtKeywordGu(guLabel: string): string {
+  const t = guLabel.trim();
+  if (t.includes(" ")) {
+    const parts = t.split(/\s+/);
+    return parts[parts.length - 1] ?? t;
+  }
+  return t;
+}
+
 export function buildDistrictKeywordPhrase(guName: string, keywordKey: DemandKeywordKey): string {
-  return `${guName.trim()}${keywordSuffix(keywordKey)}`;
+  return `${districtKeywordGu(guName).trim()}${keywordSuffix(keywordKey)}`;
 }
 
 /** UI 표시용 — 강북구입주청소 → 강북구 입주청소 */
@@ -94,7 +113,7 @@ export function buildRegionSearchPhrase(
   }
 
   const district = getDemandDistrictRef(selection.cityId, selection.guSlug);
-  const gu = district?.gu ?? guSlugToName(selection.guSlug);
+  const gu = district?.gu ?? guSlugToName(selection.guSlug, selection.cityId);
   if (!gu) return null;
 
   return buildDistrictKeywordPhrase(gu, keywordKey);
@@ -109,30 +128,36 @@ export function buildRegionSearchPhrases(
   return { packing, moveInClean };
 }
 
-/** 서울 25구 ingest 대상 */
-export function listSeoulDistrictKeywordTargets(): Array<{
-  regionScope: "district";
-  regionKey: string;
-  guSlug: string;
-  guName: string;
-  phrases: { packing: string; moveInClean: string };
-}> {
-  const city = getDemandCity("seoul");
-  if (!city) return [];
+/** 전국 RTMS 단위 ingest 대상 (cityId 생략 시 280곳 전체) */
+export function listAllDistrictKeywordTargets(cityId?: string): DistrictKeywordTarget[] {
+  const cities = cityId
+    ? DEMAND_REGION_REGISTRY.filter((c) => c.id === cityId)
+    : DEMAND_REGION_REGISTRY;
 
-  return city.districts.map((d) => {
-    const selection = {
-      scope: "district" as const,
-      cityId: "seoul",
-      guSlug: d.slug,
-    };
-    const phrases = buildRegionSearchPhrases(selection)!;
-    return {
-      regionScope: "district" as const,
-      regionKey: `seoul:${d.slug}`,
-      guSlug: d.slug,
-      guName: d.gu,
-      phrases,
-    };
-  });
+  const targets: DistrictKeywordTarget[] = [];
+  for (const city of cities) {
+    for (const d of city.districts) {
+      const selection = {
+        scope: "district" as const,
+        cityId: city.id,
+        guSlug: d.slug,
+      };
+      const phrases = buildRegionSearchPhrases(selection);
+      if (!phrases) continue;
+      targets.push({
+        regionScope: "district",
+        regionKey: `${city.id}:${d.slug}`,
+        cityId: city.id,
+        guSlug: d.slug,
+        guName: d.gu,
+        phrases,
+      });
+    }
+  }
+  return targets;
+}
+
+/** @deprecated listAllDistrictKeywordTargets("seoul") */
+export function listSeoulDistrictKeywordTargets(): DistrictKeywordTarget[] {
+  return listAllDistrictKeywordTargets("seoul");
 }

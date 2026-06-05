@@ -38,8 +38,11 @@ function snapshotYyyymmKst(): string {
   return demandSearchAdSnapshotYyyymm();
 }
 
+export type DemandSearchAdMonthlyIngestOptions = { cityId?: string };
+
 export async function runDemandSearchAdMonthlyIngestJob(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options?: DemandSearchAdMonthlyIngestOptions
 ): Promise<DemandSearchAdMonthlyIngestResult> {
   if (!getSearchAdCredentials()) {
     return {
@@ -57,7 +60,7 @@ export async function runDemandSearchAdMonthlyIngestJob(
    */
   const yyyymm = snapshotYyyymmKst();
   const now = new Date().toISOString();
-  const targets = buildSearchAdArchiveIngestTargets();
+  const targets = buildSearchAdArchiveIngestTargets(options?.cityId);
 
   if (targets.length === 0) {
     return { ok: false, error: "수집 대상 지역이 없습니다." };

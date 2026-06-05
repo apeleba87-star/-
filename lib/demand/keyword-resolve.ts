@@ -10,7 +10,9 @@ import type { DemandRegionSelection } from "@/lib/demand/regions";
 import {
   countDailyIndexInChartWindow,
   defaultSearchVolumeChartEndYmd,
+  lastKstChartDays,
 } from "@/lib/demand/search-volume-30d";
+import { ymdToChartDayPeriodLabel } from "@/lib/demand/copy";
 import {
   buildHandFreeForwardVolumeSeries,
   handFreeForwardDataReady,
@@ -38,9 +40,7 @@ const EMPTY_SERIES: Record<DemandKeywordKey, { period: string; value: number }[]
 };
 
 function periodDateToChartLabel(periodDate: string): string {
-  const [y, m, d] = periodDate.split("-");
-  if (!y || !m || !d) return periodDate;
-  return `${y.slice(2)}.${Number(m)}.${Number(d)}`;
+  return ymdToChartDayPeriodLabel(periodDate.slice(0, 10));
 }
 
 function periodMonthToChartLabel(periodDate: string): string {

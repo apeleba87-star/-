@@ -7,6 +7,8 @@ import {
   DEMAND_REGIONS,
   demandRegionSelectionKey,
   formatDemandRegionLabel,
+  getDemandCity,
+  getDemandDistrictRef,
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
 import { cn } from "@/lib/utils";
@@ -30,6 +32,12 @@ function selectionFromDraft(cityId: string, guValue: string): DemandRegionSelect
   if (guValue === CITY_WHOLE_VALUE) return { scope: "city", cityId };
   if (!guValue) return null;
   return { scope: "district", cityId, guSlug: guValue };
+}
+
+function districtOptionLabel(cityId: string, gu: string): string {
+  const city = getDemandCity(cityId);
+  if (!city) return gu;
+  return `${city.fullLabel} ${gu}`;
 }
 
 export default function DemandRegionPicker({ selections, onAdd, onRemove, className }: Props) {
@@ -99,7 +107,7 @@ export default function DemandRegionPicker({ selections, onAdd, onRemove, classN
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
           <label htmlFor="demand-region-city" className="text-xs font-medium text-slate-600">
-            범위
+            시·도
           </label>
           <select
             id="demand-region-city"
@@ -119,7 +127,7 @@ export default function DemandRegionPicker({ selections, onAdd, onRemove, classN
 
         <div>
           <label htmlFor="demand-region-gu" className="text-xs font-medium text-slate-600">
-            {isNational ? "—" : "구 · 세부"}
+            {isNational ? "—" : "시·군·구"}
           </label>
           <select
             id="demand-region-gu"
@@ -133,7 +141,7 @@ export default function DemandRegionPicker({ selections, onAdd, onRemove, classN
             )}
           >
             <option value="">
-              {!cityId ? "범위 먼저" : isNational ? "전국 단일" : "선택"}
+              {!cityId ? "시·도 먼저" : isNational ? "전국 단일" : "선택"}
             </option>
             {city ? <option value={CITY_WHOLE_VALUE}>{city.fullLabel} 전체</option> : null}
             {city?.districts.map((d) => {
@@ -146,7 +154,7 @@ export default function DemandRegionPicker({ selections, onAdd, onRemove, classN
               const picked = selections.some((s) => demandRegionSelectionKey(s) === key);
               return (
                 <option key={d.slug} value={d.slug} disabled={picked}>
-                  {city.label} &gt; {d.gu}
+                  {districtOptionLabel(city.id, d.gu)}
                   {picked ? " · 추가됨" : ""}
                 </option>
               );
@@ -168,7 +176,7 @@ export default function DemandRegionPicker({ selections, onAdd, onRemove, classN
         {atMax
           ? `최대 ${DEMAND_MAX_REGION_COMPARE}곳까지 비교할 수 있습니다.`
           : selections.length === 0
-            ? "전국 · 서울 전체 · 서울 > 구 순서로 고를 수 있습니다."
+            ? "전국 · 시·도 전체 · 시·군·구 순서로 고를 수 있습니다."
             : `${selections.length}/${DEMAND_MAX_REGION_COMPARE}곳 선택됨`}
       </p>
 
@@ -178,15 +186,26 @@ export default function DemandRegionPicker({ selections, onAdd, onRemove, classN
             const label = formatDemandRegionLabel(sel);
             const key = demandRegionSelectionKey(sel);
             if (!label) return null;
-            const parts = label.includes(" > ") ? label.split(" > ") : [label];
+
+            let prefix: string | null = null;
+            let suffix: string | null = null;
+            if (sel.scope === "district") {
+              const cityMeta = getDemandCity(sel.cityId);
+              const district = getDemandDistrictRef(sel.cityId, sel.guSlug);
+              if (cityMeta && district) {
+                prefix = cityMeta.fullLabel;
+                suffix = district.gu;
+              }
+            }
+
             return (
               <li key={key}>
                 <span className="inline-flex items-center gap-0.5 rounded-md bg-slate-100 py-1 pl-2 pr-1 text-sm text-slate-800">
-                  {parts.length === 2 ? (
+                  {prefix && suffix ? (
                     <>
-                      <span className="text-slate-500">{parts[0]}</span>
+                      <span className="text-slate-500">{prefix}</span>
                       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
-                      <span className="font-medium">{parts[1]}</span>
+                      <span className="font-medium">{suffix}</span>
                     </>
                   ) : (
                     <span className="font-medium">{label}</span>

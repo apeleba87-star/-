@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import DemandHubPulseSection from "@/components/demand/DemandHubPulseSection";
 import DemandMetricChart from "@/components/demand/DemandMetricChart";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
+import DemandScopeCompareCards from "@/components/demand/DemandScopeCompareCards";
 import { DemandSearchIndexCell, DemandSearchVolumeCell } from "@/components/demand/DemandSearchMetricCell";
 import DemandScopeSummaryStrip from "@/components/demand/DemandScopeSummaryStrip";
 import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
 import { DEMAND_HUB_HERO, DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
 import DemandHeatBadge from "@/components/demand/DemandHeatBadge";
-import DemandNationalInterestStrip from "@/components/demand/DemandNationalInterestStrip";
 import DemandDummyBadge from "@/components/demand/DemandDummyBadge";
 import { formatDemandScoreBasis } from "@/lib/demand/district-demand-score";
-import type { DemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
+import {
+  type DemandScoreContext,
+} from "@/lib/demand/seoul-demand-ranking";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 import { demandMetricChartTheme } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
@@ -27,6 +30,10 @@ import {
   type DemandScopeTableRow,
 } from "@/lib/demand/scope-data";
 import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
+import type { DailyPulseData } from "@/lib/demand/daily-pulse";
+import { mergeDemandKeywordStores, mergeRtmsSeries } from "@/lib/demand/merge-demand-data";
+import type { DemandRegionScopePayload } from "@/lib/demand/region-scope-data";
+import { isDemandRegionScopeLoaded } from "@/lib/demand/region-scope-loaded";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +73,7 @@ type Props = {
   rtmsSeries?: DemandRtmsSeriesStore;
   keywordStore?: DemandKeywordStore | null;
   scoreContext?: DemandScoreContext | null;
+  dailyPulse?: DailyPulseData | null;
 };
 
 export default function DemandHubWorkspace({
@@ -74,14 +82,71 @@ export default function DemandHubWorkspace({
   rtmsSeries = {},
   keywordStore = null,
   scoreContext = null,
+  dailyPulse = null,
 }: Props) {
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
   const [chartRowKey, setChartRowKey] = useState<string | null>(null);
+  const [keywordStoreState, setKeywordStoreState] = useState(keywordStore);
+  const [rtmsSeriesState, setRtmsSeriesState] = useState(rtmsSeries);
+  const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setKeywordStoreState(keywordStore);
+    setRtmsSeriesState(rtmsSeries);
+  }, [keywordStore, rtmsSeries]);
+
+  const liveScoreContext = useMemo(() => {
+    if (!scoreContext) return null;
+    return {
+      ...scoreContext,
+      keywordStore: keywordStoreState,
+      rtmsSeries: rtmsSeriesState,
+    };
+  }, [scoreContext, keywordStoreState, rtmsSeriesState]);
+
+  const ensureRegionScope = useCallback(
+    async (sel: DemandRegionSelection) => {
+      const key = demandRegionSelectionKey(sel);
+      if (isDemandRegionScopeLoaded(sel, keywordStoreState, rtmsSeriesState)) return;
+
+      setLoadingKeys((prev) => {
+        if (prev.has(key)) return prev;
+        return new Set(prev).add(key);
+      });
+
+      try {
+        const res = await fetch("/api/demand/region-scope", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selections: [sel] }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as DemandRegionScopePayload;
+        setKeywordStoreState((prev) =>
+          mergeDemandKeywordStores(prev ?? { byRegion: {} }, data.keywordStore)
+        );
+        setRtmsSeriesState((prev) => mergeRtmsSeries(prev, data.rtmsSeries));
+      } finally {
+        setLoadingKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [keywordStoreState, rtmsSeriesState]
+  );
 
   const scopeRows = useMemo(
-    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides, keywordStore, scoreContext),
-    [selections, rtmsOverrides, keywordStore, scoreContext]
+    () =>
+      buildDemandScopeRowsWithRtms(
+        selections,
+        rtmsOverrides,
+        keywordStoreState,
+        liveScoreContext
+      ),
+    [selections, rtmsOverrides, keywordStoreState, liveScoreContext]
   );
 
   const keywordSourceSummary = useMemo(() => {
@@ -124,6 +189,7 @@ export default function DemandHubWorkspace({
       return [...prev, sel];
     });
     if (selections.length === 0) setChartRowKey(key);
+    void ensureRegionScope(sel);
   }
 
   function onRemove(key: string) {
@@ -154,24 +220,8 @@ export default function DemandHubWorkspace({
       : null;
 
   return (
-    <div className="space-y-5">
-      <DemandNationalInterestStrip
-        index={
-          scoreContext?.national.index ??
-          scopeRows[0]?.demandScore.national.index ??
-          100
-        }
-        changePct={
-          scoreContext?.national.changePct ??
-          scopeRows[0]?.demandScore.national.changePct ??
-          0
-        }
-        searchYyyymm={
-          scoreContext?.national.searchYyyymm ??
-          scopeRows[0]?.demandScore.national.searchYyyymm ??
-          null
-        }
-      />
+    <div className="space-y-4">
+      {dailyPulse ? <DemandHubPulseSection data={dailyPulse} compactOnMobile /> : null}
 
       <div className="rounded-2xl border-2 border-teal-100 bg-white p-4 shadow-sm ring-1 ring-teal-50">
         <p className="text-sm font-semibold text-slate-800">지역 찾기</p>
@@ -182,20 +232,36 @@ export default function DemandHubWorkspace({
           onAdd={onAdd}
           onRemove={onRemove}
         />
+        {loadingKeys.size > 0 ? (
+          <p className="mt-2 text-xs text-teal-700" role="status">
+            지역 데이터 불러오는 중…
+          </p>
+        ) : null}
       </div>
 
       {hasSelection && primaryRow ? (
         <>
-          <DemandScopeSummaryStrip
+          <div className="hidden md:block">
+            <DemandScopeSummaryStrip
+              rows={scopeRows}
+              focusRowKey={focusRowKey}
+              selectedMetric={selectedMetric}
+              onSelectMetric={(id) => {
+                const row =
+                  scopeRows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ??
+                  primaryRow;
+                if (row) selectMetric(row, id);
+              }}
+            />
+          </div>
+
+          <DemandScopeCompareCards
             rows={scopeRows}
             focusRowKey={focusRowKey}
             selectedMetric={selectedMetric}
-            onSelectMetric={(id) => {
-              const row =
-                scopeRows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ??
-                primaryRow;
-              if (row) selectMetric(row, id);
-            }}
+            onFocusRow={setChartRowKey}
+            onSelectMetric={selectMetric}
+            rtmsBaseMonthLabel={rtmsBaseMonthLabel}
           />
 
           {selectedMetric && scopeRows.length > 0 ? (
@@ -203,15 +269,16 @@ export default function DemandHubWorkspace({
               rows={scopeRows}
               metricId={selectedMetric}
               focusRowKey={focusRowKey}
-              rtmsSeries={rtmsSeries}
+              rtmsSeries={rtmsSeriesState}
+              keywordStore={keywordStoreState}
             />
           ) : null}
         </>
       ) : null}
 
       {!hasSelection ? (
-        <p className="rounded-lg border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500">
-          지역을 추가하면 요약·비교표·그래프가 나타납니다
+        <p className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-sm text-slate-500">
+          지역을 선택하면 비교·그래프가 나타납니다
         </p>
       ) : scopeRows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-amber-200 bg-amber-50/50 py-8 text-center text-sm text-amber-900">
@@ -219,14 +286,15 @@ export default function DemandHubWorkspace({
         </p>
       ) : (
         <div>
-          <p className="mb-2 text-xs font-semibold text-slate-600">
-            {scopeRows.length > 1 ? "지역 비교표" : "지표 상세"}
-            <span className="ml-2 font-normal text-slate-400">
-              {scopeRows.length > 1 ? "셀 클릭 → 지표 · 그래프에 지역 겹침" : "셀 클릭 → 지표"}
-            </span>
-          </p>
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <table className="w-full min-w-[1000px] text-sm">
+          <div className="hidden md:block">
+            <p className="mb-2 text-xs font-semibold text-slate-600">
+              {scopeRows.length > 1 ? "지역 비교표" : "지표 상세"}
+              <span className="ml-2 font-normal text-slate-400">
+                {scopeRows.length > 1 ? "셀 클릭 → 지표 · 그래프에 지역 겹침" : "셀 클릭 → 지표"}
+              </span>
+            </p>
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full min-w-[1000px] text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-600">
                   <th className="px-3 py-2.5 font-medium">지역</th>
@@ -357,6 +425,7 @@ export default function DemandHubWorkspace({
                 </>
               ) : null}
             </p>
+          </div>
           </div>
 
           <p className="mt-3 text-center text-xs text-slate-500">

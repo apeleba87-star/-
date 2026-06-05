@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { checkRateLimit } from "@/lib/rate-limit-edge";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -37,13 +38,10 @@ async function updateSession(req: NextRequest): Promise<NextResponse> {
   return response;
 }
 
-/**
- * 로그인/회원가입 경로 IP별 rate limit (브루트포스·크레덴셜 스터핑 완화).
- */
-const AUTH_RATE_WINDOW_MS = 60 * 1000; // 1분
-const AUTH_RATE_MAX = 30; // 1분당 최대 요청 수
-
-const authRateStore = new Map<string, { count: number; resetAt: number }>();
+const RATE_WINDOW_MS = 60 * 1000;
+const AUTH_RATE_MAX = 30;
+const DEMAND_RATE_MAX = 120;
+const API_RATE_MAX = 60;
 
 function getClientIp(req: NextRequest): string {
   const xff = req.headers.get("x-forwarded-for");
@@ -51,35 +49,39 @@ function getClientIp(req: NextRequest): string {
   return req.headers.get("x-real-ip") ?? "unknown";
 }
 
-function isAuthPath(pathname: string): boolean {
-  return pathname === "/login" || pathname === "/signup";
+function rateLimitBucket(pathname: string): { bucket: string; limit: number } | null {
+  if (pathname === "/login" || pathname === "/signup") {
+    return { bucket: "auth", limit: AUTH_RATE_MAX };
+  }
+  if (pathname === "/demand" || pathname.startsWith("/demand/")) {
+    return { bucket: "demand", limit: DEMAND_RATE_MAX };
+  }
+  if (pathname.startsWith("/api/")) {
+    return { bucket: "api", limit: API_RATE_MAX };
+  }
+  return null;
+}
+
+function rateLimitResponse(retryAfterSec: number): NextResponse {
+  return new NextResponse("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.", {
+    status: 429,
+    headers: { "Retry-After": String(retryAfterSec) },
+  });
 }
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const ip = getClientIp(req);
+  const limitRule = rateLimitBucket(pathname);
 
-  const response = await updateSession(req);
-
-  if (isAuthPath(pathname)) {
-    const ip = getClientIp(req);
-    const now = Date.now();
-    let entry = authRateStore.get(ip);
-
-    if (!entry || now >= entry.resetAt) {
-      entry = { count: 0, resetAt: now + AUTH_RATE_WINDOW_MS };
-      authRateStore.set(ip, entry);
-    }
-    entry.count += 1;
-
-    if (entry.count > AUTH_RATE_MAX) {
-      return new NextResponse(
-        "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
-        { status: 429, headers: { "Retry-After": "60" } }
-      );
+  if (limitRule) {
+    const result = await checkRateLimit(limitRule.bucket, ip, limitRule.limit, RATE_WINDOW_MS);
+    if (!result.allowed) {
+      return rateLimitResponse(result.retryAfterSec);
     }
   }
 
-  return response;
+  return updateSession(req);
 }
 
 export const config = {

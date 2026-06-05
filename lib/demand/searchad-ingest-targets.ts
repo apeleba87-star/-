@@ -3,7 +3,7 @@ import { listNationalBasketIngestPhrases } from "@/lib/demand/keyword-baskets";
 import {
   buildRegionSearchPhrases,
   demandKeywordRegionRefFromSelection,
-  listSeoulDistrictKeywordTargets,
+  listAllDistrictKeywordTargets,
   type DemandKeywordRegionRef,
 } from "@/lib/demand/region-search-keywords";
 
@@ -13,8 +13,8 @@ export type SearchAdIngestTarget = {
   phrase: string;
 };
 
-/** 허브 UI·일별 롤링 30일 — 전국 Basket(포장·입주) + 서울 시 */
-export function buildSearchAdHubIngestTargets(): SearchAdIngestTarget[] {
+/** 허브 UI·일별 롤링 30일 — 전국 Basket + (선택) 시·도 시 단위 */
+export function buildSearchAdHubIngestTargets(cityId?: string): SearchAdIngestTarget[] {
   const targets: SearchAdIngestTarget[] = [];
 
   const nationalRef = demandKeywordRegionRefFromSelection({ scope: "national" });
@@ -29,21 +29,23 @@ export function buildSearchAdHubIngestTargets(): SearchAdIngestTarget[] {
     }
   }
 
-  const cityPhrases = buildRegionSearchPhrases({ scope: "city", cityId: "seoul" });
-  if (cityPhrases) {
-    const region: DemandKeywordRegionRef = { regionScope: "city", regionKey: "seoul" };
-    targets.push(
-      { region, keywordKey: "packing", phrase: cityPhrases.packing },
-      { region, keywordKey: "move_in_clean", phrase: cityPhrases.moveInClean }
-    );
+  if (cityId) {
+    const cityPhrases = buildRegionSearchPhrases({ scope: "city", cityId });
+    if (cityPhrases) {
+      const region: DemandKeywordRegionRef = { regionScope: "city", regionKey: cityId };
+      targets.push(
+        { region, keywordKey: "packing", phrase: cityPhrases.packing },
+        { region, keywordKey: "move_in_clean", phrase: cityPhrases.moveInClean }
+      );
+    }
   }
 
   return targets;
 }
 
-/** 월별 아카이브 — 허브 + 25구×2 (구별 DB 축적) */
-export function buildSearchAdArchiveIngestTargets(): SearchAdIngestTarget[] {
-  const targets = buildSearchAdHubIngestTargets();
+/** 월별 아카이브 — 허브 + 손없는날 + 시·도 구별 DB 축적 */
+export function buildSearchAdArchiveIngestTargets(cityId?: string): SearchAdIngestTarget[] {
+  const targets = buildSearchAdHubIngestTargets(cityId);
 
   const nationalRef = demandKeywordRegionRefFromSelection({ scope: "national" });
   if (nationalRef) {
@@ -57,7 +59,7 @@ export function buildSearchAdArchiveIngestTargets(): SearchAdIngestTarget[] {
     }
   }
 
-  for (const d of listSeoulDistrictKeywordTargets()) {
+  for (const d of listAllDistrictKeywordTargets(cityId)) {
     targets.push(
       {
         region: { regionScope: "district", regionKey: d.regionKey },

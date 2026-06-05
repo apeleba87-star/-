@@ -1,4 +1,5 @@
 import DemandKeywordIngestPanel from "./DemandKeywordIngestPanel";
+import DemandRtmsBackfillPanel from "./DemandRtmsBackfillPanel";
 import DemandRtmsIngestPanel from "./DemandRtmsIngestPanel";
 import WorknetIngestPanel from "./WorknetIngestPanel";
 
@@ -10,6 +11,7 @@ export default function AdminOpenDataIngestPage() {
         운영 중인 공공데이터 수집 작업을 관리자 화면에서 수동 실행할 수 있습니다.
       </p>
       <DemandRtmsIngestPanel />
+      <DemandRtmsBackfillPanel />
       <DemandKeywordIngestPanel />
       <WorknetIngestPanel />
     </div>

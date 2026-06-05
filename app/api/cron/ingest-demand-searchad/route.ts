@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyCronSecret } from "@/lib/cron-auth";
+import { revalidateDemandHub } from "@/lib/demand/revalidate-hub";
 import { runDemandSearchAdMonthlyIngestJob } from "@/lib/demand/searchad-monthly-ingest";
+import { pickRotatingDemandCityId } from "@/lib/demand/rtms-ingest";
 import { createServiceSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +26,15 @@ async function handleIngest(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    const cityId =
+      req.nextUrl.searchParams.get("cityId")?.trim() || pickRotatingDemandCityId();
     const supabase = createServiceSupabase();
-    const result = await runDemandSearchAdMonthlyIngestJob(supabase);
+    const result = await runDemandSearchAdMonthlyIngestJob(supabase, { cityId });
+    if (result.ok) {
+      revalidateDemandHub();
+    }
     return NextResponse.json(
-      { job: "searchad_monthly_snapshot", ...result },
+      { job: "searchad_monthly_snapshot", rotatedCityId: cityId, ...result },
       { status: result.ok ? 200 : 500 }
     );
   } catch (e) {

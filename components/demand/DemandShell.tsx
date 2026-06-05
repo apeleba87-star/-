@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import { DEMAND_PHASE0_BADGE } from "@/lib/demand/copy";
 import { cn } from "@/lib/utils";
-import DemandNav from "@/components/demand/DemandNav";
+import DemandAdminNavGate from "@/components/demand/DemandAdminNavGate";
 import DemandSearch from "@/components/demand/DemandSearch";
 import DemandDisclaimer from "@/components/demand/DemandDisclaimer";
-import { isDemandAdmin } from "@/lib/demand/access";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 
 type Props = {
@@ -21,7 +20,7 @@ type Props = {
   searchVariant?: false | "bar";
 };
 
-export default async function DemandShell({
+export default function DemandShell({
   title,
   subtitle,
   children,
@@ -30,7 +29,6 @@ export default async function DemandShell({
   metaVariant = "default",
   searchVariant = "bar",
 }: Props) {
-  const showDemandNav = await isDemandAdmin();
   const minimal = variant === "minimal";
 
   return (
@@ -63,7 +61,7 @@ export default async function DemandShell({
             <h1
               className={
                 minimal
-                  ? "mt-3 text-lg font-bold text-slate-900 sm:text-xl"
+                  ? "mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-2xl"
                   : "mt-2 text-lg font-bold text-slate-900"
               }
             >
@@ -100,7 +98,7 @@ export default async function DemandShell({
 
         {searchVariant === "bar" ? <DemandSearch variant="bar" /> : null}
 
-        {showDemandNav ? <DemandNav className="mb-6" /> : null}
+        <DemandAdminNavGate className="mb-6" />
 
         {children}
 

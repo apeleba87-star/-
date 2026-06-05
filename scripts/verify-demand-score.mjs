@@ -1,29 +1,40 @@
 #!/usr/bin/env node
-/**
- * V1 지역수요점수 sanity check (tsx 없이 node — ts compile 경유 생략, 수식만)
- */
-function weightedNational(moms, handFreeMissing) {
-  const w = { p: 0.4, m: 0.3, h: 0.3 };
-  if (handFreeMissing) {
-    return Math.round((moms.p * w.p + moms.m * w.m) / (w.p + w.m) * 10) / 10;
-  }
-  return Math.round((moms.p * w.p + moms.m * w.m + moms.h * w.h) * 10) / 10;
-}
-function rtmsIndex(sale, jeonse) {
-  return Math.round((100 + jeonse * 0.7 + sale * 0.3) * 10) / 10;
-}
-function final(nat, rtms) {
-  return Math.round((nat * rtms) / 100 * 10) / 10;
+/** V2 입주수요 점수 sanity check */
+
+function norm100(value, baseline) {
+  if (!value || !baseline) return 100;
+  return Math.round((value / baseline) * 1000) / 10;
 }
 
-const nat = 100 + weightedNational({ p: 20, m: 10, h: 0 }, true);
-const gangbuk = final(nat, rtmsIndex(25, 40));
-const nowon = final(nat, rtmsIndex(-15, -20));
-console.log("전국:", nat);
-console.log("강북구:", gangbuk);
-console.log("노원구:", nowon);
-if (gangbuk <= nowon) {
-  console.error("FAIL");
+function nationalComposite(pVol, mVol, pIdx, mIdx, baselines) {
+  const w = 0.25;
+  return (
+    norm100(pVol, baselines.p) * w +
+    norm100(mVol, baselines.m) * w +
+    norm100(pIdx, baselines.pi) * w +
+    norm100(mIdx, baselines.mi) * w
+  );
+}
+
+function regionalComposite(level, mom) {
+  return level * 0.7 + mom * 0.3;
+}
+
+function score(nat, reg) {
+  return Math.round((nat * reg) / 100 * 10) / 10;
+}
+
+// 강동: 높은 RTMS 규모, 낮은 MoM
+const nat = nationalComposite(120, 110, 105, 100, { p: 100, m: 100, pi: 100, mi: 100 });
+const gangdong = score(nat, regionalComposite(norm100(1419, 1100), 127));
+const guro = score(nat, regionalComposite(norm100(1089, 1100), 154));
+
+console.log("전국 composite:", nat);
+console.log("강동 (규모↑ MoM↓):", gangdong);
+console.log("구로 (규모↓ MoM↑):", guro);
+
+if (gangdong <= guro) {
+  console.error("FAIL: 규모 우선 — 강동 > 구로 기대");
   process.exit(1);
 }
 console.log("OK");

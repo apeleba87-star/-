@@ -1,13 +1,13 @@
 import { addDaysToDateString, getKstYesterdayString } from "@/lib/jobs/kst-date";
 import type { DemandKeywordChartPoint } from "@/lib/demand/keyword-hub-data";
-import { formatChartMonthPeriodLabel, formatDemandYyyymmLabel } from "@/lib/demand/copy";
+import { formatChartMonthPeriodLabel, formatDemandYyyymmLabel, ymdToChartDayPeriodLabel } from "@/lib/demand/copy";
 import { demandLastCompleteSearchVolumeYyyymm } from "@/lib/demand/searchad-month-report";
 
 export type DemandChartPoint = DemandKeywordChartPoint;
 
 export type DemandChartDay = { period: string; ymd: string };
 
-/** KST 말일 기준 최근 N일 — 차트 라벨 YY.M.D + YYYY-MM-DD */
+/** KST 말일 기준 최근 N일 — 차트 라벨 「YYYY년 M월 D일」 + YYYY-MM-DD */
 export function lastKstChartDays(endYmd: string, n: number): DemandChartDay[] {
   const [y, m, d] = endYmd.split("-").map(Number);
   const end = new Date(y, m - 1, d);
@@ -20,9 +20,8 @@ export function lastKstChartDays(endYmd: string, n: number): DemandChartDay[] {
       String(date.getMonth() + 1).padStart(2, "0"),
       String(date.getDate()).padStart(2, "0"),
     ].join("-");
-    const yy = String(date.getFullYear()).slice(2);
     days.push({
-      period: `${yy}.${date.getMonth() + 1}.${date.getDate()}`,
+      period: ymdToChartDayPeriodLabel(ymd),
       ymd,
     });
   }

@@ -37,8 +37,11 @@ type DailyUpsertRow = {
  * 검색광고 롤링 30일 — KST 당일 1행/phrase (허브: 전국 Basket + 서울 시).
  * 카드·30일 검색량 차트 총량 + 데이터랩 지수 곡선 연동용.
  */
+export type DemandSearchAdDailyIngestOptions = { cityId?: string };
+
 export async function runDemandSearchAdDailyIngestJob(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options?: DemandSearchAdDailyIngestOptions
 ): Promise<DemandSearchAdDailyIngestResult> {
   if (!getSearchAdCredentials()) {
     return {
@@ -52,7 +55,7 @@ export async function runDemandSearchAdDailyIngestJob(
 
   const snapshotDate = getKstTodayString();
   const now = new Date().toISOString();
-  const targets = buildSearchAdHubIngestTargets();
+  const targets = buildSearchAdHubIngestTargets(options?.cityId);
 
   if (targets.length === 0) {
     return { ok: false, error: "수집 대상이 없습니다." };

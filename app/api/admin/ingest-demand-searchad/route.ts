@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateDemandHub } from "@/lib/demand/revalidate-hub";
 import { runDemandSearchAdMonthlyIngestJob } from "@/lib/demand/searchad-monthly-ingest";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { getSearchAdCredentialsStatus } from "@/lib/naver/searchad-keyword-client";
@@ -48,15 +49,27 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   const gate = await requireAdminEditor();
   if (!gate.ok) {
     return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
 
   try {
+    let cityId: string | undefined;
+    try {
+      const body = (await req.json()) as { cityId?: string };
+      if (body?.cityId?.trim()) {
+        cityId = body.cityId.trim();
+      }
+    } catch {
+      /* empty body */
+    }
     const service = createServiceSupabase();
-    const result = await runDemandSearchAdMonthlyIngestJob(service);
+    const result = await runDemandSearchAdMonthlyIngestJob(service, { cityId });
+    if (result.ok) {
+      revalidateDemandHub();
+    }
     return NextResponse.json(result, { status: result.ok ? 200 : 500 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

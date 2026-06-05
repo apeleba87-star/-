@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { runDemandKeywordIngestJob } from "@/lib/demand/keyword-ingest";
+import { revalidateDemandHub } from "@/lib/demand/revalidate-hub";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { SEARCHAD_ROLLING_30D_SOURCE } from "@/lib/demand/searchad-rolling-volume";
 import { getSearchAdCredentialsStatus } from "@/lib/naver/searchad-keyword-client";
 import { listNationalBasketIngestPhrases } from "@/lib/demand/keyword-baskets";
@@ -151,14 +152,26 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   const gate = await requireAdminEditor();
   if (!gate.ok) {
     return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
   }
   try {
+    let cityId: string | undefined;
+    try {
+      const body = (await req.json()) as { cityId?: string };
+      if (body?.cityId?.trim()) {
+        cityId = body.cityId.trim();
+      }
+    } catch {
+      /* empty body — 전국(타임아웃 주의) */
+    }
     const service = createServiceSupabase();
-    const result = await runDemandKeywordIngestJob(service);
+    const result = await runDemandKeywordIngestJob(service, { cityId });
+    if (result.ok || result.datalab.ok) {
+      revalidateDemandHub();
+    }
     return NextResponse.json(result, { status: 200 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

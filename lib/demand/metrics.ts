@@ -40,6 +40,16 @@ export function isDemandSearchMetricId(id: DemandMetricId): boolean {
   );
 }
 
+/** 허브 차트 — 검색량·검색지수는 전국만 (구별 라인·범례 없음) */
+export function isDemandKeywordChartMetric(id: DemandMetricId): boolean {
+  return (
+    id === "packingVolume" ||
+    id === "packingIndex" ||
+    id === "moveInVolume" ||
+    id === "moveInIndex"
+  );
+}
+
 export const DEMAND_METRIC_IDS: DemandMetricId[] = [
   "sale",
   "jeonse",

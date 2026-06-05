@@ -1,7 +1,7 @@
+import { cache } from "react";
 import { createServerSupabase } from "@/lib/supabase-server";
 
-/** 입주수요 탐색 서브메뉴(TOP10·비교 등) — 관리자 전용 */
-export async function isDemandAdmin(): Promise<boolean> {
+async function resolveDemandAdmin(): Promise<boolean> {
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -16,3 +16,6 @@ export async function isDemandAdmin(): Promise<boolean> {
 
   return profile?.role === "admin";
 }
+
+/** 입주수요 탐색 서브메뉴(TOP10·비교 등) — 관리자 전용 */
+export const isDemandAdmin = cache(resolveDemandAdmin);

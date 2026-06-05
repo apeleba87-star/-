@@ -15,8 +15,14 @@ import {
 
 export type DemandDatalabIngestOutcome = DemandDatalabIngestResult | DemandDatalabSyncFromTrendResult;
 
+export type DemandKeywordIngestOptions = {
+  /** 크론: 시·도 1곳 순환. 미설정 시 전국 280구(타임아웃 위험) */
+  cityId?: string;
+};
+
 export type DemandKeywordIngestResult = {
   ok: boolean;
+  cityId?: string;
   datalab: DemandDatalabIngestOutcome;
   searchAdDaily: DemandSearchAdDailyIngestResult;
   searchAdMonthly: DemandSearchAdMonthlyIngestResult;
@@ -24,11 +30,15 @@ export type DemandKeywordIngestResult = {
 
 /** 일 1회 — 데이터랩(검색지수) + 검색광고 롤링 30일. 월별 아카이브는 별도 cron. */
 export async function runDemandKeywordIngestJob(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options?: DemandKeywordIngestOptions
 ): Promise<DemandKeywordIngestResult> {
-  const searchAdDaily = await runDemandSearchAdDailyIngestJob(supabase);
+  const cityId = options?.cityId;
+  const searchAdDaily = await runDemandSearchAdDailyIngestJob(supabase, { cityId });
 
-  let datalab: DemandDatalabIngestOutcome = await runDemandDatalabDailyIngestJob(supabase);
+  let datalab: DemandDatalabIngestOutcome = await runDemandDatalabDailyIngestJob(supabase, {
+    cityId,
+  });
 
   if (!datalab.ok && "needsKey" in datalab && datalab.needsKey) {
     const synced = await syncDemandKeywordDailyFromNaverTrend(supabase);
@@ -49,6 +59,7 @@ export async function runDemandKeywordIngestJob(
 
   return {
     ok: datalab.ok && searchAdDaily.ok,
+    cityId,
     datalab,
     searchAdDaily,
     searchAdMonthly,

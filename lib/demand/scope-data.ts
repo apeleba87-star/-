@@ -9,11 +9,15 @@ import {
   anchorVolumeFromMonthlySeries,
   buildSearchVolume30dChart,
   defaultSearchVolumeChartEndYmd,
+  lastKstChartDays,
 } from "@/lib/demand/search-volume-30d";
 import type { DemandKeywordMetricSlice } from "@/lib/demand/keyword-metrics";
 import type { DemandMetricId } from "@/lib/demand/metrics";
 import {
+  demandDistrictRegionKey,
   formatDemandRegionLabel,
+  getDemandCity,
+  getDemandDistrictRef,
   type DemandRegionScope,
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
@@ -42,14 +46,13 @@ import {
 import type { DistrictDemandScore } from "@/lib/demand/district-demand-score";
 import {
   buildDemandScoreContext,
+  demandScoreForCity,
   demandScoreForNational,
-  districtDemandScoreForRtms,
+  districtDemandScoreForRegionKey,
   type DemandScoreContext,
 } from "@/lib/demand/seoul-demand-ranking";
 import {
-  buildDistrictRtmsIndexMonthlyByYyyymm,
-  buildNationalInterestMonthlyByYyyymm,
-  mergeDistrictDemandScoreMonthlyPoints,
+  buildDistrictMoveInDemandScoreChartSeries,
   nationalInterestMonthlyPoints,
 } from "@/lib/demand/demand-score-series";
 import {
@@ -173,19 +176,29 @@ function seoulAggregateTrade(): { saleCount: number; jeonseCount: number; saleMo
   return { saleCount, jeonseCount, saleMom, jeonseMom };
 }
 
+function pseudoTradeCount(seed: string, kind: "jeonse" | "sale"): number {
+  const h = hashSeed(`${seed}:${kind}`);
+  const base = kind === "jeonse" ? 200 : 90;
+  const spread = kind === "jeonse" ? 280 : 150;
+  return base + (h % spread);
+}
+
 
 type KeywordFields = ReturnType<typeof keywordFieldsForSelection>;
 
 function resolveDemandScoreForRow(
   selection: DemandRegionSelection,
-  saleMom: number,
-  jeonseMom: number,
-  scoreContext: DemandScoreContext
+  scoreContext: DemandScoreContext,
+  regionKey?: string | null
 ): DistrictDemandScore {
   if (selection.scope === "national") {
     return demandScoreForNational(scoreContext);
   }
-  return districtDemandScoreForRtms(scoreContext, saleMom, jeonseMom);
+  if (selection.scope === "city") {
+    return demandScoreForCity(scoreContext, selection.cityId);
+  }
+  const key = regionKey ?? demandDistrictRegionKey(selection.cityId, selection.guSlug);
+  return districtDemandScoreForRegionKey(scoreContext, key);
 }
 
 function volumeBaseForScope(scope: DemandRegionScope): { packing: number; moveIn: number } {
@@ -251,12 +264,12 @@ export function buildDemandScopeRow(
   const pathLabel = formatDemandRegionLabel(selection);
   if (!pathLabel) return null;
 
-  const ctx = scoreContext ?? buildDemandScoreContext(keywordStore, null);
+  const ctx = scoreContext ?? buildDemandScoreContext(keywordStore, null, {});
   const kw = keywordFieldsForSelection(selection, keywordStore);
 
   if (selection.scope === "national") {
     const agg = seoulAggregateTrade();
-    const demandScore = resolveDemandScoreForRow(selection, agg.saleMom, agg.jeonseMom, ctx);
+    const demandScore = resolveDemandScoreForRow(selection, ctx);
     return {
       selection,
       scope: "national",
@@ -275,12 +288,22 @@ export function buildDemandScopeRow(
   }
 
   if (selection.scope === "city") {
-    const agg = seoulAggregateTrade();
-    const demandScore = resolveDemandScoreForRow(selection, agg.saleMom, agg.jeonseMom, ctx);
+    const city = getDemandCity(selection.cityId);
+    if (!city) return null;
+    const demandScore = resolveDemandScoreForRow(selection, ctx);
+    const agg =
+      selection.cityId === "seoul"
+        ? seoulAggregateTrade()
+        : {
+            saleCount: pseudoTradeCount(selection.cityId, "sale") * 12,
+            jeonseCount: pseudoTradeCount(selection.cityId, "jeonse") * 12,
+            saleMom: pseudoMom(`${selection.cityId}:sale`, 10),
+            jeonseMom: pseudoMom(`${selection.cityId}:jeonse`, 10),
+          };
     return {
       selection,
       scope: "city",
-      label: "서울특별시",
+      label: city.fullLabel,
       pathLabel,
       slug: null,
       hasDetail: false,
@@ -294,23 +317,28 @@ export function buildDemandScopeRow(
     };
   }
 
-  const tableRow = DEMAND_TABLE_ROWS.find((r) => r.slug === selection.guSlug);
-  if (!tableRow) return null;
-  const rtms = rtmsOverrides?.[tableRow.slug];
-  const saleMom = rtms?.saleMom ?? tableRow.saleMom;
-  const jeonseMom = rtms?.jeonseMom ?? tableRow.jeonseMom;
-  const demandScore = resolveDemandScoreForRow(selection, saleMom, jeonseMom, ctx);
+  const district = getDemandDistrictRef(selection.cityId, selection.guSlug);
+  if (!district) return null;
+  const regionKey = demandDistrictRegionKey(selection.cityId, selection.guSlug);
+  const tableRow =
+    selection.cityId === "seoul"
+      ? DEMAND_TABLE_ROWS.find((r) => r.slug === selection.guSlug)
+      : undefined;
+  const rtms = rtmsOverrides?.[regionKey];
+  const saleMom = rtms?.saleMom ?? tableRow?.saleMom ?? pseudoMom(`${regionKey}:sale`, 12);
+  const jeonseMom = rtms?.jeonseMom ?? tableRow?.jeonseMom ?? pseudoMom(`${regionKey}:jeonse`, 12);
+  const demandScore = resolveDemandScoreForRow(selection, ctx, regionKey);
   return {
     selection,
     scope: "district",
-    label: tableRow.gu,
+    label: district.gu,
     pathLabel,
-    slug: tableRow.slug,
-    hasDetail: tableRow.hasDetail,
+    slug: district.slug,
+    hasDetail: tableRow?.hasDetail ?? false,
     indexScore: demandScore.score,
-    saleCount: rtms?.saleCount ?? tableRow.saleCount,
+    saleCount: rtms?.saleCount ?? tableRow?.saleCount ?? pseudoTradeCount(regionKey, "sale"),
     saleMom,
-    jeonseCount: rtms?.jeonseCount ?? tableRow.jeonseCount,
+    jeonseCount: rtms?.jeonseCount ?? tableRow?.jeonseCount ?? pseudoTradeCount(regionKey, "jeonse"),
     jeonseMom,
     demandScore,
     ...kw,
@@ -356,10 +384,10 @@ function chartMonthPeriods(range: DemandChartRange): string[] {
 }
 
 export function demandRtmsSeriesKeyForRow(row: DemandScopeTableRow): string {
-  if (row.scope === "national") return "national:kr";
-  if (row.scope === "city") return "city:seoul";
-  if (row.slug) return `district:${row.slug}`;
-  return "district:unknown";
+  const sel = row.selection;
+  if (sel.scope === "national") return "national:kr";
+  if (sel.scope === "city") return `city:${sel.cityId}`;
+  return `district:${demandDistrictRegionKey(sel.cityId, sel.guSlug)}`;
 }
 
 function yyyymmToChartPeriod(yyyymm: string): string {
@@ -431,18 +459,9 @@ function buildDummyTradeChartSeries(
   };
 }
 
-/** KST 말일 기준 최근 N일 — 라벨 YY.M.D */
+/** KST 말일 기준 최근 N일 — 「YYYY년 M월 D일」 */
 function lastNDayPeriodLabels(endYmd: string, n: number): string[] {
-  const [y, m, d] = endYmd.split("-").map(Number);
-  const end = new Date(y, m - 1, d);
-  const labels: string[] = [];
-  for (let offset = n - 1; offset >= 0; offset -= 1) {
-    const date = new Date(end);
-    date.setDate(date.getDate() - offset);
-    const yy = String(date.getFullYear()).slice(2);
-    labels.push(`${yy}.${date.getMonth() + 1}.${date.getDate()}`);
-  }
-  return labels;
+  return lastKstChartDays(endYmd, n).map((d) => d.period);
 }
 
 function buildDailyIndexDeltaPoints(
@@ -463,42 +482,42 @@ function buildDailyIndexDeltaPoints(
 function buildDemandScoreChartSeries(
   row: DemandScopeTableRow,
   range: DemandAnyChartRange,
-  rtmsSeries?: DemandRtmsSeriesStore
+  rtmsSeries?: DemandRtmsSeriesStore,
+  keywordStore?: DemandKeywordStore | null
 ): {
   points: DemandChartPoint[];
   subtitle: string;
 } {
   const ds = row.demandScore;
   const months = range === "3y" ? 36 : 12;
-  const packingVol = row.keywordVolumeMonthlySeries?.packing ?? [];
-  const moveInVol = row.keywordVolumeMonthlySeries?.move_in_clean ?? [];
 
   if (row.scope === "national") {
-    const all = nationalInterestMonthlyPoints(packingVol, moveInVol);
+    const all = nationalInterestMonthlyPoints(keywordStore);
     const points = all.slice(-months);
     if (points.length >= 2) {
       return {
         points,
-        subtitle: `전국 이사 관심 · 최근 ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
+        subtitle: `전국 입주·이사 참고 · 대상월 · 최근 ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
       };
     }
   } else {
-    const nationalByYm = buildNationalInterestMonthlyByYyyymm(packingVol, moveInVol);
-    const rtmsMonthly = rtmsSeries?.[demandRtmsSeriesKeyForRow(row)] ?? [];
-    const rtmsByYm = buildDistrictRtmsIndexMonthlyByYyyymm(rtmsMonthly);
-    const all = mergeDistrictDemandScoreMonthlyPoints(nationalByYm, rtmsByYm);
+    const all = buildDistrictMoveInDemandScoreChartSeries(
+      keywordStore,
+      rtmsSeries ?? {},
+      demandRtmsSeriesKeyForRow(row)
+    );
     const points = all.slice(-months);
     if (points.length >= 2) {
       return {
         points,
-        subtitle: `${row.pathLabel} · 전국 관심×구 RTMS · 최근 ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
+        subtitle: `${row.pathLabel} · 입주수요(대상월) · 신호=직전월 RTMS·검색 · ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
       };
     }
   }
 
   return {
     points: [],
-    subtitle: `월별 지역수요점수 — 전국 검색 ${packingVol.length}개월·RTMS ${rtmsSeries?.[demandRtmsSeriesKeyForRow(row)]?.length ?? 0}개월 겹치는 달이 2개월 이상 필요 · 현재 ${formatDemandScoreBreakdown(ds)}`,
+    subtitle: `월별 입주수요 — RTMS·검색 겹치는 달 2개월 이상 필요 · ${formatDemandScoreBreakdown(ds)}`,
   };
 }
 
@@ -508,6 +527,7 @@ export function buildDemandMetricChartSeries(
   range: DemandAnyChartRange = "30d",
   options?: {
     rtmsSeries?: DemandRtmsSeriesStore;
+    keywordStore?: DemandKeywordStore | null;
   }
 ): {
   points: DemandChartPoint[];
@@ -684,7 +704,12 @@ export function buildDemandMetricChartSeries(
   if (metricId === "demandScore") {
     const scoreRange: DemandAnyChartRange =
       range === "3y" ? "3y" : range === "1y" ? "1y" : "1y";
-    const yearSeries = buildDemandScoreChartSeries(row, scoreRange, options?.rtmsSeries);
+    const yearSeries = buildDemandScoreChartSeries(
+      row,
+      scoreRange,
+      options?.rtmsSeries,
+      options?.keywordStore
+    );
     return {
       chartKind: "demandScore",
       subtitle: yearSeries.subtitle,
@@ -720,7 +745,8 @@ export function buildDemandMetricChartSeries(
 }
 
 function demandScopeChartSeed(row: DemandScopeTableRow): string {
-  if (row.scope === "national") return "national";
-  if (row.scope === "city") return "city:seoul";
-  return row.slug ?? row.label;
+  const sel = row.selection;
+  if (sel.scope === "national") return "national";
+  if (sel.scope === "city") return `city:${sel.cityId}`;
+  return demandDistrictRegionKey(sel.cityId, sel.guSlug);
 }

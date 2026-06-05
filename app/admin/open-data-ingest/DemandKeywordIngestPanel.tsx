@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { DEMAND_REGIONS } from "@/lib/demand/regions";
 
 type Stats =
   | {
@@ -84,6 +85,7 @@ export default function DemandKeywordIngestPanel() {
   const [testingSearchAd, setTestingSearchAd] = useState(false);
   const [lastRun, setLastRun] = useState<RunResult | null>(null);
   const [lastSearchAd, setLastSearchAd] = useState<SearchAdTestResult | null>(null);
+  const [cityId, setCityId] = useState("");
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -110,6 +112,8 @@ export default function DemandKeywordIngestPanel() {
     try {
       const res = await fetch("/api/admin/ingest-demand-keywords", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cityId ? { cityId } : {}),
         signal: controller.signal,
       });
       const text = await res.text();
@@ -149,13 +153,17 @@ export default function DemandKeywordIngestPanel() {
       clearTimeout(timeoutId);
       setRunning(false);
     }
-  }, [loadStats]);
+  }, [cityId, loadStats]);
 
   const runSearchAdOnly = useCallback(async () => {
     setRunningSearchAd(true);
     setLastSearchAd(null);
     try {
-      const res = await fetch("/api/admin/ingest-demand-searchad", { method: "POST" });
+      const res = await fetch("/api/admin/ingest-demand-searchad", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cityId ? { cityId } : {}),
+      });
       const j = (await res.json()) as RunResult["searchAd"] & { ok: boolean; error?: string };
       if (j.ok) {
         setLastRun({ ok: true, searchAd: j });
@@ -169,7 +177,7 @@ export default function DemandKeywordIngestPanel() {
     } finally {
       setRunningSearchAd(false);
     }
-  }, [loadStats]);
+  }, [cityId, loadStats]);
 
   const testSearchAd = useCallback(async () => {
     setTestingSearchAd(true);
@@ -201,7 +209,7 @@ export default function DemandKeywordIngestPanel() {
           <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_daily</code>{" "}
           (source=datalab)
           <br />
-          <strong>검색광고 롤링 30일</strong> → 매일 허브 Basket(전국+서울) → 같은 테이블{" "}
+          <strong>검색광고 롤링 30일</strong> → 매일 허브 Basket(전국) + 순환 시·도 → 같은 테이블{" "}
           (source=searchad_rolling_30d) · 카드·30일 검색량 차트
           <br />
           <strong>검색광고 월별 아카이브</strong> → 매월 1회(+구별 DB 축적) →{" "}
@@ -279,19 +287,40 @@ export default function DemandKeywordIngestPanel() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+      <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4">
+        <label className="flex min-w-[12rem] flex-col gap-1 text-sm text-slate-700">
+          <span className="font-medium">시·도 (비우면 전국 280구 — 타임아웃 주의)</span>
+          <select
+            value={cityId}
+            onChange={(e) => setCityId(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">전국 (백필용)</option>
+            {DEMAND_REGIONS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.fullLabel} ({c.districts.length}구)
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           onClick={() => void runIngest()}
           disabled={running || runningSearchAd || !datalabConfigured}
           title={
             datalabConfigured
-              ? "전국·서울·25구 입주청소·포장이사 검색지수 (DataLab API)"
+              ? cityId
+                ? `${cityId} 시·도 구별 검색지수 (DataLab)`
+                : "전국 280구 — 5분 제한 초과 가능. 시·도 선택 권장"
               : ".env.local 또는 Vercel에 NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 추가 후 dev 재시작"
           }
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {running ? "수집 중 (2~5분)…" : "일일 수집 (지수 + 롤링 검색량)"}
+          {running
+            ? "수집 중 (2~5분)…"
+            : cityId
+              ? "일일 수집 (선택 시·도)"
+              : "일일 수집 (전국 — 주의)"}
         </button>
         <button
           type="button"

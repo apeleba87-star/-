@@ -3,9 +3,14 @@ import { addDaysToDateString, getKstTodayString } from "@/lib/jobs/kst-date";
 import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
 import {
   buildRegionSearchPhrases,
-  listSeoulDistrictKeywordTargets,
+  listAllDistrictKeywordTargets,
   type DemandKeywordRegionRef,
 } from "@/lib/demand/region-search-keywords";
+
+export type DemandDatalabIngestOptions = {
+  /** 미설정 시 전국 280곳(백필용·타임아웃 주의). 크론은 시·도 1곳 권장 */
+  cityId?: string;
+};
 import { fetchNaverDatalabSearchTrend } from "@/lib/naver/datalab-client";
 
 export type DemandDatalabIngestResult =
@@ -19,6 +24,8 @@ export type DemandDatalabIngestResult =
       monthEndDate?: string;
       months?: number;
       regions: number;
+      cityId?: string;
+      districts?: number;
     }
   | { ok: false; error: string; needsKey?: boolean };
 
@@ -113,13 +120,13 @@ function buildNationalGroups(): DatalabGroup[] {
   }));
 }
 
-function buildCityGroups(): DatalabGroup[] {
-  const phrases = buildRegionSearchPhrases({ scope: "city", cityId: "seoul" });
+function buildCityGroups(cityId: string): DatalabGroup[] {
+  const phrases = buildRegionSearchPhrases({ scope: "city", cityId });
   if (!phrases) return [];
 
   return (["packing", "move_in_clean"] as const).map((keywordKey) => {
     const phrase = keywordKey === "packing" ? phrases.packing : phrases.moveInClean;
-    const region: DemandKeywordRegionRef = { regionScope: "city", regionKey: "seoul" };
+    const region: DemandKeywordRegionRef = { regionScope: "city", regionKey: cityId };
     return {
       groupName: encodeGroupName(region, keywordKey),
       keywords: [phrase],
@@ -128,8 +135,8 @@ function buildCityGroups(): DatalabGroup[] {
   });
 }
 
-function buildDistrictGroups(keywordKey: DemandKeywordKey): DatalabGroup[] {
-  return listSeoulDistrictKeywordTargets().map((d) => {
+function buildDistrictGroups(keywordKey: DemandKeywordKey, cityId?: string): DatalabGroup[] {
+  return listAllDistrictKeywordTargets(cityId).map((d) => {
     const phrase = keywordKey === "packing" ? d.phrases.packing : d.phrases.moveInClean;
     const region: DemandKeywordRegionRef = {
       regionScope: "district",
@@ -190,16 +197,21 @@ async function collectAllRegionRows(
   startDate: string,
   endDate: string,
   timeUnit: "date" | "month",
-  source: string
-): Promise<{ rows: DailyUpsertRow[]; regionBatches: number }> {
+  source: string,
+  options?: DemandDatalabIngestOptions
+): Promise<{ rows: DailyUpsertRow[]; regionBatches: number; districts: number }> {
   const allRows: DailyUpsertRow[] = [];
   let regionBatches = 0;
+  const cityId = options?.cityId;
+  const districtTargets = listAllDistrictKeywordTargets(cityId);
+
+  const cityBatches: DatalabGroup[][] = cityId ? [buildCityGroups(cityId)] : [];
 
   const batches: DatalabGroup[][] = [
     buildNationalGroups(),
-    buildCityGroups(),
+    ...cityBatches,
     ...(["packing", "move_in_clean"] as const).flatMap((keywordKey) => {
-      const districts = buildDistrictGroups(keywordKey);
+      const districts = buildDistrictGroups(keywordKey, cityId);
       const chunks: DatalabGroup[][] = [];
       for (let i = 0; i < districts.length; i += 5) {
         chunks.push(districts.slice(i, i + 5));
@@ -226,11 +238,12 @@ async function collectAllRegionRows(
     regionBatches += 1;
   }
 
-  return { rows: allRows, regionBatches };
+  return { rows: allRows, regionBatches, districts: districtTargets.length };
 }
 
 export async function runDemandDatalabDailyIngestJob(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options?: DemandDatalabIngestOptions
 ): Promise<DemandDatalabIngestResult> {
   const clientId = process.env.NAVER_CLIENT_ID?.trim();
   const clientSecret = process.env.NAVER_CLIENT_SECRET?.trim();
@@ -257,7 +270,8 @@ export async function runDemandDatalabDailyIngestJob(
       startDate,
       endDate,
       "date",
-      "datalab"
+      "datalab",
+      options
     );
     const monthly = await collectAllRegionRows(
       clientId,
@@ -265,7 +279,8 @@ export async function runDemandDatalabDailyIngestJob(
       monthStartDate,
       monthEndDate,
       "month",
-      "datalab_month"
+      "datalab_month",
+      options
     );
 
     const allRows = [...daily.rows, ...monthly.rows];
@@ -288,6 +303,8 @@ export async function runDemandDatalabDailyIngestJob(
       monthEndDate,
       months,
       regions: daily.regionBatches,
+      cityId: options?.cityId,
+      districts: daily.districts,
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

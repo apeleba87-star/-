@@ -12,12 +12,17 @@ type Props = {
   /** URL의 q와 동기화 (검색 결과 페이지) */
   initialQuery?: string;
   autoFocus?: boolean;
+  placeholder?: string;
+  /** 허브: 구 선택 시 페이지 이동 대신 비교 목록에 추가 */
+  onDistrictAdd?: (slug: string) => void;
 };
 
 export default function DemandSearch({
   variant = "bar",
   initialQuery = "",
   autoFocus = false,
+  placeholder = "구 또는 키워드 (예: 강서, 입주청소, 양천)",
+  onDistrictAdd,
 }: Props) {
   const router = useRouter();
   const listId = useId();
@@ -37,13 +42,23 @@ export default function DemandSearch({
       const trimmed = q.trim();
       if (!trimmed) return;
       const hits = searchDemand(trimmed);
+      const top = hits[0];
+      if (onDistrictAdd && top?.type === "district" && top.score >= 80) {
+        const slug = top.href.replace(/^\/demand\/region\//, "");
+        if (slug) {
+          onDistrictAdd(slug);
+          setQuery("");
+          setOpen(false);
+          return;
+        }
+      }
       const href = pickDemandSearchNavigate(trimmed, hits);
       if (href) {
         setOpen(false);
         router.push(href);
       }
     },
-    [router]
+    [router, onDistrictAdd]
   );
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -57,7 +72,17 @@ export default function DemandSearch({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (open && results[activeIndex]) {
-        router.push(results[activeIndex]!.href);
+        const hit = results[activeIndex]!;
+        if (onDistrictAdd && hit.type === "district") {
+          const slug = hit.href.replace(/^\/demand\/region\//, "");
+          if (slug) {
+            onDistrictAdd(slug);
+            setQuery("");
+            setOpen(false);
+            return;
+          }
+        }
+        router.push(hit.href);
         setOpen(false);
       } else {
         submit(query);
@@ -97,7 +122,7 @@ export default function DemandSearch({
             window.setTimeout(() => setOpen(false), 150);
           }}
           onKeyDown={onKeyDown}
-          placeholder="구 또는 키워드 (예: 강서, 입주청소, 양천)"
+          placeholder={placeholder}
           className={cn(
             "min-w-0 flex-1 bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none",
             isHero ? "text-lg font-medium" : "text-sm"
@@ -124,10 +149,11 @@ export default function DemandSearch({
           activeIndex={activeIndex}
           onHover={setActiveIndex}
           onPick={() => setOpen(false)}
+          onDistrictAdd={onDistrictAdd}
         />
       ) : null}
 
-      {isHero ? (
+      {isHero && !onDistrictAdd ? (
         <p className="mt-2 text-xs text-slate-500">구·키워드를 검색해 해당 페이지로 이동합니다.</p>
       ) : null}
     </div>
@@ -140,12 +166,14 @@ function SearchResultsPanel({
   activeIndex,
   onHover,
   onPick,
+  onDistrictAdd,
 }: {
   results: DemandSearchResult[];
   query: string;
   activeIndex: number;
   onHover: (i: number) => void;
   onPick: () => void;
+  onDistrictAdd?: (slug: string) => void;
 }) {
   if (results.length === 0) {
     return (
@@ -169,28 +197,52 @@ function SearchResultsPanel({
     >
       {results.map((r, i) => (
         <li key={r.id} role="option" aria-selected={i === activeIndex}>
-          <Link
-            href={r.href}
-            onMouseEnter={() => onHover(i)}
-            onClick={onPick}
-            className={cn(
-              "flex items-center justify-between gap-3 px-4 py-2.5 text-sm",
-              i === activeIndex ? "bg-teal-50" : "hover:bg-slate-50"
-            )}
-          >
-            <span>
-              <span className="font-semibold text-slate-900">{r.title}</span>
-              <span className="mt-0.5 block text-xs text-slate-500">{r.subtitle}</span>
-            </span>
-            <span
+          {onDistrictAdd && r.type === "district" ? (
+            <button
+              type="button"
+              onMouseEnter={() => onHover(i)}
+              onClick={() => {
+                const slug = r.href.replace(/^\/demand\/region\//, "");
+                if (slug) onDistrictAdd(slug);
+                onPick();
+              }}
               className={cn(
-                "shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase",
-                r.type === "district" ? "bg-teal-100 text-teal-800" : "bg-violet-100 text-violet-800"
+                "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm",
+                i === activeIndex ? "bg-teal-50" : "hover:bg-slate-50"
               )}
             >
-              {r.type === "district" ? "지역" : "키워드"}
-            </span>
-          </Link>
+              <span>
+                <span className="font-semibold text-slate-900">{r.title}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{r.subtitle}</span>
+              </span>
+              <span className="shrink-0 rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-bold uppercase text-teal-800">
+                비교 추가
+              </span>
+            </button>
+          ) : (
+            <Link
+              href={r.href}
+              onMouseEnter={() => onHover(i)}
+              onClick={onPick}
+              className={cn(
+                "flex items-center justify-between gap-3 px-4 py-2.5 text-sm",
+                i === activeIndex ? "bg-teal-50" : "hover:bg-slate-50"
+              )}
+            >
+              <span>
+                <span className="font-semibold text-slate-900">{r.title}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{r.subtitle}</span>
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase",
+                  r.type === "district" ? "bg-teal-100 text-teal-800" : "bg-violet-100 text-violet-800"
+                )}
+              >
+                {r.type === "district" ? "지역" : "키워드"}
+              </span>
+            </Link>
+          )}
         </li>
       ))}
       {results.length >= 8 ? (

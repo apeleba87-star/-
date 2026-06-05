@@ -10,7 +10,8 @@ export type DemandRtmsMonthlyPoint = {
 export type DemandRtmsSeriesStore = Record<string, DemandRtmsMonthlyPoint[]>;
 
 export type DemandRtmsDistrictSnapshot = {
-  bySlug: Record<
+  /** district region_key (cityId:slug) → 최신월 스냅샷 */
+  byRegionKey: Record<
     string,
     {
       saleCount: number;

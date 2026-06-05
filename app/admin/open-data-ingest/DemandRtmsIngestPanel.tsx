@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { DEMAND_RTMS_UNIT_COUNT } from "@/lib/demand/lawd-codes.generated";
+import { DEMAND_REGIONS } from "@/lib/demand/regions";
 
 type Stats =
   | { ok: true; totalRows: number; latestMonth: string | null }
@@ -14,6 +16,7 @@ type RunResult = {
   months?: number;
   districts?: number;
   calls?: number;
+  cityId?: string;
   error?: string;
   needsKey?: boolean;
 };
@@ -23,6 +26,7 @@ export default function DemandRtmsIngestPanel() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [lastRun, setLastRun] = useState<RunResult | null>(null);
+  const [cityId, setCityId] = useState("");
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -41,44 +45,70 @@ export default function DemandRtmsIngestPanel() {
     void loadStats();
   }, [loadStats]);
 
-  const runIngest = useCallback(async (monthsBack?: number) => {
-    setRunning(true);
-    setLastRun(null);
-    try {
-      const res = await fetch("/api/admin/ingest-demand-rtms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(monthsBack != null ? { monthsBack } : {}),
-      });
-      const j = (await res.json()) as RunResult;
-      setLastRun(j);
-      await loadStats();
-    } catch (e) {
-      setLastRun({ ok: false, error: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setRunning(false);
-    }
-  }, [loadStats]);
+  const runIngest = useCallback(
+    async (monthsBack?: number) => {
+      setRunning(true);
+      setLastRun(null);
+      try {
+        const res = await fetch("/api/admin/ingest-demand-rtms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(monthsBack != null ? { monthsBack } : {}),
+            ...(cityId ? { cityId } : {}),
+            refreshNational: !cityId,
+          }),
+        });
+        const j = (await res.json()) as RunResult;
+        setLastRun(j);
+        await loadStats();
+      } catch (e) {
+        setLastRun({ ok: false, error: e instanceof Error ? e.message : String(e) });
+      } finally {
+        setRunning(false);
+      }
+    },
+    [cityId, loadStats]
+  );
 
   return (
     <div className="card mt-8 space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">입주수요 RTMS 수집</h2>
         <p className="mt-2 text-sm text-slate-600">
-          서울 25구 아파트 매매·전월세 실거래를 월 단위로 수집해{" "}
+          전국 {DEMAND_RTMS_UNIT_COUNT}개 RTMS 시·군·구 아파트 매매·전월세 실거래를 월 단위로 수집해{" "}
           <code className="rounded bg-slate-100 px-1 text-xs">demand_rtms_monthly</code>에 저장합니다.
+          region_key는 <code className="text-xs">cityId:slug</code> 형식입니다.
         </p>
         <p className="mt-2 text-sm text-slate-500">
           필요 키: <code className="text-xs">MOLIT_RTMS_TRADE_SERVICE_KEY</code>,{" "}
           <code className="text-xs">MOLIT_RTMS_RENT_SERVICE_KEY</code>
         </p>
         <p className="mt-2 text-sm text-amber-800">
-          RTMS는 <strong>월 단위</strong> API입니다. 백필 후에는{" "}
-          <strong>최근 2개월</strong>만 매월 수집하면 MoM·늦은 신고 반영에 충분합니다.
+          전국 한 번에 수집하면 API 호출이 많아 시·도별로 나눠 실행하는 것을 권장합니다.
+          크론은 매일 시·도 1곳씩 순환 수집합니다.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+      <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4">
+        <div>
+          <label htmlFor="rtms-city-id" className="text-xs font-medium text-slate-600">
+            시·도 (비우면 전국)
+          </label>
+          <select
+            id="rtms-city-id"
+            value={cityId}
+            onChange={(e) => setCityId(e.target.value)}
+            className="mt-1 min-h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">전국 ({DEMAND_RTMS_UNIT_COUNT}곳)</option>
+            {DEMAND_REGIONS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.fullLabel} ({c.districts.length})
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           type="button"
           onClick={() => void runIngest(2)}
@@ -94,14 +124,6 @@ export default function DemandRtmsIngestPanel() {
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
         >
           테스트 (1개월)
-        </button>
-        <button
-          type="button"
-          onClick={() => void runIngest(36)}
-          disabled={running}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-        >
-          백필 (36개월)
         </button>
         <button
           type="button"
@@ -136,8 +158,8 @@ export default function DemandRtmsIngestPanel() {
         >
           {lastRun.ok ? (
             <p>
-              완료: {lastRun.period} · 저장 {lastRun.inserted ?? 0}건 · 대상 {lastRun.districts ?? 0}구 · 호출{" "}
-              {lastRun.calls ?? 0}회
+              완료: {lastRun.period} · 저장 {lastRun.inserted ?? 0}건 · 대상 {lastRun.districts ?? 0}곳
+              {lastRun.cityId ? ` (${lastRun.cityId})` : ""} · 호출 {lastRun.calls ?? 0}회
             </p>
           ) : (
             <p>{lastRun.error ?? "실패"}</p>

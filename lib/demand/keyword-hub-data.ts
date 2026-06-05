@@ -26,6 +26,8 @@ export type DemandKeywordRegionBundle = {
   searchVolumeRollingSnapshotDate?: string | null;
   /** 카드·30일 차트 검색량 출처 */
   searchVolumeDisplaySource?: "rolling_30d" | "monthly_archive";
+  /** SearchAd 일별 롤링 30일 Basket 합계 시계열 */
+  rollingVolumeDailySeries?: Record<DemandKeywordKey, DemandKeywordChartPoint[]>;
 };
 
 export type { HandFreeVolumeMonthRow } from "@/lib/demand/hand-free-forward";

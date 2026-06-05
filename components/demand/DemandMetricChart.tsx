@@ -15,14 +15,19 @@ import {
   DEMAND_PACKING_INTEREST_ABOUT,
 } from "@/lib/demand/copy";
 import { DemandRevealInline } from "@/components/demand/DemandReveal";
-import { demandMetricLabel, isDemandTradeMetric, type DemandMetricId } from "@/lib/demand/metrics";
+import {
+  demandMetricLabel,
+  isDemandKeywordChartMetric,
+  isDemandTradeMetric,
+  type DemandMetricId,
+} from "@/lib/demand/metrics";
 import {
   buildDemandMetricChartSeries,
   type DemandAnyChartRange,
   type DemandChartPoint,
   type DemandScopeTableRow,
 } from "@/lib/demand/scope-data";
-import { demandKeywordKeyForMetric } from "@/lib/demand/keyword-hub-data";
+import { demandKeywordKeyForMetric, type DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
@@ -99,6 +104,7 @@ type Props = {
   metricId: DemandMetricId;
   focusRowKey?: string | null;
   rtmsSeries?: DemandRtmsSeriesStore;
+  keywordStore?: DemandKeywordStore | null;
 };
 
 function pctX(svgX: number): string {
@@ -133,6 +139,8 @@ function pickXAxisLabelIndices(pointCount: number, maxLabels: number): number[] 
 }
 
 function isMonthlyPeriodLabel(period: string): boolean {
+  if (/^\d{4}년\s*\d{1,2}월\s*\d{1,2}일$/.test(period)) return false;
+  if (/^\d{4}년\s*\d{1,2}월$/.test(period)) return true;
   const parts = period.split(".");
   return parts.length === 2;
 }
@@ -155,6 +163,7 @@ export default function DemandMetricChart({
   metricId,
   focusRowKey,
   rtmsSeries,
+  keywordStore = null,
 }: Props) {
   const [range, setRange] = useState<DemandAnyChartRange>(() => defaultRangeForMetric(metricId));
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -164,36 +173,48 @@ export default function DemandMetricChart({
   }, [metricId]);
 
   const compareMode = rows.length > 1;
-  const rowKeysSig = rows.map((r) => demandRegionSelectionKey(r.selection)).join(",");
+  const keywordChartOnly = isDemandKeywordChartMetric(metricId);
+  const chartCompareMode = compareMode && !keywordChartOnly;
+
+  const chartRows = useMemo(() => {
+    if (!keywordChartOnly || rows.length === 0) return rows;
+    const national = rows.find((r) => r.selection.scope === "national");
+    return [national ?? rows[0]];
+  }, [keywordChartOnly, rows]);
+
+  const rowKeysSig = chartRows.map((r) => demandRegionSelectionKey(r.selection)).join(",");
   const chartUid = `${metricId}-${range}-${rowKeysSig}`;
   const metricTheme = demandMetricChartTheme(metricId);
 
   const focusKey =
-    focusRowKey && rows.some((r) => demandRegionSelectionKey(r.selection) === focusRowKey)
+    focusRowKey && chartRows.some((r) => demandRegionSelectionKey(r.selection) === focusRowKey)
       ? focusRowKey
-      : rows[0]
-        ? demandRegionSelectionKey(rows[0].selection)
+      : chartRows[0]
+        ? demandRegionSelectionKey(chartRows[0].selection)
         : null;
 
   const { chartKind, subtitle, seriesList } = useMemo(() => {
-    const bundles = rows.map((row, i) => {
-      const series = buildDemandMetricChartSeries(row, metricId, range, { rtmsSeries });
+    const bundles = chartRows.map((row, i) => {
+      const series = buildDemandMetricChartSeries(row, metricId, range, {
+        rtmsSeries,
+        keywordStore,
+      });
       return {
         row,
         rowKey: demandRegionSelectionKey(row.selection),
-        label: row.label,
-        color: compareMode ? demandRegionCompareColor(i) : metricTheme.stroke,
+        label: keywordChartOnly ? "전국" : row.label,
+        color: chartCompareMode ? demandRegionCompareColor(i) : metricTheme.stroke,
         points: series.points,
         chartKind: series.chartKind,
         subtitle: series.subtitle,
       };
     });
     const kind = bundles[0]?.chartKind ?? "trade";
-    const sub = compareMode
+    const sub = chartCompareMode
       ? bundles.map((b) => b.subtitle).find(Boolean) ?? ""
       : bundles[0]?.subtitle ?? "";
     return { chartKind: kind, subtitle: sub, seriesList: bundles };
-  }, [rows, metricId, range, compareMode, metricTheme.stroke, rtmsSeries]);
+  }, [chartRows, metricId, range, chartCompareMode, keywordChartOnly, metricTheme.stroke, rtmsSeries, keywordStore]);
 
   const indexNationalFallbackNote = useMemo(() => {
     if (!isSearchIndexMetric(metricId) || rows.length === 0) return null;
@@ -206,7 +227,7 @@ export default function DemandMetricChart({
     );
     if (!levels.every((l) => l === "national")) return null;
     if (compareMode && districtRows.length >= 2) {
-      return `구별 ${kwLabel} 검색지수 미수집 — 선택한 ${districtRows.length}개 구 모두 전국 「${kwLabel}」 동일 추이입니다. Vercel에 NAVER_CLIENT_ID/SECRET 설정 후 관리자 「데이터랩 수집」을 실행하세요.`;
+      return null;
     }
     if (!compareMode && districtRows.length === 1) {
       return `${districtRows[0].label} 구별 검색지수 미수집 — 전국 「${kwLabel}」 추이를 표시합니다. 구별 비교·차트는 데이터랩(구별 키워드) 수집 후 가능합니다.`;
@@ -214,28 +235,7 @@ export default function DemandMetricChart({
     return null;
   }, [compareMode, metricId, rows]);
 
-  const displaySeriesList = useMemo(() => {
-    if (
-      !indexNationalFallbackNote ||
-      !compareMode ||
-      seriesList.length < 2 ||
-      !isSearchIndexMetric(metricId)
-    ) {
-      return seriesList;
-    }
-    const sig = (pts: DemandChartPoint[]) => pts.map((p) => `${p.period}:${p.value}`).join("|");
-    const ref = sig(seriesList[0].points);
-    if (!seriesList.every((s) => sig(s.points) === ref)) return seriesList;
-    const key = demandKeywordKeyForMetric(metricId);
-    const kwLabel = key === "packing" ? "포장이사" : "입주청소";
-    return [
-      {
-        ...seriesList[0],
-        label: `전국 · ${kwLabel}`,
-        color: demandRegionCompareColor(0),
-      },
-    ];
-  }, [indexNationalFallbackNote, compareMode, seriesList, metricId]);
+  const displaySeriesList = seriesList;
 
   const chart = useMemo(() => {
     if (displaySeriesList.length === 0 || displaySeriesList[0].points.length === 0) return null;
@@ -272,12 +272,12 @@ export default function DemandMetricChart({
 
     const primary = series.find((s) => s.rowKey === focusKey) ?? series[0];
     const areaPath =
-      !compareMode && primary
+      !chartCompareMode && primary
         ? buildAreaPath(primary.linePath, primary.coords, baselineY)
         : null;
 
     return { min, max, ticks, series, zeroY, fmt: chartKind as ChartKind, pointCount, areaPath };
-  }, [displaySeriesList, chartKind, focusKey, compareMode]);
+  }, [displaySeriesList, chartKind, focusKey, chartCompareMode]);
 
   const pointsSignature = useMemo(
     () =>
@@ -291,10 +291,13 @@ export default function DemandMetricChart({
   }, [chartUid, pointsSignature, chart?.pointCount]);
 
   const label = demandMetricLabel(metricId);
-  const primaryRow = rows.find((r) => demandRegionSelectionKey(r.selection) === focusKey) ?? rows[0];
-  const headerScopeHint = compareMode
-    ? `${rows.length}개 지역 비교`
-    : (primaryRow?.pathLabel ?? "");
+  const primaryRow =
+    chartRows.find((r) => demandRegionSelectionKey(r.selection) === focusKey) ?? chartRows[0];
+  const headerScopeHint = keywordChartOnly
+    ? "전국"
+    : compareMode
+      ? `${rows.length}개 지역 비교`
+      : (primaryRow?.pathLabel ?? "");
   const keyword =
     metricId === "packingInterest" ||
       metricId === "packingVolume" ||
@@ -307,7 +310,7 @@ export default function DemandMetricChart({
   const showFooterSubtitle =
     footerNote &&
     (indexNationalFallbackNote != null ||
-      (!compareMode &&
+      (!chartCompareMode &&
         (isDemandTradeMetric(metricId) ||
           metricId === "packingVolume" ||
           metricId === "moveInVolume" ||
@@ -322,7 +325,7 @@ export default function DemandMetricChart({
           <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
           <p className="mt-0.5 truncate text-xs text-slate-500">
             {headerScopeHint}
-            {!compareMode && keyword ? ` · ${keyword}` : null}
+            {!chartCompareMode && keyword ? ` · ${keyword}` : null}
           </p>
         </div>
         <div className="px-4 py-10 text-center sm:px-5">
@@ -341,9 +344,10 @@ export default function DemandMetricChart({
   const densePoints = chart.pointCount > 15;
   const dotRadius = densePoints ? 2 : 3;
   const gradientId = `demand-grad-${chartUid}`;
-  const xAxisLabelIndices = pickXAxisLabelIndices(chart.pointCount, densePoints ? 5 : 7);
   const xAxisIsMonthly =
     series[0]?.points.length > 0 && isMonthlyPeriodLabel(series[0].points[0].period);
+  const xAxisMaxLabels = xAxisIsMonthly ? (densePoints ? 5 : 7) : 4;
+  const xAxisLabelIndices = pickXAxisLabelIndices(chart.pointCount, xAxisMaxLabels);
   const xAxisBaselineY = PAD.top + PLOT_H;
 
   return (
@@ -354,7 +358,7 @@ export default function DemandMetricChart({
             <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
             <p className="mt-0.5 truncate text-xs text-slate-500">
               {headerScopeHint}
-              {!compareMode && keyword ? ` · ${keyword}` : null}
+              {!chartCompareMode && keyword ? ` · ${keyword}` : null}
             </p>
           </div>
           <div className="inline-flex shrink-0 rounded-lg border border-slate-200 p-0.5 text-xs">
@@ -401,12 +405,8 @@ export default function DemandMetricChart({
             <span className="text-base font-bold tabular-nums text-teal-800">
               {series[0].coords[activeIdx].period}
             </span>
-            <span className="text-[10px] tabular-nums text-slate-400">
-              ({activeIdx + 1}/{chart.pointCount}
-              {xAxisIsMonthly ? "월" : "일"})
-            </span>
           </div>
-          {compareMode ? (
+          {chartCompareMode ? (
             <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               {series.map((s) => {
                 const pt = s.coords[activeIdx];
@@ -448,7 +448,7 @@ export default function DemandMetricChart({
           className="pointer-events-none absolute inset-0 h-full w-full"
           aria-hidden
         >
-          {!compareMode ? (
+          {!chartCompareMode ? (
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={metricTheme.fillFrom} stopOpacity={0.28} />
@@ -529,7 +529,7 @@ export default function DemandMetricChart({
             y1={PAD.top}
             x2={activeX}
             y2={PAD.top + PLOT_H}
-            stroke={compareMode ? "#94a3b8" : metricTheme.stroke}
+            stroke={chartCompareMode ? "#94a3b8" : metricTheme.stroke}
             strokeOpacity={0.25}
             strokeDasharray="3 3"
           />
@@ -542,10 +542,10 @@ export default function DemandMetricChart({
                 d={s.linePath}
                 fill="none"
                 stroke={s.color}
-                strokeWidth={focused ? 2.5 : compareMode ? 2 : 2.25}
+                strokeWidth={focused ? 2.5 : chartCompareMode ? 2 : 2.25}
                 strokeLinejoin="round"
                 strokeLinecap="round"
-                strokeOpacity={compareMode && !focused ? 0.85 : 1}
+                strokeOpacity={chartCompareMode && !focused ? 0.85 : 1}
               />
             );
           })}
@@ -555,7 +555,7 @@ export default function DemandMetricChart({
             const c = s.coords[activeIdx];
             if (!c) return null;
 
-            if (compareMode) {
+            if (chartCompareMode) {
               if (!focused) {
                 return (
                   <circle
@@ -634,7 +634,7 @@ export default function DemandMetricChart({
                 y={H - 8}
                 textAnchor="middle"
                 fill={isActive ? "#0f766e" : "#64748b"}
-                fontSize={9}
+                fontSize={xAxisIsMonthly ? 9 : 8}
                 fontWeight={isActive ? 600 : 400}
               >
                 {pt.period}

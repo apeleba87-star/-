@@ -1,9 +1,9 @@
 import DemandShell from "@/components/demand/DemandShell";
 import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
 import { DEMAND_HUB_HERO } from "@/lib/demand/copy";
-import { getDemandKeywordStore } from "@/lib/demand/keyword-query";
-import { getDemandRtmsDistrictSnapshot, getDemandRtmsMonthlySeries } from "@/lib/demand/rtms-query";
-import { buildDemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
+import { getCachedDemandHubBootstrap } from "@/lib/demand/demand-cache";
+
+export const revalidate = 3600;
 
 export const metadata = {
   title: "입주수요 · 지역 탐색 | 클린아이덱스",
@@ -11,12 +11,7 @@ export const metadata = {
 };
 
 export default async function DemandHubPage() {
-  const [rtmsSnapshot, rtmsSeries, keywordStore] = await Promise.all([
-    getDemandRtmsDistrictSnapshot(),
-    getDemandRtmsMonthlySeries(),
-    getDemandKeywordStore(),
-  ]);
-  const scoreContext = buildDemandScoreContext(keywordStore, rtmsSnapshot.baseYyyymm);
+  const bootstrap = await getCachedDemandHubBootstrap();
 
   return (
     <DemandShell
@@ -28,11 +23,12 @@ export default async function DemandHubPage() {
       searchVariant={false}
     >
       <DemandHubWorkspace
-        rtmsOverrides={rtmsSnapshot.bySlug}
-        rtmsBaseMonthLabel={rtmsSnapshot.baseMonthLabel}
-        rtmsSeries={rtmsSeries}
-        keywordStore={keywordStore}
-        scoreContext={scoreContext}
+        rtmsOverrides={bootstrap.rtmsSnapshot.byRegionKey}
+        rtmsBaseMonthLabel={bootstrap.rtmsSnapshot.baseMonthLabel}
+        rtmsSeries={bootstrap.rtmsSeries}
+        keywordStore={bootstrap.keywordStore}
+        scoreContext={bootstrap.scoreContext}
+        dailyPulse={bootstrap.dailyPulse}
       />
     </DemandShell>
   );

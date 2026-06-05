@@ -1,9 +1,8 @@
 import DemandShell from "@/components/demand/DemandShell";
 import DemandHeatBadge from "@/components/demand/DemandHeatBadge";
 import { DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
+import { getCachedDemandHubBootstrap } from "@/lib/demand/demand-cache";
 import { formatDemandScoreBasis } from "@/lib/demand/district-demand-score";
-import { getDemandKeywordStore } from "@/lib/demand/keyword-query";
-import { getDemandRtmsDistrictSnapshot } from "@/lib/demand/rtms-query";
 import {
   buildDemandScoreContext,
   buildSeoulDemandRanking,
@@ -14,21 +13,18 @@ export const metadata = {
   title: "서울 지역수요점수 순위 | 클린아이덱스",
 };
 
+export const revalidate = 3600;
+
 export default async function DemandTopPage() {
-  const [rtmsSnapshot, keywordStore] = await Promise.all([
-    getDemandRtmsDistrictSnapshot(),
-    getDemandKeywordStore(),
-  ]);
-  const scoreContext = buildDemandScoreContext(keywordStore, rtmsSnapshot.baseYyyymm);
-  const ranking = buildSeoulDemandRanking(scoreContext, rtmsSnapshot.bySlug);
-  const basis = formatDemandScoreBasis({
-    searchYyyymm: scoreContext.national.searchYyyymm,
-    rtmsYyyymm: scoreContext.rtmsYyyymm,
-    mixedMonths: Boolean(
-      scoreContext.national.searchYyyymm &&
-        scoreContext.rtmsYyyymm &&
-        scoreContext.national.searchYyyymm !== scoreContext.rtmsYyyymm
-    ),
+  const bootstrap = await getCachedDemandHubBootstrap();
+  const { rtmsSnapshot, rtmsSeries, keywordStore, scoreContext } = bootstrap;
+  const ranking = buildSeoulDemandRanking(scoreContext);
+  const basis = formatDemandScoreBasis(ranking[0]?.score.basis ?? {
+    targetYyyymm: scoreContext.targetYyyymm,
+    signalYyyymm: scoreContext.signalYyyymm,
+    searchYyyymm: scoreContext.signalYyyymm,
+    rtmsYyyymm: scoreContext.signalYyyymm,
+    mixedMonths: false,
   });
 
   return (

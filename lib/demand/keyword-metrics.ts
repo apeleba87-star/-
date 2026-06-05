@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { DEMAND_DAILY_NATIONAL_KEYWORDS } from "@/lib/demand/dummy-daily";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 import { fetchSearchAdKeywordVolume } from "@/lib/naver/searchad-keyword-client";
@@ -42,7 +44,7 @@ function dummyMetrics(): DemandNationalKeywordMetrics {
   };
 }
 
-export async function getDemandNationalKeywordMetrics(): Promise<DemandNationalKeywordMetrics> {
+async function fetchDemandNationalKeywordMetrics(): Promise<DemandNationalKeywordMetrics> {
   const credsMissing = !process.env.NAVER_SEARCHAD_API_KEY?.trim();
   if (credsMissing) return dummyMetrics();
 
@@ -74,3 +76,14 @@ export async function getDemandNationalKeywordMetrics(): Promise<DemandNationalK
     return dummyMetrics();
   }
 }
+
+function loadDemandNationalKeywordMetrics() {
+  return unstable_cache(
+    fetchDemandNationalKeywordMetrics,
+    ["demand-national-metrics-v1"],
+    { revalidate: 3600, tags: ["demand-keyword"] }
+  )();
+}
+
+/** 요청·프로세스 간 Naver SearchAd 호출 최소화 */
+export const getDemandNationalKeywordMetrics = cache(loadDemandNationalKeywordMetrics);

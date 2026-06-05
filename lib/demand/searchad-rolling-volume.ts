@@ -1,5 +1,7 @@
 import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
 import { demandPhraseBasketId } from "@/lib/demand/keyword-baskets";
+import { ymdToChartDayPeriodLabel } from "@/lib/demand/copy";
+import type { DemandKeywordChartPoint } from "@/lib/demand/keyword-hub-data";
 import { demandKeywordRegionStoreKey } from "@/lib/demand/region-search-keywords";
 
 export const SEARCHAD_ROLLING_30D_SOURCE = "searchad_rolling_30d";
@@ -93,4 +95,67 @@ function sumBasketForKeyword(
     belowTen: belowTenOnly,
     snapshotDate,
   };
+}
+
+type RollingDayTotals = { packing: number; moveIn: number; packingBelowTen: boolean; moveInBelowTen: boolean };
+
+/** phrase Basket 합 — 지역·일별 롤링 30일 검색량 (데일리 차트용) */
+export function aggregateRollingVolumeDailySeries(
+  rows: SearchAdRollingRawRow[],
+  storeKey: string
+): Record<DemandKeywordKey, DemandKeywordChartPoint[]> {
+  const byDate = new Map<string, RollingDayTotals>();
+
+  for (const row of rows) {
+    const key = demandKeywordRegionStoreKey({
+      regionScope: row.region_scope as "national" | "city" | "district",
+      regionKey: row.region_key,
+    });
+    if (key !== storeKey) continue;
+
+    const date = String(row.period_date).slice(0, 10);
+    const kw = row.keyword_key as DemandKeywordKey;
+    const phrase = (row.search_phrase ?? "").trim().replace(/\s+/g, "");
+    const basketId = phrase ? demandPhraseBasketId(phrase) : null;
+    if (kw === "packing" && basketId !== "packing") continue;
+    if (kw === "move_in_clean" && basketId !== "move_in") continue;
+
+    const cur = byDate.get(date) ?? {
+      packing: 0,
+      moveIn: 0,
+      packingBelowTen: true,
+      moveInBelowTen: true,
+    };
+    if (row.search_volume_below_ten) {
+      /* keep belowTen flags */
+    } else {
+      const v = row.search_volume_rolling_30d;
+      if (v != null && Number.isFinite(v) && v > 0) {
+        if (kw === "packing") {
+          cur.packing += v;
+          cur.packingBelowTen = false;
+        } else {
+          cur.moveIn += v;
+          cur.moveInBelowTen = false;
+        }
+      }
+    }
+    byDate.set(date, cur);
+  }
+
+  const sortedDates = [...byDate.keys()].sort();
+  const packing: DemandKeywordChartPoint[] = [];
+  const move_in_clean: DemandKeywordChartPoint[] = [];
+
+  for (const date of sortedDates) {
+    const t = byDate.get(date)!;
+    if (!t.packingBelowTen && t.packing > 0) {
+      packing.push({ period: ymdToChartDayPeriodLabel(date), value: t.packing });
+    }
+    if (!t.moveInBelowTen && t.moveIn > 0) {
+      move_in_clean.push({ period: ymdToChartDayPeriodLabel(date), value: t.moveIn });
+    }
+  }
+
+  return { packing, move_in_clean };
 }

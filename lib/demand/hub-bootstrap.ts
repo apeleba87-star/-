@@ -1,0 +1,58 @@
+import { buildDailyPulseData } from "@/lib/demand/daily-pulse";
+import { getDemandKeywordStoreForRegions } from "@/lib/demand/keyword-query";
+import type { DemandKeywordRegionRef } from "@/lib/demand/region-search-keywords";
+import {
+  getDemandRtmsDistrictSnapshot,
+  getDemandRtmsSeriesForKeys,
+} from "@/lib/demand/rtms-query";
+import type { DemandRtmsDistrictSnapshot } from "@/lib/demand/rtms-types";
+import { buildDemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
+import { SEOUL_GU_SLUG_TO_NAME } from "@/lib/demand/slugs";
+import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
+import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
+import type { DemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
+import type { DailyPulseData } from "@/lib/demand/daily-pulse";
+
+export const HUB_BOOTSTRAP_RTMS_KEYS: string[] = [
+  "national:kr",
+  "city:seoul",
+  ...Object.keys(SEOUL_GU_SLUG_TO_NAME).map((slug) => `district:seoul:${slug}`),
+];
+
+export function hubBootstrapKeywordRefs(): DemandKeywordRegionRef[] {
+  return [
+    { regionScope: "national", regionKey: "kr" },
+    { regionScope: "city", regionKey: "seoul" },
+    ...Object.keys(SEOUL_GU_SLUG_TO_NAME).map((slug) => ({
+      regionScope: "district" as const,
+      regionKey: `seoul:${slug}`,
+    })),
+  ];
+}
+
+export type DemandHubBootstrap = {
+  rtmsSnapshot: DemandRtmsDistrictSnapshot;
+  rtmsSeries: DemandRtmsSeriesStore;
+  keywordStore: DemandKeywordStore;
+  scoreContext: DemandScoreContext;
+  dailyPulse: DailyPulseData;
+};
+
+/** 허브 SSR — 전국·서울만 선로드 (펄스·TOP5·기본 비교) */
+export async function getDemandHubBootstrap(): Promise<DemandHubBootstrap> {
+  const keywordRefs = hubBootstrapKeywordRefs();
+  const [rtmsSnapshot, rtmsSeries, keywordStore] = await Promise.all([
+    getDemandRtmsDistrictSnapshot(),
+    getDemandRtmsSeriesForKeys(HUB_BOOTSTRAP_RTMS_KEYS),
+    getDemandKeywordStoreForRegions(keywordRefs),
+  ]);
+  const scoreContext = buildDemandScoreContext(
+    keywordStore,
+    rtmsSnapshot.baseYyyymm,
+    rtmsSeries,
+    rtmsSnapshot
+  );
+  const dailyPulse = await buildDailyPulseData(keywordStore, scoreContext, rtmsSeries);
+
+  return { rtmsSnapshot, rtmsSeries, keywordStore, scoreContext, dailyPulse };
+}

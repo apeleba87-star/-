@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "backfill:report-snapshots": "node scripts/backfill-report-snapshot-fields.mjs",
+    "generate:demand-regions": "node scripts/generate-demand-regions.mjs",
     "g2b:ping": "node scripts/g2b-ping.mjs"
   },
   "dependencies": {
