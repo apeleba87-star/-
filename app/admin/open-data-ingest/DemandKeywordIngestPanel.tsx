@@ -18,6 +18,8 @@ type Stats =
       searchadRollingLatestDate?: string | null;
       rollingMigrationReady?: boolean;
       rollingMigrationError?: string | null;
+      phraseUniqueMigrationReady?: boolean;
+      phraseUniqueMigrationError?: string | null;
       searchAdCredentials?: { configured: boolean; customerId: string | null };
     }
   | { ok: false; error?: string };
@@ -121,25 +123,18 @@ export default function DemandKeywordIngestPanel() {
         });
         return;
       }
-      const partialOk = Boolean(j.datalab?.ok) && !j.searchAdDaily?.ok;
-      if (!res.ok && !partialOk) {
-        setLastRun({
-          ok: false,
-          error:
-            j.searchAdDaily?.error ??
-            j.datalab?.error ??
-            j.error ??
-            `HTTP ${res.status}`,
-          datalab: j.datalab,
-          searchAdDaily: j.searchAdDaily,
-          searchAdMonthly: j.searchAdMonthly,
-        });
-      } else {
-        setLastRun({
-          ...j,
-          ok: j.ok ?? (j.datalab?.ok && j.searchAdDaily?.ok),
-        });
-      }
+      const allOk = Boolean(j.datalab?.ok) && Boolean(j.searchAdDaily?.ok);
+      setLastRun({
+        ...j,
+        ok: j.ok ?? allOk,
+        error:
+          allOk
+            ? undefined
+            : j.searchAdDaily?.error ??
+              j.datalab?.error ??
+              j.error ??
+              (!res.ok ? `HTTP ${res.status}` : undefined),
+      });
       await loadStats();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -333,6 +328,19 @@ export default function DemandKeywordIngestPanel() {
             <>
               <br />
               <span className="text-xs">{stats.rollingMigrationError}</span>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+      {stats?.ok && stats.phraseUniqueMigrationReady === false ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <strong>phrase unique 제약 없음 (Basket upsert 충돌).</strong> SQL Editor에서{" "}
+          <code className="text-xs">155_demand_keyword_daily_phrase_unique.sql</code> migration을
+          적용하세요.
+          {stats.phraseUniqueMigrationError ? (
+            <>
+              <br />
+              <span className="text-xs">{stats.phraseUniqueMigrationError}</span>
             </>
           ) : null}
         </p>

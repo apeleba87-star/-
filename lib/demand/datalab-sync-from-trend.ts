@@ -117,7 +117,7 @@ export async function syncDemandKeywordDailyFromNaverTrend(
   const { error, count } = await supabase
     .from("demand_keyword_daily")
     .upsert(rows, {
-      onConflict: "keyword_key,region_scope,region_key,period_date,source",
+      onConflict: "keyword_key,region_scope,region_key,search_phrase,period_date,source",
       count: "exact",
     });
 

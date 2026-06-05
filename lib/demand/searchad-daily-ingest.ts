@@ -80,7 +80,7 @@ export async function runDemandSearchAdDailyIngestJob(
     }
 
     const { error, count } = await supabase.from("demand_keyword_daily").upsert(rows, {
-      onConflict: "keyword_key,region_scope,region_key,period_date,source",
+      onConflict: "keyword_key,region_scope,region_key,search_phrase,period_date,source",
       count: "exact",
     });
 
@@ -90,6 +90,12 @@ export async function runDemandSearchAdDailyIngestJob(
         return {
           ok: false,
           error: `${msg} — Supabase에 migration 154_demand_keyword_daily_rolling_volume.sql 을 적용하세요.`,
+        };
+      }
+      if (/cannot affect row a second time|phrase_source_unique|search_phrase/i.test(msg)) {
+        return {
+          ok: false,
+          error: `${msg} — Supabase에 migration 155_demand_keyword_daily_phrase_unique.sql 을 적용하세요.`,
         };
       }
       return { ok: false, error: msg };

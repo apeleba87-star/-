@@ -76,7 +76,7 @@ async function upsertDemandKeywordDailyBatched(
   for (let i = 0; i < allRows.length; i += DATALAB_UPSERT_CHUNK) {
     const chunk = allRows.slice(i, i + DATALAB_UPSERT_CHUNK);
     const { error, count } = await supabase.from("demand_keyword_daily").upsert(chunk, {
-      onConflict: "keyword_key,region_scope,region_key,period_date,source",
+      onConflict: "keyword_key,region_scope,region_key,search_phrase,period_date,source",
       count: "exact",
     });
     if (error) return { error: error.message };

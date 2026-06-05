@@ -72,6 +72,46 @@ export async function GET() {
       .limit(1);
     const rollingMigrationReady = !rollingColErr;
 
+    const phraseUniqueProbeRows = [
+      {
+        keyword_key: "packing",
+        region_scope: "national",
+        region_key: "kr",
+        search_phrase: "__migration155_probe_a__",
+        period_date: "2099-01-01",
+        index_ratio: 0,
+        source: "searchad_rolling_30d",
+        search_volume_rolling_30d: 1,
+        search_volume_below_ten: false,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        keyword_key: "packing",
+        region_scope: "national",
+        region_key: "kr",
+        search_phrase: "__migration155_probe_b__",
+        period_date: "2099-01-01",
+        index_ratio: 0,
+        source: "searchad_rolling_30d",
+        search_volume_rolling_30d: 2,
+        search_volume_below_ten: false,
+        updated_at: new Date().toISOString(),
+      },
+    ];
+    const { error: phraseUniqueErr } = await service
+      .from("demand_keyword_daily")
+      .upsert(phraseUniqueProbeRows, {
+        onConflict: "keyword_key,region_scope,region_key,search_phrase,period_date,source",
+      });
+    if (!phraseUniqueErr) {
+      await service
+        .from("demand_keyword_daily")
+        .delete()
+        .eq("period_date", "2099-01-01")
+        .in("search_phrase", ["__migration155_probe_a__", "__migration155_probe_b__"]);
+    }
+    const phraseUniqueMigrationReady = !phraseUniqueErr;
+
     const basketPhrases = listNationalBasketIngestPhrases().map((p) => p.phrase);
     const { data: nationalBasketRows } = await service
       .from("demand_keyword_monthly")
@@ -99,6 +139,10 @@ export async function GET() {
         rollingLatestRes.data?.[0]?.period_date != null
           ? String(rollingLatestRes.data[0].period_date).slice(0, 10)
           : null,
+      rollingMigrationReady,
+      rollingMigrationError: rollingColErr?.message ?? null,
+      phraseUniqueMigrationReady,
+      phraseUniqueMigrationError: phraseUniqueErr?.message ?? null,
       searchAdCredentials: getSearchAdCredentialsStatus(),
     });
   } catch (e) {
@@ -115,8 +159,7 @@ export async function POST() {
   try {
     const service = createServiceSupabase();
     const result = await runDemandKeywordIngestJob(service);
-    const status = result.ok ? 200 : result.datalab.ok ? 200 : 500;
-    return NextResponse.json(result, { status });
+    return NextResponse.json(result, { status: 200 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
