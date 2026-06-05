@@ -4,23 +4,41 @@ import { DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
 export type DemandMetricId =
   | "sale"
   | "jeonse"
-  /** 표시 전용 — 포장이사 검색량·검색지수 통합 */
+  /** @deprecated 개발·검증용 */
   | "packingInterest"
   | "packingVolume"
   | "packingIndex"
   | "moveInVolume"
   | "moveInIndex"
-  | "composite";
+  | "demandScore";
 
-/** 허브·비교표에 노출하는 지표 (포장이사는 관심지수 1개만) */
-export const DEMAND_HUB_METRIC_IDS: DemandMetricId[] = [
-  "composite",
+/** 허브·비교표에 노출하는 지표 */
+/** 구 선택 시 — RTMS·지역수요점수만 */
+export const DEMAND_HUB_DISTRICT_METRIC_IDS: DemandMetricId[] = [
+  "demandScore",
   "sale",
   "jeonse",
-  "packingInterest",
+];
+
+export const DEMAND_HUB_METRIC_IDS: DemandMetricId[] = [
+  "demandScore",
+  "sale",
+  "jeonse",
+  "packingVolume",
+  "packingIndex",
   "moveInVolume",
   "moveInIndex",
 ];
+
+export function isDemandSearchMetricId(id: DemandMetricId): boolean {
+  return (
+    id === "packingVolume" ||
+    id === "packingIndex" ||
+    id === "moveInVolume" ||
+    id === "moveInIndex" ||
+    id === "packingInterest"
+  );
+}
 
 export const DEMAND_METRIC_IDS: DemandMetricId[] = [
   "sale",
@@ -30,7 +48,7 @@ export const DEMAND_METRIC_IDS: DemandMetricId[] = [
   "packingIndex",
   "moveInVolume",
   "moveInIndex",
-  "composite",
+  "demandScore",
 ];
 
 export function demandMetricLabel(id: DemandMetricId): string {
@@ -49,8 +67,8 @@ export function demandMetricLabel(id: DemandMetricId): string {
       return DEMAND_METRIC_LABELS.moveInVolume;
     case "moveInIndex":
       return DEMAND_METRIC_LABELS.moveInIndex;
-    case "composite":
-      return DEMAND_METRIC_LABELS.composite;
+    case "demandScore":
+      return DEMAND_METRIC_LABELS.demandScore;
   }
 }
 

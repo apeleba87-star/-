@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { runDemandKeywordIngestJob } from "@/lib/demand/keyword-ingest";
+import { SEARCHAD_ROLLING_30D_SOURCE } from "@/lib/demand/searchad-rolling-volume";
 import { getSearchAdCredentialsStatus } from "@/lib/naver/searchad-keyword-client";
 import { listNationalBasketIngestPhrases } from "@/lib/demand/keyword-baskets";
 
@@ -27,38 +28,49 @@ export async function GET() {
   }
   try {
     const service = createServiceSupabase();
-    const [dailyRes, monthlyRes, districtDailyRes, datalabDistrictRes] = await Promise.all([
-      service.from("demand_keyword_daily").select("*", { count: "exact", head: true }),
-      service.from("demand_keyword_monthly").select("*", { count: "exact", head: true }),
-      service
-        .from("demand_keyword_daily")
-        .select("*", { count: "exact", head: true })
-        .eq("region_scope", "district"),
-      service
-        .from("demand_keyword_daily")
-        .select("*", { count: "exact", head: true })
-        .eq("region_scope", "district")
-        .eq("source", "datalab"),
-    ]);
+    const [dailyRes, monthlyRes, districtDailyRes, datalabDistrictRes, rollingRes, rollingLatestRes] =
+      await Promise.all([
+        service.from("demand_keyword_daily").select("*", { count: "exact", head: true }),
+        service.from("demand_keyword_monthly").select("*", { count: "exact", head: true }),
+        service
+          .from("demand_keyword_daily")
+          .select("*", { count: "exact", head: true })
+          .eq("region_scope", "district"),
+        service
+          .from("demand_keyword_daily")
+          .select("*", { count: "exact", head: true })
+          .eq("region_scope", "district")
+          .eq("source", "datalab"),
+        service
+          .from("demand_keyword_daily")
+          .select("*", { count: "exact", head: true })
+          .eq("source", SEARCHAD_ROLLING_30D_SOURCE),
+        service
+          .from("demand_keyword_daily")
+          .select("period_date")
+          .eq("source", SEARCHAD_ROLLING_30D_SOURCE)
+          .order("period_date", { ascending: false })
+          .limit(1),
+      ]);
     const datalabConfigured = Boolean(
       process.env.NAVER_CLIENT_ID?.trim() && process.env.NAVER_CLIENT_SECRET?.trim()
     );
     const searchadMonthly = await service
       .from("demand_keyword_monthly")
       .select("*", { count: "exact", head: true })
-      .eq("source", "searchad");
+      .in("source", ["searchad", "searchad_console"]);
 
     const { data: yyyymmRows } = await service
       .from("demand_keyword_monthly")
       .select("yyyymm")
-      .eq("source", "searchad");
+      .in("source", ["searchad", "searchad_console"]);
     const searchadDistinctMonths = new Set((yyyymmRows ?? []).map((r) => r.yyyymm)).size;
 
     const basketPhrases = listNationalBasketIngestPhrases().map((p) => p.phrase);
     const { data: nationalBasketRows } = await service
       .from("demand_keyword_monthly")
       .select("search_phrase")
-      .eq("source", "searchad")
+      .in("source", ["searchad", "searchad_console"])
       .eq("region_scope", "national")
       .in("search_phrase", basketPhrases);
     const searchadBasketPhrases = new Set(
@@ -76,6 +88,11 @@ export async function GET() {
       searchadDistinctMonths,
       searchadBasketPhrases,
       searchadBasketPhraseTarget: basketPhrases.length,
+      searchadRollingRows: rollingRes.count ?? 0,
+      searchadRollingLatestDate:
+        rollingLatestRes.data?.[0]?.period_date != null
+          ? String(rollingLatestRes.data[0].period_date).slice(0, 10)
+          : null,
       searchAdCredentials: getSearchAdCredentialsStatus(),
     });
   } catch (e) {

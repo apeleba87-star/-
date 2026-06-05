@@ -1,13 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getKstTodayString } from "@/lib/jobs/kst-date";
+import { demandSearchAdSnapshotYyyymm } from "@/lib/demand/searchad-month-report";
 import type { DemandKeywordKey } from "@/lib/demand/keyword-keys";
-import { listNationalBasketIngestPhrases } from "@/lib/demand/keyword-baskets";
-import {
-  buildRegionSearchPhrases,
-  demandKeywordRegionRefFromSelection,
-  listSeoulDistrictKeywordTargets,
-  type DemandKeywordRegionRef,
-} from "@/lib/demand/region-search-keywords";
+import { buildSearchAdArchiveIngestTargets } from "@/lib/demand/searchad-ingest-targets";
 import {
   fetchSearchAdKeywordVolumes,
   getSearchAdCredentials,
@@ -39,55 +33,9 @@ type MonthlyUpsertRow = {
   updated_at: string;
 };
 
-type IngestTarget = {
-  region: DemandKeywordRegionRef;
-  keywordKey: DemandKeywordKey;
-  phrase: string;
-};
-
-function currentYyyymmKst(): string {
-  return getKstTodayString().slice(0, 7);
-}
-
-function buildIngestTargets(): IngestTarget[] {
-  const targets: IngestTarget[] = [];
-
-  const nationalRef = demandKeywordRegionRefFromSelection({ scope: "national" });
-  if (nationalRef) {
-    for (const item of listNationalBasketIngestPhrases()) {
-      targets.push({
-        region: nationalRef,
-        keywordKey: item.keywordKey,
-        phrase: item.phrase,
-      });
-    }
-  }
-
-  const cityPhrases = buildRegionSearchPhrases({ scope: "city", cityId: "seoul" });
-  if (cityPhrases) {
-    const region: DemandKeywordRegionRef = { regionScope: "city", regionKey: "seoul" };
-    targets.push(
-      { region, keywordKey: "packing", phrase: cityPhrases.packing },
-      { region, keywordKey: "move_in_clean", phrase: cityPhrases.moveInClean }
-    );
-  }
-
-  for (const d of listSeoulDistrictKeywordTargets()) {
-    targets.push(
-      {
-        region: { regionScope: "district", regionKey: d.regionKey },
-        keywordKey: "packing",
-        phrase: d.phrases.packing,
-      },
-      {
-        region: { regionScope: "district", regionKey: d.regionKey },
-        keywordKey: "move_in_clean",
-        phrase: d.phrases.moveInClean,
-      }
-    );
-  }
-
-  return targets;
+function snapshotYyyymmKst(): string {
+  /** API는 「최근 30일」만 제공 — KST 직전 확정 달에 귀속 (6월 초 수집 → 2026-05) */
+  return demandSearchAdSnapshotYyyymm();
 }
 
 export async function runDemandSearchAdMonthlyIngestJob(
@@ -107,9 +55,9 @@ export async function runDemandSearchAdMonthlyIngestJob(
    * KST `yyyy-mm` 1행/지역·키워드. 같은 달 재수집 시 해당 월만 갱신, 과거 월은 삭제하지 않음.
    * 매월 cron 12회 ≈ 1년 검색량 차트.
    */
-  const yyyymm = currentYyyymmKst();
+  const yyyymm = snapshotYyyymmKst();
   const now = new Date().toISOString();
-  const targets = buildIngestTargets();
+  const targets = buildSearchAdArchiveIngestTargets();
 
   if (targets.length === 0) {
     return { ok: false, error: "수집 대상 지역이 없습니다." };
@@ -119,9 +67,22 @@ export async function runDemandSearchAdMonthlyIngestJob(
     const phrases = [...new Set(targets.map((t) => t.phrase))];
     const volumes = await fetchSearchAdKeywordVolumes(phrases);
 
-    const rows: MonthlyUpsertRow[] = targets.map((t) => {
+    const rows: MonthlyUpsertRow[] = [];
+    for (const t of targets) {
+      const { data: existing } = await supabase
+        .from("demand_keyword_monthly")
+        .select("source")
+        .eq("keyword_key", t.keywordKey)
+        .eq("region_scope", t.region.regionScope)
+        .eq("region_key", t.region.regionKey)
+        .eq("search_phrase", t.phrase)
+        .eq("yyyymm", yyyymm)
+        .maybeSingle();
+
+      if (existing?.source === "searchad_console") continue;
+
       const vol = volumes.get(t.phrase);
-      return {
+      rows.push({
         keyword_key: t.keywordKey,
         region_scope: t.region.regionScope,
         region_key: t.region.regionKey,
@@ -132,8 +93,19 @@ export async function runDemandSearchAdMonthlyIngestJob(
         index_mom_percent: 0,
         source: "searchad",
         updated_at: now,
+      });
+    }
+
+    if (rows.length === 0) {
+      return {
+        ok: true,
+        inserted: 0,
+        yyyymm,
+        regions: 0,
+        phrases: phrases.length,
+        mode: "monthly_snapshot",
       };
-    });
+    }
 
     const regionKeys = new Set(targets.map((t) => `${t.region.regionScope}:${t.region.regionKey}`));
 

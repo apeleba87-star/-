@@ -20,4 +20,5 @@ export type DemandRtmsDistrictSnapshot = {
     }
   >;
   baseMonthLabel: string | null;
+  baseYyyymm: string | null;
 };

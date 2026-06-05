@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import DemandMetricChart from "@/components/demand/DemandMetricChart";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
-import { DemandPackingInterestCell } from "@/components/demand/DemandPackingInterestCell";
 import { DemandSearchIndexCell, DemandSearchVolumeCell } from "@/components/demand/DemandSearchMetricCell";
 import DemandScopeSummaryStrip from "@/components/demand/DemandScopeSummaryStrip";
 import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
 import { DEMAND_HUB_HERO, DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
-import { demandShowPackingSearchBreakdown } from "@/lib/demand/feature-flags";
-import DemandDevMetricBadge from "@/components/demand/DemandDevMetricBadge";
-import DemandOutlookBadge from "@/components/demand/DemandOutlookBadge";
+import DemandHeatBadge from "@/components/demand/DemandHeatBadge";
+import DemandNationalInterestStrip from "@/components/demand/DemandNationalInterestStrip";
+import DemandDummyBadge from "@/components/demand/DemandDummyBadge";
+import { formatDemandScoreBasis } from "@/lib/demand/district-demand-score";
+import type { DemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
 import { DEMAND_SNAPSHOT_META } from "@/lib/demand/dummy-data";
 import { demandMetricChartTheme } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
@@ -64,6 +65,7 @@ type Props = {
   rtmsBaseMonthLabel?: string | null;
   rtmsSeries?: DemandRtmsSeriesStore;
   keywordStore?: DemandKeywordStore | null;
+  scoreContext?: DemandScoreContext | null;
 };
 
 export default function DemandHubWorkspace({
@@ -71,14 +73,15 @@ export default function DemandHubWorkspace({
   rtmsBaseMonthLabel = null,
   rtmsSeries = {},
   keywordStore = null,
+  scoreContext = null,
 }: Props) {
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
   const [chartRowKey, setChartRowKey] = useState<string | null>(null);
 
   const scopeRows = useMemo(
-    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides, keywordStore),
-    [selections, rtmsOverrides, keywordStore]
+    () => buildDemandScopeRowsWithRtms(selections, rtmsOverrides, keywordStore, scoreContext),
+    [selections, rtmsOverrides, keywordStore, scoreContext]
   );
 
   const keywordSourceSummary = useMemo(() => {
@@ -141,8 +144,6 @@ export default function DemandHubWorkspace({
     setChartRowKey(demandRegionSelectionKey(row.selection));
   }
 
-  const showPackingBreakdown = demandShowPackingSearchBreakdown();
-
   const compareHref =
     scopeRows.length >= 2
       ? `/demand/compare?${scopeRows
@@ -154,6 +155,24 @@ export default function DemandHubWorkspace({
 
   return (
     <div className="space-y-5">
+      <DemandNationalInterestStrip
+        index={
+          scoreContext?.national.index ??
+          scopeRows[0]?.demandScore.national.index ??
+          100
+        }
+        changePct={
+          scoreContext?.national.changePct ??
+          scopeRows[0]?.demandScore.national.changePct ??
+          0
+        }
+        searchYyyymm={
+          scoreContext?.national.searchYyyymm ??
+          scopeRows[0]?.demandScore.national.searchYyyymm ??
+          null
+        }
+      />
+
       <div className="rounded-2xl border-2 border-teal-100 bg-white p-4 shadow-sm ring-1 ring-teal-50">
         <p className="text-sm font-semibold text-slate-800">지역 찾기</p>
         <p className="mt-0.5 text-xs text-slate-500">{DEMAND_HUB_HERO.regionHint}</p>
@@ -211,25 +230,21 @@ export default function DemandHubWorkspace({
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-600">
                   <th className="px-3 py-2.5 font-medium">지역</th>
-                  <th className="px-3 py-2.5 font-medium">판단</th>
+                  <th className="px-3 py-2.5 font-medium">{DEMAND_METRIC_LABELS.demandScore}</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.sale}</th>
                   <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.jeonse}</th>
-                  <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.packingInterest}</th>
-                  {showPackingBreakdown ? (
-                    <>
-                      <th className="px-3 py-2.5 text-right font-medium">
-                        {DEMAND_METRIC_LABELS.packingVolume}
-                        <DemandDevMetricBadge />
-                      </th>
-                      <th className="px-3 py-2.5 text-right font-medium">
-                        {DEMAND_METRIC_LABELS.packingIndex}
-                        <DemandDevMetricBadge />
-                      </th>
-                    </>
-                  ) : null}
-                  <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.moveInVolume}</th>
-                  <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.moveInIndex}</th>
-                  <th className="px-3 py-2.5 text-right font-medium">{DEMAND_METRIC_LABELS.composite}</th>
+                  <th className="px-3 py-2.5 text-right font-medium">
+                    {DEMAND_METRIC_LABELS.packingVolume}
+                  </th>
+                  <th className="px-3 py-2.5 text-right font-medium">
+                    {DEMAND_METRIC_LABELS.packingIndex}
+                  </th>
+                  <th className="px-3 py-2.5 text-right font-medium">
+                    {DEMAND_METRIC_LABELS.moveInVolume}
+                  </th>
+                  <th className="px-3 py-2.5 text-right font-medium">
+                    {DEMAND_METRIC_LABELS.moveInIndex}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -268,15 +283,23 @@ export default function DemandHubWorkspace({
                         ) : (
                           <span className="font-medium text-slate-800">{row.label}</span>
                         )}
-                        {scopeRows.length === 1 ? (
-                          <p className="mt-0.5 truncate text-[10px] text-violet-600">
-                            {row.packing.keyword}
+                      </td>
+                      <ClickableMetricCell
+                        metricId="demandScore"
+                        active={isFocusRow && selectedMetric === "demandScore"}
+                        onClick={() => selectMetric(row, "demandScore")}
+                      >
+                        <div className="text-left">
+                          <DemandHeatBadge
+                            band={row.demandScore.band}
+                            score={row.demandScore.score}
+                            compact
+                          />
+                          <p className="mt-0.5 text-[10px] font-normal text-slate-400">
+                            {formatDemandScoreBasis(row.demandScore.basis)}
                           </p>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <DemandOutlookBadge outlook={row.outlook.outlook} compact />
-                      </td>
+                        </div>
+                      </ClickableMetricCell>
                       <ClickableMetricCell
                         metricId="sale"
                         active={isFocusRow && selectedMetric === "sale"}
@@ -291,31 +314,21 @@ export default function DemandHubWorkspace({
                       >
                         <DemandTradeMetricCell count={row.jeonseCount} momPercent={row.jeonseMom} />
                       </ClickableMetricCell>
+
                       <ClickableMetricCell
-                        metricId="packingInterest"
-                        active={isFocusRow && selectedMetric === "packingInterest"}
-                        onClick={() => selectMetric(row, "packingInterest")}
+                        metricId="packingVolume"
+                        active={isFocusRow && selectedMetric === "packingVolume"}
+                        onClick={() => selectMetric(row, "packingVolume")}
                       >
-                        <DemandPackingInterestCell metric={row.packing} />
+                        <DemandSearchVolumeCell metric={row.packing} />
                       </ClickableMetricCell>
-                      {showPackingBreakdown ? (
-                        <>
-                          <ClickableMetricCell
-                            metricId="packingVolume"
-                            active={isFocusRow && selectedMetric === "packingVolume"}
-                            onClick={() => selectMetric(row, "packingVolume")}
-                          >
-                            <DemandSearchVolumeCell metric={row.packing} />
-                          </ClickableMetricCell>
-                          <ClickableMetricCell
-                            metricId="packingIndex"
-                            active={isFocusRow && selectedMetric === "packingIndex"}
-                            onClick={() => selectMetric(row, "packingIndex")}
-                          >
-                            <DemandSearchIndexCell metric={row.packing} />
-                          </ClickableMetricCell>
-                        </>
-                      ) : null}
+                      <ClickableMetricCell
+                        metricId="packingIndex"
+                        active={isFocusRow && selectedMetric === "packingIndex"}
+                        onClick={() => selectMetric(row, "packingIndex")}
+                      >
+                        <DemandSearchIndexCell metric={row.packing} />
+                      </ClickableMetricCell>
                       <ClickableMetricCell
                         metricId="moveInVolume"
                         active={isFocusRow && selectedMetric === "moveInVolume"}
@@ -330,29 +343,19 @@ export default function DemandHubWorkspace({
                       >
                         <DemandSearchIndexCell metric={row.moveInClean} />
                       </ClickableMetricCell>
-                      <ClickableMetricCell
-                        metricId="composite"
-                        active={isFocusRow && selectedMetric === "composite"}
-                        onClick={() => selectMetric(row, "composite")}
-                      >
-                        <span className="font-semibold tabular-nums text-teal-800">
-                          {row.indexScore ?? "—"}
-                        </span>
-                      </ClickableMetricCell>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">
-              {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS · 포장이사 관심지수=
-              {keywordSourceSummary.packingIndex === "live" ||
-              keywordSourceSummary.volume === "live"
-                ? "검색·지수(지역)"
-                : "더미"}{" "}
-              · 입주청소{" "}
-              {keywordSourceSummary.moveInIndex === "live" ? "데이터랩(지역)" : "더미"} · 검색량=
-              {keywordSourceSummary.volume === "live" ? "검색광고(지역)" : "더미"}
+              {rtmsBaseMonthLabel ?? DEMAND_SNAPSHOT_META.baseMonthLabel} · 거래=RTMS · 검색=전국 이사·입주청소 관련
+              {keywordSourceSummary.volume !== "live" ? (
+                <>
+                  {" "}
+                  <DemandDummyBadge />
+                </>
+              ) : null}
             </p>
           </div>
 

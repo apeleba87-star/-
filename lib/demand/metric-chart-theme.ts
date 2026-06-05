@@ -13,7 +13,7 @@ export type DemandMetricChartTheme = {
 };
 
 export const DEMAND_METRIC_CHART_THEMES: Record<DemandMetricId, DemandMetricChartTheme> = {
-  composite: {
+  demandScore: {
     stroke: "#0f766e",
     fillFrom: "#14b8a6",
     cardSelected: "border-teal-500 ring-2 ring-teal-200",

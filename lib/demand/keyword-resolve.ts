@@ -7,6 +7,16 @@ import {
   demandKeywordRegionStoreKey,
 } from "@/lib/demand/region-search-keywords";
 import type { DemandRegionSelection } from "@/lib/demand/regions";
+import {
+  countDailyIndexInChartWindow,
+  defaultSearchVolumeChartEndYmd,
+} from "@/lib/demand/search-volume-30d";
+import {
+  buildHandFreeForwardVolumeSeries,
+  handFreeForwardDataReady,
+} from "@/lib/demand/hand-free-forward";
+import { demandDistrictSearchExcludedFromHub } from "@/lib/demand/district-search-archive";
+import { demandIsIncompleteSearchVolumeMonth } from "@/lib/demand/searchad-month-report";
 
 export type DemandKeywordIndexLevel = "district" | "city" | "national" | "dummy";
 
@@ -36,7 +46,8 @@ function periodDateToChartLabel(periodDate: string): string {
 function periodMonthToChartLabel(periodDate: string): string {
   const [y, m] = periodDate.split("-");
   if (!y || !m) return periodDate;
-  return `${y.slice(2)}.${Number(m)}`;
+  const year = y.length === 4 ? Number(y) : Number(`20${y}`);
+  return `${year}년 ${Number(m)}월`;
 }
 
 function indexDeltaPercent(curr: number, prev: number): number {
@@ -80,6 +91,15 @@ function aggregateDailyToMonthlyRows(rows: DemandKeywordDailyRow[]): DemandKeywo
     }));
 }
 
+function toDailyIndexByYmd(rows: DemandKeywordDailyRow[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of rows) {
+    const ymd = r.periodDate.slice(0, 10);
+    if (ymd.length === 10) out[ymd] = (out[ymd] ?? 0) + r.indexRatio;
+  }
+  return out;
+}
+
 function toDailyIndexChartSeries(rows: DemandKeywordDailyRow[], maxPoints = 30) {
   const sorted = [...rows]
     .sort((a, b) => a.periodDate.localeCompare(b.periodDate))
@@ -104,6 +124,7 @@ type VolumeMonthRow = { yyyymm: string; volume: number | null; belowTen: boolean
 
 function toVolumeMonthlyChartSeries(rows: VolumeMonthRow[], maxMonths = 12) {
   const sorted = [...rows]
+    .filter((r) => !demandIsIncompleteSearchVolumeMonth(r.yyyymm))
     .sort((a, b) => a.yyyymm.localeCompare(b.yyyymm))
     .slice(-maxMonths);
   return sorted.map((r) => ({
@@ -150,7 +171,12 @@ export function bundleDemandKeywordFromRows(
   monthly: Record<DemandKeywordKey, DemandKeywordDailyRow[]>,
   volume: Partial<Record<DemandKeywordKey, { volume: number | null; belowTen: boolean }>>,
   volumeMonthly: Partial<Record<DemandKeywordKey, VolumeMonthRow[]>>,
-  fallback: { packing: DemandKeywordMetricSlice; moveInClean: DemandKeywordMetricSlice }
+  fallback: { packing: DemandKeywordMetricSlice; moveInClean: DemandKeywordMetricSlice },
+  handFreeByPhrase: Record<string, VolumeMonthRow[]> = {},
+  volumeMeta?: {
+    rollingSnapshotDate?: string | null;
+    fromRolling?: boolean;
+  }
 ): DemandKeywordRegionBundle {
   const hasPackingDaily = daily.packing.length > 0;
   const hasMoveInDaily = daily.move_in_clean.length > 0;
@@ -195,6 +221,7 @@ export function bundleDemandKeywordFromRows(
 
   const packingVolMonths = volumeMonthly.packing ?? [];
   const moveInVolMonths = volumeMonthly.move_in_clean ?? [];
+  const handFreeForwardSeries = buildHandFreeForwardVolumeSeries(handFreeByPhrase);
 
   return {
     phrases,
@@ -212,6 +239,12 @@ export function bundleDemandKeywordFromRows(
       packing: toVolumeMonthlyChartSeries(packingVolMonths),
       move_in_clean: toVolumeMonthlyChartSeries(moveInVolMonths),
     },
+    handFreeVolumeByPhrase: handFreeByPhrase,
+    handFreeVolumeMonthlySeries: handFreeForwardSeries,
+    dailyIndexByYmd: {
+      packing: toDailyIndexByYmd(daily.packing),
+      move_in_clean: toDailyIndexByYmd(daily.move_in_clean),
+    },
     source: {
       datalab:
         hasPackingDaily || hasMoveInDaily || hasPackingMonthly || hasMoveInMonthly ? "live" : "dummy",
@@ -223,6 +256,8 @@ export function bundleDemandKeywordFromRows(
           ? "live"
           : "dummy",
     },
+    searchVolumeRollingSnapshotDate: volumeMeta?.rollingSnapshotDate ?? null,
+    searchVolumeDisplaySource: volumeMeta?.fromRolling ? "rolling_30d" : "monthly_archive",
   };
 }
 
@@ -240,6 +275,26 @@ const FALLBACK_CHAIN: Array<(sel: DemandRegionSelection) => string | null> = [
   () => demandKeywordRegionStoreKey({ regionScope: "national", regionKey: "kr" }),
 ];
 
+/** 구 선택 시 구별 행 스킵 — 서울·전국 Basket만 표시 */
+const DISTRICT_DISPLAY_FALLBACK_CHAIN: Array<(sel: DemandRegionSelection) => string | null> = [
+  (sel) => {
+    if (sel.scope === "district") {
+      return demandKeywordRegionStoreKey({ regionScope: "city", regionKey: sel.cityId });
+    }
+    return null;
+  },
+  () => demandKeywordRegionStoreKey({ regionScope: "national", regionKey: "kr" }),
+];
+
+function fallbackChainForSelection(
+  selection: DemandRegionSelection
+): Array<(sel: DemandRegionSelection) => string | null> {
+  if (demandDistrictSearchExcludedFromHub(selection.scope)) {
+    return DISTRICT_DISPLAY_FALLBACK_CHAIN;
+  }
+  return FALLBACK_CHAIN;
+}
+
 function levelFromStoreKey(key: string | null): DemandKeywordIndexLevel {
   if (!key) return "dummy";
   if (key.startsWith("district:")) return "district";
@@ -252,7 +307,7 @@ function pickFromChain(
   selection: DemandRegionSelection,
   match: (bundle: DemandKeywordRegionBundle) => boolean
 ): { key: string; bundle: DemandKeywordRegionBundle } | null {
-  for (const pickKey of FALLBACK_CHAIN) {
+  for (const pickKey of fallbackChainForSelection(selection)) {
     const key = pickKey(selection);
     if (!key) continue;
     const bundle = store.byRegion[key];
@@ -261,6 +316,23 @@ function pickFromChain(
     }
   }
   return null;
+}
+
+/** 30일 검색량 배분용 — 구 일별 부족 시 시·전국 DataLab 일별(최근 30일 7일+) */
+function pickDailyIndexByYmdFromChain(
+  store: DemandKeywordStore,
+  selection: DemandRegionSelection,
+  keywordKey: DemandKeywordKey,
+  minDays = 7
+): Record<string, number> {
+  const endYmd = defaultSearchVolumeChartEndYmd();
+  for (const pickKey of fallbackChainForSelection(selection)) {
+    const key = pickKey(selection);
+    if (!key) continue;
+    const byYmd = store.byRegion[key]?.dailyIndexByYmd[keywordKey] ?? {};
+    if (countDailyIndexInChartWindow(byYmd, endYmd, 30) >= minDays) return byYmd;
+  }
+  return {};
 }
 
 export function resolveDemandKeywordBundle(
@@ -383,6 +455,18 @@ export function resolveDemandKeywordBundle(
       packing: packingVolBundle?.volumeMonthlySeries.packing ?? [],
       move_in_clean: moveInVolBundle?.volumeMonthlySeries.move_in_clean ?? [],
     },
+    handFreeVolumeByPhrase:
+      store.byRegion[
+        demandKeywordRegionStoreKey({ regionScope: "national", regionKey: "kr" })
+      ]?.handFreeVolumeByPhrase ?? {},
+    handFreeVolumeMonthlySeries:
+      store.byRegion[
+        demandKeywordRegionStoreKey({ regionScope: "national", regionKey: "kr" })
+      ]?.handFreeVolumeMonthlySeries ?? [],
+    dailyIndexByYmd: {
+      packing: pickDailyIndexByYmdFromChain(store, selection, "packing"),
+      move_in_clean: pickDailyIndexByYmdFromChain(store, selection, "move_in_clean"),
+    },
     source: {
       datalab:
         packingIndexBundle?.source.datalab === "live" ||
@@ -395,6 +479,15 @@ export function resolveDemandKeywordBundle(
           ? "live"
           : "dummy",
     },
+    searchVolumeRollingSnapshotDate:
+      packingVolBundle?.searchVolumeRollingSnapshotDate ??
+      moveInVolBundle?.searchVolumeRollingSnapshotDate ??
+      null,
+    searchVolumeDisplaySource:
+      packingVolBundle?.searchVolumeDisplaySource === "rolling_30d" ||
+      moveInVolBundle?.searchVolumeDisplaySource === "rolling_30d"
+        ? "rolling_30d"
+        : "monthly_archive",
     indexLevel: primaryIndexLevel,
     volumeLevel: primaryVolumeLevel,
     indexLevelByKey,

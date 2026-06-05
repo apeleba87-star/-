@@ -35,7 +35,7 @@ export async function getDemandRtmsDistrictSnapshot(): Promise<DemandRtmsDistric
       .limit(2000);
 
     if (error || !data || data.length === 0) {
-      return { bySlug: {}, baseMonthLabel: null };
+      return { bySlug: {}, baseMonthLabel: null, baseYyyymm: null };
     }
 
     const months = [...new Set(data.map((r) => String(r.yyyymm)))].sort().reverse();
@@ -71,9 +71,10 @@ export async function getDemandRtmsDistrictSnapshot(): Promise<DemandRtmsDistric
     return {
       bySlug,
       baseMonthLabel: current ? toMonthLabel(current) : null,
+      baseYyyymm: current ?? null,
     };
   } catch {
-    return { bySlug: {}, baseMonthLabel: null };
+    return { bySlug: {}, baseMonthLabel: null, baseYyyymm: null };
   }
 }
 

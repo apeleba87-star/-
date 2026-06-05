@@ -14,6 +14,8 @@ type Stats =
       searchadDistinctMonths?: number;
       searchadBasketPhrases?: number;
       searchadBasketPhraseTarget?: number;
+      searchadRollingRows?: number;
+      searchadRollingLatestDate?: string | null;
       searchAdCredentials?: { configured: boolean; customerId: string | null };
     }
   | { ok: false; error?: string };
@@ -29,6 +31,25 @@ type RunResult = {
     matched?: string[];
     error?: string;
   };
+  searchAdDaily?: {
+    ok: boolean;
+    inserted?: number;
+    snapshotDate?: string;
+    regions?: number;
+    phrases?: number;
+    mode?: string;
+    skipped?: boolean;
+    note?: string;
+    error?: string;
+    needsKey?: boolean;
+  };
+  searchAdMonthly?: {
+    ok: boolean;
+    skipped?: boolean;
+    note?: string;
+    error?: string;
+  };
+  /** @deprecated searchAdMonthly — 월간 별도 버튼 결과 */
   searchAd?: {
     ok: boolean;
     inserted?: number;
@@ -173,12 +194,16 @@ export default function DemandKeywordIngestPanel() {
       <div>
         <h2 className="text-lg font-semibold text-slate-900">입주수요 검색 지표 수집</h2>
         <p className="mt-2 text-sm text-slate-600">
-          <strong>데이터랩</strong> → 일·월 상대지수 →{" "}
-          <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_daily</code>
+          <strong>데이터랩</strong> → 일·월 검색지수 →{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_daily</code>{" "}
+          (source=datalab)
           <br />
-          <strong>검색광고 검색량</strong> → 매월 1회 스냅샷(그때의 최근 30일 롤링) →{" "}
-          <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_monthly</code>
-          · 월마다 1행씩 누적 → 1년 차트
+          <strong>검색광고 롤링 30일</strong> → 매일 허브 Basket(전국+서울) → 같은 테이블{" "}
+          (source=searchad_rolling_30d) · 카드·30일 검색량 차트
+          <br />
+          <strong>검색광고 월별 아카이브</strong> → 매월 1회(+구별 DB 축적) →{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">demand_keyword_monthly</code> · 1년
+          검색량 차트
         </p>
       </div>
 
@@ -235,11 +260,11 @@ export default function DemandKeywordIngestPanel() {
           「강북구 입주청소」처럼 표시.
         </p>
         <p className="mt-1 text-xs text-slate-600">
-          검색광고 API는 과거 12개월을 한 번에 주지 않습니다.{" "}
-          <strong>매월 1일 KST 01:00</strong> cron{" "}
-          <code className="text-xs">/api/cron/ingest-demand-searchad</code> 또는 「검색광고만 수집」으로
-          그달 스냅샷을 쌓으면 1년 검색량 그래프가 채워집니다. 「전체 수집」은 데이터랩(지수)만
-          갱신합니다.
+          롤링 30일은 <strong>매일</strong> cron{" "}
+          <code className="text-xs">/api/cron/ingest-demand-keywords</code> 또는 「데이터랩 수집」과
+          함께 실행됩니다. 월별 아카이브는 <strong>매월 1일 KST 01:00</strong>{" "}
+          <code className="text-xs">/api/cron/ingest-demand-searchad</code> 또는 「검색광고만
+          수집」으로 누적합니다.
         </p>
         <p className="mt-1 text-xs font-medium text-slate-700">
           키 상태:{" "}
@@ -263,7 +288,7 @@ export default function DemandKeywordIngestPanel() {
           }
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {running ? "수집 중 (2~5분)…" : "데이터랩 수집 (구별 지수)"}
+          {running ? "수집 중 (2~5분)…" : "일일 수집 (지수 + 롤링 검색량)"}
         </button>
         <button
           type="button"
@@ -271,7 +296,7 @@ export default function DemandKeywordIngestPanel() {
           disabled={running || runningSearchAd || !searchAdConfigured}
           className="rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-900 hover:bg-violet-100 disabled:opacity-50"
         >
-          {runningSearchAd ? "검색광고 수집 중…" : "검색광고만 수집"}
+          {runningSearchAd ? "검색광고 수집 중…" : "월별 아카이브만 수집"}
         </button>
         <button
           type="button"
@@ -308,6 +333,15 @@ export default function DemandKeywordIngestPanel() {
           </li>
           <li>
             월별 행(전체): <strong>{stats.monthlyRows.toLocaleString()}</strong>
+          </li>
+          <li>
+            검색광고 롤링 30일: <strong>{(stats.searchadRollingRows ?? 0).toLocaleString()}</strong>행
+            {stats.searchadRollingLatestDate ? (
+              <>
+                {" "}
+                · 최신 <strong>{stats.searchadRollingLatestDate}</strong>
+              </>
+            ) : null}
           </li>
           <li>
             검색광고 월 스냅샷: <strong>{(stats.searchadMonthlyRows ?? 0).toLocaleString()}</strong>행 ·
@@ -385,16 +419,25 @@ export default function DemandKeywordIngestPanel() {
                 </p>
               ) : null}
               <p>
-                검색광고:{" "}
-                {lastRun.searchAd?.skipped
-                  ? `월 스냅샷 별도 — ${lastRun.searchAd.note ?? "ingest-demand-searchad"}`
-                  : lastRun.searchAd?.ok
-                    ? `OK · ${lastRun.searchAd.yyyymm} · ${lastRun.searchAd.regions ?? 0}지역 · ${lastRun.searchAd.inserted ?? 0}행`
-                    : `실패 — ${lastRun.searchAd?.error ?? ""}`}
+                검색광고 롤링:{" "}
+                {lastRun.searchAdDaily?.skipped
+                  ? (lastRun.searchAdDaily.note ?? "건너뜀")
+                  : lastRun.searchAdDaily?.ok
+                    ? `OK · ${lastRun.searchAdDaily.snapshotDate ?? ""} · ${lastRun.searchAdDaily.regions ?? 0}지역 · ${lastRun.searchAdDaily.inserted ?? 0}행`
+                    : `실패 — ${lastRun.searchAdDaily?.error ?? ""}`}
               </p>
+              {lastRun.searchAdMonthly?.note ? (
+                <p className="text-xs text-slate-600">월별: {lastRun.searchAdMonthly.note}</p>
+              ) : null}
             </div>
           ) : (
-            <p>{lastRun.error ?? lastRun.datalab?.error ?? lastRun.searchAd?.error ?? "실패"}</p>
+            <p>
+              {lastRun.error ??
+                lastRun.datalab?.error ??
+                lastRun.searchAdDaily?.error ??
+                lastRun.searchAd?.error ??
+                "실패"}
+            </p>
           )}
         </div>
       ) : null}

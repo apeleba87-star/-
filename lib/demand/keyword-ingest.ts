@@ -5,6 +5,10 @@ import {
 } from "@/lib/demand/datalab-sync-from-trend";
 import { runDemandDatalabDailyIngestJob, type DemandDatalabIngestResult } from "@/lib/demand/datalab-ingest";
 import {
+  runDemandSearchAdDailyIngestJob,
+  type DemandSearchAdDailyIngestResult,
+} from "@/lib/demand/searchad-daily-ingest";
+import {
   runDemandSearchAdMonthlyIngestJob,
   type DemandSearchAdMonthlyIngestResult,
 } from "@/lib/demand/searchad-monthly-ingest";
@@ -14,13 +18,16 @@ export type DemandDatalabIngestOutcome = DemandDatalabIngestResult | DemandDatal
 export type DemandKeywordIngestResult = {
   ok: boolean;
   datalab: DemandDatalabIngestOutcome;
-  searchAd: DemandSearchAdMonthlyIngestResult;
+  searchAdDaily: DemandSearchAdDailyIngestResult;
+  searchAdMonthly: DemandSearchAdMonthlyIngestResult;
 };
 
-/** 데이터랩·트렌드만 (일 1회). 검색량은 `runDemandSearchAdMonthlyIngestJob` / 월간 cron. */
+/** 일 1회 — 데이터랩(검색지수) + 검색광고 롤링 30일. 월별 아카이브는 별도 cron. */
 export async function runDemandKeywordIngestJob(
   supabase: SupabaseClient
 ): Promise<DemandKeywordIngestResult> {
+  const searchAdDaily = await runDemandSearchAdDailyIngestJob(supabase);
+
   let datalab: DemandDatalabIngestOutcome = await runDemandDatalabDailyIngestJob(supabase);
 
   if (!datalab.ok && "needsKey" in datalab && datalab.needsKey) {
@@ -34,13 +41,18 @@ export async function runDemandKeywordIngestJob(
     }
   }
 
-  const searchAd: DemandSearchAdMonthlyIngestResult = {
+  const searchAdMonthly: DemandSearchAdMonthlyIngestResult = {
     ok: true,
     skipped: true,
-    note: "검색광고는 매월 스냅샷 전용 — /api/cron/ingest-demand-searchad 또는 관리자 「검색광고만 수집」",
+    note: "월별 아카이브는 /api/cron/ingest-demand-searchad (매월 1회)",
   };
 
-  return { ok: datalab.ok, datalab, searchAd };
+  return {
+    ok: datalab.ok && searchAdDaily.ok,
+    datalab,
+    searchAdDaily,
+    searchAdMonthly,
+  };
 }
 
-export { runDemandSearchAdMonthlyIngestJob };
+export { runDemandSearchAdDailyIngestJob, runDemandSearchAdMonthlyIngestJob };

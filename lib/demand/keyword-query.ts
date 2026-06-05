@@ -4,11 +4,21 @@ import {
 } from "@/lib/demand/keyword-keys";
 import type { DemandKeywordRegionBundle, DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import { getDemandNationalKeywordMetrics } from "@/lib/demand/keyword-metrics";
+import { sumDailyIndexRowsByDate } from "@/lib/demand/basket-datalab-aggregate";
+import { demandPhraseBasketId } from "@/lib/demand/keyword-baskets";
+import { DEMAND_BASKET_DISPLAY_LABELS } from "@/lib/demand/copy";
 import {
   bundleDemandKeywordFromRows,
   resolveDemandKeywordBundle,
 } from "@/lib/demand/keyword-resolve";
 import { demandKeywordRegionStoreKey } from "@/lib/demand/region-search-keywords";
+import { demandIsIncompleteSearchVolumeMonth } from "@/lib/demand/searchad-month-report";
+import {
+  aggregateRollingBasketByRegion,
+  SEARCHAD_ROLLING_30D_SOURCE,
+  type SearchAdRollingRawRow,
+  type RollingBasketByRegion,
+} from "@/lib/demand/searchad-rolling-volume";
 import { addDaysToDateString, getKstTodayString } from "@/lib/jobs/kst-date";
 import { createServiceSupabase } from "@/lib/supabase-server";
 
@@ -34,6 +44,8 @@ type RawDaily = {
   period_date: string;
   index_ratio: number;
   source: string;
+  search_volume_rolling_30d?: number | null;
+  search_volume_below_ten?: boolean;
 };
 
 type RawMonthly = {
@@ -67,6 +79,7 @@ function accumulateVolumeMonth(
 
 function volumeMapToRows(map: Map<string, VolumeMonthAccum>): VolumeMonthRow[] {
   return [...map.entries()]
+    .filter(([yyyymm]) => !demandIsIncompleteSearchVolumeMonth(yyyymm))
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([yyyymm, { sum, belowTenOnly }]) => ({
       yyyymm,
@@ -84,6 +97,34 @@ function latestVolumeSnapshot(
   return { volume: last.volume, belowTen: last.belowTen };
 }
 
+function volumeSnapshotForRegion(
+  rolling: RollingBasketByRegion | undefined,
+  volMonths: { packing: VolumeMonthRow[]; move_in_clean: VolumeMonthRow[] }
+): {
+  volume: Partial<Record<DemandKeywordKey, { volume: number | null; belowTen: boolean }>>;
+  meta: { rollingSnapshotDate: string | null; fromRolling: boolean };
+} {
+  const packingRolling = rolling?.packing;
+  const moveInRolling = rolling?.move_in_clean;
+  const fromRolling = Boolean(packingRolling || moveInRolling);
+
+  return {
+    volume: {
+      packing: packingRolling
+        ? { volume: packingRolling.volume, belowTen: packingRolling.belowTen }
+        : latestVolumeSnapshot(volMonths.packing),
+      move_in_clean: moveInRolling
+        ? { volume: moveInRolling.volume, belowTen: moveInRolling.belowTen }
+        : latestVolumeSnapshot(volMonths.move_in_clean),
+    },
+    meta: {
+      rollingSnapshotDate:
+        packingRolling?.snapshotDate ?? moveInRolling?.snapshotDate ?? null,
+      fromRolling,
+    },
+  };
+}
+
 export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
   const fallbackBundle = await getDemandNationalKeywordMetrics();
   const byRegion: Record<string, DemandKeywordRegionBundle> = {};
@@ -94,11 +135,14 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
     string,
     Record<DemandKeywordKey, Map<string, VolumeMonthAccum>>
   > = {};
+  const handFreeVolumeGrouped: Record<string, Record<string, Map<string, VolumeMonthAccum>>> = {};
   const phrasesByRegion: Record<string, { packing: string; moveInClean: string }> = {};
+  const rollingRawRows: SearchAdRollingRawRow[] = [];
 
   try {
     const supabase = createServiceSupabase();
     const sinceDate = addDaysToDateString(getKstTodayString(), -400);
+    const rollingSince = addDaysToDateString(getKstTodayString(), -14);
     const volumeSinceYyyymm = addDaysToDateString(getKstTodayString(), -SEARCHAD_HISTORY_MONTHS * 31).slice(
       0,
       7
@@ -108,7 +152,7 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
       supabase
         .from("demand_keyword_daily")
         .select(
-          "keyword_key, region_scope, region_key, search_phrase, period_date, index_ratio, source"
+          "keyword_key, region_scope, region_key, search_phrase, period_date, index_ratio, source, search_volume_rolling_30d, search_volume_below_ten"
         )
         .gte("period_date", sinceDate)
         .order("period_date", { ascending: true })
@@ -116,7 +160,7 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
       supabase
         .from("demand_keyword_monthly")
         .select(
-          "keyword_key, region_scope, region_key, search_phrase, yyyymm, search_volume_month, search_volume_below_ten"
+          "keyword_key, region_scope, region_key, search_phrase, yyyymm, search_volume_month, search_volume_below_ten, source"
         )
         .gte("yyyymm", volumeSinceYyyymm)
         .order("yyyymm", { ascending: true })
@@ -131,6 +175,27 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
         });
         const kw = row.keyword_key as DemandKeywordKey;
         if (!DEMAND_KEYWORD_KEYS.includes(kw)) continue;
+
+        if (row.source === SEARCHAD_ROLLING_30D_SOURCE) {
+          const date = String(row.period_date).slice(0, 10);
+          if (date >= rollingSince) {
+            rollingRawRows.push({
+              keyword_key: row.keyword_key,
+              region_scope: row.region_scope,
+              region_key: row.region_key,
+              search_phrase: row.search_phrase,
+              period_date: date,
+              search_volume_rolling_30d: row.search_volume_rolling_30d ?? null,
+              search_volume_below_ten: Boolean(row.search_volume_below_ten),
+            });
+          }
+          continue;
+        }
+
+        const phraseCompact = (row.search_phrase ?? "").trim().replace(/\s+/g, "");
+        const phraseBasket = phraseCompact ? demandPhraseBasketId(phraseCompact) : null;
+        if (kw === "packing" && phraseBasket !== "packing") continue;
+        if (kw === "move_in_clean" && phraseBasket !== "move_in") continue;
         const isMonthly = row.source === "datalab_month";
         const bucket = isMonthly ? monthlyGrouped : dailyGrouped;
         if (!bucket[k]) bucket[k] = { packing: [], move_in_clean: [] };
@@ -157,6 +222,23 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
         });
         const kw = row.keyword_key as DemandKeywordKey;
         if (!DEMAND_KEYWORD_KEYS.includes(kw)) continue;
+        const phraseCompact = (row.search_phrase ?? "").trim().replace(/\s+/g, "");
+        const basketId = phraseCompact ? demandPhraseBasketId(phraseCompact) : null;
+        if (kw === "packing" && basketId !== "packing") continue;
+        if (kw === "move_in_clean" && basketId !== "move_in" && basketId !== "hand_free") continue;
+        if (basketId === "hand_free") {
+          if (!handFreeVolumeGrouped[k]) handFreeVolumeGrouped[k] = {};
+          if (!handFreeVolumeGrouped[k][phraseCompact]) {
+            handFreeVolumeGrouped[k][phraseCompact] = new Map();
+          }
+          accumulateVolumeMonth(
+            handFreeVolumeGrouped[k][phraseCompact],
+            row.yyyymm,
+            row.search_volume_month != null ? Number(row.search_volume_month) : null,
+            Boolean(row.search_volume_below_ten)
+          );
+          continue;
+        }
         if (!volumeMonthlyGrouped[k]) {
           volumeMonthlyGrouped[k] = {
             packing: new Map(),
@@ -183,14 +265,29 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
       }
     }
 
+    for (const storeKey of Object.keys(dailyGrouped)) {
+      for (const kw of DEMAND_KEYWORD_KEYS) {
+        dailyGrouped[storeKey][kw] = sumDailyIndexRowsByDate(dailyGrouped[storeKey][kw] ?? []);
+      }
+    }
+    for (const storeKey of Object.keys(monthlyGrouped)) {
+      for (const kw of DEMAND_KEYWORD_KEYS) {
+        monthlyGrouped[storeKey][kw] = sumDailyIndexRowsByDate(monthlyGrouped[storeKey][kw] ?? []);
+      }
+    }
+
+    const rollingByRegion = aggregateRollingBasketByRegion(rollingRawRows);
+
     for (const storeKey of new Set([
       ...Object.keys(dailyGrouped),
       ...Object.keys(monthlyGrouped),
       ...Object.keys(volumeMonthlyGrouped),
+      ...Object.keys(handFreeVolumeGrouped),
+      ...Object.keys(rollingByRegion),
     ])) {
-      const phrases = phrasesByRegion[storeKey] ?? {
-        packing: "포장이사",
-        moveInClean: "입주청소",
+      const phrases = {
+        packing: DEMAND_BASKET_DISPLAY_LABELS.packing,
+        moveInClean: DEMAND_BASKET_DISPLAY_LABELS.moveIn,
       };
       const volMaps = volumeMonthlyGrouped[storeKey] ?? {
         packing: new Map(),
@@ -200,16 +297,21 @@ export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {
         packing: volumeMapToRows(volMaps.packing),
         move_in_clean: volumeMapToRows(volMaps.move_in_clean),
       };
+      const handFreeByPhrase: Record<string, VolumeMonthRow[]> = {};
+      for (const [phrase, map] of Object.entries(handFreeVolumeGrouped[storeKey] ?? {})) {
+        handFreeByPhrase[phrase] = volumeMapToRows(map);
+      }
+      const { volume, meta } = volumeSnapshotForRegion(rollingByRegion[storeKey], volMonths);
+
       byRegion[storeKey] = bundleDemandKeywordFromRows(
         phrases,
         dailyGrouped[storeKey] ?? { packing: [], move_in_clean: [] },
         monthlyGrouped[storeKey] ?? { packing: [], move_in_clean: [] },
-        {
-          packing: latestVolumeSnapshot(volMonths.packing),
-          move_in_clean: latestVolumeSnapshot(volMonths.move_in_clean),
-        },
+        volume,
         volMonths,
-        fallbackBundle
+        fallbackBundle,
+        handFreeByPhrase,
+        meta
       );
     }
   } catch {

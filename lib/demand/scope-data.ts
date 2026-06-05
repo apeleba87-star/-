@@ -1,5 +1,15 @@
-import { DEMAND_SNAPSHOT_META, getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
+import {
+  DEMAND_VOLUME_1Y_SOURCE_NOTE,
+  DEMAND_VOLUME_30D_FLAT_NOTE,
+  DEMAND_VOLUME_30D_INDEX_SHAPE_NOTE,
+} from "@/lib/demand/copy";
 import { DEMAND_DAILY_NATIONAL_KEYWORDS, DEMAND_TODAY_META } from "@/lib/demand/dummy-daily";
+import { DEMAND_SNAPSHOT_META, getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
+import {
+  anchorVolumeFromMonthlySeries,
+  buildSearchVolume30dChart,
+  defaultSearchVolumeChartEndYmd,
+} from "@/lib/demand/search-volume-30d";
 import type { DemandKeywordMetricSlice } from "@/lib/demand/keyword-metrics";
 import type { DemandMetricId } from "@/lib/demand/metrics";
 import {
@@ -25,18 +35,31 @@ import {
 } from "@/lib/demand/region-search-keywords";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import {
-  computeDemandCompositeIndex,
-  momPercentFromChartPoints,
-  compositeScoreFromScopeSignals,
-} from "@/lib/demand/composite-index";
-import {
+  computePackingInterestScore,
   buildPackingInterestDummyMonthlyPoints,
   buildPackingInterestMonthlyChartPoints,
-  computePackingInterestScore,
 } from "@/lib/demand/packing-interest";
-import { outlookFromScopeSignals, type DemandOutlookResult } from "@/lib/demand/outlook";
-import { demandKeywordRegionStoreKey } from "@/lib/demand/region-search-keywords";
+import type { DistrictDemandScore } from "@/lib/demand/district-demand-score";
+import {
+  buildDemandScoreContext,
+  demandScoreForNational,
+  districtDemandScoreForRtms,
+  type DemandScoreContext,
+} from "@/lib/demand/seoul-demand-ranking";
+import {
+  buildDistrictRtmsIndexMonthlyByYyyymm,
+  buildNationalInterestMonthlyByYyyymm,
+  mergeDistrictDemandScoreMonthlyPoints,
+  nationalInterestMonthlyPoints,
+} from "@/lib/demand/demand-score-series";
+import {
+  formatDemandScoreBasis,
+  formatDemandScoreBreakdown,
+} from "@/lib/demand/district-demand-score";
+import { demandDistrictSearchExcludedFromHub } from "@/lib/demand/district-search-archive";
 import { DEMAND_TABLE_ROWS } from "@/lib/demand/table-data";
+
+export type { DemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
 
 export type DemandScopeTableRow = {
   selection: DemandRegionSelection;
@@ -45,6 +68,7 @@ export type DemandScopeTableRow = {
   pathLabel: string;
   slug: string | null;
   hasDetail: boolean;
+  /** @deprecated demandScore.score 사용 */
   indexScore: number | null;
   saleCount: number;
   saleMom: number;
@@ -55,13 +79,15 @@ export type DemandScopeTableRow = {
   keywordDailySeries?: Record<DemandKeywordKey, DemandChartPoint[]>;
   keywordMonthlyIndexSeries?: Record<DemandKeywordKey, DemandChartPoint[]>;
   keywordVolumeMonthlySeries?: Record<DemandKeywordKey, DemandChartPoint[]>;
+  keywordDailyIndexByYmd?: Record<DemandKeywordKey, Record<string, number>>;
   keywordSource?: { datalab: "live" | "dummy"; volume: "live" | "dummy" };
   keywordIndexLevel?: DemandKeywordIndexLevel;
   keywordVolumeLevel?: DemandKeywordIndexLevel;
   keywordIndexLevelByKey?: Record<DemandKeywordKey, DemandKeywordIndexLevel>;
   keywordVolumeLevelByKey?: Record<DemandKeywordKey, DemandKeywordIndexLevel>;
-  /** RTMS + Basket 교차확인 — 입주·청소 수요 가능성 (예측 아님) */
-  outlook: DemandOutlookResult;
+  searchVolumeDisplaySource?: "rolling_30d" | "monthly_archive";
+  searchVolumeRollingSnapshotDate?: string | null;
+  demandScore: DistrictDemandScore;
 };
 
 export type DemandRtmsDistrictOverrides = Record<
@@ -147,65 +173,19 @@ function seoulAggregateTrade(): { saleCount: number; jeonseCount: number; saleMo
   return { saleCount, jeonseCount, saleMom, jeonseMom };
 }
 
-function seoulCompositeIndex(): number {
-  if (DEMAND_TABLE_ROWS.length === 0) return 100;
-  const sum = DEMAND_TABLE_ROWS.reduce((s, r) => s + (r.indexScore ?? 100), 0);
-  return Math.round(sum / DEMAND_TABLE_ROWS.length);
-}
 
 type KeywordFields = ReturnType<typeof keywordFieldsForSelection>;
 
-function resolveOutlookForRow(
+function resolveDemandScoreForRow(
   selection: DemandRegionSelection,
   saleMom: number,
   jeonseMom: number,
-  kw: KeywordFields,
-  keywordStore?: DemandKeywordStore | null
-): DemandOutlookResult {
-  const nationalKey = demandKeywordRegionStoreKey({ regionScope: "national", regionKey: "kr" });
-  const nationalBundle = keywordStore?.byRegion[nationalKey];
-  const nationalPacking = nationalBundle?.volumeMonthlySeries.packing ?? [];
-  const nationalMoveIn = nationalBundle?.volumeMonthlySeries.move_in_clean ?? [];
-
-  let packingSeries = kw.keywordVolumeMonthlySeries?.packing ?? [];
-  let moveInSeries = kw.keywordVolumeMonthlySeries?.move_in_clean ?? [];
-  let searchProxyNational = false;
-
-  if (selection.scope !== "national") {
-    const useNational =
-      nationalPacking.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART ||
-      nationalMoveIn.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART;
-    if (useNational) {
-      packingSeries = nationalPacking.length ? nationalPacking : packingSeries;
-      moveInSeries = nationalMoveIn.length ? nationalMoveIn : moveInSeries;
-      searchProxyNational = selection.scope === "district";
-    }
+  scoreContext: DemandScoreContext
+): DistrictDemandScore {
+  if (selection.scope === "national") {
+    return demandScoreForNational(scoreContext);
   }
-
-  return outlookFromScopeSignals({
-    saleMom,
-    jeonseMom,
-    packingVolumeMonthly: packingSeries,
-    moveInVolumeMonthly: moveInSeries,
-    packingIndexMom: kw.packing.indexMomPercent,
-    moveInIndexMom: kw.moveInClean.indexMomPercent,
-    searchProxyNational,
-  });
-}
-
-function compositeIndexForKeywordBundle(
-  saleMom: number,
-  jeonseMom: number,
-  kw: KeywordFields
-): number {
-  return compositeScoreFromScopeSignals({
-    packing: kw.packing,
-    moveInClean: kw.moveInClean,
-    packingVolumeMonthly: kw.keywordVolumeMonthlySeries?.packing,
-    moveInVolumeMonthly: kw.keywordVolumeMonthlySeries?.move_in_clean,
-    saleMom,
-    jeonseMom,
-  });
+  return districtDemandScoreForRtms(scoreContext, saleMom, jeonseMom);
 }
 
 function volumeBaseForScope(scope: DemandRegionScope): { packing: number; moveIn: number } {
@@ -218,9 +198,14 @@ function keywordFieldsForSelection(
   selection: DemandRegionSelection,
   keywordStore: DemandKeywordStore | null | undefined
 ) {
+  const districtShowsNationalBasket = demandDistrictSearchExcludedFromHub(selection.scope);
+  const phraseSelection: DemandRegionSelection = districtShowsNationalBasket
+    ? { scope: "national" }
+    : selection;
+
   const phrases =
-    buildRegionSearchPhrases(selection) ?? buildRegionSearchPhrases({ scope: "national" })!;
-  const volBase = volumeBaseForScope(selection.scope);
+    buildRegionSearchPhrases(phraseSelection) ?? buildRegionSearchPhrases({ scope: "national" })!;
+  const volBase = volumeBaseForScope(districtShowsNationalBasket ? "national" : selection.scope);
   const displayPacking = formatRegionSearchPhraseDisplay(phrases.packing);
   const displayMoveIn = formatRegionSearchPhraseDisplay(phrases.moveInClean);
   const fallbackSlices = {
@@ -246,28 +231,32 @@ function keywordFieldsForSelection(
     keywordDailySeries: bundle.dailySeries,
     keywordMonthlyIndexSeries: bundle.monthlyIndexSeries,
     keywordVolumeMonthlySeries: bundle.volumeMonthlySeries,
+    keywordDailyIndexByYmd: bundle.dailyIndexByYmd,
     keywordSource: bundle.source,
     keywordIndexLevel: bundle.indexLevel,
     keywordVolumeLevel: bundle.volumeLevel,
     keywordIndexLevelByKey: bundle.indexLevelByKey,
     keywordVolumeLevelByKey: bundle.volumeLevelByKey,
+    searchVolumeDisplaySource: bundle.searchVolumeDisplaySource,
+    searchVolumeRollingSnapshotDate: bundle.searchVolumeRollingSnapshotDate,
   };
 }
 
 export function buildDemandScopeRow(
   selection: DemandRegionSelection,
   rtmsOverrides?: DemandRtmsDistrictOverrides,
-  keywordStore?: DemandKeywordStore | null
+  keywordStore?: DemandKeywordStore | null,
+  scoreContext?: DemandScoreContext | null
 ): DemandScopeTableRow | null {
   const pathLabel = formatDemandRegionLabel(selection);
   if (!pathLabel) return null;
 
+  const ctx = scoreContext ?? buildDemandScoreContext(keywordStore, null);
   const kw = keywordFieldsForSelection(selection, keywordStore);
 
   if (selection.scope === "national") {
     const agg = seoulAggregateTrade();
-    const saleMom = 9;
-    const jeonseMom = 11;
+    const demandScore = resolveDemandScoreForRow(selection, agg.saleMom, agg.jeonseMom, ctx);
     return {
       selection,
       scope: "national",
@@ -275,18 +264,19 @@ export function buildDemandScopeRow(
       pathLabel,
       slug: null,
       hasDetail: false,
-      indexScore: compositeIndexForKeywordBundle(saleMom, jeonseMom, kw),
+      indexScore: demandScore.score,
       saleCount: Math.round(agg.saleCount * 4.2),
-      saleMom,
+      saleMom: agg.saleMom,
       jeonseCount: Math.round(agg.jeonseCount * 4.1),
-      jeonseMom,
-      outlook: resolveOutlookForRow(selection, saleMom, jeonseMom, kw, keywordStore),
+      jeonseMom: agg.jeonseMom,
+      demandScore,
       ...kw,
     };
   }
 
   if (selection.scope === "city") {
     const agg = seoulAggregateTrade();
+    const demandScore = resolveDemandScoreForRow(selection, agg.saleMom, agg.jeonseMom, ctx);
     return {
       selection,
       scope: "city",
@@ -294,12 +284,12 @@ export function buildDemandScopeRow(
       pathLabel,
       slug: null,
       hasDetail: false,
-      indexScore: seoulCompositeIndex(),
+      indexScore: demandScore.score,
       saleCount: agg.saleCount,
       saleMom: agg.saleMom,
       jeonseCount: agg.jeonseCount,
       jeonseMom: agg.jeonseMom,
-      outlook: resolveOutlookForRow(selection, agg.saleMom, agg.jeonseMom, kw, keywordStore),
+      demandScore,
       ...kw,
     };
   }
@@ -309,6 +299,7 @@ export function buildDemandScopeRow(
   const rtms = rtmsOverrides?.[tableRow.slug];
   const saleMom = rtms?.saleMom ?? tableRow.saleMom;
   const jeonseMom = rtms?.jeonseMom ?? tableRow.jeonseMom;
+  const demandScore = resolveDemandScoreForRow(selection, saleMom, jeonseMom, ctx);
   return {
     selection,
     scope: "district",
@@ -316,12 +307,12 @@ export function buildDemandScopeRow(
     pathLabel,
     slug: tableRow.slug,
     hasDetail: tableRow.hasDetail,
-    indexScore: compositeIndexForKeywordBundle(saleMom, jeonseMom, kw),
+    indexScore: demandScore.score,
     saleCount: rtms?.saleCount ?? tableRow.saleCount,
     saleMom,
     jeonseCount: rtms?.jeonseCount ?? tableRow.jeonseCount,
     jeonseMom,
-    outlook: resolveOutlookForRow(selection, saleMom, jeonseMom, kw, keywordStore),
+    demandScore,
     ...kw,
   };
 }
@@ -335,10 +326,11 @@ export function buildDemandScopeRows(selections: DemandRegionSelection[]): Deman
 export function buildDemandScopeRowsWithRtms(
   selections: DemandRegionSelection[],
   rtmsOverrides: DemandRtmsDistrictOverrides,
-  keywordStore?: DemandKeywordStore | null
+  keywordStore?: DemandKeywordStore | null,
+  scoreContext?: DemandScoreContext | null
 ): DemandScopeTableRow[] {
   return selections
-    .map((s) => buildDemandScopeRow(s, rtmsOverrides, keywordStore))
+    .map((s) => buildDemandScopeRow(s, rtmsOverrides, keywordStore, scoreContext))
     .filter((r): r is DemandScopeTableRow => r != null);
 }
 
@@ -468,93 +460,45 @@ function buildDailyIndexDeltaPoints(
   });
 }
 
-/**
- * 검색광고 API에 월별 절대량이 없을 때, 동일 지역·키워드 데이터랩 월 지수로 형태만 추정.
- * 네이버 키워드도구 「월별 검색수」 달력 차트와 수치·기준이 다릅니다.
- */
-function estimateVolumeFromDatalabMonthlyIndex(
-  current30dTotal: number,
-  monthlyIndex: DemandChartPoint[]
-): DemandChartPoint[] {
-  if (monthlyIndex.length < MIN_MONTHLY_POINTS_FOR_YEAR_CHART || current30dTotal <= 0) {
-    return [];
-  }
-  const weights = monthlyIndex.map((p) => Math.max(p.value, 0.01));
-  const mean = weights.reduce((s, w) => s + w, 0) / weights.length;
-  return monthlyIndex.map((p) => ({
-    period: p.period,
-    value: Math.max(0, Math.round((current30dTotal * p.value) / mean)),
-  }));
-}
-
-/** 검색광고는 일별 미제공 — 데이터랩 지수 비율로 30일 총량 배분(동일 지역·키워드) */
-function distributeSearchVolume30d(
-  total30d: number,
-  dailyIndex: DemandChartPoint[] | undefined,
-  dayPeriods: string[]
-): DemandChartPoint[] {
-  const indexPoints = dailyIndex?.slice(-dayPeriods.length) ?? [];
-  if (indexPoints.length >= 7 && indexPoints.length === dayPeriods.length) {
-    const sum = indexPoints.reduce((s, p) => s + Math.max(p.value, 0.01), 0);
-    return indexPoints.map((p) => ({
-      period: p.period,
-      value: Math.max(0, Math.round((total30d * Math.max(p.value, 0.01)) / sum)),
-    }));
-  }
-  const mean = total30d / Math.max(dayPeriods.length, 1);
-  return dayPeriods.map((period) => ({
-    period,
-    value: Math.round(mean),
-  }));
-}
-
-function buildCompositeYearChartSeries(row: DemandScopeTableRow): {
+function buildDemandScoreChartSeries(
+  row: DemandScopeTableRow,
+  range: DemandAnyChartRange,
+  rtmsSeries?: DemandRtmsSeriesStore
+): {
   points: DemandChartPoint[];
   subtitle: string;
 } {
-  const packingMonths = row.keywordVolumeMonthlySeries?.packing ?? [];
-  const moveInMonths = row.keywordVolumeMonthlySeries?.move_in_clean ?? [];
-  const moveInByPeriod = new Map(moveInMonths.map((p) => [p.period, p]));
+  const ds = row.demandScore;
+  const months = range === "3y" ? 36 : 12;
+  const packingVol = row.keywordVolumeMonthlySeries?.packing ?? [];
+  const moveInVol = row.keywordVolumeMonthlySeries?.move_in_clean ?? [];
 
-  if (packingMonths.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART) {
-    const slice = packingMonths.slice(-12);
-    const points = slice.map((pt, i) => {
-      const packingVolumeMom =
-        i === 0 ? 0 : (momPercentFromChartPoints([slice[i - 1], pt]) ?? 0);
-      const moveInPt = moveInByPeriod.get(pt.period);
-      const prevMoveInPt = i > 0 ? moveInByPeriod.get(slice[i - 1].period) : undefined;
-      const moveInConfirmMom =
-        i === 0 || !moveInPt || !prevMoveInPt
-          ? row.moveInClean.indexMomPercent
-          : (momPercentFromChartPoints([prevMoveInPt, moveInPt]) ??
-            row.moveInClean.indexMomPercent);
-
+  if (row.scope === "national") {
+    const all = nationalInterestMonthlyPoints(packingVol, moveInVol);
+    const points = all.slice(-months);
+    if (points.length >= 2) {
       return {
-        period: pt.period,
-        value: computeDemandCompositeIndex({
-          packingVolumeMom,
-          jeonseMom: row.jeonseMom,
-          saleMom: row.saleMom,
-          moveInConfirmMom,
-        }),
+        points,
+        subtitle: `전국 이사 관심 · 최근 ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
       };
-    });
-    return {
-      points,
-      subtitle: `입주 온도 · 최근 ${points.length}개월`,
-    };
+    }
+  } else {
+    const nationalByYm = buildNationalInterestMonthlyByYyyymm(packingVol, moveInVol);
+    const rtmsMonthly = rtmsSeries?.[demandRtmsSeriesKeyForRow(row)] ?? [];
+    const rtmsByYm = buildDistrictRtmsIndexMonthlyByYyyymm(rtmsMonthly);
+    const all = mergeDistrictDemandScoreMonthlyPoints(nationalByYm, rtmsByYm);
+    const points = all.slice(-months);
+    if (points.length >= 2) {
+      return {
+        points,
+        subtitle: `${row.pathLabel} · 전국 관심×구 RTMS · 최근 ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
+      };
+    }
   }
 
-  const seed = `${demandScopeChartSeed(row)}:composite`;
-  const h = hashSeed(seed);
-  const base = row.indexScore ?? 100;
-  const monthPeriods = chartMonthPeriods("1y");
   return {
-    subtitle: "입주 온도 · 월별 추이 (참고용)",
-    points: monthPeriods.map((period, i) => ({
-      period,
-      value: Math.max(70, base - 12 + i * 2 + ((h + i) % 6)),
-    })),
+    points: [],
+    subtitle: `월별 지역수요점수 — 전국 검색 ${packingVol.length}개월·RTMS ${rtmsSeries?.[demandRtmsSeriesKeyForRow(row)]?.length ?? 0}개월 겹치는 달이 2개월 이상 필요 · 현재 ${formatDemandScoreBreakdown(ds)}`,
   };
 }
 
@@ -567,7 +511,7 @@ export function buildDemandMetricChartSeries(
   }
 ): {
   points: DemandChartPoint[];
-  chartKind: "trade" | "index" | "indexDelta" | "volume" | "composite" | "packingInterest";
+  chartKind: "trade" | "index" | "indexDelta" | "volume" | "demandScore" | "packingInterest";
   subtitle: string;
 } {
   if (metricId === "sale" || metricId === "jeonse") {
@@ -585,14 +529,14 @@ export function buildDemandMetricChartSeries(
   const seed = `${demandScopeChartSeed(row)}:${metricId}`;
   const h = hashSeed(seed);
   const isDaily = searchRange === "30d";
-  const dayPeriods = lastNDayPeriodLabels(DEMAND_TODAY_META.briefingDateYmd, CHART_DAILY_POINTS);
+  const volumeChartEndYmd = defaultSearchVolumeChartEndYmd();
+  const dayPeriods = lastNDayPeriodLabels(volumeChartEndYmd, CHART_DAILY_POINTS);
   const monthPeriods = chartMonthPeriods(searchRange);
 
   if (metricId === "packingVolume" || metricId === "moveInVolume") {
     const slice = metricId === "packingVolume" ? row.packing : row.moveInClean;
     const key = demandKeywordKeyForMetric(metricId);
     const monthlyVol = row.keywordVolumeMonthlySeries?.[key];
-    const dailyIndex = row.keywordDailySeries?.[key];
     const vol = slice.searchVolumeMonth ?? 0;
     const volumeLive = row.keywordSource?.volume === "live";
     const volumeLevel =
@@ -603,41 +547,51 @@ export function buildDemandMetricChartSeries(
       const points = monthlyVol.slice(-12);
       return {
         chartKind: "volume",
-        subtitle: `키워드 「${slice.keyword}」 · 검색광고 월 스냅샷(수집 시점·최근 30일 롤링) · ${points.length}개월${volumeHint} · 콘솔 달력 12개월 차트와 다를 수 있음`,
+        subtitle: `콘솔 월별 검색량 · ${points.length}개월 · ${DEMAND_VOLUME_1Y_SOURCE_NOTE}${volumeHint}`,
         points,
       };
     }
 
-    if (!isDaily && volumeLive && monthlyVol?.length === 1) {
+    if (!isDaily && volumeLive && monthlyVol && monthlyVol.length >= 1) {
+      const snapCount = monthlyVol.length;
       return {
         chartKind: "volume",
-        subtitle: `키워드 「${slice.keyword}」 · DB에 월 스냅샷 1개월(${monthlyVol[0].period}, ${monthlyVol[0].value.toLocaleString("ko-KR")})${volumeHint} · 1년 추이는 매월 「검색광고만 수집」 또는 cron(매월 1일)으로 2개월 이상 쌓인 뒤 표시 · 검색광고 API는 과거 12개월 일괄 조회 불가`,
+        subtitle: `콘솔 월별 스냅샷 ${snapCount}개월 — 12개월 쌓이면 1년 차트 표시 · ${DEMAND_VOLUME_1Y_SOURCE_NOTE}${volumeHint}`,
         points: [],
       };
     }
 
-    if (!isDaily && volumeLive && vol > 0) {
-      const monthlyIndex = row.keywordMonthlyIndexSeries?.[key];
-      const estimated = estimateVolumeFromDatalabMonthlyIndex(vol, monthlyIndex ?? []);
-      if (estimated.length >= MIN_VOLUME_MONTHLY_FOR_YEAR_CHART) {
+    if (isDaily && volumeLive) {
+      const rolling = row.searchVolumeDisplaySource === "rolling_30d";
+      const anchor = anchorVolumeFromMonthlySeries(monthlyVol);
+      const total = rolling
+        ? vol > 0 || slice.searchVolumeBelowTen
+          ? vol
+          : 0
+        : anchor?.total ?? (vol > 0 ? vol : 0);
+      if (total > 0 || (rolling && slice.searchVolumeBelowTen)) {
+        const chartTotal = total > 0 ? total : 1;
+        const { points, shaped, endYmd } = buildSearchVolume30dChart({
+          totalVolume: chartTotal,
+          indexSeries: row.keywordDailySeries?.[key],
+          dailyIndexByYmd: row.keywordDailyIndexByYmd?.[key],
+          endYmd: volumeChartEndYmd,
+          days: CHART_DAILY_POINTS,
+        });
+        const shapeNote = shaped ? DEMAND_VOLUME_30D_INDEX_SHAPE_NOTE : DEMAND_VOLUME_30D_FLAT_NOTE;
+        const collected =
+          rolling && row.searchVolumeRollingSnapshotDate
+            ? row.searchVolumeRollingSnapshotDate.slice(5).replace("-", "/")
+            : null;
+        const subtitle = rolling
+          ? `최근 30일 ${total.toLocaleString("ko-KR")}건 · ${shapeNote}${collected ? ` · ${collected} 수집` : ""}${volumeHint}`
+          : `콘솔 ${anchor?.monthLabel ?? "—"} 합계 ${total.toLocaleString("ko-KR")}건 · 최근 ${CHART_DAILY_POINTS}일 · ${shapeNote} · 말일 ${endYmd.slice(5).replace("-", "/")}${volumeHint}`;
         return {
           chartKind: "volume",
-          subtitle: `키워드 「${slice.keyword}」 · 데이터랩 월별 추이×현재 검색광고 30일 총량 추정${volumeHint} · 검색광고 콘솔 월별 검색수와 다름`,
-          points: estimated.slice(-12),
+          subtitle,
+          points: total > 0 ? points : [],
         };
       }
-    }
-
-    if (isDaily && volumeLive && vol > 0) {
-      const points = distributeSearchVolume30d(vol, dailyIndex, dayPeriods);
-      const shaped = (dailyIndex?.length ?? 0) >= 7;
-      return {
-        chartKind: "volume",
-        subtitle: shaped
-          ? `키워드 「${slice.keyword}」 · 검색광고 최근 30일 추정 · 데이터랩 추이로 일별 배분${volumeHint}`
-          : `키워드 「${slice.keyword}」 · 검색광고 최근 30일 추정(일별 API 없음·균등)${volumeHint}`,
-        points,
-      };
     }
 
     if (isDaily) {
@@ -652,8 +606,8 @@ export function buildDemandMetricChartSeries(
     return {
       chartKind: "volume",
       subtitle: volumeLive
-        ? `키워드 「${slice.keyword}」 · 1년 차트 없음 — 검색광고 API는 「최근 30일」 1값만 제공(콘솔 월별 12개월과 별도)${volumeHint} · 매월 「검색광고 수집」으로 스냅샷 누적 또는 데이터랩(지역) 수집 후 표시`
-        : `키워드 「${slice.keyword}」 · 검색량 데이터 없음`,
+        ? `1년 검색량 — 콘솔 월별 스냅샷 필요 · ${DEMAND_VOLUME_1Y_SOURCE_NOTE}${volumeHint}`
+        : `검색량 데이터 없음`,
       points: [],
     };
   }
@@ -673,7 +627,7 @@ export function buildDemandMetricChartSeries(
       const points = rowSeries.slice(-CHART_DAILY_POINTS);
       return {
         chartKind: "index",
-        subtitle: `키워드 「${slice.keyword}」 · 데이터랩 상대지수(0~100) · 최근 ${points.length}일${levelHint}`,
+        subtitle: `${slice.keyword} · 검색지수 · 최근 ${points.length}일${levelHint}`,
         points,
       };
     }
@@ -701,7 +655,7 @@ export function buildDemandMetricChartSeries(
       const points = monthlySeries.slice(-12);
       return {
         chartKind: "index",
-        subtitle: `키워드 「${slice.keyword}」 · 데이터랩 월별 상대지수(0~100) · ${points.length}개월${levelHint}`,
+        subtitle: `${slice.keyword} · 검색지수 · ${points.length}개월${levelHint}`,
         points,
       };
     }
@@ -727,10 +681,12 @@ export function buildDemandMetricChartSeries(
     };
   }
 
-  if (metricId === "composite") {
-    const yearSeries = buildCompositeYearChartSeries(row);
+  if (metricId === "demandScore") {
+    const scoreRange: DemandAnyChartRange =
+      range === "3y" ? "3y" : range === "1y" ? "1y" : "1y";
+    const yearSeries = buildDemandScoreChartSeries(row, scoreRange, options?.rtmsSeries);
     return {
-      chartKind: "composite",
+      chartKind: "demandScore",
       subtitle: yearSeries.subtitle,
       points: yearSeries.points,
     };

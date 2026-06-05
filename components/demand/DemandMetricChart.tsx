@@ -33,7 +33,7 @@ const PAD = { top: 14, right: 16, bottom: 28, left: 48 };
 const PLOT_W = W - PAD.left - PAD.right;
 const PLOT_H = H - PAD.top - PAD.bottom;
 
-type ChartKind = "trade" | "index" | "indexDelta" | "volume" | "composite" | "packingInterest";
+type ChartKind = "trade" | "index" | "indexDelta" | "volume" | "demandScore" | "packingInterest";
 
 type SeriesBundle = {
   row: DemandScopeTableRow;
@@ -47,7 +47,7 @@ type SeriesBundle = {
 
 function defaultRangeForMetric(metricId: DemandMetricId): DemandAnyChartRange {
   if (isDemandTradeMetric(metricId)) return "12m";
-  if (metricId === "composite" || metricId === "packingInterest") return "1y";
+  if (metricId === "demandScore" || metricId === "packingInterest") return "1y";
   return "30d";
 }
 
@@ -81,7 +81,7 @@ function chartRangeOptions(
       { key: "3y", label: "3년", disabled: true },
     ];
   }
-  if (metricId === "composite" || metricId === "packingInterest") {
+  if (metricId === "demandScore" || metricId === "packingInterest") {
     return [
       { key: "1y", label: "1년" },
       { key: "3y", label: "3년", disabled: true },
@@ -690,9 +690,9 @@ export default function DemandMetricChart({
         </p>
       ) : null}
 
-      {metricId === "composite" ? (
+      {metricId === "demandScore" ? (
         <div className="border-t border-slate-100 px-4 py-2 sm:px-5">
-          <DemandRevealInline closedLabel="입주 온도 안내">
+          <DemandRevealInline closedLabel="지역수요점수 안내">
             <p className="text-[11px] leading-relaxed text-slate-600">{DEMAND_COMPOSITE_ABOUT}</p>
             <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{DEMAND_COMPOSITE_METHOD_NOTE}</p>
           </DemandRevealInline>
