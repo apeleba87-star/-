@@ -17,5 +17,5 @@ async function resolveDemandAdmin(): Promise<boolean> {
   return profile?.role === "admin";
 }
 
-/** 입주수요 탐색 서브메뉴(TOP10·비교 등) — 관리자 전용 */
+/** 입주레이더 서브페이지(TOP10·비교 등) — 관리자 전용 */
 export const isDemandAdmin = cache(resolveDemandAdmin);

@@ -56,6 +56,44 @@ export function anchorVolumeFromMonthlySeries(
 
 const MIN_INDEX_DAYS_FOR_VOLUME_SHAPE = 7;
 
+function periodLabelToYmd(period: string): string | null {
+  const kr = period.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일$/);
+  if (!kr) return null;
+  return `${kr[1]}-${String(Number(kr[2])).padStart(2, "0")}-${String(Number(kr[3])).padStart(2, "0")}`;
+}
+
+function indexSeriesToYmdMap(series: DemandChartPoint[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const p of series) {
+    const ymd = periodLabelToYmd(p.period);
+    if (ymd && Number.isFinite(p.value)) out[ymd] = p.value;
+  }
+  return out;
+}
+
+/** 지수 미수집 일은 직전 값으로 채워 검색량 수집일까지 30일 창 유지 */
+function forwardFillIndexWeights(
+  chartDays: DemandChartDay[],
+  byYmd: Record<string, number>
+): { weights: number[]; lastIndexYmd: string | null } {
+  const weights: number[] = [];
+  let lastPositive = 0.01;
+  let lastIndexYmd: string | null = null;
+  for (const d of chartDays) {
+    const v = byYmd[d.ymd] ?? 0;
+    if (v > 0) {
+      lastPositive = v;
+      lastIndexYmd = d.ymd;
+    }
+    weights.push(v > 0 ? v : lastPositive);
+  }
+  return { weights, lastIndexYmd };
+}
+
+function mergeIndexMaps(...maps: Record<string, number>[]): Record<string, number> {
+  return Object.assign({}, ...maps);
+}
+
 function distributeVolumeByWeights(
   totalVolume: number,
   periods: string[],
@@ -89,36 +127,29 @@ export function buildSearchVolume30dChart(params: {
   dailyIndexByYmd?: Record<string, number>;
   endYmd?: string;
   days?: number;
-}): { points: DemandChartPoint[]; shaped: boolean; endYmd: string } {
+}): {
+  points: DemandChartPoint[];
+  shaped: boolean;
+  endYmd: string;
+  lastIndexYmd: string | null;
+} {
   const endYmd = params.endYmd ?? defaultSearchVolumeChartEndYmd();
   const n = params.days ?? 30;
-
-  if (params.indexSeries && params.indexSeries.length >= MIN_INDEX_DAYS_FOR_VOLUME_SHAPE) {
-    const series = params.indexSeries.slice(-n);
-    const weights = series.map((p) => p.value);
-    if (weights.filter((w) => w > 0).length >= MIN_INDEX_DAYS_FOR_VOLUME_SHAPE) {
-      const points = distributeVolumeByWeights(
-        params.totalVolume,
-        series.map((p) => p.period),
-        weights
-      );
-      return { points, shaped: hasVolumeShape(points), endYmd };
-    }
-  }
-
   const chartDays = lastKstChartDays(endYmd, n);
-  const byYmd = params.dailyIndexByYmd ?? {};
-  const weights = chartDays.map((d) => Math.max(byYmd[d.ymd] ?? 0, 0));
-  const hasShape = weights.filter((w) => w > 0).length >= MIN_INDEX_DAYS_FOR_VOLUME_SHAPE;
-  const weightSum = weights.reduce((s, w) => s + (w > 0 ? w : 0), 0);
+  const indexByYmd = mergeIndexMaps(
+    params.dailyIndexByYmd ?? {},
+    params.indexSeries?.length ? indexSeriesToYmdMap(params.indexSeries) : {}
+  );
+  const { weights, lastIndexYmd } = forwardFillIndexWeights(chartDays, indexByYmd);
+  const positiveDays = Object.keys(indexByYmd).filter((ymd) => (indexByYmd[ymd] ?? 0) > 0).length;
 
-  if (hasShape && weightSum > 0) {
+  if (positiveDays >= MIN_INDEX_DAYS_FOR_VOLUME_SHAPE) {
     const points = distributeVolumeByWeights(
       params.totalVolume,
       chartDays.map((d) => d.period),
       weights
     );
-    return { points, shaped: hasVolumeShape(points), endYmd };
+    return { points, shaped: hasVolumeShape(points), endYmd, lastIndexYmd };
   }
 
   const mean = params.totalVolume / Math.max(chartDays.length, 1);
@@ -126,6 +157,7 @@ export function buildSearchVolume30dChart(params: {
     points: chartDays.map((d) => ({ period: d.period, value: Math.round(mean) })),
     shaped: false,
     endYmd,
+    lastIndexYmd,
   };
 }
 

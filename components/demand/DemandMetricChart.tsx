@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatChartMetricValue } from "@/lib/demand/copy";
+import { formatChartDayPeriodLabel, formatChartMetricValue, formatChartMonthPeriodLabel } from "@/lib/demand/copy";
 import { buildAreaPath, buildLinePath } from "@/lib/demand/chart-spline";
 import { linearMap, niceChartScale } from "@/lib/demand/chart-scale";
 import {
@@ -10,8 +10,6 @@ import {
   demandRegionCompareColor,
 } from "@/lib/demand/metric-chart-theme";
 import {
-  DEMAND_COMPOSITE_ABOUT,
-  DEMAND_COMPOSITE_METHOD_NOTE,
   DEMAND_PACKING_INTEREST_ABOUT,
 } from "@/lib/demand/copy";
 import { DemandRevealInline } from "@/components/demand/DemandReveal";
@@ -349,6 +347,13 @@ export default function DemandMetricChart({
   const xAxisMaxLabels = xAxisIsMonthly ? (densePoints ? 5 : 7) : 4;
   const xAxisLabelIndices = pickXAxisLabelIndices(chart.pointCount, xAxisMaxLabels);
   const xAxisBaselineY = PAD.top + PLOT_H;
+  const activePeriod = series[0].coords[activeIdx].period;
+  const activePeriodLabel =
+    fmt === "demandScore" || fmt === "packingInterest"
+      ? formatChartMonthPeriodLabel(activePeriod)
+      : isMonthlyPeriodLabel(activePeriod)
+        ? formatChartMonthPeriodLabel(activePeriod)
+        : formatChartDayPeriodLabel(activePeriod);
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -396,15 +401,10 @@ export default function DemandMetricChart({
         className="mx-3 mt-2 border-y border-slate-200 bg-gradient-to-b from-slate-50 to-white px-3 py-2.5 sm:mx-4"
         aria-live="polite"
       >
-        <p className="text-[10px] text-slate-400">
-          그래프에서 날짜 열을 탭하면 수치가 갱신됩니다.
-        </p>
         <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
           <div className="flex shrink-0 items-baseline gap-2">
             <span className="text-[10px] font-medium text-slate-500">선택</span>
-            <span className="text-base font-bold tabular-nums text-teal-800">
-              {series[0].coords[activeIdx].period}
-            </span>
+            <span className="text-base font-bold tabular-nums text-teal-800">{activePeriodLabel}</span>
           </div>
           {chartCompareMode ? (
             <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -688,15 +688,6 @@ export default function DemandMetricChart({
         >
           {footerNote}
         </p>
-      ) : null}
-
-      {metricId === "demandScore" ? (
-        <div className="border-t border-slate-100 px-4 py-2 sm:px-5">
-          <DemandRevealInline closedLabel="지역수요점수 안내">
-            <p className="text-[11px] leading-relaxed text-slate-600">{DEMAND_COMPOSITE_ABOUT}</p>
-            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{DEMAND_COMPOSITE_METHOD_NOTE}</p>
-          </DemandRevealInline>
-        </div>
       ) : null}
 
       {metricId === "packingInterest" ? (

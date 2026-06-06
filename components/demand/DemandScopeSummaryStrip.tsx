@@ -2,12 +2,8 @@
 
 import {
   DEMAND_METRIC_LABELS,
-  DEMAND_RTMS_HERO_NOTE,
-  DEMAND_SCOPE_SIMPLE_HINT,
-  DEMAND_SCORE_ABOUT,
   DEMAND_SCORE_CARD_SUB,
   DEMAND_SEARCH_INDEX_CARD_SUB,
-  DEMAND_SEARCH_METRICS_ABOUT,
   DEMAND_SEARCH_NATIONAL_BADGE,
   DEMAND_SEARCH_SECTION_LABEL,
   DEMAND_TRADE_SECTION_LABEL,
@@ -17,7 +13,6 @@ import {
   formatSearchVolumeMonth,
 } from "@/lib/demand/copy";
 import { anchorVolumeFromMonthlySeries } from "@/lib/demand/search-volume-30d";
-import { DemandRevealInline } from "@/components/demand/DemandReveal";
 import { demandMetricChartTheme } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
@@ -174,10 +169,6 @@ export default function DemandScopeSummaryStrip({
             카드 기준 <span className="font-semibold text-slate-700">{cardRow.label}</span>
           </p>
         ) : null}
-        {isDistrict ? (
-          <p className="text-xs leading-relaxed text-slate-500">{DEMAND_RTMS_HERO_NOTE}</p>
-        ) : null}
-        <p className="text-[11px] text-slate-400">{DEMAND_SCOPE_SIMPLE_HINT}</p>
       </div>
 
       <div className="space-y-2">
@@ -284,27 +275,6 @@ export default function DemandScopeSummaryStrip({
           <DemandDevMetricBadge />
         </p>
       ) : null}
-
-      {selectedMetric === "demandScore" ? (
-        <DemandRevealInline closedLabel="지역수요점수 안내">
-          <p className="text-[11px] leading-relaxed text-slate-600">{DEMAND_SCORE_ABOUT}</p>
-        </DemandRevealInline>
-      ) : null}
-
-      {(selectedMetric === "packingVolume" ||
-        selectedMetric === "moveInVolume" ||
-        selectedMetric === "packingIndex" ||
-        selectedMetric === "moveInIndex") && (
-        <DemandRevealInline closedLabel="검색 지표 안내">
-          <div className="space-y-2">
-            {DEMAND_SEARCH_METRICS_ABOUT.map((line) => (
-              <p key={line} className="text-[11px] leading-relaxed text-slate-600">
-                {line}
-              </p>
-            ))}
-          </div>
-        </DemandRevealInline>
-      )}
     </section>
   );
 }

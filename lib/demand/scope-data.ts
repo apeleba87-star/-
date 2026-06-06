@@ -55,10 +55,7 @@ import {
   buildDistrictMoveInDemandScoreChartSeries,
   nationalInterestMonthlyPoints,
 } from "@/lib/demand/demand-score-series";
-import {
-  formatDemandScoreBasis,
-  formatDemandScoreBreakdown,
-} from "@/lib/demand/district-demand-score";
+import { formatDemandScoreBasis } from "@/lib/demand/district-demand-score";
 import { demandDistrictSearchExcludedFromHub } from "@/lib/demand/district-search-archive";
 import { DEMAND_TABLE_ROWS } from "@/lib/demand/table-data";
 
@@ -497,7 +494,7 @@ function buildDemandScoreChartSeries(
     if (points.length >= 2) {
       return {
         points,
-        subtitle: `전국 입주·이사 참고 · 대상월 · 최근 ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
+        subtitle: `전국 · ${formatDemandScoreBasis(ds.basis)} · ${points.length}개월`,
       };
     }
   } else {
@@ -510,14 +507,14 @@ function buildDemandScoreChartSeries(
     if (points.length >= 2) {
       return {
         points,
-        subtitle: `${row.pathLabel} · 입주수요(대상월) · 신호=직전월 RTMS·검색 · ${points.length}개월 · ${formatDemandScoreBasis(ds.basis)}`,
+        subtitle: `${row.pathLabel} · ${formatDemandScoreBasis(ds.basis)} · ${points.length}개월`,
       };
     }
   }
 
   return {
     points: [],
-    subtitle: `월별 입주수요 — RTMS·검색 겹치는 달 2개월 이상 필요 · ${formatDemandScoreBreakdown(ds)}`,
+    subtitle: `월별 추이 — RTMS·검색 데이터가 2개월 이상 겹칠 때 표시 · ${formatDemandScoreBasis(ds.basis)}`,
   };
 }
 
@@ -591,11 +588,15 @@ export function buildDemandMetricChartSeries(
         : anchor?.total ?? (vol > 0 ? vol : 0);
       if (total > 0 || (rolling && slice.searchVolumeBelowTen)) {
         const chartTotal = total > 0 ? total : 1;
-        const { points, shaped, endYmd } = buildSearchVolume30dChart({
+        const volumeEndYmd =
+          rolling && row.searchVolumeRollingSnapshotDate
+            ? row.searchVolumeRollingSnapshotDate
+            : volumeChartEndYmd;
+        const { points, shaped, endYmd, lastIndexYmd } = buildSearchVolume30dChart({
           totalVolume: chartTotal,
           indexSeries: row.keywordDailySeries?.[key],
           dailyIndexByYmd: row.keywordDailyIndexByYmd?.[key],
-          endYmd: volumeChartEndYmd,
+          endYmd: volumeEndYmd,
           days: CHART_DAILY_POINTS,
         });
         const shapeNote = shaped ? DEMAND_VOLUME_30D_INDEX_SHAPE_NOTE : DEMAND_VOLUME_30D_FLAT_NOTE;
@@ -603,9 +604,15 @@ export function buildDemandMetricChartSeries(
           rolling && row.searchVolumeRollingSnapshotDate
             ? row.searchVolumeRollingSnapshotDate.slice(5).replace("-", "/")
             : null;
+        const endLabel = endYmd.slice(5).replace("-", "/");
+        const indexEndLabel = lastIndexYmd ? lastIndexYmd.slice(5).replace("-", "/") : null;
+        const lagNote =
+          indexEndLabel && collected && indexEndLabel !== collected
+            ? ` · 지수 ~${indexEndLabel}`
+            : "";
         const subtitle = rolling
-          ? `최근 30일 ${total.toLocaleString("ko-KR")}건 · ${shapeNote}${collected ? ` · ${collected} 수집` : ""}${volumeHint}`
-          : `콘솔 ${anchor?.monthLabel ?? "—"} 합계 ${total.toLocaleString("ko-KR")}건 · 최근 ${CHART_DAILY_POINTS}일 · ${shapeNote} · 말일 ${endYmd.slice(5).replace("-", "/")}${volumeHint}`;
+          ? `최근 30일 ${total.toLocaleString("ko-KR")}건 · ${shapeNote} · 검색량 ${collected ?? endLabel} 기준${lagNote}${volumeHint}`
+          : `콘솔 ${anchor?.monthLabel ?? "—"} 합계 ${total.toLocaleString("ko-KR")}건 · 최근 ${CHART_DAILY_POINTS}일 · ${shapeNote} · 말일 ${endLabel}${volumeHint}`;
         return {
           chartKind: "volume",
           subtitle,

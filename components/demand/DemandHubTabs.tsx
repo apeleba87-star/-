@@ -23,7 +23,7 @@ export default function DemandHubTabs() {
     if (tab === "today") next.delete("tab");
     else next.set("tab", tab);
     const q = next.toString();
-    router.replace(q ? `/demand?${q}` : "/demand", { scroll: false });
+    router.replace(q ? `/?${q}` : "/", { scroll: false });
   }
 
   return (

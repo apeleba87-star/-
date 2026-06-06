@@ -76,7 +76,7 @@ type MobileDrawerRow =
 
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
-  { kind: "link", href: "/", label: "홈", Icon: Home },
+  { kind: "link", href: "/", label: "입주레이더", Icon: Sparkles },
   { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText },
   {
     kind: "mega",
@@ -99,10 +99,6 @@ const primaryNavItems: PrimaryNavEntry[] = [
           { href: "/marketing-report", label: "마케팅", Icon: Sparkles },
           { href: "/job-market-report", label: "일당", Icon: Landmark },
         ],
-      },
-      {
-        title: "영업·수요",
-        items: [{ href: "/demand", label: "입주수요 탐험", Icon: Sparkles }],
       },
     ],
   },
@@ -232,16 +228,6 @@ export default function Header() {
     .map((entry) => {
       if (entry.kind === "link" && entry.href === "/cleanidex") {
         return isAdmin ? entry : null;
-      }
-      if (!isAdmin && entry.kind === "mega") {
-        const columns = entry.columns
-          .map((col) => ({
-            ...col,
-            items: col.items.filter((item) => item.href !== "/demand"),
-          }))
-          .filter((col) => col.items.length > 0);
-        if (columns.length === 0) return null;
-        return { ...entry, columns };
       }
       return entry;
     })

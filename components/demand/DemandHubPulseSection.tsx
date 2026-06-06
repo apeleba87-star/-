@@ -316,7 +316,7 @@ function RollingPulseCard({
         compactOnMobile ? "p-2 md:p-2.5" : "p-2.5"
       )}
     >
-      <p className="text-[10px] font-medium text-slate-500 md:text-[11px]">롤링 30일 검색량</p>
+      <p className="text-[10px] font-medium text-slate-500 md:text-[11px]">최근 30일 검색량</p>
       <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1.5 border-t border-slate-100 pt-1.5">
         <RollingRowCompact
           label="포장"

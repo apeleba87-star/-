@@ -3,6 +3,7 @@ import {
   nationalOnlyDemandScore,
   type DistrictDemandScore,
 } from "@/lib/demand/district-demand-score";
+import { MOVE_IN_DEMAND_SIGNAL_LAG_MONTHS } from "@/lib/demand/demand-score-weights";
 import {
   availableSignalMonths,
   buildNationalMoveInSignal,
@@ -12,6 +13,8 @@ import {
   nationalMapsFromKeywordStore,
   nationalMovingInterestFromSignal,
   resolveSignalYyyymmForTarget,
+  shiftYyyymm,
+  type MoveInDemandScoreResult,
 } from "@/lib/demand/move-in-demand-score";
 import { nationalMovingInterestFromStore } from "@/lib/demand/moving-interest";
 import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
@@ -23,6 +26,8 @@ export type DemandScoreContext = {
   rtmsSeries: DemandRtmsSeriesStore;
   targetYyyymm: string;
   signalYyyymm: string | null;
+  /** RTMS 스냅샷 최신월 — median override는 신호월과 같을 때만 */
+  rtmsSnapshotYyyymm?: string | null;
   districtMedianActivity?: number | null;
 };
 
@@ -41,12 +46,21 @@ export function buildDemandScoreContext(
 ): DemandScoreContext {
   const targetYyyymm = getMoveInDemandTargetYyyymm();
   const maps = nationalMapsFromKeywordStore(keywordStore);
+  const availableMonths = availableSignalMonths(
+    maps.packingVolByYm,
+    maps.moveInVolByYm,
+    rtmsSeries,
+    "district:seoul:gangnam-gu"
+  );
+  const idealSignalYyyymm = shiftYyyymm(targetYyyymm, -MOVE_IN_DEMAND_SIGNAL_LAG_MONTHS);
+  const resolvedSignalYyyymm = resolveSignalYyyymmForTarget(targetYyyymm, availableMonths);
+  // RTMS 스냅샷 최신월(미확정·신호월 초과)을 신호월로 쓰면 전국 검색 미수집 → 카드 100 폴백
   const signalYyyymm =
-    rtmsSignalYyyymm ??
-    resolveSignalYyyymmForTarget(
-      targetYyyymm,
-      availableSignalMonths(maps.packingVolByYm, maps.moveInVolByYm, rtmsSeries, "district:seoul:gangnam-gu")
-    );
+    rtmsSignalYyyymm &&
+    rtmsSignalYyyymm <= idealSignalYyyymm &&
+    availableMonths.includes(rtmsSignalYyyymm)
+      ? rtmsSignalYyyymm
+      : resolvedSignalYyyymm;
 
   const districtMedianActivity =
     rtmsSnapshot?.byRegionKey && Object.keys(rtmsSnapshot.byRegionKey).length > 0
@@ -58,28 +72,73 @@ export function buildDemandScoreContext(
     rtmsSeries,
     targetYyyymm,
     signalYyyymm,
+    rtmsSnapshotYyyymm: rtmsSignalYyyymm,
     districtMedianActivity,
   };
+}
+
+function rtmsStoreKey(regionKey: string): string {
+  if (regionKey.startsWith("district:") || regionKey.startsWith("city:")) return regionKey;
+  return `district:${regionKey}`;
+}
+
+function medianOverrideForSignal(
+  context: DemandScoreContext,
+  signalYm: string
+): number | undefined {
+  if (
+    context.rtmsSnapshotYyyymm &&
+    signalYm === context.rtmsSnapshotYyyymm &&
+    context.districtMedianActivity != null &&
+    context.districtMedianActivity > 0
+  ) {
+    return context.districtMedianActivity;
+  }
+  return undefined;
+}
+
+/** 카드·그래프 동일 — 대상월 T, 신호 S=T−1 (차트 월별 시리즈와 동일) */
+function computeRegionalScoreForTarget(
+  context: DemandScoreContext,
+  rtmsKey: string
+): MoveInDemandScoreResult | null {
+  const targetYyyymm = context.targetYyyymm;
+  const idealSignal = shiftYyyymm(targetYyyymm, -MOVE_IN_DEMAND_SIGNAL_LAG_MONTHS);
+
+  const direct = computeMoveInDemandScoreForRegion(
+    targetYyyymm,
+    idealSignal,
+    context.keywordStore,
+    context.rtmsSeries,
+    rtmsKey,
+    medianOverrideForSignal(context, idealSignal)
+  );
+  if (direct) return direct;
+
+  const regionSeries = context.rtmsSeries[rtmsKey] ?? [];
+  const signals = [...regionSeries].map((p) => p.yyyymm).sort();
+  for (let i = signals.length - 1; i >= 0; i -= 1) {
+    const signalYm = signals[i]!;
+    const target = shiftYyyymm(signalYm, MOVE_IN_DEMAND_SIGNAL_LAG_MONTHS);
+    const result = computeMoveInDemandScoreForRegion(
+      target,
+      signalYm,
+      context.keywordStore,
+      context.rtmsSeries,
+      rtmsKey,
+      medianOverrideForSignal(context, signalYm)
+    );
+    if (result && target === targetYyyymm) return result;
+  }
+  return null;
 }
 
 export function districtDemandScoreForRegionKey(
   context: DemandScoreContext,
   regionKey: string
 ): DistrictDemandScore {
-  const signalYm = context.signalYyyymm;
-  if (!signalYm) {
-    const national = nationalMovingInterestFromStore(context.keywordStore);
-    return nationalOnlyDemandScore(national, context.targetYyyymm);
-  }
-
-  const result = computeMoveInDemandScoreForRegion(
-    context.targetYyyymm,
-    signalYm,
-    context.keywordStore,
-    context.rtmsSeries,
-    `district:${regionKey}`,
-    context.districtMedianActivity
-  );
+  const rtmsKey = rtmsStoreKey(regionKey);
+  const result = computeRegionalScoreForTarget(context, rtmsKey);
 
   if (!result) {
     const national = nationalMovingInterestFromStore(context.keywordStore);
@@ -132,19 +191,7 @@ export function demandScoreForCity(
   context: DemandScoreContext,
   cityId = "seoul"
 ): DistrictDemandScore {
-  const signalYm = context.signalYyyymm;
-  if (!signalYm) {
-    return demandScoreForNational(context);
-  }
-
-  const result = computeMoveInDemandScoreForRegion(
-    context.targetYyyymm,
-    signalYm,
-    context.keywordStore,
-    context.rtmsSeries,
-    `city:${cityId}`,
-    context.districtMedianActivity
-  );
+  const result = computeRegionalScoreForTarget(context, `city:${cityId}`);
 
   if (!result) {
     return demandScoreForNational(context);

@@ -127,21 +127,5 @@ export function formatDemandScoreBasis(basis: DistrictDemandScoreBasis): string 
 }
 
 export function formatDemandScoreBreakdown(score: DistrictDemandScore): string {
-  const v2 = score.v2;
-  if (v2) {
-    const n = v2.national;
-    const r = v2.regional;
-    return [
-      `전국 ${n.compositeIndex}`,
-      `(검색량 ${n.packingVolumeIndex}/${n.moveInVolumeIndex}`,
-      `지수 ${n.packingSearchIndex}/${n.moveInSearchIndex})`,
-      `× 구 ${r.compositeIndex}`,
-      `(RTMS규모 ${r.rtmsLevelIndex}`,
-      `MoM ${r.rtmsMomentumIndex})`,
-      `÷ 100 = ${score.score}`,
-    ].join(" ");
-  }
-  const n = score.national;
-  const r = score.rtms;
-  return `전국 ${n.index} × RTMS ${r.index} ÷ 100 = ${score.score}`;
+  return formatDemandScoreBasis(score.basis);
 }

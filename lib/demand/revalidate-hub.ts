@@ -4,6 +4,6 @@ import { revalidatePath, revalidateTag } from "next/cache";
 export function revalidateDemandHub(): void {
   revalidateTag("demand-rtms", { expire: 0 });
   revalidateTag("demand-keyword", { expire: 0 });
-  revalidatePath("/demand");
+  revalidatePath("/");
   revalidatePath("/demand/top");
 }

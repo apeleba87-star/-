@@ -39,8 +39,8 @@ async function SearchPageInner({
         <DemandSearchResults query={q} />
       </Suspense>
       <p className="mt-8 text-center">
-        <Link href="/demand" className="text-sm font-semibold text-slate-500 hover:text-teal-700">
-          ← 입주수요 허브
+        <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-teal-700">
+          ← 입주레이더
         </Link>
       </p>
     </>

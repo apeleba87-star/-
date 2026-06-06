@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import DemandNav from "@/components/demand/DemandNav";
 import { createClient } from "@/lib/supabase";
 
-/** 관리자만 서브네비 표시 — 서버 ISR과 분리(쿠키 조회 없음) */
+/** 입주레이더 서브네비 — 전 사용자 지역표, 관리자는 [관] 서브메뉴 추가 */
 export default function DemandAdminNavGate({ className }: { className?: string }) {
-  const [show, setShow] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +25,7 @@ export default function DemandAdminNavGate({ className }: { className?: string }
         .single();
 
       if (!cancelled && profile?.role === "admin") {
-        setShow(true);
+        setIsAdmin(true);
       }
     }
 
@@ -35,6 +35,5 @@ export default function DemandAdminNavGate({ className }: { className?: string }
     };
   }, []);
 
-  if (!show) return null;
-  return <DemandNav className={className} />;
+  return <DemandNav className={className} isAdmin={isAdmin} />;
 }

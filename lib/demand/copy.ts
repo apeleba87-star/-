@@ -16,13 +16,9 @@ export const DEMAND_VOLUME_1Y_SOURCE_NOTE =
   "1년 검색량은 콘솔 월별 스냅샷만 사용합니다(검색지수 미사용).";
 
 export const DEMAND_SEARCH_METRICS_ABOUT = [
-  "이사 관련 검색량 — 포장이사·이사업체 등 이사 Basket 키워드 최근 30일 롤링 합(건수, 매일 수집)입니다.",
-  "이사 관련 검색지수 — 같은 키워드 묶음의 상대 추이(전일 대비 %, 데이터랩)입니다.",
-  "입주청소 관련 검색량·검색지수 — 입주청소·입주청소업체 등 입주청소 Basket도 동일합니다.",
-  DEMAND_VOLUME_30D_INDEX_SHAPE_NOTE,
-  DEMAND_VOLUME_1Y_SOURCE_NOTE,
-  "구 화면의 검색 수치는 전국 기준입니다. 지역수요점수의 거래 부분은 선택한 구 RTMS입니다.",
-  DEMAND_VOLUME_VS_INDEX_NOTE,
+  "검색량은 네이버 검색광고 기준 건수(최근 30일·월별)입니다.",
+  "검색지수는 데이터랩 상대 추이(전일 대비 %)이며 검색량과 별개입니다.",
+  "구를 선택해도 검색은 전국 기준, 거래 건수만 해당 구 RTMS입니다.",
 ] as const;
 
 export const DEMAND_TRADE_SECTION_LABEL = "거래";
@@ -30,11 +26,6 @@ export const DEMAND_SEARCH_SECTION_LABEL = "검색";
 export const DEMAND_SEARCH_NATIONAL_BADGE = "검색=전국";
 export const DEMAND_SEARCH_VOLUME_UNCOLLECTED = "미수집";
 export const DEMAND_SEARCH_INDEX_CARD_SUB = "전일 대비";
-
-export const DEMAND_RTMS_HERO_NOTE =
-  "점수는 직전월 RTMS·전국 검색 → 이번 달 입주 참고입니다.";
-
-export const DEMAND_SCOPE_SIMPLE_HINT = "카드를 누르면 30일·1년 추이를 봅니다.";
 
 export const DEMAND_DUMMY_DATA_BADGE = "더미";
 
@@ -62,11 +53,13 @@ export const DEMAND_BASKET_DISPLAY_LABELS = {
 
 export const DEMAND_SCORE_CARD_SUB = "직전월 RTMS·검색 → 이번 달 입주 참고";
 
+/** 사용자용 — 산식·가중치 미노출 */
 export const DEMAND_SCORE_ABOUT =
-  "직전 확정월(신호월)의 구 RTMS 거래 규모·모멘텀과 전국 이사·입주청소 검색량·검색지수를 합쳐, KST 이번 달(대상월) 입주·청소 수요가 어느 구에서 상대적으로 클지 보는 참고 점수입니다. RTMS는 아파트 매매·전월세 신고 건수이며, 신호월 데이터는 약 1개월 뒤 입주·청소 수요의 선행 지표로 봅니다. 구별 키워드 검색은 점수에 넣지 않고 DB에만 축적합니다. 정확한 입주 건수 예측이 아니라 이번 달 영업·광고 우선순위용입니다.";
+  "지난달 확정된 해당 구 아파트 거래와 전국 이사·입주청소 검색 흐름을 함께 반영해, 이번 달 입주·청소 수요 참고 순위를 보여줍니다. 건수 예측이 아니라 영업·광고 우선순위용입니다.";
 
+/** @deprecated UI 미노출 — 내부 산식 문서용 */
 export const DEMAND_SCORE_METHOD_NOTE =
-  "대상월 T = KST 이번 달 · 신호월 S = T−1개월. 전국 = (포장검색량×25% + 입주검색량×25% + 포장검색지수×25% + 입주검색지수×25%), 각 항목은 최근 12개월 중앙값=100 정규화. 구 = (RTMS규모×70% + RTMS MoM×30%), RTMS규모=전월세×70%+매매×30% 건수, 25구 중앙값=100. 최종 = 전국 × 구 ÷ 100.";
+  "신호월 RTMS·전국 검색을 정규화·결합(세부 가중치는 서비스 내부 기준).";
 
 export const DEMAND_HAND_FREE_SUPPLEMENTARY_NOTE =
   "보조 — 앞 2달 손없는날 검색 MoM (이사 계획 선행 신호, 지역수요점수·전국 관심도에 미포함)";
@@ -112,7 +105,7 @@ export const DEMAND_NATIONAL_KEYWORD_LABELS = {
 } as const;
 
 export const DEMAND_DISCLAIMER =
-  "국토부 RTMS·네이버 검색광고·DataLab 기준입니다. 지역수요점수는 전국 이사 관심×구 RTMS 참고값이며 영업 우선순위용입니다(건수 예측 아님). 검색·RTMS 기준월이 다를 수 있습니다.";
+  "국토부 RTMS·네이버 검색 데이터 기준 참고용입니다. 실제 입주·청소 건수를 보장하지 않으며, 검색·거래 기준월이 다를 수 있습니다.";
 
 export const DEMAND_PHASE0_BADGE = "UI 미리보기 · 더미 데이터";
 

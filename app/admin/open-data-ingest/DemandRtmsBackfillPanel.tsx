@@ -11,21 +11,12 @@ import { DEMAND_RTMS_MONTHS_BACK_BACKFILL } from "@/lib/demand/rtms-ingest";
 
 const DONE_STORAGE_KEY = "demand-rtms-backfill-done-v1";
 const PROD_FETCH_TIMEOUT_MIN = 5;
-const LOCAL_FETCH_TIMEOUT_MIN = 10;
+const LOCAL_FETCH_TIMEOUT_MIN = 15;
 
-function isLocalAdminHost(): boolean {
-  if (typeof window === "undefined") return false;
-  const h = window.location.hostname;
-  return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
-}
-
-function backfillFetchTimeoutMs(): number {
-  return (isLocalAdminHost() ? LOCAL_FETCH_TIMEOUT_MIN : PROD_FETCH_TIMEOUT_MIN) * 60 * 1000;
-}
-
-function backfillFetchTimeoutLabel(): string {
-  const min = isLocalAdminHost() ? LOCAL_FETCH_TIMEOUT_MIN : PROD_FETCH_TIMEOUT_MIN;
-  return `${min}분`;
+function localFetchTimeoutMinFromHostname(hostname: string): number {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
+    ? LOCAL_FETCH_TIMEOUT_MIN
+    : PROD_FETCH_TIMEOUT_MIN;
 }
 
 type RunResult = {
@@ -59,12 +50,15 @@ function saveDoneSteps(done: Set<string>) {
 
 export default function DemandRtmsBackfillPanel() {
   const [runningId, setRunningId] = useState<string | null>(null);
-  const [doneIds, setDoneIds] = useState<Set<string>>(() => loadDoneSteps());
+  const [doneIds, setDoneIds] = useState<Set<string>>(() => new Set());
+  const [fetchTimeoutMin, setFetchTimeoutMin] = useState(PROD_FETCH_TIMEOUT_MIN);
   const [lastRun, setLastRun] = useState<{ batch: DemandRtmsBackfillBatch; result: RunResult } | null>(
     null
   );
+  const fetchTimeoutLabel = `${fetchTimeoutMin}분`;
 
   useEffect(() => {
+    setFetchTimeoutMin(localFetchTimeoutMinFromHostname(window.location.hostname));
     setDoneIds(loadDoneSteps());
   }, []);
 
@@ -72,7 +66,7 @@ export default function DemandRtmsBackfillPanel() {
     setRunningId(batch.id);
     setLastRun(null);
     const controller = new AbortController();
-    const timeoutMs = backfillFetchTimeoutMs();
+    const timeoutMs = fetchTimeoutMin * 60 * 1000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
@@ -114,7 +108,7 @@ export default function DemandRtmsBackfillPanel() {
           ok: false,
           error:
             msg.includes("aborted") || msg === "fetch failed"
-              ? `요청 시간 초과(${backfillFetchTimeoutLabel()}). 경기·경북 등은 재시도하세요.`
+              ? `요청 시간 초과(${fetchTimeoutLabel}). 경기·경북 등은 재시도하세요.`
               : msg,
         },
       });
@@ -122,7 +116,7 @@ export default function DemandRtmsBackfillPanel() {
       clearTimeout(timeoutId);
       setRunningId(null);
     }
-  }, []);
+  }, [fetchTimeoutMin, fetchTimeoutLabel]);
 
   const clearProgress = useCallback(() => {
     setDoneIds(new Set());
@@ -148,7 +142,7 @@ export default function DemandRtmsBackfillPanel() {
         </p>
         <p className="mt-1 text-xs text-slate-500">
           각 시·도 버튼: 최근 {DEMAND_RTMS_MONTHS_BACK_BACKFILL}개월 ·{" "}
-          {backfillFetchTimeoutLabel()} 제한 · 완료 체크는 이 브라우저에만 저장됩니다.
+          {fetchTimeoutLabel} 제한 · 완료 체크는 이 브라우저에만 저장됩니다.
         </p>
       </div>
 
@@ -206,7 +200,7 @@ export default function DemandRtmsBackfillPanel() {
                 </span>
                 {isRunning ? (
                   <span className="mt-1 text-xs font-medium text-teal-700">
-                    수집 중 (최대 {backfillFetchTimeoutLabel()})…
+                    수집 중 (최대 {fetchTimeoutLabel})…
                   </span>
                 ) : null}
               </button>
