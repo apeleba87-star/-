@@ -224,3 +224,54 @@ export async function getDemandRtmsSeriesForKeys(keys: string[]): Promise<Demand
     return {};
   }
 }
+
+function rtmsDistrictActivity(saleCount: number, jeonseCount: number): number {
+  return jeonseCount * 0.7 + saleCount * 0.3;
+}
+
+function medianPositive(values: number[]): number {
+  const sorted = values.filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  if (sorted.length === 0) return 0;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+/** 전국 시군구 RTMS 활동량 — 신호월별 중앙값 (카드·그래프 공통) */
+export async function getDemandRtmsDistrictMedianByYyyymm(): Promise<Record<string, number>> {
+  const byYm = new Map<string, number[]>();
+  try {
+    const supabase = createClient();
+    const cutoff = rtmsSeriesCutoffYyyymm();
+    let from = 0;
+    const page = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("demand_rtms_monthly")
+        .select("yyyymm, sale_count, jeonse_count")
+        .eq("region_scope", "district")
+        .gte("yyyymm", cutoff)
+        .order("yyyymm", { ascending: true })
+        .range(from, from + page - 1);
+      if (error || !data?.length) break;
+      for (const row of data) {
+        const ym = String(row.yyyymm);
+        const act = rtmsDistrictActivity(
+          Number(row.sale_count ?? 0),
+          Number(row.jeonse_count ?? 0)
+        );
+        if (!byYm.has(ym)) byYm.set(ym, []);
+        byYm.get(ym)!.push(act);
+      }
+      if (data.length < page) break;
+      from += page;
+    }
+  } catch {
+    return {};
+  }
+  const medians: Record<string, number> = {};
+  for (const [ym, acts] of byYm) {
+    const med = medianPositive(acts);
+    if (med > 0) medians[ym] = med;
+  }
+  return medians;
+}

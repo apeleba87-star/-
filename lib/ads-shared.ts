@@ -13,7 +13,10 @@ export type HomeAdSlotKey =
   | "tenders_industry_open_3rd"
   | "tender_detail_summary_below"
   | "tender_detail_strategy_below"
-  | "awards_industry_list_3rd";
+  | "awards_industry_list_3rd"
+  | "radar_pulse_below"
+  | "radar_empty_state"
+  | "radar_table_below";
 
 export type AdSlotType = "direct" | "google" | "coupang" | "coupang_api";
 

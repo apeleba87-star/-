@@ -46,6 +46,8 @@ export type DemandRtmsIngestOptions = {
   monthsBack?: number;
   /** 시·도 단위 수집 (예: seoul, gyeongbuk). 미지정 시 전국 226개 시군구 */
   cityId?: string;
+  /** cityId 내 일부 구만 (경기 1/2·2/2 등) */
+  districtSlugs?: string[];
   /** 시·도 ingest 후 전국 합산 행 갱신 */
   refreshNational?: boolean;
   /** RTMS API 없이 demand_rtms_monthly national 행만 시·도 합산 갱신 */
@@ -93,6 +95,32 @@ function monthKeysBackFromPreviousKstMonth(count: number): string[] {
 
 type ParsedPage = { totalCount: number; rowCount: number };
 
+type RtmsMonthlyRow = {
+  region_scope: "district" | "city" | "national";
+  region_key: string;
+  yyyymm: string;
+  sale_count: number;
+  jeonse_count: number;
+  source: "rtms";
+  updated_at: string;
+};
+
+const RTMS_FETCH_RETRIES = 4;
+const RTMS_RETRY_BASE_MS = 2000;
+const RTMS_CALL_DELAY_MS = 120;
+
+function isRetryableHttpStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function throttleRtmsCall(): Promise<void> {
+  if (RTMS_CALL_DELAY_MS > 0) await sleep(RTMS_CALL_DELAY_MS);
+}
+
 function readNum(v: unknown): number {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string") {
@@ -133,27 +161,73 @@ async function fetchWithFallback(
   let lastError = "RTMS fetch failed";
   for (const endpoint of endpointCandidates) {
     const url = `${endpoint}?${params.toString()}`;
-    try {
-      const res = await fetch(url, { method: "GET", cache: "no-store" });
-      const text = await res.text();
-      if (!res.ok) {
-        lastError = `[${endpoint}] HTTP ${res.status}: ${text.slice(0, 160)}`;
-        continue;
+    for (let attempt = 1; attempt <= RTMS_FETCH_RETRIES; attempt += 1) {
+      await throttleRtmsCall();
+      try {
+        const res = await fetch(url, { method: "GET", cache: "no-store" });
+        const text = await res.text();
+        if (!res.ok) {
+          lastError = `[${endpoint}] HTTP ${res.status}: ${text.slice(0, 160)}`;
+          if (isRetryableHttpStatus(res.status) && attempt < RTMS_FETCH_RETRIES) {
+            await sleep(RTMS_RETRY_BASE_MS * attempt);
+            continue;
+          }
+          break;
+        }
+        if (!text.trim().startsWith("<")) {
+          lastError = `[${endpoint}] Non-XML response: ${text.slice(0, 160)}`;
+          break;
+        }
+        return parseRtmsPage(text);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        lastError = `[${endpoint}] ${message}`;
+        if (attempt < RTMS_FETCH_RETRIES) {
+          await sleep(RTMS_RETRY_BASE_MS * attempt);
+          continue;
+        }
       }
-      if (!text.trim().startsWith("<")) {
-        lastError = `[${endpoint}] Non-XML response: ${text.slice(0, 160)}`;
-        continue;
-      }
-      return parseRtmsPage(text);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      lastError = `[${endpoint}] ${message}`;
     }
   }
   throw new Error(lastError);
 }
 
-function buildDistrictTargets(cityId?: string): DistrictTarget[] {
+async function upsertRtmsMonthlyRow(supabase: SupabaseClient, row: RtmsMonthlyRow): Promise<void> {
+  const { error } = await supabase
+    .from("demand_rtms_monthly")
+    .upsert([row], { onConflict: "region_scope,region_key,yyyymm" });
+  if (error) throw new Error(error.message);
+}
+
+async function refreshCityAggregateForMonth(
+  supabase: SupabaseClient,
+  cityId: string,
+  yyyymm: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("demand_rtms_monthly")
+    .select("sale_count, jeonse_count")
+    .eq("region_scope", "district")
+    .like("region_key", `${cityId}:%`)
+    .eq("yyyymm", yyyymm);
+
+  if (error) throw new Error(error.message);
+  if (!data?.length) return;
+
+  await upsertRtmsMonthlyRow(supabase, {
+    region_scope: "city",
+    region_key: cityId,
+    yyyymm,
+    sale_count: data.reduce((s, r) => s + Number(r.sale_count ?? 0), 0),
+    jeonse_count: data.reduce((s, r) => s + Number(r.jeonse_count ?? 0), 0),
+    source: "rtms",
+    updated_at: new Date().toISOString(),
+  });
+}
+
+function buildDistrictTargets(cityId?: string, districtSlugs?: string[]): DistrictTarget[] {
+  const slugSet =
+    districtSlugs?.length && districtSlugs.length > 0 ? new Set(districtSlugs) : null;
   const cities = cityId
     ? DEMAND_REGION_REGISTRY.filter((c) => c.id === cityId)
     : DEMAND_REGION_REGISTRY;
@@ -164,6 +238,7 @@ function buildDistrictTargets(cityId?: string): DistrictTarget[] {
 
   return cities.flatMap((city) =>
     city.districts
+      .filter((d) => !slugSet || slugSet.has(d.slug))
       .map((d) => {
         const regionKey = demandDistrictRegionKey(city.id, d.slug);
         const lawdCd = d.lawdCd ?? DEMAND_LAWD_BY_REGION_KEY[regionKey];
@@ -264,7 +339,7 @@ export async function runDemandRtmsIngestJob(
     };
   }
 
-  const targets = buildDistrictTargets(options?.cityId);
+  const targets = buildDistrictTargets(options?.cityId, options?.districtSlugs);
   if (!targets.length) {
     return { ok: false, error: "No RTMS district targets with LAWD codes" };
   }
@@ -272,110 +347,84 @@ export async function runDemandRtmsIngestJob(
   const tradeServiceKey = tradeKey || sharedKey!;
   const rentServiceKey = rentKey || sharedKey!;
 
-  const rows: Array<{
-    region_scope: "district" | "city" | "national";
-    region_key: string;
-    yyyymm: string;
-    sale_count: number;
-    jeonse_count: number;
-    source: "rtms";
-    updated_at: string;
-  }> = [];
-
-  const cityTotals = new Map<string, { sale: number; jeonse: number }>();
+  const cityIdsForAggregate = [...new Set(targets.map((t) => t.cityId))];
   let calls = 0;
+  let savedRows = 0;
 
-  for (const yyyymm of months) {
-    const dealYmd = yyyymm.replace("-", "");
-    for (const city of DEMAND_REGION_REGISTRY) {
-      if (options?.cityId && city.id !== options.cityId) continue;
-      cityTotals.set(`${city.id}:${yyyymm}`, { sale: 0, jeonse: 0 });
-    }
+  try {
+    for (const yyyymm of months) {
+      const dealYmd = yyyymm.replace("-", "");
 
-    for (const target of targets) {
-      let saleCount = 0;
-      const tradePage1 = await fetchWithFallback(
-        TRADE_ENDPOINT_CANDIDATES,
-        tradeServiceKey,
-        target.lawdCd,
-        dealYmd,
-        1
-      );
-      calls += 1;
-      saleCount += tradePage1.rowCount;
-      const tradePages = Math.max(1, Math.ceil(tradePage1.totalCount / 1000));
-      for (let pageNo = 2; pageNo <= tradePages; pageNo += 1) {
-        const page = await fetchWithFallback(
+      for (const target of targets) {
+        let saleCount = 0;
+        const tradePage1 = await fetchWithFallback(
           TRADE_ENDPOINT_CANDIDATES,
           tradeServiceKey,
           target.lawdCd,
           dealYmd,
-          pageNo
+          1
         );
         calls += 1;
-        saleCount += page.rowCount;
-      }
+        saleCount += tradePage1.rowCount;
+        const tradePages = Math.max(1, Math.ceil(tradePage1.totalCount / 1000));
+        for (let pageNo = 2; pageNo <= tradePages; pageNo += 1) {
+          const page = await fetchWithFallback(
+            TRADE_ENDPOINT_CANDIDATES,
+            tradeServiceKey,
+            target.lawdCd,
+            dealYmd,
+            pageNo
+          );
+          calls += 1;
+          saleCount += page.rowCount;
+        }
 
-      let jeonseCount = 0;
-      const rentPage1 = await fetchWithFallback(
-        RENT_ENDPOINT_CANDIDATES,
-        rentServiceKey,
-        target.lawdCd,
-        dealYmd,
-        1
-      );
-      calls += 1;
-      jeonseCount += rentPage1.rowCount;
-      const rentPages = Math.max(1, Math.ceil(rentPage1.totalCount / 1000));
-      for (let pageNo = 2; pageNo <= rentPages; pageNo += 1) {
-        const page = await fetchWithFallback(
+        let jeonseCount = 0;
+        const rentPage1 = await fetchWithFallback(
           RENT_ENDPOINT_CANDIDATES,
           rentServiceKey,
           target.lawdCd,
           dealYmd,
-          pageNo
+          1
         );
         calls += 1;
-        jeonseCount += page.rowCount;
+        jeonseCount += rentPage1.rowCount;
+        const rentPages = Math.max(1, Math.ceil(rentPage1.totalCount / 1000));
+        for (let pageNo = 2; pageNo <= rentPages; pageNo += 1) {
+          const page = await fetchWithFallback(
+            RENT_ENDPOINT_CANDIDATES,
+            rentServiceKey,
+            target.lawdCd,
+            dealYmd,
+            pageNo
+          );
+          calls += 1;
+          jeonseCount += page.rowCount;
+        }
+
+        await upsertRtmsMonthlyRow(supabase, {
+          region_scope: "district",
+          region_key: target.regionKey,
+          yyyymm,
+          sale_count: saleCount,
+          jeonse_count: jeonseCount,
+          source: "rtms",
+          updated_at: new Date().toISOString(),
+        });
+        savedRows += 1;
       }
 
-      rows.push({
-        region_scope: "district",
-        region_key: target.regionKey,
-        yyyymm,
-        sale_count: saleCount,
-        jeonse_count: jeonseCount,
-        source: "rtms",
-        updated_at: new Date().toISOString(),
-      });
-
-      const cityKey = `${target.cityId}:${yyyymm}`;
-      const agg = cityTotals.get(cityKey) ?? { sale: 0, jeonse: 0 };
-      agg.sale += saleCount;
-      agg.jeonse += jeonseCount;
-      cityTotals.set(cityKey, agg);
+      for (const cityId of cityIdsForAggregate) {
+        await refreshCityAggregateForMonth(supabase, cityId, yyyymm);
+        savedRows += 1;
+      }
     }
-
-    for (const [cityKey, totals] of cityTotals) {
-      if (!cityKey.endsWith(`:${yyyymm}`)) continue;
-      const cityId = cityKey.slice(0, -(`:${yyyymm}`).length);
-      rows.push({
-        region_scope: "city",
-        region_key: cityId,
-        yyyymm,
-        sale_count: totals.sale,
-        jeonse_count: totals.jeonse,
-        source: "rtms",
-        updated_at: new Date().toISOString(),
-      });
-    }
-  }
-
-  const { error, count } = await supabase
-    .from("demand_rtms_monthly")
-    .upsert(rows, { onConflict: "region_scope,region_key,yyyymm", count: "exact" });
-  if (error) {
-    return { ok: false, error: error.message };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const hint = message.includes("HTTP 5")
+      ? " · 국토부 API 일시 오류 — 잠시 후 같은 버튼을 재시도하세요(이미 저장된 구·월은 유지됩니다)."
+      : "";
+    return { ok: false, error: `${message}${hint}` };
   }
 
   if (options?.refreshNational || !options?.cityId) {
@@ -384,7 +433,7 @@ export async function runDemandRtmsIngestJob(
 
   return {
     ok: true,
-    inserted: count ?? rows.length,
+    inserted: savedRows,
     updated: 0,
     period: `${months[0]}..${months[months.length - 1]}`,
     source: "rtms",

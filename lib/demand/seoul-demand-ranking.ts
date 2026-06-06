@@ -9,6 +9,7 @@ import {
   buildNationalMoveInSignal,
   computeMoveInDemandScoreForRegion,
   districtMedianActivityFromSnapshot,
+  districtMedianForSignal,
   getMoveInDemandTargetYyyymm,
   nationalMapsFromKeywordStore,
   nationalMovingInterestFromSignal,
@@ -29,6 +30,8 @@ export type DemandScoreContext = {
   /** RTMS 스냅샷 최신월 — median override는 신호월과 같을 때만 */
   rtmsSnapshotYyyymm?: string | null;
   districtMedianActivity?: number | null;
+  /** 전국 시군구 RTMS 활동량 중앙값 — lazy load 시 그래프·카드 일치 (RSC 직렬화용 plain object) */
+  districtMedianByYyyymm?: Readonly<Record<string, number>>;
 };
 
 export type SeoulDemandRankingRow = {
@@ -42,7 +45,8 @@ export function buildDemandScoreContext(
   keywordStore: DemandKeywordStore | null | undefined,
   rtmsSignalYyyymm: string | null,
   rtmsSeries: DemandRtmsSeriesStore = {},
-  rtmsSnapshot?: DemandRtmsDistrictSnapshot | null
+  rtmsSnapshot?: DemandRtmsDistrictSnapshot | null,
+  districtMedianByYyyymm?: Readonly<Record<string, number>>
 ): DemandScoreContext {
   const targetYyyymm = getMoveInDemandTargetYyyymm();
   const maps = nationalMapsFromKeywordStore(keywordStore);
@@ -74,6 +78,7 @@ export function buildDemandScoreContext(
     signalYyyymm,
     rtmsSnapshotYyyymm: rtmsSignalYyyymm,
     districtMedianActivity,
+    districtMedianByYyyymm,
   };
 }
 
@@ -85,16 +90,8 @@ function rtmsStoreKey(regionKey: string): string {
 function medianOverrideForSignal(
   context: DemandScoreContext,
   signalYm: string
-): number | undefined {
-  if (
-    context.rtmsSnapshotYyyymm &&
-    signalYm === context.rtmsSnapshotYyyymm &&
-    context.districtMedianActivity != null &&
-    context.districtMedianActivity > 0
-  ) {
-    return context.districtMedianActivity;
-  }
-  return undefined;
+): number {
+  return districtMedianForSignal(context, context.rtmsSeries, signalYm);
 }
 
 /** 카드·그래프 동일 — 대상월 T, 신호 S=T−1 (차트 월별 시리즈와 동일) */

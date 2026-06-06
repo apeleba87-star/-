@@ -1,5 +1,6 @@
 import DemandShell from "@/components/demand/DemandShell";
 import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
+import { getActiveDemandHubAds } from "@/lib/ads";
 import { isDemandAdmin } from "@/lib/demand/access";
 import { stripDemandHubBootstrapForClient } from "@/lib/demand/demand-data-redact";
 import { getDemandUsageAccess } from "@/lib/demand/demand-usage-access";
@@ -9,9 +10,12 @@ import { getCachedDemandHubBootstrap } from "@/lib/demand/demand-cache";
 /** 입주레이더 허브 — `/` 및 legacy 경로 공통 */
 export default async function DemandHubPageView() {
   const isAdmin = await isDemandAdmin();
-  const access = await getDemandUsageAccess(isAdmin);
+  const [access, rawBootstrap, hubAds] = await Promise.all([
+    getDemandUsageAccess(isAdmin),
+    getCachedDemandHubBootstrap(),
+    getActiveDemandHubAds(),
+  ]);
   const tier = access.tier === "admin" ? "admin" : access.tier;
-  const rawBootstrap = await getCachedDemandHubBootstrap();
   const bootstrap = stripDemandHubBootstrapForClient(rawBootstrap, tier);
 
   return (
@@ -30,6 +34,7 @@ export default async function DemandHubPageView() {
         scoreContext={bootstrap.scoreContext}
         dailyPulse={bootstrap.dailyPulse}
         initialAccess={access}
+        hubAds={hubAds}
       />
     </DemandShell>
   );

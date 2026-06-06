@@ -237,6 +237,27 @@ function applySlotScriptFallback(
   return slot;
 }
 
+/** 입주레이더 허브 — 펄스 아래 / 빈 화면 / 표 아래 */
+export async function getActiveDemandHubAds(): Promise<{
+  radar_pulse_below: HomeAdSlotWithCampaign | null;
+  radar_empty_state: HomeAdSlotWithCampaign | null;
+  radar_table_below: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "radar_pulse_below",
+    "radar_empty_state",
+    "radar_table_below",
+    "tender_report_budget_below",
+  ]);
+  const fallback = map.tender_report_budget_below ?? null;
+  return {
+    radar_pulse_below: applySlotScriptFallback(map.radar_pulse_below ?? null, fallback),
+    radar_empty_state: applySlotScriptFallback(map.radar_empty_state ?? null, fallback),
+    radar_table_below: applySlotScriptFallback(map.radar_table_below ?? null, fallback),
+  };
+}
+
 /** 입찰 목록: 업종 필터 시 진행 중 공고 3번째 슬롯 */
 export async function getActiveTendersIndustryListAd(): Promise<HomeAdSlotWithCampaign | null> {
   const supabase = createClient();

@@ -5,6 +5,7 @@ import {
 import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import type { DemandChartPoint } from "@/lib/demand/scope-data";
+import type { DemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
 
 export function chartPeriodToYyyymm(period: string): string | null {
   const kr = period.match(/^(\d{4})년\s*(\d{1,2})월$/);
@@ -33,9 +34,15 @@ export function nationalInterestMonthlyPoints(
 export function buildDistrictMoveInDemandScoreChartSeries(
   keywordStore: DemandKeywordStore | null | undefined,
   rtmsSeries: DemandRtmsSeriesStore,
-  rtmsRegionKey: string
+  rtmsRegionKey: string,
+  scoreContext?: DemandScoreContext | null
 ): DemandChartPoint[] {
-  return buildMoveInDemandScoreMonthlySeries(keywordStore, rtmsSeries, rtmsRegionKey);
+  return buildMoveInDemandScoreMonthlySeries(
+    keywordStore,
+    rtmsSeries,
+    rtmsRegionKey,
+    scoreContext
+  );
 }
 
 /** @deprecated V2 — buildMoveInDemandScoreMonthlySeries */

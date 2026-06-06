@@ -480,13 +480,15 @@ function buildDemandScoreChartSeries(
   row: DemandScopeTableRow,
   range: DemandAnyChartRange,
   rtmsSeries?: DemandRtmsSeriesStore,
-  keywordStore?: DemandKeywordStore | null
+  keywordStore?: DemandKeywordStore | null,
+  scoreContext?: DemandScoreContext | null
 ): {
   points: DemandChartPoint[];
   subtitle: string;
 } {
   const ds = row.demandScore;
   const months = range === "3y" ? 36 : 12;
+  let rtmsMonths = 0;
 
   if (row.scope === "national") {
     const all = nationalInterestMonthlyPoints(keywordStore);
@@ -498,10 +500,19 @@ function buildDemandScoreChartSeries(
       };
     }
   } else {
+    const rtmsKey = demandRtmsSeriesKeyForRow(row);
+    rtmsMonths = rtmsSeries?.[rtmsKey]?.length ?? 0;
+    if (rtmsMonths === 0) {
+      return {
+        points: [],
+        subtitle: `지역 RTMS 월별 데이터 없음(로그인·지역 확인 후 로드) · ${formatDemandScoreBasis(ds.basis)}`,
+      };
+    }
     const all = buildDistrictMoveInDemandScoreChartSeries(
       keywordStore,
       rtmsSeries ?? {},
-      demandRtmsSeriesKeyForRow(row)
+      demandRtmsSeriesKeyForRow(row),
+      scoreContext
     );
     const points = all.slice(-months);
     if (points.length >= 2) {
@@ -514,7 +525,12 @@ function buildDemandScoreChartSeries(
 
   return {
     points: [],
-    subtitle: `월별 추이 — RTMS·검색 데이터가 2개월 이상 겹칠 때 표시 · ${formatDemandScoreBasis(ds.basis)}`,
+    subtitle:
+      row.scope === "national"
+        ? `전국 검색·RTMS 월별 데이터가 2개월 이상 겹칠 때 표시 · ${formatDemandScoreBasis(ds.basis)}`
+        : rtmsMonths < 2
+          ? `RTMS ${rtmsMonths}개월 — 2개월 이상 필요 · ${formatDemandScoreBasis(ds.basis)}`
+          : `월별 추이 — RTMS·검색 데이터가 2개월 이상 겹칠 때 표시 · ${formatDemandScoreBasis(ds.basis)}`,
   };
 }
 
@@ -525,6 +541,7 @@ export function buildDemandMetricChartSeries(
   options?: {
     rtmsSeries?: DemandRtmsSeriesStore;
     keywordStore?: DemandKeywordStore | null;
+    scoreContext?: DemandScoreContext | null;
   }
 ): {
   points: DemandChartPoint[];
@@ -715,7 +732,8 @@ export function buildDemandMetricChartSeries(
       row,
       scoreRange,
       options?.rtmsSeries,
-      options?.keywordStore
+      options?.keywordStore,
+      options?.scoreContext
     );
     return {
       chartKind: "demandScore",

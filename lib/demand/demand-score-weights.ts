@@ -43,7 +43,7 @@ export const NATIONAL_INTEREST_WEIGHTS = {
 /** @deprecated use RTMS_ACTIVITY_WEIGHTS */
 export const DISTRICT_RTMS_WEIGHTS = RTMS_ACTIVITY_WEIGHTS;
 
-/** UI 구간 — 지역수요점수 (demandScore) */
+/** UI 구간 — 입주 예상 점수 (demandScore) */
 export const DEMAND_HEAT_BAND_THRESHOLDS = {
   veryHot: 160,
   hot: 140,

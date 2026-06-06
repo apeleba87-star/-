@@ -54,12 +54,14 @@ export async function POST(req: NextRequest) {
   try {
     let monthsBack: number | undefined;
     let cityId: string | undefined;
+    let districtSlugs: string[] | undefined;
     let refreshNational: boolean | undefined;
     let nationalRefreshOnly: boolean | undefined;
     try {
       const body = (await req.json()) as {
         monthsBack?: number;
         cityId?: string;
+        districtSlugs?: string[];
         refreshNational?: boolean;
         nationalRefreshOnly?: boolean;
       };
@@ -68,6 +70,9 @@ export async function POST(req: NextRequest) {
       }
       if (body?.cityId?.trim()) {
         cityId = body.cityId.trim();
+      }
+      if (Array.isArray(body?.districtSlugs) && body.districtSlugs.length > 0) {
+        districtSlugs = body.districtSlugs.filter((s) => typeof s === "string" && s.trim());
       }
       if (body?.refreshNational != null) {
         refreshNational = body.refreshNational;
@@ -82,6 +87,7 @@ export async function POST(req: NextRequest) {
     const result = await runDemandRtmsIngestJob(service, {
       monthsBack,
       cityId,
+      districtSlugs,
       refreshNational,
       nationalRefreshOnly,
     });

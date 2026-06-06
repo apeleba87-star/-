@@ -28,6 +28,7 @@ import {
 import { demandKeywordKeyForMetric, type DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
+import type { DemandScoreContext } from "@/lib/demand/seoul-demand-ranking";
 import { cn } from "@/lib/utils";
 
 const W = 640;
@@ -103,6 +104,7 @@ type Props = {
   focusRowKey?: string | null;
   rtmsSeries?: DemandRtmsSeriesStore;
   keywordStore?: DemandKeywordStore | null;
+  scoreContext?: DemandScoreContext | null;
 };
 
 function pctX(svgX: number): string {
@@ -162,6 +164,7 @@ export default function DemandMetricChart({
   focusRowKey,
   rtmsSeries,
   keywordStore = null,
+  scoreContext = null,
 }: Props) {
   const [range, setRange] = useState<DemandAnyChartRange>(() => defaultRangeForMetric(metricId));
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -196,6 +199,7 @@ export default function DemandMetricChart({
       const series = buildDemandMetricChartSeries(row, metricId, range, {
         rtmsSeries,
         keywordStore,
+        scoreContext,
       });
       return {
         row,
@@ -212,7 +216,7 @@ export default function DemandMetricChart({
       ? bundles.map((b) => b.subtitle).find(Boolean) ?? ""
       : bundles[0]?.subtitle ?? "";
     return { chartKind: kind, subtitle: sub, seriesList: bundles };
-  }, [chartRows, metricId, range, chartCompareMode, keywordChartOnly, metricTheme.stroke, rtmsSeries, keywordStore]);
+  }, [chartRows, metricId, range, chartCompareMode, keywordChartOnly, metricTheme.stroke, rtmsSeries, keywordStore, scoreContext]);
 
   const indexNationalFallbackNote = useMemo(() => {
     if (!isSearchIndexMetric(metricId) || rows.length === 0) return null;

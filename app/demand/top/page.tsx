@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 
 export const metadata = {
-  title: "서울 지역수요점수 순위 | 클린아이덱스",
+  title: "서울 입주 예상 점수 순위 | 클린아이덱스",
 };
 
 export const revalidate = 3600;
@@ -29,7 +29,7 @@ export default async function DemandTopPage() {
 
   return (
     <DemandShell
-      title="서울 25구 · 지역수요점수"
+      title="서울 25구 · 입주 예상 점수"
       subtitle={`${DEMAND_METRIC_LABELS.demandScore} · ${basis}`}
     >
       <ol className="space-y-2">

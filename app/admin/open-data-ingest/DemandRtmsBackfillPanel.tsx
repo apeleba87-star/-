@@ -11,7 +11,7 @@ import { DEMAND_RTMS_MONTHS_BACK_BACKFILL } from "@/lib/demand/rtms-ingest";
 
 const DONE_STORAGE_KEY = "demand-rtms-backfill-done-v1";
 const PROD_FETCH_TIMEOUT_MIN = 5;
-const LOCAL_FETCH_TIMEOUT_MIN = 15;
+const LOCAL_FETCH_TIMEOUT_MIN = 25;
 
 function localFetchTimeoutMinFromHostname(hostname: string): number {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
@@ -48,6 +48,11 @@ function saveDoneSteps(done: Set<string>) {
   localStorage.setItem(DONE_STORAGE_KEY, JSON.stringify([...done]));
 }
 
+function resolveFetchTimeoutMin(): number {
+  if (typeof window === "undefined") return PROD_FETCH_TIMEOUT_MIN;
+  return localFetchTimeoutMinFromHostname(window.location.hostname);
+}
+
 export default function DemandRtmsBackfillPanel() {
   const [runningId, setRunningId] = useState<string | null>(null);
   const [doneIds, setDoneIds] = useState<Set<string>>(() => new Set());
@@ -58,15 +63,17 @@ export default function DemandRtmsBackfillPanel() {
   const fetchTimeoutLabel = `${fetchTimeoutMin}분`;
 
   useEffect(() => {
-    setFetchTimeoutMin(localFetchTimeoutMinFromHostname(window.location.hostname));
+    setFetchTimeoutMin(resolveFetchTimeoutMin());
     setDoneIds(loadDoneSteps());
   }, []);
 
   const runBatch = useCallback(async (batch: DemandRtmsBackfillBatch) => {
     setRunningId(batch.id);
     setLastRun(null);
+    const timeoutMin = resolveFetchTimeoutMin();
+    const timeoutLabel = `${timeoutMin}분`;
     const controller = new AbortController();
-    const timeoutMs = fetchTimeoutMin * 60 * 1000;
+    const timeoutMs = timeoutMin * 60 * 1000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
@@ -76,6 +83,7 @@ export default function DemandRtmsBackfillPanel() {
         body: JSON.stringify({
           monthsBack: batch.monthsBack,
           ...(batch.cityId ? { cityId: batch.cityId } : {}),
+          ...(batch.districtSlugs?.length ? { districtSlugs: batch.districtSlugs } : {}),
           refreshNational: batch.refreshNational,
           ...(batch.nationalRefreshOnly ? { nationalRefreshOnly: true } : {}),
         }),
@@ -108,7 +116,7 @@ export default function DemandRtmsBackfillPanel() {
           ok: false,
           error:
             msg.includes("aborted") || msg === "fetch failed"
-              ? `요청 시간 초과(${fetchTimeoutLabel}). 경기·경북 등은 재시도하세요.`
+              ? `요청 시간 초과(${timeoutLabel}). 경기·경북 등은 재시도하세요.`
               : msg,
         },
       });
@@ -116,7 +124,7 @@ export default function DemandRtmsBackfillPanel() {
       clearTimeout(timeoutId);
       setRunningId(null);
     }
-  }, [fetchTimeoutMin, fetchTimeoutLabel]);
+  }, []);
 
   const clearProgress = useCallback(() => {
     setDoneIds(new Set());

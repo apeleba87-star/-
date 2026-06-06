@@ -13,7 +13,7 @@ export type DemandMetricId =
   | "demandScore";
 
 /** 허브·비교표에 노출하는 지표 */
-/** 구 선택 시 — RTMS·지역수요점수만 */
+/** 구 선택 시 — RTMS·입주 예상 점수만 */
 export const DEMAND_HUB_DISTRICT_METRIC_IDS: DemandMetricId[] = [
   "demandScore",
   "sale",

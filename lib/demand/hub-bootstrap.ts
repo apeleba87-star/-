@@ -2,6 +2,7 @@ import { buildDailyPulseData } from "@/lib/demand/daily-pulse";
 import { getDemandKeywordStoreForRegions } from "@/lib/demand/keyword-query";
 import type { DemandKeywordRegionRef } from "@/lib/demand/region-search-keywords";
 import {
+  getDemandRtmsDistrictMedianByYyyymm,
   getDemandRtmsDistrictSnapshot,
   getDemandRtmsSeriesForKeys,
 } from "@/lib/demand/rtms-query";
@@ -41,16 +42,18 @@ export type DemandHubBootstrap = {
 /** 허브 SSR — 전국·서울만 선로드 (펄스·TOP5·기본 비교) */
 export async function getDemandHubBootstrap(): Promise<DemandHubBootstrap> {
   const keywordRefs = hubBootstrapKeywordRefs();
-  const [rtmsSnapshot, rtmsSeries, keywordStore] = await Promise.all([
+  const [rtmsSnapshot, rtmsSeries, keywordStore, districtMedianByYyyymm] = await Promise.all([
     getDemandRtmsDistrictSnapshot(),
     getDemandRtmsSeriesForKeys(HUB_BOOTSTRAP_RTMS_KEYS),
     getDemandKeywordStoreForRegions(keywordRefs),
+    getDemandRtmsDistrictMedianByYyyymm(),
   ]);
   const scoreContext = buildDemandScoreContext(
     keywordStore,
     rtmsSnapshot.baseYyyymm,
     rtmsSeries,
-    rtmsSnapshot
+    rtmsSnapshot,
+    districtMedianByYyyymm
   );
   const dailyPulse = await buildDailyPulseData(keywordStore, scoreContext, rtmsSeries);
 

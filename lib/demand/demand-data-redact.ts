@@ -108,25 +108,31 @@ export function filterRegionScopePayload(
   const keywordStore: DemandKeywordStore = { byRegion: {} };
   const rtmsSeries: DemandRtmsSeriesStore = {};
 
-  if (payload.keywordStore.byRegion.kr) {
-    keywordStore.byRegion.kr = payload.keywordStore.byRegion.kr;
+  const nationalStoreKey = "national:kr";
+  const nationalBundle =
+    payload.keywordStore.byRegion[nationalStoreKey] ?? payload.keywordStore.byRegion.kr;
+  if (nationalBundle) {
+    keywordStore.byRegion[nationalStoreKey] = nationalBundle;
   }
-  if (payload.rtmsSeries["national:kr"]) {
-    rtmsSeries["national:kr"] = payload.rtmsSeries["national:kr"];
+  if (payload.rtmsSeries[nationalStoreKey]) {
+    rtmsSeries[nationalStoreKey] = payload.rtmsSeries[nationalStoreKey];
   }
 
   for (const key of granted) {
     if (key === "national") continue;
     if (key.startsWith("city:")) {
       const cityId = key.slice("city:".length);
-      const bundle = payload.keywordStore.byRegion[cityId];
-      if (bundle) keywordStore.byRegion[cityId] = bundle;
-      const rtmsKey = `city:${cityId}`;
-      if (payload.rtmsSeries[rtmsKey]) rtmsSeries[rtmsKey] = payload.rtmsSeries[rtmsKey];
+      const storeKey = `city:${cityId}`;
+      const bundle =
+        payload.keywordStore.byRegion[storeKey] ?? payload.keywordStore.byRegion[cityId];
+      if (bundle) keywordStore.byRegion[storeKey] = bundle;
+      if (payload.rtmsSeries[storeKey]) rtmsSeries[storeKey] = payload.rtmsSeries[storeKey];
     } else if (key.startsWith("district:")) {
       const rest = key.slice("district:".length);
-      const bundle = payload.keywordStore.byRegion[rest];
-      if (bundle) keywordStore.byRegion[rest] = bundle;
+      const storeKey = key;
+      const bundle =
+        payload.keywordStore.byRegion[storeKey] ?? payload.keywordStore.byRegion[rest];
+      if (bundle) keywordStore.byRegion[storeKey] = bundle;
       const rtmsKey = `district:${rest}`;
       if (payload.rtmsSeries[rtmsKey]) rtmsSeries[rtmsKey] = payload.rtmsSeries[rtmsKey];
     }

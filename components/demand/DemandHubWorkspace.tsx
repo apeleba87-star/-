@@ -42,7 +42,9 @@ import {
 import { isDemandRegionScopeLoaded } from "@/lib/demand/region-scope-loaded";
 import DemandDataBlindOverlay from "@/components/demand/DemandDataBlindOverlay";
 import DemandUsageBanner from "@/components/demand/DemandUsageBanner";
+import DemandHubAdSlot from "@/components/demand/DemandHubAdSlot";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
+import type { HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import { cn } from "@/lib/utils";
 
 function ClickableMetricCell({
@@ -93,6 +95,11 @@ type Props = {
   scoreContext?: DemandScoreContext | null;
   dailyPulse?: DailyPulseData | null;
   initialAccess: DemandUsageAccess;
+  hubAds?: {
+    radar_pulse_below: HomeAdSlotWithCampaign | null;
+    radar_empty_state: HomeAdSlotWithCampaign | null;
+    radar_table_below: HomeAdSlotWithCampaign | null;
+  };
 };
 
 export default function DemandHubWorkspace({
@@ -103,6 +110,7 @@ export default function DemandHubWorkspace({
   scoreContext = null,
   dailyPulse = null,
   initialAccess,
+  hubAds,
 }: Props) {
   const [access, setAccess] = useState<DemandUsageAccess>(initialAccess);
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
@@ -252,11 +260,15 @@ export default function DemandHubWorkspace({
           .join("&")}`
       : null;
 
+  const showTableBelowAd = hasSelection && scopeRows.length > 0 && access.tier !== "guest";
+
   return (
     <div className="space-y-4">
       <DemandUsageBanner access={access} />
 
       {dailyPulse ? <DemandHubPulseSection data={dailyPulse} compactOnMobile /> : null}
+
+      <DemandHubAdSlot slot={hubAds?.radar_pulse_below ?? null} className="my-1" />
 
       <div className="rounded-2xl border-2 border-teal-100 bg-white p-4 shadow-sm ring-1 ring-teal-50">
         <p className="text-sm font-semibold text-slate-800">지역 찾기</p>
@@ -317,6 +329,7 @@ export default function DemandHubWorkspace({
                 focusRowKey={focusRowKey}
                 rtmsSeries={rtmsSeriesState}
                 keywordStore={keywordStoreState}
+                scoreContext={liveScoreContext}
               />
             </DemandDataBlindOverlay>
           ) : null}
@@ -324,9 +337,12 @@ export default function DemandHubWorkspace({
       ) : null}
 
       {!hasSelection ? (
-        <p className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-sm text-slate-500">
-          지역을 선택하면 비교·그래프가 나타납니다
-        </p>
+        <div className="space-y-4">
+          <DemandHubAdSlot slot={hubAds?.radar_empty_state ?? null} variant="card" />
+          <p className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-sm text-slate-500">
+            지역을 선택하면 비교·그래프가 나타납니다
+          </p>
+        </div>
       ) : scopeRows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-amber-200 bg-amber-50/50 py-8 text-center text-sm text-amber-900">
           데이터 준비 중입니다
@@ -503,6 +519,10 @@ export default function DemandHubWorkspace({
           </p>
         </div>
       )}
+
+      {showTableBelowAd ? (
+        <DemandHubAdSlot slot={hubAds?.radar_table_below ?? null} className="mt-2 hidden md:block" />
+      ) : null}
     </div>
   );
 }

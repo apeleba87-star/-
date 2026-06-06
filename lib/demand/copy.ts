@@ -40,9 +40,9 @@ export const DEMAND_METRIC_LABELS = {
   /** @deprecated 열 분리 전 라벨 */
   packing: "이사 관련 검색량",
   moveInClean: "입주청소 관련 검색량",
-  demandScore: "지역수요점수",
+  demandScore: "입주 예상 점수",
   /** @deprecated demandScore */
-  composite: "지역수요점수",
+  composite: "입주 예상 점수",
 } as const;
 
 /** @deprecated DEMAND_METRIC_LABELS.packingVolume / moveInVolume 과 동일 */
@@ -62,7 +62,7 @@ export const DEMAND_SCORE_METHOD_NOTE =
   "신호월 RTMS·전국 검색을 정규화·결합(세부 가중치는 서비스 내부 기준).";
 
 export const DEMAND_HAND_FREE_SUPPLEMENTARY_NOTE =
-  "보조 — 앞 2달 손없는날 검색 MoM (이사 계획 선행 신호, 지역수요점수·전국 관심도에 미포함)";
+  "보조 — 앞 2달 손없는날 검색 MoM (이사 계획 선행 신호, 입주 예상 점수·전국 관심도에 미포함)";
 
 export const DEMAND_NATIONAL_INTEREST_LABEL = "전국 이사 관심 지수";
 

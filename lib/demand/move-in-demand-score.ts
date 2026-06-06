@@ -140,6 +140,31 @@ function medianDistrictActivity(
   return medianPositive(activities);
 }
 
+export type DistrictMedianContext = {
+  districtMedianByYyyymm?: Readonly<Record<string, number>> | null;
+  rtmsSnapshotYyyymm?: string | null;
+  districtMedianActivity?: number | null;
+};
+
+/** 카드·그래프 — 전국 시군구 중앙 RTMS 활동량 (lazy load 시 partial series 보정) */
+export function districtMedianForSignal(
+  ctx: DistrictMedianContext | null | undefined,
+  rtmsSeries: DemandRtmsSeriesStore,
+  signalYm: string
+): number {
+  const fromMap = ctx?.districtMedianByYyyymm?.[signalYm];
+  if (fromMap != null && fromMap > 0) return fromMap;
+  if (
+    ctx?.rtmsSnapshotYyyymm &&
+    signalYm === ctx.rtmsSnapshotYyyymm &&
+    ctx.districtMedianActivity != null &&
+    ctx.districtMedianActivity > 0
+  ) {
+    return ctx.districtMedianActivity;
+  }
+  return medianDistrictActivity(rtmsSeries, signalYm);
+}
+
 /** 전국 시군구 스냅샷(280곳) 기준 중앙 활동량 — lazy load 시 수요점수 보정 */
 export function districtMedianActivityFromSnapshot(
   byRegionKey: DemandRtmsDistrictSnapshot["byRegionKey"]
@@ -334,7 +359,8 @@ export function computeMoveInDemandScoreForRegion(
 export function buildMoveInDemandScoreMonthlySeries(
   keywordStore: DemandKeywordStore | null | undefined,
   rtmsSeries: DemandRtmsSeriesStore,
-  rtmsRegionKey: string
+  rtmsRegionKey: string,
+  medianContext?: DistrictMedianContext | null
 ): DemandChartPoint[] {
   const maps = nationalMapsFromKeywordStore(keywordStore);
   const regionSeries = rtmsSeries[rtmsRegionKey] ?? [];
@@ -354,7 +380,7 @@ export function buildMoveInDemandScoreMonthlySeries(
     const regional = buildRegionalMoveInSignal(
       signalYm,
       regionSeries,
-      medianDistrictActivity(rtmsSeries, signalYm)
+      districtMedianForSignal(medianContext, rtmsSeries, signalYm)
     );
     if (!regional) continue;
 
