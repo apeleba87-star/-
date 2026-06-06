@@ -1,20 +1,15 @@
-import type { Metadata } from "next";
 import HomeCleanidexNarrative from "@/components/home/HomeCleanidexNarrative";
-import { defaultDescription, defaultTitle, getBaseUrl, SITE_NAME } from "@/lib/seo";
+import {
+  buildPageMetadata,
+  cleanidexAboutDescription,
+  cleanidexAboutTitle,
+} from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `클린아이덱스 소개 | ${SITE_NAME}`,
-  description: defaultDescription,
-  alternates: { canonical: "/cleanidex/about" },
-  openGraph: {
-    title: defaultTitle,
-    description: defaultDescription,
-    url: `${getBaseUrl()}/cleanidex/about`,
-    siteName: SITE_NAME,
-    locale: "ko_KR",
-    type: "website",
-  },
-};
+export const metadata = buildPageMetadata({
+  title: cleanidexAboutTitle,
+  description: cleanidexAboutDescription,
+  path: "/cleanidex/about",
+});
 
 export default function CleanidexAboutPage() {
   return (

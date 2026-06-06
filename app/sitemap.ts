@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { getBaseUrl } from "@/lib/seo";
+import { DEMAND_REGION_REGISTRY } from "@/lib/demand/region-registry.generated";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
@@ -35,6 +36,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency,
     priority,
   }));
+
+  for (const city of DEMAND_REGION_REGISTRY) {
+    for (const district of city.districts) {
+      entries.push({
+        url: `${base}/demand/region/${district.slug}`,
+        lastModified: now,
+        changeFrequency: "weekly" as const,
+        priority: 0.62,
+      });
+    }
+  }
 
   const supabase = createClient();
 

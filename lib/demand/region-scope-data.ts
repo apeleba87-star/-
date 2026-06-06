@@ -12,6 +12,11 @@ export type DemandRegionScopePayload = {
   rtmsSeries: DemandRtmsSeriesStore;
 };
 
+export type DemandRegionScopeResponse = DemandRegionScopePayload & {
+  access: import("@/lib/demand/usage-limits").DemandUsageAccess;
+  quotaBlockedKeys: string[];
+};
+
 /** 선택 지역 키워드·RTMS 시계열 (허브 lazy load) */
 export async function getDemandRegionScopeData(
   selections: DemandRegionSelection[]

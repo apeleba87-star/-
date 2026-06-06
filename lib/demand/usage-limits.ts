@@ -1,0 +1,30 @@
+/** 로그인 사용자 — KST 하루 지역 full view 횟수 (동일 지역 재조회는 1회) */
+export const DEMAND_DAILY_REGION_VIEW_LIMIT = 5;
+
+export type DemandAccessTier = "guest" | "member" | "admin";
+
+export type DemandUsageAccess = {
+  tier: DemandAccessTier;
+  dailyLimit: number;
+  usedCount: number;
+  remaining: number;
+  unlockedRegionKeys: string[];
+  /** 숫자·차트 등 실데이터 열람 가능 */
+  canViewData: boolean;
+};
+
+export const DEMAND_USAGE_GUEST_MESSAGE =
+  "로그인하면 하루 5개 지역의 입주·거래·검색 데이터를 확인할 수 있습니다.";
+
+export const DEMAND_USAGE_QUOTA_MESSAGE =
+  "오늘 확인 가능한 지역(5곳)을 모두 사용했습니다. 내일 0시(KST)에 다시 열립니다.";
+
+export const DEMAND_USAGE_REGION_BLIND_HINT = "지역별 수치는 로그인 후 확인 · 하루 5곳";
+
+export const DEMAND_USAGE_REGION_QUOTA_HINT = "오늘 확인 횟수를 초과한 지역입니다.";
+
+export function isDemandRegionKeyUnlocked(access: DemandUsageAccess, regionKey: string): boolean {
+  if (access.tier === "admin") return true;
+  if (access.tier === "guest") return false;
+  return access.unlockedRegionKeys.includes(regionKey);
+}

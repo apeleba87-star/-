@@ -5,8 +5,15 @@ import TendersListWithFilters from "./TendersListWithFilters";
 import { getActiveTendersIndustryListAd } from "@/lib/ads";
 import { countOpenTenders, parseGugunParam } from "@/lib/tenders/user-focus";
 import type { UserTenderFocusRow } from "@/lib/tenders/user-focus";
+import { buildPageMetadata, tenderListDescription, tenderListTitle } from "@/lib/seo";
 
 export const revalidate = 60;
+
+export const metadata = buildPageMetadata({
+  title: tenderListTitle,
+  description: tenderListDescription,
+  path: "/tenders",
+});
 
 const SORT_OPTIONS = ["posted", "deadline", "amount-high", "amount-low"] as const;
 const REGION_OPTIONS = [

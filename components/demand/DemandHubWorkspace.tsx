@@ -32,8 +32,16 @@ import {
 import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import type { DailyPulseData } from "@/lib/demand/daily-pulse";
 import { mergeDemandKeywordStores, mergeRtmsSeries } from "@/lib/demand/merge-demand-data";
-import type { DemandRegionScopePayload } from "@/lib/demand/region-scope-data";
+import type { DemandRegionScopeResponse } from "@/lib/demand/region-scope-data";
+import {
+  DEMAND_USAGE_REGION_BLIND_HINT,
+  DEMAND_USAGE_REGION_QUOTA_HINT,
+  isDemandRegionKeyUnlocked,
+  type DemandUsageAccess,
+} from "@/lib/demand/usage-limits";
 import { isDemandRegionScopeLoaded } from "@/lib/demand/region-scope-loaded";
+import DemandDataBlindOverlay from "@/components/demand/DemandDataBlindOverlay";
+import DemandUsageBanner from "@/components/demand/DemandUsageBanner";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import { cn } from "@/lib/utils";
 
@@ -41,11 +49,13 @@ function ClickableMetricCell({
   metricId,
   active,
   onClick,
+  blind,
   children,
 }: {
   metricId: DemandMetricId;
   active: boolean;
   onClick: () => void;
+  blind?: boolean;
   children: ReactNode;
 }) {
   const theme = demandMetricChartTheme(metricId);
@@ -61,10 +71,18 @@ function ClickableMetricCell({
         )}
         aria-pressed={active}
       >
-        {children}
+        <DemandDataBlindOverlay blind={!!blind} className="inline-block min-w-[4rem]">
+          {children}
+        </DemandDataBlindOverlay>
       </button>
     </td>
   );
+}
+
+function isRowDataBlinded(access: DemandUsageAccess, rowKey: string): boolean {
+  if (access.tier === "admin") return false;
+  if (access.tier === "guest") return true;
+  return !isDemandRegionKeyUnlocked(access, rowKey);
 }
 
 type Props = {
@@ -74,6 +92,7 @@ type Props = {
   keywordStore?: DemandKeywordStore | null;
   scoreContext?: DemandScoreContext | null;
   dailyPulse?: DailyPulseData | null;
+  initialAccess: DemandUsageAccess;
 };
 
 export default function DemandHubWorkspace({
@@ -83,7 +102,9 @@ export default function DemandHubWorkspace({
   keywordStore = null,
   scoreContext = null,
   dailyPulse = null,
+  initialAccess,
 }: Props) {
+  const [access, setAccess] = useState<DemandUsageAccess>(initialAccess);
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
   const [chartRowKey, setChartRowKey] = useState<string | null>(null);
@@ -122,7 +143,8 @@ export default function DemandHubWorkspace({
           body: JSON.stringify({ selections: [sel] }),
         });
         if (!res.ok) return;
-        const data = (await res.json()) as DemandRegionScopePayload;
+        const data = (await res.json()) as DemandRegionScopeResponse;
+        setAccess(data.access);
         setKeywordStoreState((prev) =>
           mergeDemandKeywordStores(prev ?? { byRegion: {} }, data.keywordStore)
         );
@@ -181,6 +203,17 @@ export default function DemandHubWorkspace({
     return demandRegionSelectionKey(scopeRows[0].selection);
   }, [scopeRows, chartRowKey]);
 
+  const focusRowBlinded = focusRowKey ? isRowDataBlinded(access, focusRowKey) : access.tier === "guest";
+  const anyRegionBlinded =
+    access.tier === "guest" ||
+    scopeRows.some((r) => isRowDataBlinded(access, demandRegionSelectionKey(r.selection)));
+  const regionBlindHint =
+    access.tier === "guest"
+      ? DEMAND_USAGE_REGION_BLIND_HINT
+      : access.remaining === 0 && anyRegionBlinded
+        ? DEMAND_USAGE_REGION_QUOTA_HINT
+        : null;
+
   function onAdd(sel: DemandRegionSelection) {
     const key = demandRegionSelectionKey(sel);
     setSelections((prev) => {
@@ -221,6 +254,8 @@ export default function DemandHubWorkspace({
 
   return (
     <div className="space-y-4">
+      <DemandUsageBanner access={access} />
+
       {dailyPulse ? <DemandHubPulseSection data={dailyPulse} compactOnMobile /> : null}
 
       <div className="rounded-2xl border-2 border-teal-100 bg-white p-4 shadow-sm ring-1 ring-teal-50">
@@ -241,37 +276,49 @@ export default function DemandHubWorkspace({
 
       {hasSelection && primaryRow ? (
         <>
+          {regionBlindHint ? (
+            <p className="text-xs text-slate-600">{regionBlindHint}</p>
+          ) : null}
+
           <div className="hidden md:block">
-            <DemandScopeSummaryStrip
+            <DemandDataBlindOverlay blind={focusRowBlinded}>
+              <DemandScopeSummaryStrip
+                rows={scopeRows}
+                focusRowKey={focusRowKey}
+                selectedMetric={selectedMetric}
+                onSelectMetric={(id) => {
+                  const row =
+                    scopeRows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ??
+                    primaryRow;
+                  if (row) selectMetric(row, id);
+                }}
+              />
+            </DemandDataBlindOverlay>
+          </div>
+
+          <DemandDataBlindOverlay
+            blind={scopeRows.every((r) => isRowDataBlinded(access, demandRegionSelectionKey(r.selection)))}
+          >
+            <DemandScopeCompareCards
               rows={scopeRows}
               focusRowKey={focusRowKey}
               selectedMetric={selectedMetric}
-              onSelectMetric={(id) => {
-                const row =
-                  scopeRows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ??
-                  primaryRow;
-                if (row) selectMetric(row, id);
-              }}
+              onFocusRow={setChartRowKey}
+              onSelectMetric={selectMetric}
+              rtmsBaseMonthLabel={rtmsBaseMonthLabel}
             />
-          </div>
-
-          <DemandScopeCompareCards
-            rows={scopeRows}
-            focusRowKey={focusRowKey}
-            selectedMetric={selectedMetric}
-            onFocusRow={setChartRowKey}
-            onSelectMetric={selectMetric}
-            rtmsBaseMonthLabel={rtmsBaseMonthLabel}
-          />
+          </DemandDataBlindOverlay>
 
           {selectedMetric && scopeRows.length > 0 ? (
-            <DemandMetricChart
-              rows={scopeRows}
-              metricId={selectedMetric}
-              focusRowKey={focusRowKey}
-              rtmsSeries={rtmsSeriesState}
-              keywordStore={keywordStoreState}
-            />
+            <DemandDataBlindOverlay blind={focusRowBlinded}>
+              <DemandMetricChart
+                rows={scopeRows}
+                metricId={selectedMetric}
+                focusRowKey={focusRowKey}
+                rtmsSeries={rtmsSeriesState}
+                keywordStore={keywordStoreState}
+              />
+            </DemandDataBlindOverlay>
           ) : null}
         </>
       ) : null}
@@ -319,6 +366,7 @@ export default function DemandHubWorkspace({
                 {scopeRows.map((row) => {
                   const rowKey = demandRegionSelectionKey(row.selection);
                   const isFocusRow = focusRowKey === rowKey;
+                  const rowBlinded = isRowDataBlinded(access, rowKey);
                   return (
                     <tr
                       key={rowKey}
@@ -356,6 +404,7 @@ export default function DemandHubWorkspace({
                         metricId="demandScore"
                         active={isFocusRow && selectedMetric === "demandScore"}
                         onClick={() => selectMetric(row, "demandScore")}
+                        blind={rowBlinded}
                       >
                         <div className="text-left">
                           <DemandHeatBadge
@@ -372,6 +421,7 @@ export default function DemandHubWorkspace({
                         metricId="sale"
                         active={isFocusRow && selectedMetric === "sale"}
                         onClick={() => selectMetric(row, "sale")}
+                        blind={rowBlinded}
                       >
                         <DemandTradeMetricCell count={row.saleCount} momPercent={row.saleMom} />
                       </ClickableMetricCell>
@@ -379,6 +429,7 @@ export default function DemandHubWorkspace({
                         metricId="jeonse"
                         active={isFocusRow && selectedMetric === "jeonse"}
                         onClick={() => selectMetric(row, "jeonse")}
+                        blind={rowBlinded}
                       >
                         <DemandTradeMetricCell count={row.jeonseCount} momPercent={row.jeonseMom} />
                       </ClickableMetricCell>
@@ -387,6 +438,7 @@ export default function DemandHubWorkspace({
                         metricId="packingVolume"
                         active={isFocusRow && selectedMetric === "packingVolume"}
                         onClick={() => selectMetric(row, "packingVolume")}
+                        blind={rowBlinded}
                       >
                         <DemandSearchVolumeCell metric={row.packing} />
                       </ClickableMetricCell>
@@ -394,6 +446,7 @@ export default function DemandHubWorkspace({
                         metricId="packingIndex"
                         active={isFocusRow && selectedMetric === "packingIndex"}
                         onClick={() => selectMetric(row, "packingIndex")}
+                        blind={rowBlinded}
                       >
                         <DemandSearchIndexCell metric={row.packing} />
                       </ClickableMetricCell>
@@ -401,6 +454,7 @@ export default function DemandHubWorkspace({
                         metricId="moveInVolume"
                         active={isFocusRow && selectedMetric === "moveInVolume"}
                         onClick={() => selectMetric(row, "moveInVolume")}
+                        blind={rowBlinded}
                       >
                         <DemandSearchVolumeCell metric={row.moveInClean} />
                       </ClickableMetricCell>
@@ -408,6 +462,7 @@ export default function DemandHubWorkspace({
                         metricId="moveInIndex"
                         active={isFocusRow && selectedMetric === "moveInIndex"}
                         onClick={() => selectMetric(row, "moveInIndex")}
+                        blind={rowBlinded}
                       >
                         <DemandSearchIndexCell metric={row.moveInClean} />
                       </ClickableMetricCell>

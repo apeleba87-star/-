@@ -15,18 +15,16 @@ import {
   Briefcase,
   UserPlus,
   Calculator,
-  Newspaper,
   Shield,
   Landmark,
   ChevronDown,
   BarChart3,
   Layers,
-  BookOpen,
   Sparkles,
-  HelpCircle,
   Handshake,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { withAdminNavLabel } from "@/lib/admin-nav-label";
 import HeaderAuth from "./HeaderAuth";
 import NotificationBell from "./notifications/NotificationBell";
 import TenderFocusNavChip from "./TenderFocusNavChip";
@@ -37,6 +35,7 @@ type NavItem = {
   Icon: typeof Home;
   /** 데스크톱 오른쪽 관리자 영역용 짧은 라벨 */
   shortLabel?: string;
+  adminOnly?: boolean;
 };
 
 type NavSubItem = {
@@ -53,6 +52,8 @@ type NavGroup = {
   label: string;
   Icon: typeof Home;
   items: NavSubItem[];
+  /** true — 관리자만 노출, 라벨에 [관] 접두 */
+  adminOnly?: boolean;
 };
 
 type NavMegaGroup = {
@@ -63,7 +64,7 @@ type NavMegaGroup = {
 };
 
 type PrimaryNavEntry =
-  | ({ kind: "link" } & NavItem)
+  | ({ kind: "link"; adminOnly?: boolean } & NavItem)
   | NavGroup
   | NavMegaGroup;
 
@@ -77,14 +78,14 @@ type MobileDrawerRow =
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "입주레이더", Icon: Sparkles },
-  { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText },
+  { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText, adminOnly: true },
   {
     kind: "mega",
     label: "데이터 분석",
     Icon: BarChart3,
     columns: [
       {
-        title: "나라장터 공고",
+        title: "나라장터",
         items: [
           { href: "/tenders", label: "입찰 공고", Icon: Gavel },
           { href: "/tender-awards", label: "낙찰 공고", Icon: Trophy },
@@ -92,7 +93,7 @@ const primaryNavItems: PrimaryNavEntry[] = [
         ],
       },
       {
-        title: "일간 리포트",
+        title: "리포트",
         items: [
           { href: "/news?section=report&category=report", label: "입찰", Icon: Gavel },
           { href: "/news?section=report&category=award_report", label: "낙찰", Icon: Trophy },
@@ -100,35 +101,29 @@ const primaryNavItems: PrimaryNavEntry[] = [
           { href: "/job-market-report", label: "일당", Icon: Landmark },
         ],
       },
+      {
+        title: "기타",
+        items: [{ href: "/estimate", label: "견적 계산기", Icon: Calculator }],
+      },
     ],
   },
   {
     kind: "group",
     label: "서비스",
     Icon: Layers,
+    adminOnly: true,
     items: [
       { href: "/listings", label: "현장 마켓", Icon: Briefcase },
       { href: "/partners", label: "협력 센터", Icon: Handshake },
       { href: "/jobs", label: "인력 센터", Icon: UserPlus },
     ],
   },
-  {
-    kind: "group",
-    label: "콘텐츠",
-    Icon: BookOpen,
-    items: [
-      { label: "업계소식", Icon: Newspaper, disabled: true },
-      { href: "/estimate", label: "견적 계산기", Icon: Calculator },
-      { label: "청소 기술", Icon: FileText, disabled: true },
-      { label: "이용 안내", Icon: HelpCircle, disabled: true },
-    ],
-  },
 ];
 
-/** 모바일 드로어 + 데스크톱 오른쪽 (관리자만) */
+/** 모바일 드로어 + 데스크톱 오른쪽 (관리자·편집자) */
 const adminNavItems: NavItem[] = [
-  { href: "/admin", label: "관리자 모드", shortLabel: "관리자", Icon: Shield },
-  { href: "/archive", label: "뉴스레터 아카이브", shortLabel: "아카이브", Icon: FileText },
+  { href: "/admin", label: "관리자 모드", shortLabel: "관리자", Icon: Shield, adminOnly: true },
+  { href: "/archive", label: "뉴스레터 아카이브", shortLabel: "아카이브", Icon: FileText, adminOnly: true },
 ];
 
 const iconBtnClass =
@@ -180,6 +175,30 @@ function navEntryActive(
   );
 }
 
+function primaryNavForUser(items: PrimaryNavEntry[], isAdmin: boolean): PrimaryNavEntry[] {
+  return items
+    .map((entry) => {
+      if (entry.kind === "link" && entry.adminOnly) {
+        if (!isAdmin) return null;
+        return { ...entry, label: withAdminNavLabel(entry.label) };
+      }
+      if (entry.kind === "group" && entry.adminOnly) {
+        if (!isAdmin) return null;
+        return { ...entry, label: withAdminNavLabel(entry.label) };
+      }
+      return entry;
+    })
+    .filter((entry): entry is PrimaryNavEntry => entry != null);
+}
+
+function adminNavForUser(items: NavItem[]): NavItem[] {
+  return items.map((item) => ({
+    ...item,
+    label: withAdminNavLabel(item.label),
+    shortLabel: item.shortLabel ? withAdminNavLabel(item.shortLabel) : undefined,
+  }));
+}
+
 function primaryToMobileRows(entry: PrimaryNavEntry): MobileDrawerRow[] {
   if (entry.kind === "link") return [entry];
   if (entry.kind === "mega") {
@@ -224,19 +243,13 @@ export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
-  const visiblePrimaryNavItems = primaryNavItems
-    .map((entry) => {
-      if (entry.kind === "link" && entry.href === "/cleanidex") {
-        return isAdmin ? entry : null;
-      }
-      return entry;
-    })
-    .filter((entry): entry is PrimaryNavEntry => entry != null);
+  const visiblePrimaryNavItems = primaryNavForUser(primaryNavItems, isAdmin);
+  const visibleAdminNavItems = adminNavForUser(adminNavItems);
 
   const mobileDrawerItems: MobileDrawerRow[] = [
     ...visiblePrimaryNavItems.flatMap(primaryToMobileRows),
     ...(showAdminNav
-      ? adminNavItems.map(
+      ? visibleAdminNavItems.map(
           (item): MobileDrawerRow => ({ kind: "link", ...item }),
         )
       : []),
@@ -396,7 +409,7 @@ export default function Header() {
                     <div
                       className={`invisible absolute left-1/2 top-full z-[60] mt-1 hidden -translate-x-1/2 rounded-xl border border-slate-200/90 bg-white py-2 shadow-lg opacity-0 transition-[opacity,visibility] duration-150 group-hover/item:visible group-hover/item:flex group-hover/item:opacity-100 group-focus-within/item:visible group-focus-within/item:flex group-focus-within/item:opacity-100 ${
                         isMega
-                          ? "min-w-[20rem] flex-row gap-0 px-0"
+                          ? "min-w-[28rem] flex-row gap-0 px-0"
                           : "min-w-[11rem] flex-col py-1"
                       }`}
                       role="menu"
@@ -510,7 +523,7 @@ export default function Header() {
             <NotificationBell isLoggedIn={isLoggedIn} />
             {showAdminNav ? (
               <div className="hidden items-center gap-0.5 border-r border-slate-200/80 pr-2 lg:flex">
-                {adminNavItems.map((item) => {
+                {visibleAdminNavItems.map((item) => {
                   const isActive = navLinkActive(
                     pathname,
                     item.href,

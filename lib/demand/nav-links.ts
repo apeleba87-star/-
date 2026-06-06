@@ -1,3 +1,5 @@
+import { withAdminNavLabel } from "@/lib/admin-nav-label";
+
 export type DemandNavLink = {
   href: string;
   label: string;
@@ -26,7 +28,7 @@ const DEMAND_ADMIN_EXACT_PATHS = new Set(
 export function demandNavLinksForUser(isAdmin: boolean): DemandNavLink[] {
   const visible = isAdmin ? DEMAND_NAV_LINKS : DEMAND_NAV_LINKS.filter((l) => !l.adminOnly);
   return visible.map((link) =>
-    link.adminOnly ? { ...link, label: `[관] ${link.label}` } : link
+    link.adminOnly ? { ...link, label: withAdminNavLabel(link.label) } : link
   );
 }
 

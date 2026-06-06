@@ -12,7 +12,15 @@ import {
   parseGugunParam,
   isValidSido,
 } from "@/lib/tenders/user-focus";
+import { buildPageMetadata, tenderAwardListDescription, tenderAwardListTitle } from "@/lib/seo";
+
 export const revalidate = 60;
+
+export const metadata = buildPageMetadata({
+  title: tenderAwardListTitle,
+  description: tenderAwardListDescription,
+  path: "/tender-awards",
+});
 
 const PAGE_SIZE = 50;
 

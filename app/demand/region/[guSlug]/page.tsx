@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import DemandShell from "@/components/demand/DemandShell";
 import DemandIndexHero from "@/components/demand/DemandIndexHero";
 import DemandDriverList from "@/components/demand/DemandDriverList";
@@ -8,15 +9,28 @@ import DemandRegionExtras from "@/components/demand/DemandRegionExtras";
 import ChannelHints from "@/components/demand/ChannelHints";
 import { getDemandDistrictBySlug, DEMAND_HITS } from "@/lib/demand/dummy-data";
 import { guSlugToName, isValidGuSlug } from "@/lib/demand/slugs";
+import {
+  buildPageMetadata,
+  radarRegionDescription,
+  radarRegionTitle,
+  resolveDemandRegionForSeo,
+} from "@/lib/seo";
 
 type Props = { params: Promise<{ guSlug: string }> };
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { guSlug } = await params;
-  const gu = guSlugToName(guSlug);
-  return {
-    title: gu ? `${gu} 입주수요 | 클린아이덱스` : "지역 상세",
-  };
+  const resolved = resolveDemandRegionForSeo(guSlug);
+  const gu = resolved?.gu ?? guSlugToName(guSlug);
+  if (!gu) {
+    return { title: "지역 상세" };
+  }
+  const regionLabel = resolved ? `${resolved.cityLabel} ${gu}` : gu;
+  return buildPageMetadata({
+    title: radarRegionTitle(regionLabel),
+    description: radarRegionDescription(gu, resolved?.cityLabel),
+    path: `/demand/region/${guSlug}`,
+  });
 }
 
 export default async function DemandRegionDetailPage({ params }: Props) {
