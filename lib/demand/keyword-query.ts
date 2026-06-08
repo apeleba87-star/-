@@ -61,7 +61,32 @@ type RawMonthly = {
 };
 
 const SEARCHAD_HISTORY_MONTHS = 12;
+/** 1년 검색지수 차트 — datalab_month는 일간 조회창(40일) 밖에 있어도 로드 */
+const DATALAB_MONTHLY_INDEX_LOOKBACK_MONTHS = 13;
 const DATALAB_DAILY_SOURCES = new Set(["datalab", "naver_trend"]);
+const DATALAB_MONTHLY_INDEX_SOURCE = "datalab_month";
+
+function monthStartMonthsAgo(months: number): string {
+  const [y, m] = getKstTodayString().split("-").map(Number);
+  const d = new Date(y, (m ?? 1) - 1 - (months - 1), 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+function dedupeKeywordDailyRows(rows: RawDaily[]): RawDaily[] {
+  const byKey = new Map<string, RawDaily>();
+  for (const row of rows) {
+    const key = [
+      row.region_scope,
+      row.region_key,
+      row.keyword_key,
+      row.period_date,
+      row.source,
+      row.search_phrase ?? "",
+    ].join("\0");
+    byKey.set(key, row);
+  }
+  return [...byKey.values()];
+}
 
 type VolumeMonthAccum = { sum: number; belowTenOnly: boolean };
 
@@ -208,6 +233,82 @@ async function fetchKeywordDailyRows(
     dailyRows = fallbackRes.data as RawDaily[] | null;
   }
   return dailyRows;
+}
+
+async function fetchKeywordMonthlyIndexRows(
+  supabase: SupabaseReader,
+  sinceMonthStart: string,
+  regionRefs?: DemandKeywordRegionRef[]
+): Promise<RawDaily[] | null> {
+  const select =
+    "keyword_key, region_scope, region_key, search_phrase, period_date, index_ratio, source";
+
+  async function queryFiltered(limit: number) {
+    if (!regionRefs?.length) {
+      return supabase
+        .from("demand_keyword_daily")
+        .select(select)
+        .eq("source", DATALAB_MONTHLY_INDEX_SOURCE)
+        .gte("period_date", sinceMonthStart)
+        .order("period_date", { ascending: true })
+        .limit(limit);
+    }
+
+    const national = regionRefs.some((r) => r.regionScope === "national");
+    const cityKeys = [...new Set(regionRefs.filter((r) => r.regionScope === "city").map((r) => r.regionKey))];
+    const districtKeys = [
+      ...new Set(regionRefs.filter((r) => r.regionScope === "district").map((r) => r.regionKey)),
+    ];
+
+    const queries = [];
+    if (national) {
+      queries.push(
+        supabase
+          .from("demand_keyword_daily")
+          .select(select)
+          .eq("region_scope", "national")
+          .eq("region_key", "kr")
+          .eq("source", DATALAB_MONTHLY_INDEX_SOURCE)
+          .gte("period_date", sinceMonthStart)
+          .order("period_date", { ascending: true })
+          .limit(limit)
+      );
+    }
+    if (cityKeys.length) {
+      queries.push(
+        supabase
+          .from("demand_keyword_daily")
+          .select(select)
+          .eq("region_scope", "city")
+          .in("region_key", cityKeys)
+          .eq("source", DATALAB_MONTHLY_INDEX_SOURCE)
+          .gte("period_date", sinceMonthStart)
+          .order("period_date", { ascending: true })
+          .limit(limit)
+      );
+    }
+    if (districtKeys.length) {
+      queries.push(
+        supabase
+          .from("demand_keyword_daily")
+          .select(select)
+          .eq("region_scope", "district")
+          .in("region_key", districtKeys)
+          .eq("source", DATALAB_MONTHLY_INDEX_SOURCE)
+          .gte("period_date", sinceMonthStart)
+          .order("period_date", { ascending: true })
+          .limit(limit)
+      );
+    }
+
+    const results = await Promise.all(queries);
+    const rows = results.flatMap((r) => (r.data ?? []) as unknown as RawDaily[]);
+    return { data: rows, error: results.find((r) => r.error)?.error ?? null };
+  }
+
+  const res = await queryFiltered(regionRefs?.length ? 3000 : 12000);
+  if (res.error) return null;
+  return res.data as RawDaily[];
 }
 
 async function fetchKeywordMonthlyRows(
@@ -452,13 +553,21 @@ async function loadDemandKeywordStore(
       7
     );
 
-    const [dailyRows, monthlyRes] = await Promise.all([
+    const monthlyIndexSince = monthStartMonthsAgo(DATALAB_MONTHLY_INDEX_LOOKBACK_MONTHS);
+
+    const [dailyRows, monthlyIndexRows, monthlyRes] = await Promise.all([
       fetchKeywordDailyRows(supabase, sinceDate, regionRefs),
+      fetchKeywordMonthlyIndexRows(supabase, monthlyIndexSince, regionRefs),
       fetchKeywordMonthlyRows(supabase, volumeSinceYyyymm, regionRefs),
     ]);
 
+    const mergedDailyRows = dedupeKeywordDailyRows([
+      ...(dailyRows ?? []),
+      ...(monthlyIndexRows ?? []),
+    ]);
+
     return assembleDemandKeywordStore(
-      dailyRows,
+      mergedDailyRows.length > 0 ? mergedDailyRows : null,
       (monthlyRes.data ?? null) as RawMonthly[] | null,
       fallbackBundle
     );

@@ -55,9 +55,19 @@ const METRIC_ROWS: MetricRow[] = [
     render: (row) => <DemandTradeMetricCell count={row.saleCount} momPercent={row.saleMom} />,
   },
   {
+    id: "packingVolume",
+    label: DEMAND_METRIC_LABELS.packingVolume,
+    render: (row) => <DemandSearchVolumeCell metric={row.packing} />,
+  },
+  {
     id: "packingIndex",
     label: DEMAND_METRIC_LABELS.packingIndex,
     render: (row) => <DemandSearchIndexCell metric={row.packing} />,
+  },
+  {
+    id: "moveInVolume",
+    label: DEMAND_METRIC_LABELS.moveInVolume,
+    render: (row) => <DemandSearchVolumeCell metric={row.moveInClean} />,
   },
   {
     id: "moveInIndex",

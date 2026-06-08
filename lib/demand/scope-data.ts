@@ -432,6 +432,30 @@ function yyyymmToChartPeriod(yyyymm: string): string {
   return `${y.slice(2)}.${Number(m)}`;
 }
 
+/** 일별 indexRatio 맵 → 월별 검색지수 차트 (1년 뷰용) */
+function monthlyIndexPointsFromDailyByYmd(
+  byYmd: Record<string, number> | undefined,
+  maxMonths = 12
+): DemandChartPoint[] {
+  if (!byYmd) return [];
+  const byMonth = new Map<string, { sum: number; n: number }>();
+  for (const [ymd, ratio] of Object.entries(byYmd)) {
+    if (!Number.isFinite(ratio)) continue;
+    const ym = ymd.slice(0, 7);
+    const cur = byMonth.get(ym) ?? { sum: 0, n: 0 };
+    cur.sum += ratio;
+    cur.n += 1;
+    byMonth.set(ym, cur);
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-maxMonths)
+    .map(([ym, { sum, n }]) => ({
+      period: yyyymmToChartPeriod(ym),
+      value: Math.round((n > 0 ? sum / n : 0) * 10) / 10,
+    }));
+}
+
 function buildRtmsTradeChartSeries(
   row: DemandScopeTableRow,
   metricId: "sale" | "jeonse",
@@ -715,32 +739,23 @@ export function buildDemandMetricChartSeries(
       };
     }
 
-    if (
-      searchRange === "1y" &&
-      indexLive &&
-      rowSeries &&
-      rowSeries.length > 0 &&
-      (!monthlySeries || monthlySeries.length < MIN_MONTHLY_POINTS_FOR_YEAR_CHART)
-    ) {
-      const points = rowSeries.slice(-365);
-      return {
-        chartKind: "index",
-        subtitle: `키워드 「${slice.keyword}」 · 데이터랩 일별 상대지수(0~100) · ${points.length}일 (월별 ${monthlySeries?.length ?? 0}개월 — 12개월 미만)${levelHint}`,
-        points,
-      };
-    }
-
-    if (
-      indexLive &&
-      monthlySeries &&
-      monthlySeries.length >= MIN_MONTHLY_POINTS_FOR_YEAR_CHART
-    ) {
-      const points = monthlySeries.slice(-12);
-      return {
-        chartKind: "index",
-        subtitle: `${slice.keyword} · 검색지수 · ${points.length}개월${levelHint}`,
-        points,
-      };
+    if (!isDaily && indexLive) {
+      let monthlyPoints: DemandChartPoint[] = [];
+      if (monthlySeries && monthlySeries.length >= MIN_MONTHLY_POINTS_FOR_YEAR_CHART) {
+        monthlyPoints = monthlySeries.slice(-12);
+      } else {
+        const aggregated = monthlyIndexPointsFromDailyByYmd(row.keywordDailyIndexByYmd?.[key]);
+        if (aggregated.length >= MIN_MONTHLY_POINTS_FOR_YEAR_CHART) {
+          monthlyPoints = aggregated.slice(-12);
+        }
+      }
+      if (monthlyPoints.length >= MIN_MONTHLY_POINTS_FOR_YEAR_CHART) {
+        return {
+          chartKind: "index",
+          subtitle: `${slice.keyword} · 검색지수 · ${monthlyPoints.length}개월${levelHint}`,
+          points: monthlyPoints,
+        };
+      }
     }
 
     const periods = isDaily ? dayPeriods : monthPeriods;
