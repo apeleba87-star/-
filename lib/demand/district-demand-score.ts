@@ -1,12 +1,15 @@
 import { DEMAND_HEAT_BAND_LABELS, formatDemandYyyymmLabel } from "@/lib/demand/copy";
 import { computeDistrictRtmsIndex } from "@/lib/demand/district-rtms-index";
+import type { DemandHeatBandMeta } from "@/lib/demand/demand-heat-band";
+import { resolveDemandHeatBand } from "@/lib/demand/demand-heat-band";
+import { formatDemandHeatPercentileLabel, formatDemandHeatPercentileSentence } from "@/lib/demand/demand-heat-copy";
 import type { NationalMovingInterest } from "@/lib/demand/moving-interest";
 import type {
   MoveInDemandScoreResult,
   NationalMoveInSignal,
   RegionalMoveInSignal,
 } from "@/lib/demand/move-in-demand-score";
-import { DEMAND_HEAT_BAND_THRESHOLDS } from "@/lib/demand/demand-score-weights";
+import { DEMAND_HEAT_BAND_THRESHOLDS, REGIONAL_HEAT_BAND_MIN_HISTORY } from "@/lib/demand/demand-score-weights";
 
 export type DemandHeatBand = "very_hot" | "hot" | "rising" | "normal" | "weak";
 
@@ -25,6 +28,8 @@ export type DistrictDemandScoreBasis = {
 export type DistrictDemandScore = {
   score: number;
   band: DemandHeatBand;
+  /** 지역 그래프 상대 밴드 메타 (카드·배지 보조) */
+  heat?: DemandHeatBandMeta;
   /** @deprecated UI 호환 — national composite */
   national: NationalMovingInterest;
   /** @deprecated UI 호환 — regional MoM 지수 */
@@ -72,11 +77,14 @@ function basisFromV2(result: MoveInDemandScoreResult): DistrictDemandScoreBasis 
 }
 
 export function districtDemandScoreFromMoveInResult(
-  result: MoveInDemandScoreResult
+  result: MoveInDemandScoreResult,
+  benchmarkScores: number[] = []
 ): DistrictDemandScore {
+  const { band, meta } = resolveDemandHeatBand(result.score, benchmarkScores);
   return {
     score: result.score,
-    band: demandHeatBand(result.score),
+    band,
+    heat: meta,
     national: legacyNationalFromSignal(result.national),
     rtms: legacyRtmsFromRegional(result.regional),
     basis: basisFromV2(result),
@@ -87,12 +95,15 @@ export function districtDemandScoreFromMoveInResult(
 /** 전국 행 — 구 RTMS 없이 전국 신호만 */
 export function nationalOnlyDemandScore(
   national: NationalMovingInterest,
-  targetYyyymm: string | null = null
+  targetYyyymm: string | null = null,
+  benchmarkScores: number[] = []
 ): DistrictDemandScore {
   const signalYm = national.searchYyyymm;
+  const { band, meta } = resolveDemandHeatBand(national.index, benchmarkScores);
   return {
     score: national.index,
-    band: demandHeatBand(national.index),
+    band,
+    heat: meta,
     national,
     rtms: computeDistrictRtmsIndex({ saleMom: 0, jeonseMom: 0 }),
     basis: {
@@ -108,24 +119,38 @@ export function nationalOnlyDemandScore(
 export function formatDemandScoreSimpleSummary(score: DistrictDemandScore): string {
   const band = DEMAND_HEAT_BAND_LABELS[score.band].label;
   const target = score.basis.targetYyyymm;
+  const relativeNote =
+    score.heat?.relative && score.heat.percentile != null
+      ? ` · ${formatDemandHeatPercentileLabel(score.heat) ?? ""}`
+      : "";
   if (target) {
-    return `${formatDemandYyyymmLabel(target)} 입주 참고 · ${band}`;
+    return `${formatDemandYyyymmLabel(target)} 입주 참고 · ${band}${relativeNote}`;
   }
-  return `입주·청소 수요 참고 · ${band}`;
+  return `입주·청소 수요 참고 · ${band}${relativeNote}`;
 }
 
+/** 카드·표 보조 — 대상월만 (RTMS·검색 월은 차트 부제 등에 사용) */
 export function formatDemandScoreBasis(basis: DistrictDemandScoreBasis): string {
-  const target = basis.targetYyyymm ? formatDemandYyyymmLabel(basis.targetYyyymm) : "—";
-  const signal = basis.signalYyyymm ? formatDemandYyyymmLabel(basis.signalYyyymm) : "—";
-  if (basis.targetYyyymm && basis.signalYyyymm) {
-    return `${target} 입주 · ${signal} RTMS·검색`;
-  }
   if (basis.targetYyyymm) {
-    return `${target} 입주 참고`;
+    return `${formatDemandYyyymmLabel(basis.targetYyyymm)} 기준`;
   }
-  return "기준월 확인 중";
+  return "";
 }
 
 export function formatDemandScoreBreakdown(score: DistrictDemandScore): string {
   return formatDemandScoreBasis(score.basis);
+}
+
+/** 배지 title — 지역 그래프 상대 백분위 보조 */
+export function formatDemandHeatTooltip(score: DistrictDemandScore): string {
+  const base = DEMAND_HEAT_BAND_LABELS[score.band].description;
+  const heat = score.heat;
+  if (heat?.relative && heat.percentile != null) {
+    const sentence = formatDemandHeatPercentileSentence(heat);
+    return sentence ? `${base} ${sentence}` : base;
+  }
+  if (heat && !heat.relative && heat.historyMonths < REGIONAL_HEAT_BAND_MIN_HISTORY) {
+    return `${base} (과거 ${heat.historyMonths}개월 — 절대 기준 폴백)`;
+  }
+  return base;
 }

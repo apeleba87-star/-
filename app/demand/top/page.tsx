@@ -45,7 +45,7 @@ export default async function DemandTopPage() {
                 </span>
                 <span className="font-semibold text-slate-900">{row.gu}</span>
               </span>
-              <DemandHeatBadge band={row.score.band} score={row.score.score} />
+              <DemandHeatBadge band={row.score.band} score={row.score.score} heat={row.score.heat} />
             </Link>
           </li>
         ))}

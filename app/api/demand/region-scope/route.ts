@@ -30,7 +30,7 @@ function isValidSelection(sel: unknown): sel is DemandRegionSelection {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { selections?: unknown };
+    const body = (await req.json()) as { selections?: unknown; shareTeaser?: boolean };
     const raw = Array.isArray(body?.selections) ? body.selections : [];
     if (raw.length === 0 || raw.length > DEMAND_MAX_REGION_COMPARE) {
       return NextResponse.json({ error: "Invalid selections" }, { status: 400 });
@@ -40,8 +40,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid region" }, { status: 400 });
     }
 
+    const shareTeaser = body?.shareTeaser === true;
+
     const isAdmin = await isDemandAdmin();
-    const grant = await grantDemandRegionScopeAccess(selections, isAdmin);
+    const grant = await grantDemandRegionScopeAccess(selections, isAdmin, { shareTeaser });
     const fullPayload = await getCachedDemandRegionScopeData(selections);
     const payload = filterRegionScopePayload(fullPayload, grant.grantedRegionKeys);
 

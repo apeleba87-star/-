@@ -43,10 +43,24 @@ export const NATIONAL_INTEREST_WEIGHTS = {
 /** @deprecated use RTMS_ACTIVITY_WEIGHTS */
 export const DISTRICT_RTMS_WEIGHTS = RTMS_ACTIVITY_WEIGHTS;
 
-/** UI 구간 — 입주 예상 점수 (demandScore) */
+/** UI 구간 — 입주 예상 점수 (demandScore) · 히스토리 부족 시 폴백 */
 export const DEMAND_HEAT_BAND_THRESHOLDS = {
   veryHot: 160,
   hot: 140,
   rising: 120,
   normal: 100,
 } as const;
+
+/** 지역 그래프 기준 — 현재 점수가 벤치마크 풀에서 상위 몇 %인지 */
+export const REGIONAL_HEAT_BAND_PERCENTILES = {
+  veryHot: 90,
+  hot: 75,
+  rising: 50,
+  normal: 25,
+} as const;
+
+/** 벤치마크 최소 개월 — 미만이면 DEMAND_HEAT_BAND_THRESHOLDS 폴백 */
+export const REGIONAL_HEAT_BAND_MIN_HISTORY = 6;
+
+/** 벤치마크 창 — 최근 N개월 (현재 대상월 제외) */
+export const REGIONAL_HEAT_BAND_HISTORY_WINDOW = 24;

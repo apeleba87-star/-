@@ -22,6 +22,7 @@ import { demandShowPackingSearchBreakdown } from "@/lib/demand/feature-flags";
 import DemandDevMetricBadge from "@/components/demand/DemandDevMetricBadge";
 import DemandDummyBadge from "@/components/demand/DemandDummyBadge";
 import DemandHeatBadge from "@/components/demand/DemandHeatBadge";
+import DemandRadarShareButton from "@/components/demand/DemandRadarShareButton";
 import { formatDemandScoreSimpleSummary } from "@/lib/demand/district-demand-score";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -33,10 +34,12 @@ function SummaryCard({
   sub,
   fallbackHint,
   accent,
+  scoreAccent,
   rtmsHero,
   selected,
   isDummy,
   onSelect,
+  className,
 }: {
   metricId: DemandMetricId;
   label: ReactNode;
@@ -44,43 +47,75 @@ function SummaryCard({
   sub?: string;
   fallbackHint?: string;
   accent?: boolean;
+  scoreAccent?: boolean;
   rtmsHero?: boolean;
   selected: boolean;
   isDummy?: boolean;
   onSelect: (id: DemandMetricId) => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={() => onSelect(metricId)}
       className={cn(
-        "h-full rounded-xl border bg-white px-3 py-3 text-left transition-colors",
+        "h-full w-full rounded-xl border bg-white text-left transition-colors",
+        scoreAccent ? "flex items-center justify-between gap-3 px-3 py-3" : "px-3 py-3",
         rtmsHero && !selected && "border-slate-300 bg-slate-50/80",
-        accent && !selected && !rtmsHero && "border-teal-200 ring-1 ring-teal-100",
-        !accent && !rtmsHero && !selected && "border-slate-200",
-        selected && demandMetricChartTheme(metricId).cardSelected
+        scoreAccent &&
+          !selected &&
+          !rtmsHero &&
+          "border-teal-300 bg-gradient-to-br from-teal-50/90 via-white to-white ring-1 ring-teal-100 shadow-sm",
+        accent && !scoreAccent && !selected && !rtmsHero && "border-teal-200 ring-1 ring-teal-100",
+        !accent && !scoreAccent && !rtmsHero && !selected && "border-slate-200",
+        selected && demandMetricChartTheme(metricId).cardSelected,
+        className
       )}
     >
-      <p className="text-[11px] font-medium text-slate-500">
-        {label}
-        {isDummy ? <DemandDummyBadge /> : null}
-      </p>
-      <p
-        className={cn(
-          "mt-1 tabular-nums",
-          rtmsHero
-            ? "text-3xl font-black text-slate-900"
-            : accent
-              ? "text-2xl font-black text-teal-800"
-              : "text-lg font-bold text-slate-900"
-        )}
-      >
-        {value}
-      </p>
-      {sub ? <p className="mt-0.5 text-[11px] text-slate-400">{sub}</p> : null}
-      {fallbackHint ? (
-        <p className="mt-0.5 text-[10px] text-amber-700">{fallbackHint}</p>
-      ) : null}
+      {scoreAccent ? (
+        <>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold text-teal-800">
+              {label}
+              {isDummy ? <DemandDummyBadge /> : null}
+            </p>
+            {sub ? <p className="mt-1 text-[11px] leading-snug text-slate-400">{sub}</p> : null}
+            {fallbackHint ? (
+              <p className="mt-0.5 text-[10px] text-amber-700">{fallbackHint}</p>
+            ) : null}
+          </div>
+          <div className="shrink-0">{value}</div>
+        </>
+      ) : (
+        <>
+          <p className="text-[11px] font-medium text-slate-500">
+            {label}
+            {isDummy ? <DemandDummyBadge /> : null}
+          </p>
+          <div className="mt-1">
+            {typeof value === "number" || typeof value === "string" ? (
+              <p
+                className={cn(
+                  "tabular-nums",
+                  rtmsHero
+                    ? "text-3xl font-black text-slate-900"
+                    : accent
+                      ? "text-2xl font-black text-teal-800"
+                      : "text-lg font-bold text-slate-900"
+                )}
+              >
+                {value}
+              </p>
+            ) : (
+              value
+            )}
+          </div>
+          {sub ? <p className="mt-0.5 text-[11px] text-slate-400">{sub}</p> : null}
+          {fallbackHint ? (
+            <p className="mt-0.5 text-[10px] text-amber-700">{fallbackHint}</p>
+          ) : null}
+        </>
+      )}
     </button>
   );
 }
@@ -94,6 +129,8 @@ type Props = {
   focusRowKey?: string | null;
   selectedMetric: DemandMetricId | null;
   onSelectMetric: (id: DemandMetricId) => void;
+  hideSearchSection?: boolean;
+  showShare?: boolean;
 };
 
 export default function DemandScopeSummaryStrip({
@@ -101,6 +138,8 @@ export default function DemandScopeSummaryStrip({
   focusRowKey,
   selectedMetric,
   onSelectMetric,
+  hideSearchSection = false,
+  showShare = true,
 }: Props) {
   const compareMode = rows.length > 1;
   const cardRow =
@@ -151,12 +190,28 @@ export default function DemandScopeSummaryStrip({
   return (
     <section className="space-y-4">
       <div className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-sm font-bold text-slate-900">
-            {compareMode ? `${rows.length}개 지역 비교` : cardRow.pathLabel}
-          </h2>
-          {!compareMode ? (
-            <DemandHeatBadge band={cardRow.demandScore.band} score={cardRow.demandScore.score} />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <h2 className="text-sm font-bold text-slate-900">
+              {compareMode ? `${rows.length}개 지역 비교` : cardRow.pathLabel}
+            </h2>
+            {!compareMode ? (
+              <DemandHeatBadge
+                band={cardRow.demandScore.band}
+                score={cardRow.demandScore.score}
+                heat={cardRow.demandScore.heat}
+              />
+            ) : null}
+          </div>
+          {showShare ? (
+            <DemandRadarShareButton
+              selection={cardRow.selection}
+              pathLabel={cardRow.pathLabel}
+              score={cardRow.demandScore.score}
+              compareCount={rows.length}
+              compact
+              variant="accent"
+            />
           ) : null}
         </div>
         {!compareMode ? (
@@ -177,6 +232,23 @@ export default function DemandScopeSummaryStrip({
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <SummaryCard
+            metricId="demandScore"
+            label={DEMAND_METRIC_LABELS.demandScore}
+            value={
+              <DemandHeatBadge
+                band={cardRow.demandScore.band}
+                score={cardRow.demandScore.score}
+                heat={cardRow.demandScore.heat}
+                prominent
+              />
+            }
+            sub={DEMAND_SCORE_CARD_SUB}
+            scoreAccent
+            selected={selectedMetric === "demandScore"}
+            onSelect={onSelectMetric}
+            className="col-span-2 sm:col-span-3"
+          />
+          <SummaryCard
             metricId="jeonse"
             label={DEMAND_METRIC_LABELS.jeonse}
             value={`${cardRow.jeonseCount.toLocaleString("ko-KR")}건`}
@@ -194,18 +266,10 @@ export default function DemandScopeSummaryStrip({
             selected={selectedMetric === "sale"}
             onSelect={onSelectMetric}
           />
-          <SummaryCard
-            metricId="demandScore"
-            label={DEMAND_METRIC_LABELS.demandScore}
-            value={cardRow.demandScore.score}
-            sub={DEMAND_SCORE_CARD_SUB}
-            accent
-            selected={selectedMetric === "demandScore"}
-            onSelect={onSelectMetric}
-          />
         </div>
       </div>
 
+      {hideSearchSection ? null : (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
@@ -268,6 +332,7 @@ export default function DemandScopeSummaryStrip({
           />
         </div>
       </div>
+      )}
 
       {showPackingBreakdown ? (
         <p className="text-[10px] text-slate-400">

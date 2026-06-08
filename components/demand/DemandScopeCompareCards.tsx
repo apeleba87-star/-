@@ -3,10 +3,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import DemandHeatBadge from "@/components/demand/DemandHeatBadge";
+import DemandRadarShareButton from "@/components/demand/DemandRadarShareButton";
 import { DemandSearchIndexCell, DemandSearchVolumeCell } from "@/components/demand/DemandSearchMetricCell";
 import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
 import { DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
-import { formatDemandScoreBasis } from "@/lib/demand/district-demand-score";
 import { demandMetricChartTheme } from "@/lib/demand/metric-chart-theme";
 import type { DemandMetricId } from "@/lib/demand/metrics";
 import { demandRegionSelectionKey } from "@/lib/demand/regions";
@@ -20,6 +20,8 @@ type Props = {
   onFocusRow: (key: string) => void;
   onSelectMetric: (row: DemandScopeTableRow, metricId: DemandMetricId) => void;
   rtmsBaseMonthLabel?: string | null;
+  isMetricBlinded?: (metricId: DemandMetricId) => boolean;
+  showShare?: boolean;
 };
 
 type MetricRow = {
@@ -33,12 +35,12 @@ const METRIC_ROWS: MetricRow[] = [
     id: "demandScore",
     label: DEMAND_METRIC_LABELS.demandScore,
     render: (row) => (
-      <div>
-        <DemandHeatBadge band={row.demandScore.band} score={row.demandScore.score} compact />
-        <p className="mt-0.5 text-[10px] text-slate-400">
-          {formatDemandScoreBasis(row.demandScore.basis)}
-        </p>
-      </div>
+      <DemandHeatBadge
+        band={row.demandScore.band}
+        score={row.demandScore.score}
+        heat={row.demandScore.heat}
+        prominent
+      />
     ),
   },
   {
@@ -97,7 +99,12 @@ function CompareStrip({
           >
             <p className="truncate text-sm font-bold text-slate-900">{row.label}</p>
             <div className="mt-1.5">
-              <DemandHeatBadge band={row.demandScore.band} score={row.demandScore.score} compact />
+              <DemandHeatBadge
+                band={row.demandScore.band}
+                score={row.demandScore.score}
+                heat={row.demandScore.heat}
+                compact
+              />
             </div>
             <p className="mt-1 text-[10px] tabular-nums text-slate-500">
               전월세 {row.jeonseCount.toLocaleString("ko-KR")}건
@@ -115,12 +122,14 @@ function MetricButton({
   active,
   onClick,
   children,
+  featured,
 }: {
   metricId: DemandMetricId;
   label: string;
   active: boolean;
   onClick: () => void;
   children: ReactNode;
+  featured?: boolean;
 }) {
   const theme = demandMetricChartTheme(metricId);
   return (
@@ -129,11 +138,22 @@ function MetricButton({
       onClick={onClick}
       className={cn(
         "flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
-        active ? theme.cardSelected : "border-slate-200 bg-white"
+        featured &&
+          "min-h-[68px] border-teal-200 bg-gradient-to-br from-teal-50/90 via-white to-white shadow-sm ring-1 ring-teal-100/80",
+        !featured && (active ? theme.cardSelected : "border-slate-200 bg-white"),
+        featured && active && theme.cardSelected,
+        featured && !active && "hover:border-teal-300 hover:from-teal-50"
       )}
       aria-pressed={active}
     >
-      <span className="text-xs font-medium text-slate-600">{label}</span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 pr-2 font-medium leading-snug",
+          featured ? "text-sm font-bold text-teal-900" : "text-xs text-slate-600"
+        )}
+      >
+        {label}
+      </span>
       <span className="shrink-0 text-right">{children}</span>
     </button>
   );
@@ -146,6 +166,8 @@ export default function DemandScopeCompareCards({
   onFocusRow,
   onSelectMetric,
   rtmsBaseMonthLabel,
+  isMetricBlinded,
+  showShare = true,
 }: Props) {
   const focusRow =
     rows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ?? rows[0];
@@ -153,37 +175,51 @@ export default function DemandScopeCompareCards({
   if (!focusRow) return null;
 
   const focusKey = demandRegionSelectionKey(focusRow.selection);
+  const displayMetrics =
+    isMetricBlinded != null
+      ? METRIC_ROWS.filter((m) => !isMetricBlinded(m.id))
+      : METRIC_ROWS;
 
   return (
     <div className="space-y-3 md:hidden">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-slate-600">
-          {rows.length > 1 ? "지역 비교" : "지표 상세"}
-        </p>
-        <p className="text-[10px] text-slate-400">탭 → 그래프</p>
-      </div>
+      {rows.length > 1 ? (
+        <p className="text-xs font-semibold text-slate-600">지역 비교</p>
+      ) : null}
 
       {rows.length > 1 ? (
         <CompareStrip rows={rows} focusRowKey={focusRowKey} onFocusRow={onFocusRow} />
       ) : null}
 
       <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="border-b border-slate-100 pb-2">
-          {focusRow.hasDetail && focusRow.slug ? (
-            <Link href={`/demand/region/${focusRow.slug}`} className="font-bold text-teal-800">
-              {focusRow.label}
-            </Link>
-          ) : (
-            <p className="font-bold text-slate-900">{focusRow.label}</p>
-          )}
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2.5">
+          <div className="min-w-0 flex-1">
+            {focusRow.hasDetail && focusRow.slug ? (
+              <Link href={`/demand/region/${focusRow.slug}`} className="font-bold text-teal-800">
+                {focusRow.pathLabel}
+              </Link>
+            ) : (
+              <p className="font-bold text-slate-900">{focusRow.pathLabel}</p>
+            )}
+          </div>
+          {showShare ? (
+            <DemandRadarShareButton
+              selection={focusRow.selection}
+              pathLabel={focusRow.pathLabel}
+              score={focusRow.demandScore.score}
+              compareCount={rows.length}
+              compact
+              variant="accent"
+            />
+          ) : null}
         </div>
 
         <div className="mt-2 space-y-1.5">
-          {METRIC_ROWS.map(({ id, label, render }) => (
+          {displayMetrics.map(({ id, label, render }) => (
             <MetricButton
               key={id}
               metricId={id}
               label={label}
+              featured={id === "demandScore"}
               active={focusRowKey === focusKey && selectedMetric === id}
               onClick={() => onSelectMetric(focusRow, id)}
             >

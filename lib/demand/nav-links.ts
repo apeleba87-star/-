@@ -11,7 +11,7 @@ export type DemandNavLink = {
 export const DEMAND_HUB_PATH = "/";
 
 export const DEMAND_NAV_LINKS: DemandNavLink[] = [
-  { href: DEMAND_HUB_PATH, label: "지역표", exact: true },
+  { href: DEMAND_HUB_PATH, label: "입주레이더", exact: true },
   { href: "/demand/top", label: "TOP10", adminOnly: true },
   { href: "/demand/movers", label: "급상승", adminOnly: true },
   { href: "/demand/region", label: "지역", adminOnly: true },
@@ -24,7 +24,7 @@ const DEMAND_ADMIN_EXACT_PATHS = new Set(
   DEMAND_NAV_LINKS.filter((l) => l.adminOnly).map((l) => l.href)
 );
 
-/** 허브 서브네비 — 비관리자는 지역표만 */
+/** 허브 서브네비 — 비관리자는 입주레이더만 */
 export function demandNavLinksForUser(isAdmin: boolean): DemandNavLink[] {
   const visible = isAdmin ? DEMAND_NAV_LINKS : DEMAND_NAV_LINKS.filter((l) => !l.adminOnly);
   return visible.map((link) =>

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import DemandShell from "@/components/demand/DemandShell";
 import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
 import { getActiveDemandHubAds } from "@/lib/ads";
@@ -26,16 +27,24 @@ export default async function DemandHubPageView() {
       variant="minimal"
       searchVariant={false}
     >
-      <DemandHubWorkspace
-        rtmsOverrides={bootstrap.rtmsSnapshot.byRegionKey}
-        rtmsBaseMonthLabel={bootstrap.rtmsSnapshot.baseMonthLabel}
-        rtmsSeries={bootstrap.rtmsSeries}
-        keywordStore={bootstrap.keywordStore}
-        scoreContext={bootstrap.scoreContext}
-        dailyPulse={bootstrap.dailyPulse}
-        initialAccess={access}
-        hubAds={hubAds}
-      />
+      <Suspense
+        fallback={
+          <p className="py-8 text-center text-sm text-slate-500" role="status">
+            입주레이더 불러오는 중…
+          </p>
+        }
+      >
+        <DemandHubWorkspace
+          rtmsOverrides={bootstrap.rtmsSnapshot.byRegionKey}
+          rtmsBaseMonthLabel={bootstrap.rtmsSnapshot.baseMonthLabel}
+          rtmsSeries={bootstrap.rtmsSeries}
+          keywordStore={bootstrap.keywordStore}
+          scoreContext={bootstrap.scoreContext}
+          dailyPulse={bootstrap.dailyPulse}
+          initialAccess={access}
+          hubAds={hubAds}
+        />
+      </Suspense>
     </DemandShell>
   );
 }

@@ -3,10 +3,13 @@ import {
   nationalOnlyDemandScore,
   type DistrictDemandScore,
 } from "@/lib/demand/district-demand-score";
+import { benchmarkScoresFromChartSeries } from "@/lib/demand/demand-heat-band";
 import { MOVE_IN_DEMAND_SIGNAL_LAG_MONTHS } from "@/lib/demand/demand-score-weights";
 import {
   availableSignalMonths,
   buildNationalMoveInSignal,
+  buildMoveInDemandScoreMonthlySeries,
+  buildNationalMoveInDemandScoreChartSeries,
   computeMoveInDemandScoreForRegion,
   districtMedianActivityFromSnapshot,
   districtMedianForSignal,
@@ -130,6 +133,21 @@ function computeRegionalScoreForTarget(
   return null;
 }
 
+function benchmarkScoresForRtmsKey(context: DemandScoreContext, rtmsKey: string): number[] {
+  const series = buildMoveInDemandScoreMonthlySeries(
+    context.keywordStore,
+    context.rtmsSeries,
+    rtmsKey,
+    context
+  );
+  return benchmarkScoresFromChartSeries(series, context.targetYyyymm);
+}
+
+function benchmarkScoresForNational(context: DemandScoreContext): number[] {
+  const series = buildNationalMoveInDemandScoreChartSeries(context.keywordStore);
+  return benchmarkScoresFromChartSeries(series, context.targetYyyymm);
+}
+
 export function districtDemandScoreForRegionKey(
   context: DemandScoreContext,
   regionKey: string
@@ -139,10 +157,17 @@ export function districtDemandScoreForRegionKey(
 
   if (!result) {
     const national = nationalMovingInterestFromStore(context.keywordStore);
-    return nationalOnlyDemandScore(national, context.targetYyyymm);
+    return nationalOnlyDemandScore(
+      national,
+      context.targetYyyymm,
+      benchmarkScoresForNational(context)
+    );
   }
 
-  return districtDemandScoreFromMoveInResult(result);
+  return districtDemandScoreFromMoveInResult(
+    result,
+    benchmarkScoresForRtmsKey(context, rtmsKey)
+  );
 }
 
 /** @deprecated districtDemandScoreForRegionKey 사용 */
@@ -158,7 +183,8 @@ export function demandScoreForNational(context: DemandScoreContext): DistrictDem
   if (!signalYm) {
     return nationalOnlyDemandScore(
       nationalMovingInterestFromStore(context.keywordStore),
-      context.targetYyyymm
+      context.targetYyyymm,
+      benchmarkScoresForNational(context)
     );
   }
 
@@ -174,13 +200,15 @@ export function demandScoreForNational(context: DemandScoreContext): DistrictDem
   if (!nationalSignal) {
     return nationalOnlyDemandScore(
       nationalMovingInterestFromStore(context.keywordStore),
-      context.targetYyyymm
+      context.targetYyyymm,
+      benchmarkScoresForNational(context)
     );
   }
 
   return nationalOnlyDemandScore(
     nationalMovingInterestFromSignal(nationalSignal),
-    context.targetYyyymm
+    context.targetYyyymm,
+    benchmarkScoresForNational(context)
   );
 }
 
@@ -188,13 +216,17 @@ export function demandScoreForCity(
   context: DemandScoreContext,
   cityId = "seoul"
 ): DistrictDemandScore {
-  const result = computeRegionalScoreForTarget(context, `city:${cityId}`);
+  const rtmsKey = `city:${cityId}`;
+  const result = computeRegionalScoreForTarget(context, rtmsKey);
 
   if (!result) {
     return demandScoreForNational(context);
   }
 
-  return districtDemandScoreFromMoveInResult(result);
+  return districtDemandScoreFromMoveInResult(
+    result,
+    benchmarkScoresForRtmsKey(context, rtmsKey)
+  );
 }
 
 export function buildSeoulDemandRanking(context: DemandScoreContext): SeoulDemandRankingRow[] {

@@ -21,6 +21,9 @@ export const DEMAND_USAGE_QUOTA_MESSAGE =
 
 export const DEMAND_USAGE_REGION_BLIND_HINT = "지역별 수치는 로그인 후 확인 · 하루 5곳";
 
+export const DEMAND_USAGE_SHARE_TEASER_HINT =
+  "공유 링크 — 입주 예상 점수·거래 건수만 미리보기 · 검색·그래프는 로그인 후";
+
 export const DEMAND_USAGE_REGION_QUOTA_HINT = "오늘 확인 횟수를 초과한 지역입니다.";
 
 export function isDemandRegionKeyUnlocked(access: DemandUsageAccess, regionKey: string): boolean {

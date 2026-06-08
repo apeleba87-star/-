@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import DemandHubPulseSection from "@/components/demand/DemandHubPulseSection";
 import DemandMetricChart from "@/components/demand/DemandMetricChart";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
@@ -12,7 +13,6 @@ import DemandTradeMetricCell from "@/components/demand/DemandTradeMetricCell";
 import { DEMAND_HUB_HERO, DEMAND_METRIC_LABELS } from "@/lib/demand/copy";
 import DemandHeatBadge from "@/components/demand/DemandHeatBadge";
 import DemandDummyBadge from "@/components/demand/DemandDummyBadge";
-import { formatDemandScoreBasis } from "@/lib/demand/district-demand-score";
 import {
   type DemandScoreContext,
 } from "@/lib/demand/seoul-demand-ranking";
@@ -36,9 +36,16 @@ import type { DemandRegionScopeResponse } from "@/lib/demand/region-scope-data";
 import {
   DEMAND_USAGE_REGION_BLIND_HINT,
   DEMAND_USAGE_REGION_QUOTA_HINT,
-  isDemandRegionKeyUnlocked,
+  DEMAND_USAGE_SHARE_TEASER_HINT,
   type DemandUsageAccess,
 } from "@/lib/demand/usage-limits";
+import {
+  isRadarChartBlinded,
+  isRadarMetricBlinded,
+  isRadarRowFullyBlinded,
+  parseRadarShareParam,
+  radarShareTeaserKeyFromParam,
+} from "@/lib/demand/radar-share";
 import { isDemandRegionScopeLoaded } from "@/lib/demand/region-scope-loaded";
 import DemandDataBlindOverlay from "@/components/demand/DemandDataBlindOverlay";
 import DemandUsageBanner from "@/components/demand/DemandUsageBanner";
@@ -81,10 +88,13 @@ function ClickableMetricCell({
   );
 }
 
-function isRowDataBlinded(access: DemandUsageAccess, rowKey: string): boolean {
-  if (access.tier === "admin") return false;
-  if (access.tier === "guest") return true;
-  return !isDemandRegionKeyUnlocked(access, rowKey);
+function metricBlinded(
+  access: DemandUsageAccess,
+  rowKey: string,
+  metricId: DemandMetricId,
+  shareTeaserKey: string | null
+): boolean {
+  return isRadarMetricBlinded(access, rowKey, metricId, shareTeaserKey);
 }
 
 type Props = {
@@ -112,6 +122,11 @@ export default function DemandHubWorkspace({
   initialAccess,
   hubAds,
 }: Props) {
+  const searchParams = useSearchParams();
+  const shareParam = searchParams.get("r");
+  const shareTeaserKey = useMemo(() => radarShareTeaserKeyFromParam(shareParam), [shareParam]);
+  const shareBootstrapped = useRef(false);
+
   const [access, setAccess] = useState<DemandUsageAccess>(initialAccess);
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
@@ -135,7 +150,7 @@ export default function DemandHubWorkspace({
   }, [scoreContext, keywordStoreState, rtmsSeriesState]);
 
   const ensureRegionScope = useCallback(
-    async (sel: DemandRegionSelection) => {
+    async (sel: DemandRegionSelection, fromShare = false) => {
       const key = demandRegionSelectionKey(sel);
       if (isDemandRegionScopeLoaded(sel, keywordStoreState, rtmsSeriesState)) return;
 
@@ -148,7 +163,11 @@ export default function DemandHubWorkspace({
         const res = await fetch("/api/demand/region-scope", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ selections: [sel] }),
+          body: JSON.stringify({
+            selections: [sel],
+            shareTeaser:
+              fromShare || (shareTeaserKey != null && shareTeaserKey === key),
+          }),
         });
         if (!res.ok) return;
         const data = (await res.json()) as DemandRegionScopeResponse;
@@ -165,8 +184,20 @@ export default function DemandHubWorkspace({
         });
       }
     },
-    [keywordStoreState, rtmsSeriesState]
+    [keywordStoreState, rtmsSeriesState, shareTeaserKey]
   );
+
+  useEffect(() => {
+    if (shareBootstrapped.current || !shareParam) return;
+    const sel = parseRadarShareParam(shareParam);
+    if (!sel) return;
+    shareBootstrapped.current = true;
+    const key = demandRegionSelectionKey(sel);
+    setSelections([sel]);
+    setChartRowKey(key);
+    setSelectedMetric("demandScore");
+    void ensureRegionScope(sel, true);
+  }, [shareParam, ensureRegionScope]);
 
   const scopeRows = useMemo(
     () =>
@@ -211,16 +242,28 @@ export default function DemandHubWorkspace({
     return demandRegionSelectionKey(scopeRows[0].selection);
   }, [scopeRows, chartRowKey]);
 
-  const focusRowBlinded = focusRowKey ? isRowDataBlinded(access, focusRowKey) : access.tier === "guest";
-  const anyRegionBlinded =
-    access.tier === "guest" ||
-    scopeRows.some((r) => isRowDataBlinded(access, demandRegionSelectionKey(r.selection)));
+  const focusRowBlinded = focusRowKey
+    ? isRadarChartBlinded(access, focusRowKey, shareTeaserKey)
+    : access.tier === "guest";
+  const guestShareTeaser =
+    access.tier === "guest" && shareTeaserKey != null && focusRowKey === shareTeaserKey;
+  const anyRegionBlinded = scopeRows.some((r) =>
+    isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
+  );
   const regionBlindHint =
-    access.tier === "guest"
-      ? DEMAND_USAGE_REGION_BLIND_HINT
-      : access.remaining === 0 && anyRegionBlinded
-        ? DEMAND_USAGE_REGION_QUOTA_HINT
-        : null;
+    guestShareTeaser
+      ? DEMAND_USAGE_SHARE_TEASER_HINT
+      : access.tier === "guest"
+        ? DEMAND_USAGE_REGION_BLIND_HINT
+        : access.remaining === 0 && anyRegionBlinded
+          ? DEMAND_USAGE_REGION_QUOTA_HINT
+          : null;
+
+  const focusMetricBlinded = useCallback(
+    (metricId: DemandMetricId) =>
+      focusRowKey ? metricBlinded(access, focusRowKey, metricId, shareTeaserKey) : true,
+    [access, focusRowKey, shareTeaserKey]
+  );
 
   function onAdd(sel: DemandRegionSelection) {
     const key = demandRegionSelectionKey(sel);
@@ -293,11 +336,14 @@ export default function DemandHubWorkspace({
           ) : null}
 
           <div className="hidden md:block">
-            <DemandDataBlindOverlay blind={focusRowBlinded}>
+            <DemandDataBlindOverlay
+              blind={focusRowKey ? isRadarRowFullyBlinded(access, focusRowKey, shareTeaserKey) : access.tier === "guest"}
+            >
               <DemandScopeSummaryStrip
                 rows={scopeRows}
                 focusRowKey={focusRowKey}
                 selectedMetric={selectedMetric}
+                hideSearchSection={guestShareTeaser}
                 onSelectMetric={(id) => {
                   const row =
                     scopeRows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ??
@@ -309,7 +355,9 @@ export default function DemandHubWorkspace({
           </div>
 
           <DemandDataBlindOverlay
-            blind={scopeRows.every((r) => isRowDataBlinded(access, demandRegionSelectionKey(r.selection)))}
+            blind={scopeRows.every((r) =>
+              isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
+            )}
           >
             <DemandScopeCompareCards
               rows={scopeRows}
@@ -318,6 +366,7 @@ export default function DemandHubWorkspace({
               onFocusRow={setChartRowKey}
               onSelectMetric={selectMetric}
               rtmsBaseMonthLabel={rtmsBaseMonthLabel}
+              isMetricBlinded={focusMetricBlinded}
             />
           </DemandDataBlindOverlay>
 
@@ -382,7 +431,8 @@ export default function DemandHubWorkspace({
                 {scopeRows.map((row) => {
                   const rowKey = demandRegionSelectionKey(row.selection);
                   const isFocusRow = focusRowKey === rowKey;
-                  const rowBlinded = isRowDataBlinded(access, rowKey);
+                  const cellBlind = (metricId: DemandMetricId) =>
+                    metricBlinded(access, rowKey, metricId, shareTeaserKey);
                   return (
                     <tr
                       key={rowKey}
@@ -420,24 +470,22 @@ export default function DemandHubWorkspace({
                         metricId="demandScore"
                         active={isFocusRow && selectedMetric === "demandScore"}
                         onClick={() => selectMetric(row, "demandScore")}
-                        blind={rowBlinded}
+                        blind={cellBlind("demandScore")}
                       >
                         <div className="text-left">
                           <DemandHeatBadge
                             band={row.demandScore.band}
                             score={row.demandScore.score}
+                            heat={row.demandScore.heat}
                             compact
                           />
-                          <p className="mt-0.5 text-[10px] font-normal text-slate-400">
-                            {formatDemandScoreBasis(row.demandScore.basis)}
-                          </p>
                         </div>
                       </ClickableMetricCell>
                       <ClickableMetricCell
                         metricId="sale"
                         active={isFocusRow && selectedMetric === "sale"}
                         onClick={() => selectMetric(row, "sale")}
-                        blind={rowBlinded}
+                        blind={cellBlind("sale")}
                       >
                         <DemandTradeMetricCell count={row.saleCount} momPercent={row.saleMom} />
                       </ClickableMetricCell>
@@ -445,7 +493,7 @@ export default function DemandHubWorkspace({
                         metricId="jeonse"
                         active={isFocusRow && selectedMetric === "jeonse"}
                         onClick={() => selectMetric(row, "jeonse")}
-                        blind={rowBlinded}
+                        blind={cellBlind("jeonse")}
                       >
                         <DemandTradeMetricCell count={row.jeonseCount} momPercent={row.jeonseMom} />
                       </ClickableMetricCell>
@@ -454,7 +502,7 @@ export default function DemandHubWorkspace({
                         metricId="packingVolume"
                         active={isFocusRow && selectedMetric === "packingVolume"}
                         onClick={() => selectMetric(row, "packingVolume")}
-                        blind={rowBlinded}
+                        blind={cellBlind("packingVolume")}
                       >
                         <DemandSearchVolumeCell metric={row.packing} />
                       </ClickableMetricCell>
@@ -462,7 +510,7 @@ export default function DemandHubWorkspace({
                         metricId="packingIndex"
                         active={isFocusRow && selectedMetric === "packingIndex"}
                         onClick={() => selectMetric(row, "packingIndex")}
-                        blind={rowBlinded}
+                        blind={cellBlind("packingIndex")}
                       >
                         <DemandSearchIndexCell metric={row.packing} />
                       </ClickableMetricCell>
@@ -470,7 +518,7 @@ export default function DemandHubWorkspace({
                         metricId="moveInVolume"
                         active={isFocusRow && selectedMetric === "moveInVolume"}
                         onClick={() => selectMetric(row, "moveInVolume")}
-                        blind={rowBlinded}
+                        blind={cellBlind("moveInVolume")}
                       >
                         <DemandSearchVolumeCell metric={row.moveInClean} />
                       </ClickableMetricCell>
@@ -478,7 +526,7 @@ export default function DemandHubWorkspace({
                         metricId="moveInIndex"
                         active={isFocusRow && selectedMetric === "moveInIndex"}
                         onClick={() => selectMetric(row, "moveInIndex")}
-                        blind={rowBlinded}
+                        blind={cellBlind("moveInIndex")}
                       >
                         <DemandSearchIndexCell metric={row.moveInClean} />
                       </ClickableMetricCell>

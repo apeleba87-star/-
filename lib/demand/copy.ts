@@ -51,11 +51,11 @@ export const DEMAND_BASKET_DISPLAY_LABELS = {
   moveIn: DEMAND_METRIC_LABELS.moveInVolume,
 } as const;
 
-export const DEMAND_SCORE_CARD_SUB = "직전월 RTMS·검색 → 이번 달 입주 참고";
+export const DEMAND_SCORE_CARD_SUB = "이번 달 입주 참고";
 
 /** 사용자용 — 산식·가중치 미노출 */
 export const DEMAND_SCORE_ABOUT =
-  "지난달 확정된 해당 구 아파트 거래와 전국 이사·입주청소 검색 흐름을 함께 반영해, 이번 달 입주·청소 수요 참고 순위를 보여줍니다. 건수 예측이 아니라 영업·광고 우선순위용입니다.";
+  "지난달 확정된 해당 구 아파트 거래와 전국 이사·입주청소 검색 흐름을 함께 반영해, 이번 달 입주·청소 수요 참고 순위를 보여줍니다. 뜨거움·보통 등 라벨은 해당 지역 입주 예상 점수 그래프(최근 24개월)에서의 상대 위치입니다.";
 
 /** @deprecated UI 미노출 — 내부 산식 문서용 */
 export const DEMAND_SCORE_METHOD_NOTE =
@@ -163,31 +163,31 @@ export const DEMAND_HEAT_BAND_LABELS: Record<
     label: "매우 뜨거움",
     emoji: "🔥",
     className: "bg-orange-50 text-orange-900 ring-orange-200/80",
-    description: "전국 시장과 구 거래 신호가 함께 강합니다.",
+    description: "이 지역 입주 예상 점수 그래프에서 최근 24개월 대비 매우 높은 구간입니다.",
   },
   hot: {
     label: "뜨거움",
     emoji: "🟠",
     className: "bg-amber-50 text-amber-900 ring-amber-200/80",
-    description: "이번 달 영업·광고 우선 검토 구간입니다.",
+    description: "이 지역 그래프 기준 평소보다 높은 편입니다.",
   },
   rising: {
     label: "상승 중",
     emoji: "🟡",
     className: "bg-yellow-50 text-yellow-900 ring-yellow-200/80",
-    description: "평균보다 다소 강한 신호입니다.",
+    description: "이 지역 그래프에서 중간 이상 구간입니다.",
   },
   normal: {
     label: "보통",
     emoji: "⚪",
     className: "bg-slate-50 text-slate-700 ring-slate-200/80",
-    description: "특별히 강하지 않습니다. 표·차트를 함께 보세요.",
+    description: "이 지역 그래프에서 평균적인 수준입니다.",
   },
   weak: {
     label: "약세",
     emoji: "🔵",
     className: "bg-sky-50 text-sky-900 ring-sky-200/80",
-    description: "전국 대비 상대적으로 약합니다.",
+    description: "이 지역 그래프에서 최근 대비 낮은 구간입니다.",
   },
 };
 

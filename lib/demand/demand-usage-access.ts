@@ -91,7 +91,8 @@ export type RegionScopeGrantResult = {
  */
 export async function grantDemandRegionScopeAccess(
   selections: DemandRegionSelection[],
-  isAdmin: boolean
+  isAdmin: boolean,
+  options?: { shareTeaser?: boolean }
 ): Promise<RegionScopeGrantResult> {
   const keys = selections.map((s) => demandRegionSelectionKey(s));
 
@@ -109,6 +110,13 @@ export async function grantDemandRegionScopeAccess(
   } = await supabase.auth.getUser();
 
   if (!user) {
+    if (options?.shareTeaser && selections.length === 1) {
+      return {
+        access: buildAccess("guest", []),
+        grantedRegionKeys: keys,
+        quotaBlockedKeys: [],
+      };
+    }
     return {
       access: buildAccess("guest", []),
       grantedRegionKeys: [],
