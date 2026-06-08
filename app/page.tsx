@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 import DemandHubPageView from "@/components/demand/DemandHubPageView";
-import { formatRadarShareRegionLabel, parseRadarShareParam } from "@/lib/demand/radar-share";
-import { getDemandCity, getDemandDistrictRef } from "@/lib/demand/regions";
-import {
-  buildPageMetadata,
-  radarHomeDescription,
-  radarHomeTitle,
-  radarRegionDescription,
-  radarRegionTitle,
-} from "@/lib/seo";
+import { getCachedRadarShareCopy } from "@/lib/demand/radar-share-data";
+import { buildRadarShareCopyFallback } from "@/lib/demand/radar-share-copy";
+import { parseRadarShareParam } from "@/lib/demand/radar-share";
+import { buildPageMetadata, radarHomeDescription, radarHomeTitle } from "@/lib/seo";
 
 export const revalidate = 3600;
 
@@ -20,21 +15,16 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const { r } = await searchParams;
   if (r) {
     const sel = parseRadarShareParam(r);
-    const label = sel ? formatRadarShareRegionLabel(sel) : null;
-    if (sel && label) {
-      let description = radarRegionDescription(label, undefined);
-      if (sel.scope === "district") {
-        const city = getDemandCity(sel.cityId);
-        const district = getDemandDistrictRef(sel.cityId, sel.guSlug);
-        if (city && district) {
-          description = radarRegionDescription(district.gu, city.fullLabel);
-        }
+    if (sel) {
+      const copy =
+        (await getCachedRadarShareCopy(r)) ?? buildRadarShareCopyFallback(sel);
+      if (copy) {
+        return buildPageMetadata({
+          title: copy.title,
+          description: copy.description,
+          path: `/?r=${encodeURIComponent(r)}`,
+        });
       }
-      return buildPageMetadata({
-        title: radarRegionTitle(label),
-        description,
-        path: `/?r=${encodeURIComponent(r)}`,
-      });
     }
   }
   return buildPageMetadata({

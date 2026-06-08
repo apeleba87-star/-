@@ -100,15 +100,4 @@ export function buildRadarShareUrl(origin: string, sel: DemandRegionSelection, c
   return url.toString();
 }
 
-export function formatRadarShareText(
-  pathLabel: string,
-  score: number,
-  options?: { compareCount?: number }
-): string {
-  const core = `${pathLabel} · 입주 예상 점수 ${score} · 이번 달 입주 참고`;
-  const n = options?.compareCount ?? 1;
-  if (n > 1) {
-    return `${n}개 지역 비교 중 · ${core}`;
-  }
-  return core;
-}
+export { buildRadarShareCopy, type RadarShareCopy, type RadarShareCopyInput } from "@/lib/demand/radar-share-copy";

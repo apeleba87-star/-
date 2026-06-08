@@ -208,6 +208,9 @@ export default function DemandScopeSummaryStrip({
               selection={cardRow.selection}
               pathLabel={cardRow.pathLabel}
               score={cardRow.demandScore.score}
+              band={cardRow.demandScore.band}
+              jeonseMom={cardRow.jeonseMom}
+              moveInIndexMom={cardRow.moveInClean.indexMomPercent}
               compareCount={rows.length}
               compact
               variant="accent"

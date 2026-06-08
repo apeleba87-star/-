@@ -1,4 +1,3 @@
-import DemandGuestLoginCta from "@/components/demand/DemandGuestLoginCta";
 import {
   DEMAND_USAGE_QUOTA_MESSAGE,
   type DemandUsageAccess,
@@ -9,11 +8,7 @@ type Props = {
 };
 
 export default function DemandUsageBanner({ access }: Props) {
-  if (access.tier === "admin") return null;
-
-  if (access.tier === "guest") {
-    return <DemandGuestLoginCta variant="banner" />;
-  }
+  if (access.tier === "admin" || access.tier === "guest") return null;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-700">

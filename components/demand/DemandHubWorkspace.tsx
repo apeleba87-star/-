@@ -34,7 +34,6 @@ import type { DailyPulseData } from "@/lib/demand/daily-pulse";
 import { mergeDemandKeywordStores, mergeRtmsSeries } from "@/lib/demand/merge-demand-data";
 import type { DemandRegionScopeResponse } from "@/lib/demand/region-scope-data";
 import {
-  DEMAND_USAGE_REGION_BLIND_HINT,
   DEMAND_USAGE_REGION_QUOTA_HINT,
   DEMAND_USAGE_SHARE_TEASER_HINT,
   type DemandUsageAccess,
@@ -346,8 +345,6 @@ export default function DemandHubWorkspace({
           <div className="hidden md:block">
             <DemandDataBlindOverlay
               blind={focusRowKey ? isRadarRowFullyBlinded(access, focusRowKey, shareTeaserKey) : access.tier === "guest"}
-              showLoginCta={guestNeedsLogin}
-              message={DEMAND_USAGE_REGION_BLIND_HINT}
             >
               <DemandScopeSummaryStrip
                 rows={scopeRows}
@@ -368,8 +365,6 @@ export default function DemandHubWorkspace({
             blind={scopeRows.every((r) =>
               isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
             )}
-            showLoginCta={guestNeedsLogin}
-            message={DEMAND_USAGE_REGION_BLIND_HINT}
           >
             <DemandScopeCompareCards
               rows={scopeRows}
@@ -383,11 +378,7 @@ export default function DemandHubWorkspace({
           </DemandDataBlindOverlay>
 
           {selectedMetric && scopeRows.length > 0 ? (
-            <DemandDataBlindOverlay
-              blind={focusRowBlinded}
-              showLoginCta={guestNeedsLogin && focusRowBlinded}
-              message={DEMAND_USAGE_REGION_BLIND_HINT}
-            >
+            <DemandDataBlindOverlay blind={focusRowBlinded}>
               <DemandMetricChart
                 rows={scopeRows}
                 metricId={selectedMetric}
@@ -579,7 +570,7 @@ export default function DemandHubWorkspace({
 
       {guestNeedsLogin && hasSelection && scopeRows.length > 0 ? (
         <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">
-          <DemandGuestLoginCta variant="sticky" />
+          <DemandGuestLoginCta />
         </div>
       ) : null}
     </div>

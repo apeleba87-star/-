@@ -210,6 +210,9 @@ export default function DemandScopeCompareCards({
               selection={focusRow.selection}
               pathLabel={focusRow.pathLabel}
               score={focusRow.demandScore.score}
+              band={focusRow.demandScore.band}
+              jeonseMom={focusRow.jeonseMom}
+              moveInIndexMom={focusRow.moveInClean.indexMomPercent}
               compareCount={rows.length}
               compact
               variant="accent"

@@ -1,13 +1,10 @@
 import type { ReactNode } from "react";
-import DemandGuestLoginCta from "@/components/demand/DemandGuestLoginCta";
 import { cn } from "@/lib/utils";
 
 type Props = {
   blind: boolean;
   /** true일 때만 짧은 캡션 표시 (블록 1곳용). 표 셀 등은 blur만 */
   showCaption?: boolean;
-  /** blur 위 로그인 버튼 (비로그인 지역 데이터) */
-  showLoginCta?: boolean;
   message?: string;
   className?: string;
   children: ReactNode;
@@ -17,7 +14,6 @@ type Props = {
 export default function DemandDataBlindOverlay({
   blind,
   showCaption = false,
-  showLoginCta = false,
   message,
   className,
   children,
@@ -31,9 +27,7 @@ export default function DemandDataBlindOverlay({
       <div className="pointer-events-none select-none blur-[5px] saturate-50" aria-hidden="true">
         {children}
       </div>
-      {showLoginCta ? (
-        <DemandGuestLoginCta variant="overlay" message={message} />
-      ) : showCaption ? (
+      {showCaption ? (
         <div
           className="absolute inset-0 flex items-center justify-center rounded-md bg-white/40 px-2 backdrop-blur-[1px]"
           role="status"

@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Share2 } from "lucide-react";
 import {
+  buildRadarShareCopy,
   buildRadarShareParam,
   buildRadarShareUrl,
-  formatRadarShareText,
 } from "@/lib/demand/radar-share";
+import type { DemandHeatBand } from "@/lib/demand/district-demand-score";
 import type { DemandRegionSelection } from "@/lib/demand/regions";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,9 @@ type Props = {
   selection: DemandRegionSelection;
   pathLabel: string;
   score: number;
+  band: DemandHeatBand;
+  jeonseMom?: number;
+  moveInIndexMom?: number;
   /** 2+ — 공유 문구에 비교 맥락 (URL·티저는 selection만) */
   compareCount?: number;
   className?: string;
@@ -37,6 +41,9 @@ export default function DemandRadarShareButton({
   selection,
   pathLabel,
   score,
+  band,
+  jeonseMom = 0,
+  moveInIndexMom = 0,
   compareCount = 1,
   className,
   compact = false,
@@ -45,16 +52,18 @@ export default function DemandRadarShareButton({
   const [status, setStatus] = useState<ShareStatus>("idle");
 
   const compareMode = compareCount > 1;
-  const shareTitle = useMemo(
+  const shareCopy = useMemo(
     () =>
-      compareMode
-        ? `${pathLabel} · ${compareCount}개 지역 비교 중`
-        : `${pathLabel} 입주·이사 수요`,
-    [pathLabel, compareCount, compareMode]
-  );
-  const shareText = useMemo(
-    () => formatRadarShareText(pathLabel, score, { compareCount }),
-    [pathLabel, score, compareCount]
+      buildRadarShareCopy({
+        selection,
+        placeLabel: pathLabel,
+        score,
+        band,
+        jeonseMom,
+        moveInIndexMom,
+        compareCount,
+      }),
+    [selection, pathLabel, score, band, jeonseMom, moveInIndexMom, compareCount]
   );
   const shareParam = useMemo(() => buildRadarShareParam(selection), [selection]);
   const shareHint = compareMode ? `${pathLabel} (비교 중 포커스)` : pathLabel;
@@ -76,11 +85,15 @@ export default function DemandRadarShareButton({
     try {
       const url = await shareUrl("native");
       if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({ title: shareTitle, text: shareText, url });
+        await navigator.share({
+          title: shareCopy.title,
+          text: shareCopy.message,
+          url,
+        });
         setStatus("shared");
         return;
       }
-      await navigator.clipboard.writeText(`${shareText}\n${url}`);
+      await navigator.clipboard.writeText(`${shareCopy.message}\n${url}`);
       setStatus("copied");
     } catch {
       setStatus("error");
@@ -90,7 +103,7 @@ export default function DemandRadarShareButton({
   async function handleCopy() {
     try {
       const url = await shareUrl("copy");
-      await navigator.clipboard.writeText(`${shareText}\n${url}`);
+      await navigator.clipboard.writeText(`${shareCopy.message}\n${url}`);
       setStatus("copied");
     } catch {
       setStatus("error");
