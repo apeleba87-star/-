@@ -431,11 +431,22 @@ function assembleDemandKeywordStore(
   return { byRegion };
 }
 
-async function loadDemandKeywordStore(regionRefs?: DemandKeywordRegionRef[]): Promise<DemandKeywordStore> {
+export type DemandKeywordLoadOptions = {
+  /** 일간 키워드 조회 기간(일). 기본 400 */
+  dailySinceDays?: number;
+};
+
+async function loadDemandKeywordStore(
+  regionRefs?: DemandKeywordRegionRef[],
+  options?: DemandKeywordLoadOptions
+): Promise<DemandKeywordStore> {
   const fallbackBundle = await getDemandNationalKeywordMetrics();
   try {
     const supabase = createClient();
-    const sinceDate = addDaysToDateString(getKstTodayString(), -400);
+    const sinceDate = addDaysToDateString(
+      getKstTodayString(),
+      -(options?.dailySinceDays ?? 400)
+    );
     const volumeSinceYyyymm = addDaysToDateString(getKstTodayString(), -SEARCHAD_HISTORY_MONTHS * 31).slice(
       0,
       7
@@ -457,9 +468,10 @@ async function loadDemandKeywordStore(regionRefs?: DemandKeywordRegionRef[]): Pr
 }
 
 export async function getDemandKeywordStoreForRegions(
-  regionRefs: DemandKeywordRegionRef[]
+  regionRefs: DemandKeywordRegionRef[],
+  options?: DemandKeywordLoadOptions
 ): Promise<DemandKeywordStore> {
-  return loadDemandKeywordStore(regionRefs);
+  return loadDemandKeywordStore(regionRefs, options);
 }
 
 export async function getDemandKeywordStore(): Promise<DemandKeywordStore> {

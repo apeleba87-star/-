@@ -1,0 +1,32 @@
+import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
+import { getActiveDemandHubAds } from "@/lib/ads";
+import { stripDemandHubBootstrapForClient } from "@/lib/demand/demand-data-redact";
+import { getCachedDemandHubBootstrap } from "@/lib/demand/demand-cache";
+import type { DemandUsageAccess } from "@/lib/demand/usage-limits";
+
+type Props = {
+  initialAccess: DemandUsageAccess;
+  tier: "guest" | "member" | "admin";
+};
+
+/** 허브 데이터 — Suspense 안에서 로드해 셸·피커를 먼저 표시 */
+export default async function DemandHubBootstrapLoader({ initialAccess, tier }: Props) {
+  const [rawBootstrap, hubAds] = await Promise.all([
+    getCachedDemandHubBootstrap(),
+    getActiveDemandHubAds(),
+  ]);
+  const bootstrap = stripDemandHubBootstrapForClient(rawBootstrap, tier);
+
+  return (
+    <DemandHubWorkspace
+      rtmsOverrides={bootstrap.rtmsSnapshot.byRegionKey}
+      rtmsBaseMonthLabel={bootstrap.rtmsSnapshot.baseMonthLabel}
+      rtmsSeries={bootstrap.rtmsSeries}
+      keywordStore={bootstrap.keywordStore}
+      scoreContext={bootstrap.scoreContext}
+      dailyPulse={bootstrap.dailyPulse}
+      initialAccess={initialAccess}
+      hubAds={hubAds}
+    />
+  );
+}

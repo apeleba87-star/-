@@ -1,23 +1,23 @@
 import { Suspense } from "react";
 import DemandShell from "@/components/demand/DemandShell";
-import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
-import { getActiveDemandHubAds } from "@/lib/ads";
+import DemandHubBootstrapLoader from "@/components/demand/DemandHubBootstrapLoader";
 import { isDemandAdmin } from "@/lib/demand/access";
-import { stripDemandHubBootstrapForClient } from "@/lib/demand/demand-data-redact";
 import { getDemandUsageAccess } from "@/lib/demand/demand-usage-access";
 import { DEMAND_HUB_HERO } from "@/lib/demand/copy";
-import { getCachedDemandHubBootstrap } from "@/lib/demand/demand-cache";
+
+function HubBootstrapFallback() {
+  return (
+    <p className="py-8 text-center text-sm text-slate-500" role="status">
+      입주레이더 불러오는 중…
+    </p>
+  );
+}
 
 /** 입주레이더 허브 — `/` 및 legacy 경로 공통 */
 export default async function DemandHubPageView() {
   const isAdmin = await isDemandAdmin();
-  const [access, rawBootstrap, hubAds] = await Promise.all([
-    getDemandUsageAccess(isAdmin),
-    getCachedDemandHubBootstrap(),
-    getActiveDemandHubAds(),
-  ]);
+  const access = await getDemandUsageAccess(isAdmin);
   const tier = access.tier === "admin" ? "admin" : access.tier;
-  const bootstrap = stripDemandHubBootstrapForClient(rawBootstrap, tier);
 
   return (
     <DemandShell
@@ -27,23 +27,8 @@ export default async function DemandHubPageView() {
       variant="minimal"
       searchVariant={false}
     >
-      <Suspense
-        fallback={
-          <p className="py-8 text-center text-sm text-slate-500" role="status">
-            입주레이더 불러오는 중…
-          </p>
-        }
-      >
-        <DemandHubWorkspace
-          rtmsOverrides={bootstrap.rtmsSnapshot.byRegionKey}
-          rtmsBaseMonthLabel={bootstrap.rtmsSnapshot.baseMonthLabel}
-          rtmsSeries={bootstrap.rtmsSeries}
-          keywordStore={bootstrap.keywordStore}
-          scoreContext={bootstrap.scoreContext}
-          dailyPulse={bootstrap.dailyPulse}
-          initialAccess={access}
-          hubAds={hubAds}
-        />
+      <Suspense fallback={<HubBootstrapFallback />}>
+        <DemandHubBootstrapLoader initialAccess={access} tier={tier} />
       </Suspense>
     </DemandShell>
   );

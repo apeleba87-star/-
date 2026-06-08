@@ -37,7 +37,7 @@ export function getCachedDemandKeywordStore() {
 export function getCachedDemandHubBootstrap() {
   return unstable_cache(
     () => getDemandHubBootstrap(),
-    ["demand-hub-bootstrap-v3"],
+    ["demand-hub-bootstrap-v4"],
     { revalidate: DEMAND_HUB_REVALIDATE_SEC, tags: ["demand-rtms", "demand-keyword"] }
   )();
 }

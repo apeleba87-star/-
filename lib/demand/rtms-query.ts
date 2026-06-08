@@ -18,9 +18,9 @@ function toMonthLabel(yyyymm: string): string {
 
 const RTMS_SERIES_MONTHS_BACK = 48;
 
-function rtmsSeriesCutoffYyyymm(): string {
+function rtmsSeriesCutoffYyyymm(monthsBack = RTMS_SERIES_MONTHS_BACK): string {
   const d = new Date();
-  d.setMonth(d.getMonth() - RTMS_SERIES_MONTHS_BACK);
+  d.setMonth(d.getMonth() - monthsBack);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
@@ -177,7 +177,10 @@ function rowsToRtmsSeriesStore(data: Array<Record<string, unknown>>): DemandRtms
 }
 
 /** 지정 region 키만 RTMS 월별 시계열 (lazy load·허브 bootstrap) */
-export async function getDemandRtmsSeriesForKeys(keys: string[]): Promise<DemandRtmsSeriesStore> {
+export async function getDemandRtmsSeriesForKeys(
+  keys: string[],
+  options?: { monthsBack?: number }
+): Promise<DemandRtmsSeriesStore> {
   if (keys.length === 0) return {};
 
   const parsed = keys.map(parseRtmsSeriesKey).filter((p): p is NonNullable<typeof p> => p != null);
@@ -185,7 +188,7 @@ export async function getDemandRtmsSeriesForKeys(keys: string[]): Promise<Demand
 
   try {
     const supabase = createClient();
-    const cutoff = rtmsSeriesCutoffYyyymm();
+    const cutoff = rtmsSeriesCutoffYyyymm(options?.monthsBack ?? RTMS_SERIES_MONTHS_BACK);
     const select = "region_scope, region_key, yyyymm, sale_count, jeonse_count";
 
     const nationalKeys = [...new Set(parsed.filter((p) => p.regionScope === "national").map((p) => p.regionKey))];
@@ -247,37 +250,57 @@ function medianPositive(values: number[]): number {
   return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
-/** 전국 시군구 RTMS 활동량 — 신호월별 중앙값 (카드·그래프 공통) */
-export async function getDemandRtmsDistrictMedianByYyyymm(): Promise<Record<string, number>> {
-  const byYm = new Map<string, number[]>();
-  try {
-    const supabase = createClient();
-    const cutoff = rtmsSeriesCutoffYyyymm();
-    let from = 0;
-    const page = 1000;
-    while (true) {
-      const { data, error } = await supabase
-        .from("demand_rtms_monthly")
-        .select("yyyymm, sale_count, jeonse_count")
-        .eq("region_scope", "district")
-        .gte("yyyymm", cutoff)
-        .order("yyyymm", { ascending: true })
-        .range(from, from + page - 1);
-      if (error || !data?.length) break;
-      for (const row of data) {
-        const ym = String(row.yyyymm);
-        const act = rtmsDistrictActivity(
-          Number(row.sale_count ?? 0),
-          Number(row.jeonse_count ?? 0)
-        );
-        if (!byYm.has(ym)) byYm.set(ym, []);
-        byYm.get(ym)!.push(act);
-      }
-      if (data.length < page) break;
-      from += page;
+function medianMapFromRows(rows: Array<{ yyyymm: string; median_activity: number }>): Record<string, number> {
+  const medians: Record<string, number> = {};
+  for (const row of rows) {
+    const med = Number(row.median_activity);
+    if (Number.isFinite(med) && med > 0) {
+      medians[row.yyyymm] = med;
     }
-  } catch {
-    return {};
+  }
+  return medians;
+}
+
+async function fetchDistrictMedianViaRpc(
+  supabase: ReturnType<typeof createClient>,
+  cutoff: string
+): Promise<Record<string, number> | null> {
+  const { data, error } = await supabase.rpc("demand_rtms_district_median_by_yyyymm", {
+    cutoff_yyyymm: cutoff,
+  });
+  if (error || !data?.length) return null;
+  return medianMapFromRows(
+    data as Array<{ yyyymm: string; median_activity: number }>
+  );
+}
+
+async function fetchDistrictMedianViaPagination(
+  supabase: ReturnType<typeof createClient>,
+  cutoff: string
+): Promise<Record<string, number>> {
+  const byYm = new Map<string, number[]>();
+  let from = 0;
+  const page = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("demand_rtms_monthly")
+      .select("yyyymm, sale_count, jeonse_count")
+      .eq("region_scope", "district")
+      .gte("yyyymm", cutoff)
+      .order("yyyymm", { ascending: true })
+      .range(from, from + page - 1);
+    if (error || !data?.length) break;
+    for (const row of data) {
+      const ym = String(row.yyyymm);
+      const act = rtmsDistrictActivity(
+        Number(row.sale_count ?? 0),
+        Number(row.jeonse_count ?? 0)
+      );
+      if (!byYm.has(ym)) byYm.set(ym, []);
+      byYm.get(ym)!.push(act);
+    }
+    if (data.length < page) break;
+    from += page;
   }
   const medians: Record<string, number> = {};
   for (const [ym, acts] of byYm) {
@@ -285,4 +308,19 @@ export async function getDemandRtmsDistrictMedianByYyyymm(): Promise<Record<stri
     if (med > 0) medians[ym] = med;
   }
   return medians;
+}
+
+/** 전국 시군구 RTMS 활동량 — 신호월별 중앙값 (카드·그래프 공통) */
+export async function getDemandRtmsDistrictMedianByYyyymm(
+  options?: { monthsBack?: number }
+): Promise<Record<string, number>> {
+  try {
+    const supabase = createClient();
+    const cutoff = rtmsSeriesCutoffYyyymm(options?.monthsBack ?? RTMS_SERIES_MONTHS_BACK);
+    const fromRpc = await fetchDistrictMedianViaRpc(supabase, cutoff);
+    if (fromRpc) return fromRpc;
+    return await fetchDistrictMedianViaPagination(supabase, cutoff);
+  } catch {
+    return {};
+  }
 }

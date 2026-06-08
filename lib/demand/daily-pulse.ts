@@ -6,7 +6,10 @@ import type { DemandHeatBand } from "@/lib/demand/district-demand-score";
 import { formatDemandScoreBasis } from "@/lib/demand/district-demand-score";
 import type { DemandKeywordChartPoint, DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
 import { resolveDemandKeywordBundle } from "@/lib/demand/keyword-resolve";
-import { getDemandNationalKeywordMetrics } from "@/lib/demand/keyword-metrics";
+import {
+  getDemandNationalKeywordMetrics,
+  type DemandNationalKeywordMetrics,
+} from "@/lib/demand/keyword-metrics";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import {
   buildSeoulDemandRanking,
@@ -170,9 +173,10 @@ function rollingSnapshotLabel(ymd: string | null | undefined): string | null {
 export async function buildDailyPulseData(
   keywordStore: DemandKeywordStore | null | undefined,
   scoreContext: DemandScoreContext,
-  rtmsSeries: DemandRtmsSeriesStore
+  rtmsSeries: DemandRtmsSeriesStore,
+  nationalMetrics?: DemandNationalKeywordMetrics
 ): Promise<DailyPulseData> {
-  const fallback = await getDemandNationalKeywordMetrics();
+  const fallback = nationalMetrics ?? (await getDemandNationalKeywordMetrics());
   const bundle = resolveDemandKeywordBundle(
     keywordStore ?? { byRegion: {} },
     { scope: "national" },

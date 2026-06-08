@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { withAdminNavLabel } from "@/lib/admin-nav-label";
-import { isDemandAdmin } from "@/lib/demand/access";
+import FooterAdminLinks from "@/components/FooterAdminLinks";
 import { siteTagline } from "@/lib/seo";
 
 type FooterLink = { href: string; label: string };
@@ -23,56 +22,25 @@ const REPORT_LINKS: FooterLink[] = [
   { href: "/job-market-report", label: "일당 리포트" },
 ];
 
-const ADMIN_SERVICE_LINKS: FooterLink[] = [
-  { href: "/cleanidex", label: "클린아이덱스" },
-  { href: "/listings", label: "현장 마켓" },
-  { href: "/partners", label: "협력 센터" },
-  { href: "/jobs", label: "인력 센터" },
-  { href: "/archive", label: "뉴스레터 아카이브" },
-];
-
 const LEGAL_LINKS: FooterLink[] = [
   { href: "/login", label: "로그인" },
   { href: "/terms", label: "이용약관" },
   { href: "/privacy", label: "개인정보 처리방침" },
 ];
 
-function FooterLinks({
-  links,
-  adminLabels,
-  className,
-}: {
-  links: FooterLink[];
-  adminLabels?: boolean;
-  className?: string;
-}) {
-  return (
-    <>
-      {links.map((link) => (
-        <Link key={link.href} href={link.href} className={className ?? FOOTER_LINK_CLASS}>
-          {adminLabels ? withAdminNavLabel(link.label) : link.label}
-        </Link>
-      ))}
-    </>
-  );
-}
-
-function FooterLinkRow({ links, adminLabels }: { links: FooterLink[]; adminLabels?: boolean }) {
+function FooterLinkRow({ links }: { links: FooterLink[] }) {
   return (
     <nav className="flex flex-wrap gap-x-4 gap-y-0 sm:gap-x-6 sm:gap-y-1" aria-label="푸터 링크">
-      <FooterLinks links={links} adminLabels={adminLabels} />
+      {links.map((link) => (
+        <Link key={link.href} href={link.href} className={FOOTER_LINK_CLASS}>
+          {link.label}
+        </Link>
+      ))}
     </nav>
   );
 }
 
-export default async function Footer() {
-  const isAdmin = await isDemandAdmin();
-  const menuLinks = [
-    ...PUBLIC_PRIMARY_LINKS,
-    ...REPORT_LINKS,
-    ...(isAdmin ? ADMIN_SERVICE_LINKS : []),
-  ];
-
+export default function Footer() {
   return (
     <footer className="mt-auto border-t border-slate-200 bg-gray-900 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:py-8 sm:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
       <div className="mx-auto max-w-2xl px-3 xs:px-4 sm:px-6 lg:max-w-6xl lg:px-8">
@@ -84,7 +52,6 @@ export default async function Footer() {
             <p className="mt-1 hidden text-sm text-slate-400 sm:block">{siteTagline}</p>
           </div>
 
-          {/* 모바일 — 접이식 메뉴 */}
           <details className="group sm:hidden">
             <summary className="cursor-pointer list-none text-xs text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="inline-flex items-center gap-1">
@@ -92,26 +59,33 @@ export default async function Footer() {
                 <span className="text-[10px] text-slate-600 transition-transform group-open:rotate-180">▼</span>
               </span>
             </summary>
-            <nav
-              className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5"
-              aria-label="푸터 메뉴"
-            >
-              <FooterLinks links={menuLinks} adminLabels={isAdmin} />
-            </nav>
+            <div className="mt-2 space-y-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                {[...PUBLIC_PRIMARY_LINKS, ...REPORT_LINKS].map((link) => (
+                  <Link key={link.href} href={link.href} className={FOOTER_LINK_CLASS}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+              <FooterAdminLinks />
+            </div>
           </details>
 
-          {/* 데스크톱 — 기존 행 구분 */}
           <div className="hidden flex-col gap-4 sm:flex sm:gap-5">
             <FooterLinkRow links={PUBLIC_PRIMARY_LINKS} />
             <FooterLinkRow links={REPORT_LINKS} />
-            {isAdmin ? <FooterLinkRow links={ADMIN_SERVICE_LINKS} adminLabels /> : null}
+            <FooterAdminLinks />
           </div>
 
           <nav
             className="flex flex-wrap items-center gap-x-3 gap-y-0 text-xs text-slate-500 sm:gap-x-6 sm:text-sm"
             aria-label="푸터 정책"
           >
-            <FooterLinks links={LEGAL_LINKS} className="text-slate-500 hover:text-teal-300 py-0 text-xs sm:py-2 sm:text-sm" />
+            {LEGAL_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="text-slate-500 hover:text-teal-300 py-0 text-xs sm:py-2 sm:text-sm">
+                {link.label}
+              </Link>
+            ))}
           </nav>
         </div>
 
