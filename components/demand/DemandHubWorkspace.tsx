@@ -49,6 +49,7 @@ import {
 import { isDemandRegionScopeLoaded } from "@/lib/demand/region-scope-loaded";
 import { demandRegionSeoPathFromSelection } from "@/lib/demand/region-seo-path";
 import DemandDataBlindOverlay from "@/components/demand/DemandDataBlindOverlay";
+import DemandGuestLoginCta from "@/components/demand/DemandGuestLoginCta";
 import DemandUsageBanner from "@/components/demand/DemandUsageBanner";
 import DemandHubAdSlot from "@/components/demand/DemandHubAdSlot";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
@@ -250,17 +251,15 @@ export default function DemandHubWorkspace({
     : access.tier === "guest";
   const guestShareTeaser =
     access.tier === "guest" && shareTeaserKey != null && focusRowKey === shareTeaserKey;
+  const guestNeedsLogin = access.tier === "guest" && !guestShareTeaser;
   const anyRegionBlinded = scopeRows.some((r) =>
     isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
   );
-  const regionBlindHint =
-    guestShareTeaser
-      ? DEMAND_USAGE_SHARE_TEASER_HINT
-      : access.tier === "guest"
-        ? DEMAND_USAGE_REGION_BLIND_HINT
-        : access.remaining === 0 && anyRegionBlinded
-          ? DEMAND_USAGE_REGION_QUOTA_HINT
-          : null;
+  const quotaHint =
+    access.tier === "member" && access.remaining === 0 && anyRegionBlinded
+      ? DEMAND_USAGE_REGION_QUOTA_HINT
+      : null;
+  const shareTeaserHint = guestShareTeaser ? DEMAND_USAGE_SHARE_TEASER_HINT : null;
 
   const focusMetricBlinded = useCallback(
     (metricId: DemandMetricId) =>
@@ -309,7 +308,12 @@ export default function DemandHubWorkspace({
   const showTableBelowAd = hasSelection && scopeRows.length > 0 && access.tier !== "guest";
 
   return (
-    <div className="space-y-4">
+    <div
+      className={cn(
+        "space-y-4",
+        guestNeedsLogin && hasSelection && scopeRows.length > 0 && "pb-[5.5rem] md:pb-0"
+      )}
+    >
       <DemandUsageBanner access={access} />
 
       {dailyPulse ? <DemandHubPulseSection data={dailyPulse} compactOnMobile /> : null}
@@ -334,13 +338,16 @@ export default function DemandHubWorkspace({
 
       {hasSelection && primaryRow ? (
         <>
-          {regionBlindHint ? (
-            <p className="text-xs text-slate-600">{regionBlindHint}</p>
+          {shareTeaserHint ? (
+            <p className="text-xs text-slate-600">{shareTeaserHint}</p>
           ) : null}
+          {quotaHint ? <p className="text-xs text-amber-800">{quotaHint}</p> : null}
 
           <div className="hidden md:block">
             <DemandDataBlindOverlay
               blind={focusRowKey ? isRadarRowFullyBlinded(access, focusRowKey, shareTeaserKey) : access.tier === "guest"}
+              showLoginCta={guestNeedsLogin}
+              message={DEMAND_USAGE_REGION_BLIND_HINT}
             >
               <DemandScopeSummaryStrip
                 rows={scopeRows}
@@ -361,6 +368,8 @@ export default function DemandHubWorkspace({
             blind={scopeRows.every((r) =>
               isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
             )}
+            showLoginCta={guestNeedsLogin}
+            message={DEMAND_USAGE_REGION_BLIND_HINT}
           >
             <DemandScopeCompareCards
               rows={scopeRows}
@@ -374,7 +383,11 @@ export default function DemandHubWorkspace({
           </DemandDataBlindOverlay>
 
           {selectedMetric && scopeRows.length > 0 ? (
-            <DemandDataBlindOverlay blind={focusRowBlinded}>
+            <DemandDataBlindOverlay
+              blind={focusRowBlinded}
+              showLoginCta={guestNeedsLogin && focusRowBlinded}
+              message={DEMAND_USAGE_REGION_BLIND_HINT}
+            >
               <DemandMetricChart
                 rows={scopeRows}
                 metricId={selectedMetric}
@@ -550,29 +563,24 @@ export default function DemandHubWorkspace({
           </div>
           </div>
 
-          <p className="mt-3 text-center text-xs text-slate-500">
-            {primaryRow && demandRegionSeoPathFromSelection(primaryRow.selection) ? (
-              <Link
-                href={demandRegionSeoPathFromSelection(primaryRow.selection)!}
-                className="font-semibold text-teal-700 hover:underline"
-              >
-                {primaryRow.label} 상세
+          {compareHref ? (
+            <p className="mt-3 text-center text-xs text-slate-500">
+              <Link href={compareHref} className="font-semibold text-slate-600 hover:underline">
+                비교 화면
               </Link>
-            ) : null}
-            {compareHref ? (
-              <>
-                {" · "}
-                <Link href={compareHref} className="font-semibold text-slate-600 hover:underline">
-                  비교 화면
-                </Link>
-              </>
-            ) : null}
-          </p>
+            </p>
+          ) : null}
         </div>
       )}
 
       {showTableBelowAd ? (
         <DemandHubAdSlot slot={hubAds?.radar_table_below ?? null} className="mt-2 hidden md:block" />
+      ) : null}
+
+      {guestNeedsLogin && hasSelection && scopeRows.length > 0 ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">
+          <DemandGuestLoginCta variant="sticky" />
+        </div>
       ) : null}
     </div>
   );

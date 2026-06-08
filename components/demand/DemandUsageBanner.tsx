@@ -1,7 +1,5 @@
-import Link from "next/link";
+import DemandGuestLoginCta from "@/components/demand/DemandGuestLoginCta";
 import {
-  DEMAND_DAILY_REGION_VIEW_LIMIT,
-  DEMAND_USAGE_GUEST_MESSAGE,
   DEMAND_USAGE_QUOTA_MESSAGE,
   type DemandUsageAccess,
 } from "@/lib/demand/usage-limits";
@@ -14,17 +12,7 @@ export default function DemandUsageBanner({ access }: Props) {
   if (access.tier === "admin") return null;
 
   if (access.tier === "guest") {
-    return (
-      <div className="rounded-xl border border-teal-100 bg-teal-50/90 px-4 py-3 text-sm text-teal-950">
-        <p>{DEMAND_USAGE_GUEST_MESSAGE}</p>
-        <p className="mt-2">
-          <Link href="/login?next=/" className="font-semibold text-teal-800 underline underline-offset-2">
-            로그인
-          </Link>
-          <span className="text-teal-800/80"> · 하루 {DEMAND_DAILY_REGION_VIEW_LIMIT}개 지역</span>
-        </p>
-      </div>
-    );
+    return <DemandGuestLoginCta variant="banner" />;
   }
 
   return (
