@@ -1,7 +1,5 @@
-import { unstable_cache } from "next/cache";
-import { DEMAND_HUB_REVALIDATE_SEC } from "@/lib/demand/demand-cache";
 import { getDemandKeywordStoreForRegions } from "@/lib/demand/keyword-query";
-import { demandRegionSelectionKey, type DemandRegionSelection } from "@/lib/demand/regions";
+import type { DemandRegionSelection } from "@/lib/demand/regions";
 import { demandQueryKeysForSelections } from "@/lib/demand/selection-query-keys";
 import { getDemandRtmsSeriesForKeys } from "@/lib/demand/rtms-query";
 import type { DemandKeywordStore } from "@/lib/demand/keyword-hub-data";
@@ -29,24 +27,9 @@ export async function getDemandRegionScopeData(
   return { keywordStore, rtmsSeries };
 }
 
-function regionScopeCacheKey(selections: DemandRegionSelection[]): string {
-  return selections
-    .map((s) => demandRegionSelectionKey(s))
-    .sort()
-    .join("|");
-}
-
-/** lazy load API — 지역별 1시간 캐시 */
+/** lazy load API — DB 직조회 (재수집 직후 stale 캐시 방지) */
 export function getCachedDemandRegionScopeData(
   selections: DemandRegionSelection[]
 ): Promise<DemandRegionScopePayload> {
-  const key = regionScopeCacheKey(selections);
-  return unstable_cache(
-    () => getDemandRegionScopeData(selections),
-    [`demand-region-scope-${key}`],
-    {
-      revalidate: DEMAND_HUB_REVALIDATE_SEC,
-      tags: ["demand-keyword", "demand-rtms"],
-    }
-  )();
+  return getDemandRegionScopeData(selections);
 }

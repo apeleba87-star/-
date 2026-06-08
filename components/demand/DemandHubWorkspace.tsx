@@ -47,6 +47,7 @@ import {
   radarShareTeaserKeyFromParam,
 } from "@/lib/demand/radar-share";
 import { isDemandRegionScopeLoaded } from "@/lib/demand/region-scope-loaded";
+import { demandRegionSeoPathFromSelection } from "@/lib/demand/region-seo-path";
 import DemandDataBlindOverlay from "@/components/demand/DemandDataBlindOverlay";
 import DemandUsageBanner from "@/components/demand/DemandUsageBanner";
 import DemandHubAdSlot from "@/components/demand/DemandHubAdSlot";
@@ -162,6 +163,7 @@ export default function DemandHubWorkspace({
       try {
         const res = await fetch("/api/demand/region-scope", {
           method: "POST",
+          cache: "no-store",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             selections: [sel],
@@ -205,9 +207,10 @@ export default function DemandHubWorkspace({
         selections,
         rtmsOverrides,
         keywordStoreState,
-        liveScoreContext
+        liveScoreContext,
+        rtmsSeriesState
       ),
-    [selections, rtmsOverrides, keywordStoreState, liveScoreContext]
+    [selections, rtmsOverrides, keywordStoreState, liveScoreContext, rtmsSeriesState]
   );
 
   const keywordSourceSummary = useMemo(() => {
@@ -455,9 +458,9 @@ export default function DemandHubWorkspace({
                           >
                             {row.label}
                           </button>
-                        ) : row.hasDetail && row.slug ? (
+                        ) : demandRegionSeoPathFromSelection(row.selection) ? (
                           <Link
-                            href={`/demand/region/${row.slug}`}
+                            href={demandRegionSeoPathFromSelection(row.selection)!}
                             className="font-medium text-teal-800 hover:underline"
                           >
                             {row.label}
@@ -548,9 +551,9 @@ export default function DemandHubWorkspace({
           </div>
 
           <p className="mt-3 text-center text-xs text-slate-500">
-            {primaryRow?.hasDetail && primaryRow.slug ? (
+            {primaryRow && demandRegionSeoPathFromSelection(primaryRow.selection) ? (
               <Link
-                href={`/demand/region/${primaryRow.slug}`}
+                href={demandRegionSeoPathFromSelection(primaryRow.selection)!}
                 className="font-semibold text-teal-700 hover:underline"
               >
                 {primaryRow.label} 상세

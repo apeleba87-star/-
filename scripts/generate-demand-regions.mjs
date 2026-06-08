@@ -30,16 +30,33 @@ const SIDO_NAME_ALIASES = {
   "전북특별자치도": ["전라북도"],
 };
 
-/** RTMS 조회에 쓰이지 않는 구·군·시 코드 (CSV 역사 잔재) */
+/** 2023~ 특별자치도 출범 — RTMS LAWD 시도 2자리 변경 (구 CSV 42·45 보정) */
+const LAWD_SI_DO_PREFIX_REMAP = {
+  "42": "51", // 강원도 → 강원특별자치도 (2023-06-11)
+  "45": "52", // 전라북도 → 전북특별자치도 (2024-01-18)
+};
+
+function normalizeLawdCode(code) {
+  const prefix = code.slice(0, 2);
+  const remapped = LAWD_SI_DO_PREFIX_REMAP[prefix];
+  if (!remapped) return code;
+  return remapped + code.slice(2);
+}
 const OBSOLETE_LAWD_CODES = new Set([
   "41010", "41011", "41012", "41013", "41014",
   "41050",
+  "41190", // 부천시 통합코드 → 원미·소사·오정구
   "41191", "41193", "41195", "41197", "41199",
   "41283", "41330",
   "41850",
-  "43050", "43795",
+  "42050", "51050", // 강원 울진군 오등록 (경북 47930만 유효)
+  "42840", "51840", // 강원 명주군 (1995 폐지)
+  "43050", "43710", "43780", "43790", "43795", // 충북 청원·중원·제원군 등
   "44050", "44860",
   "44110", "44111", "44113", "44115",
+  "45150", "52150", // 전북 이리시 (익산 통합)
+  "45170", "52170", // 전북 정주시 (폐지)
+  "45820", "52820", // 전북 옥구군 (김제 통합)
   "46010", "46011", "46012", "46013", "46020", "46030", "46050",
   "46190", "46750",
   "47010", "47011", "47012", "47013", "47014", "47015", "47016", "47020", "47050",
@@ -136,7 +153,8 @@ function nameMatchesSido(name, fullLabel) {
 }
 
 function isValidRtmsUnit(row) {
-  if (OBSOLETE_LAWD_CODES.has(row.code)) return false;
+  const code = normalizeLawdCode(row.code);
+  if (OBSOLETE_LAWD_CODES.has(code) || OBSOLETE_LAWD_CODES.has(row.code)) return false;
   const sido = SIDO_PREFIX_TO_ID[row.code.slice(0, 2)];
   if (!sido) return false;
   return nameMatchesSido(row.name, sido.fullLabel);
@@ -222,12 +240,13 @@ function main() {
   const missingOverride = [];
 
   for (const row of rtmsUnits) {
+    const lawdCd = normalizeLawdCode(row.code);
     const sido = SIDO_PREFIX_TO_ID[row.code.slice(0, 2)];
     const guLabel = parseGuLabel(row, sido.fullLabel);
     if (!guLabel) continue;
 
     const dupes = rtmsUnits.filter((r) => r.name === row.name && r.code !== row.code);
-    if (dupes.length > 0 && !GU_OVERRIDES[row.code]) {
+    if (dupes.length > 0 && !GU_OVERRIDES[row.code] && !GU_OVERRIDES[lawdCd]) {
       missingOverride.push(row);
     }
 
@@ -249,11 +268,11 @@ function main() {
     cityBucket.slugSet.add(uniqueSlug);
 
     const regionKey = `${sido.id}:${uniqueSlug}`;
-    lawdByRegionKey[regionKey] = row.code;
+    lawdByRegionKey[regionKey] = lawdCd;
     cityBucket.districts.push({
       gu: guLabel,
       slug: uniqueSlug,
-      lawdCd: row.code,
+      lawdCd,
     });
     byCityId.set(sido.id, cityBucket);
   }

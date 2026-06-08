@@ -22,7 +22,7 @@ export const defaultDescription =
   "입주·이사 수요(입주레이더), 현장 작업 증빙, 나라장터 입찰·낙찰, 인력·시장 리포트를 한 플랫폼에서.";
 
 /** 푸터·보조 문구 */
-export const siteTagline = "입주 수요 · 현장 증빙 · 입찰 · 데이터랩";
+export const siteTagline = "입주레이더 · 나라장터 · 리포트 · 견적";
 
 /** `/` — 입주레이더 */
 export const radarHomeTitle = "입주레이더 — 이번 달 입주·이사 수요가 많은 지역";
@@ -51,6 +51,35 @@ export function radarRegionTitle(regionLabel: string): string {
 export function radarRegionDescription(regionLabel: string, cityLabel?: string): string {
   const place = cityLabel ? `${cityLabel} ${regionLabel}` : regionLabel;
   return `${place} 아파트 거래와 입주청소·이사 검색 신호로 이번 달 입주 수요를 확인합니다. 청소·이사 영업 참고 | 입주레이더`;
+}
+
+/** SEO 랜딩 — 「○○ 입주청소 수요」 */
+export function radarRegionSeoTitle(placeLabel: string, targetYyyymm: string | null): string {
+  if (targetYyyymm) {
+    const [y, m] = targetYyyymm.split("-");
+    return `${placeLabel} 입주청소 수요 — ${Number(y)}년 ${Number(m)}월 · 입주레이더`;
+  }
+  return `${placeLabel} 입주청소 수요 · 입주레이더`;
+}
+
+export function radarRegionSeoDescription(opts: {
+  placeLabel: string;
+  targetYyyymm: string | null;
+  jeonseCount: number;
+  jeonseMom: number;
+  saleCount: number;
+  moveInIndexMom: number;
+  score: number;
+  bandLabel: string;
+}): string {
+  const month =
+    opts.targetYyyymm != null
+      ? `${opts.targetYyyymm.split("-")[0]}년 ${Number(opts.targetYyyymm.split("-")[1])}월`
+      : "이번 달";
+  const jMom = opts.jeonseMom > 0 ? `+${opts.jeonseMom}` : String(opts.jeonseMom);
+  const mIdx =
+    opts.moveInIndexMom > 0 ? `+${opts.moveInIndexMom.toFixed(1)}` : opts.moveInIndexMom.toFixed(1);
+  return `${opts.placeLabel} ${month} 입주 수요. 전월세 ${opts.jeonseCount}건(전월 ${jMom}%), 매매 ${opts.saleCount}건, 입주청소 검색 ${mIdx}%, 입주 예상 점수 ${Math.round(opts.score)}(${opts.bandLabel}). 청소·이사 업체 영업 참고 | 국토부 RTMS·검색 데이터`;
 }
 
 export function resolveDemandRegionForSeo(guSlug: string): { gu: string; cityLabel: string } | null {

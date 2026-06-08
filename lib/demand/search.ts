@@ -1,5 +1,6 @@
 import { DEMAND_DAILY_NATIONAL_KEYWORDS } from "@/lib/demand/dummy-daily";
 import { DEMAND_TOP10, getDemandDistrictBySlug } from "@/lib/demand/dummy-data";
+import { demandRegionSeoPath } from "@/lib/demand/region-seo-path";
 import { SEOUL_GU_NAMES, guNameToSlug, guSlugToName } from "@/lib/demand/slugs";
 
 export type DemandSearchResultType = "district" | "keyword";
@@ -74,7 +75,7 @@ export function searchDemand(query: string, limit = 12): DemandSearchResult[] {
           ? `입주 온도 ${district.indexScore} · 서울 ${district.rank}위`
           : "데이터 준비 중"
         : "서울",
-      href: `/demand/region/${slug}`,
+      href: demandRegionSeoPath("seoul", slug),
       score,
       hasDetail: !!district,
     });

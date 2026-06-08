@@ -348,14 +348,53 @@ export function buildDemandScopeRows(selections: DemandRegionSelection[]): Deman
     .filter((r): r is DemandScopeTableRow => r != null);
 }
 
+function rtmsMomPercent(curr: number, prev: number): number {
+  if (!Number.isFinite(curr) || !Number.isFinite(prev) || prev <= 0) return 0;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+
+/** lazy load 시계열 → 카드용 최신월·MoM (SSR 스냅샷보다 우선) */
+export function rtmsDistrictOverridesFromSeries(
+  series: DemandRtmsSeriesStore
+): DemandRtmsDistrictOverrides {
+  const overrides: DemandRtmsDistrictOverrides = {};
+  for (const [seriesKey, points] of Object.entries(series)) {
+    if (!seriesKey.startsWith("district:") || !points.length) continue;
+    const regionKey = seriesKey.slice("district:".length);
+    const sorted = [...points].sort((a, b) => b.yyyymm.localeCompare(a.yyyymm));
+    const curr = sorted[0]!;
+    const prev = sorted[1];
+    overrides[regionKey] = {
+      saleCount: curr.saleCount,
+      jeonseCount: curr.jeonseCount,
+      saleMom: prev ? rtmsMomPercent(curr.saleCount, prev.saleCount) : 0,
+      jeonseMom: prev ? rtmsMomPercent(curr.jeonseCount, prev.jeonseCount) : 0,
+    };
+  }
+  return overrides;
+}
+
+export function mergeRtmsDistrictOverrides(
+  base: DemandRtmsDistrictOverrides,
+  series: DemandRtmsSeriesStore | null | undefined
+): DemandRtmsDistrictOverrides {
+  const fromSeries = rtmsDistrictOverridesFromSeries(series ?? {});
+  return { ...base, ...fromSeries };
+}
+
 export function buildDemandScopeRowsWithRtms(
   selections: DemandRegionSelection[],
   rtmsOverrides: DemandRtmsDistrictOverrides,
   keywordStore?: DemandKeywordStore | null,
-  scoreContext?: DemandScoreContext | null
+  scoreContext?: DemandScoreContext | null,
+  rtmsSeries?: DemandRtmsSeriesStore | null
 ): DemandScopeTableRow[] {
+  const merged = mergeRtmsDistrictOverrides(
+    rtmsOverrides,
+    rtmsSeries ?? scoreContext?.rtmsSeries ?? null
+  );
   return selections
-    .map((s) => buildDemandScopeRow(s, rtmsOverrides, keywordStore, scoreContext))
+    .map((s) => buildDemandScopeRow(s, merged, keywordStore, scoreContext))
     .filter((r): r is DemandScopeTableRow => r != null);
 }
 

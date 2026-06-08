@@ -8,6 +8,7 @@ import {
   buildSeoulDemandRanking,
 } from "@/lib/demand/seoul-demand-ranking";
 import Link from "next/link";
+import { demandRegionSeoPath } from "@/lib/demand/region-seo-path";
 
 export const metadata = {
   title: "서울 입주 예상 점수 순위 | 클린아이덱스",
@@ -36,7 +37,7 @@ export default async function DemandTopPage() {
         {ranking.map((row) => (
           <li key={row.slug}>
             <Link
-              href={`/demand/region/${row.slug}`}
+              href={demandRegionSeoPath("seoul", row.slug)}
               className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-teal-200"
             >
               <span className="flex items-center gap-3">

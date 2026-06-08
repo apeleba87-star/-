@@ -1,32 +1,122 @@
 import Link from "next/link";
+import { withAdminNavLabel } from "@/lib/admin-nav-label";
+import { isDemandAdmin } from "@/lib/demand/access";
 import { siteTagline } from "@/lib/seo";
 
-export default function Footer() {
+type FooterLink = { href: string; label: string };
+
+const FOOTER_LINK_CLASS =
+  "text-slate-400 hover:text-teal-300 transition-colors touch-manipulation py-1 text-xs sm:min-h-[44px] sm:py-2 sm:text-sm";
+
+const PUBLIC_PRIMARY_LINKS: FooterLink[] = [
+  { href: "/", label: "입주레이더" },
+  { href: "/tenders", label: "입찰 공고" },
+  { href: "/tender-awards", label: "낙찰 공고" },
+  { href: "/jobs/public", label: "채용 공고" },
+  { href: "/estimate", label: "견적 계산기" },
+];
+
+const REPORT_LINKS: FooterLink[] = [
+  { href: "/news?section=report&category=report", label: "입찰 리포트" },
+  { href: "/news?section=report&category=award_report", label: "낙찰 리포트" },
+  { href: "/marketing-report", label: "마케팅 리포트" },
+  { href: "/job-market-report", label: "일당 리포트" },
+];
+
+const ADMIN_SERVICE_LINKS: FooterLink[] = [
+  { href: "/cleanidex", label: "클린아이덱스" },
+  { href: "/listings", label: "현장 마켓" },
+  { href: "/partners", label: "협력 센터" },
+  { href: "/jobs", label: "인력 센터" },
+  { href: "/archive", label: "뉴스레터 아카이브" },
+];
+
+const LEGAL_LINKS: FooterLink[] = [
+  { href: "/login", label: "로그인" },
+  { href: "/terms", label: "이용약관" },
+  { href: "/privacy", label: "개인정보 처리방침" },
+];
+
+function FooterLinks({
+  links,
+  adminLabels,
+  className,
+}: {
+  links: FooterLink[];
+  adminLabels?: boolean;
+  className?: string;
+}) {
   return (
-    <footer className="mt-auto border-t border-slate-200 bg-gray-900 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:py-8">
+    <>
+      {links.map((link) => (
+        <Link key={link.href} href={link.href} className={className ?? FOOTER_LINK_CLASS}>
+          {adminLabels ? withAdminNavLabel(link.label) : link.label}
+        </Link>
+      ))}
+    </>
+  );
+}
+
+function FooterLinkRow({ links, adminLabels }: { links: FooterLink[]; adminLabels?: boolean }) {
+  return (
+    <nav className="flex flex-wrap gap-x-4 gap-y-0 sm:gap-x-6 sm:gap-y-1" aria-label="푸터 링크">
+      <FooterLinks links={links} adminLabels={adminLabels} />
+    </nav>
+  );
+}
+
+export default async function Footer() {
+  const isAdmin = await isDemandAdmin();
+  const menuLinks = [
+    ...PUBLIC_PRIMARY_LINKS,
+    ...REPORT_LINKS,
+    ...(isAdmin ? ADMIN_SERVICE_LINKS : []),
+  ];
+
+  return (
+    <footer className="mt-auto border-t border-slate-200 bg-gray-900 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:py-8 sm:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
       <div className="mx-auto max-w-2xl px-3 xs:px-4 sm:px-6 lg:max-w-6xl lg:px-8">
-        <div className="flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:gap-5">
           <div>
-            <Link href="/" className="font-semibold text-white hover:text-teal-300 transition-colors">
+            <Link href="/" className="text-sm font-semibold text-white hover:text-teal-300 transition-colors sm:text-base">
               클린아이덱스
             </Link>
-            <p className="mt-1 text-sm text-slate-400">{siteTagline}</p>
+            <p className="mt-1 hidden text-sm text-slate-400 sm:block">{siteTagline}</p>
           </div>
-          <nav className="flex flex-wrap gap-4 sm:gap-6" aria-label="푸터 링크">
-            <Link href="/archive" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">아카이브</Link>
-            <Link href="/categories" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">카테고리</Link>
-            <Link href="/listings" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">현장 거래</Link>
-            <Link href="/jobs" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">인력 구인</Link>
-            <span className="min-h-[44px] py-2 text-sm text-slate-500 touch-manipulation">업계소식 (준비중)</span>
-            <Link href="/news" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">데이터랩</Link>
-            <Link href="/estimate" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">견적 계산기</Link>
-            <Link href="/login" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">로그인</Link>
-            <Link href="/terms" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">이용약관</Link>
-            <Link href="/privacy" className="min-h-[44px] py-2 text-sm text-slate-400 hover:text-teal-300 transition-colors touch-manipulation">개인정보 처리방침</Link>
+
+          {/* 모바일 — 접이식 메뉴 */}
+          <details className="group sm:hidden">
+            <summary className="cursor-pointer list-none text-xs text-slate-500 marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-1">
+                사이트 메뉴
+                <span className="text-[10px] text-slate-600 transition-transform group-open:rotate-180">▼</span>
+              </span>
+            </summary>
+            <nav
+              className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5"
+              aria-label="푸터 메뉴"
+            >
+              <FooterLinks links={menuLinks} adminLabels={isAdmin} />
+            </nav>
+          </details>
+
+          {/* 데스크톱 — 기존 행 구분 */}
+          <div className="hidden flex-col gap-4 sm:flex sm:gap-5">
+            <FooterLinkRow links={PUBLIC_PRIMARY_LINKS} />
+            <FooterLinkRow links={REPORT_LINKS} />
+            {isAdmin ? <FooterLinkRow links={ADMIN_SERVICE_LINKS} adminLabels /> : null}
+          </div>
+
+          <nav
+            className="flex flex-wrap items-center gap-x-3 gap-y-0 text-xs text-slate-500 sm:gap-x-6 sm:text-sm"
+            aria-label="푸터 정책"
+          >
+            <FooterLinks links={LEGAL_LINKS} className="text-slate-500 hover:text-teal-300 py-0 text-xs sm:py-2 sm:text-sm" />
           </nav>
         </div>
-        <p className="mt-6 text-xs text-slate-500">
-          © {new Date().getFullYear()} 클린아이덱스. All rights reserved.
+
+        <p className="mt-3 text-[11px] text-slate-600 sm:mt-6 sm:text-xs">
+          © {new Date().getFullYear()} 클린아이덱스
         </p>
       </div>
     </footer>

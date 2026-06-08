@@ -8,6 +8,16 @@ function hasNationalKeywordBundle(keywordStore: DemandKeywordStore | null | unde
   return Boolean(keywordStore?.byRegion["national:kr"] ?? keywordStore?.byRegion.kr);
 }
 
+/** 시군구 — 전부 0인 구(재수집 전 캐시)는 미로드로 간주 */
+function districtRtmsSeriesUsable(
+  rtmsSeries: DemandRtmsSeriesStore,
+  rtmsKey: string
+): boolean {
+  const points = rtmsSeries[rtmsKey];
+  if (!points?.length) return false;
+  return points.some((p) => p.saleCount > 0 || p.jeonseCount > 0);
+}
+
 /** bootstrap·lazy load에 해당 지역 데이터가 이미 있는지 */
 export function isDemandRegionScopeLoaded(
   selection: DemandRegionSelection,
@@ -15,8 +25,10 @@ export function isDemandRegionScopeLoaded(
   rtmsSeries: DemandRtmsSeriesStore
 ): boolean {
   if (!demandKeywordRegionRefFromSelection(selection)) return false;
+  if (!hasNationalKeywordBundle(keywordStore)) return false;
   const rtmsKey = demandRtmsSeriesKeyForSelection(selection);
-  const hasRtms = Boolean(rtmsSeries[rtmsKey]?.length);
-  // 입주 예상 점수 차트는 전국 검색 + 해당 지역 RTMS만 있으면 됨
-  return hasNationalKeywordBundle(keywordStore) && hasRtms;
+  if (selection.scope === "district") {
+    return districtRtmsSeriesUsable(rtmsSeries, rtmsKey);
+  }
+  return Boolean(rtmsSeries[rtmsKey]?.length);
 }

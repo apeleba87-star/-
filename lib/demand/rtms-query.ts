@@ -46,20 +46,31 @@ function normalizeDistrictRegionKey(raw: string): string {
 export async function getDemandRtmsDistrictSnapshot(): Promise<DemandRtmsDistrictSnapshot> {
   try {
     const supabase = createClient();
+    const { data: monthProbe, error: monthError } = await supabase
+      .from("demand_rtms_monthly")
+      .select("yyyymm")
+      .eq("region_scope", "district")
+      .order("yyyymm", { ascending: false })
+      .limit(64);
+
+    if (monthError || !monthProbe?.length) {
+      return { byRegionKey: {}, baseMonthLabel: null, baseYyyymm: null };
+    }
+
+    const months = [...new Set(monthProbe.map((r) => String(r.yyyymm)))].sort().reverse();
+    const current = months[0]!;
+    const previous = months[1] ?? null;
+    const monthFilter = previous ? [current, previous] : [current];
+
     const { data, error } = await supabase
       .from("demand_rtms_monthly")
       .select("region_scope, region_key, yyyymm, sale_count, jeonse_count")
       .eq("region_scope", "district")
-      .order("yyyymm", { ascending: false })
-      .limit(5000);
+      .in("yyyymm", monthFilter);
 
     if (error || !data || data.length === 0) {
       return { byRegionKey: {}, baseMonthLabel: null, baseYyyymm: null };
     }
-
-    const months = [...new Set(data.map((r) => String(r.yyyymm)))].sort().reverse();
-    const current = months[0];
-    const previous = months[1] ?? null;
     const byRegionKey: DemandRtmsDistrictSnapshot["byRegionKey"] = {};
 
     const currRows = data.filter((r) => String(r.yyyymm) === current);

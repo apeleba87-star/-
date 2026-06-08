@@ -113,7 +113,7 @@ export const DEMAND_HUB_HERO = {
   title: "이번 달, 입주가 많은 지역을 찾아보세요",
   subtitle:
     "국토부 거래와 검색엔진의 신호로 각 지역 입주·이사 우선순위를 비교합니다.",
-  regionHint: "비교할 지역을 추가하거나 아래 서울 순위를 확인하세요.",
+  regionHint: "시·도와 시·군·구를 선택해 비교할 지역을 추가하세요.",
 } as const;
 
 export const DEMAND_HUB_SEARCH_PLACEHOLDER = "구 이름 검색 (예: 강남, 강서, 양천)";

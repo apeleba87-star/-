@@ -12,7 +12,7 @@ export const DEMAND_HUB_REVALIDATE_SEC = 3600;
 export function getCachedDemandRtmsDistrictSnapshot() {
   return unstable_cache(
     () => getDemandRtmsDistrictSnapshot(),
-    ["demand-rtms-snapshot-v2"],
+    ["demand-rtms-snapshot-v3"],
     { revalidate: DEMAND_HUB_REVALIDATE_SEC, tags: ["demand-rtms"] }
   )();
 }
@@ -37,7 +37,7 @@ export function getCachedDemandKeywordStore() {
 export function getCachedDemandHubBootstrap() {
   return unstable_cache(
     () => getDemandHubBootstrap(),
-    ["demand-hub-bootstrap-v1"],
+    ["demand-hub-bootstrap-v3"],
     { revalidate: DEMAND_HUB_REVALIDATE_SEC, tags: ["demand-rtms", "demand-keyword"] }
   )();
 }

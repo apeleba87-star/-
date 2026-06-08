@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { demandRegionSeoPathFromSelection } from "@/lib/demand/region-seo-path";
 import type { ReactNode } from "react";
 import DemandHeatBadge from "@/components/demand/DemandHeatBadge";
 import DemandRadarShareButton from "@/components/demand/DemandRadarShareButton";
@@ -193,8 +194,11 @@ export default function DemandScopeCompareCards({
       <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2.5">
           <div className="min-w-0 flex-1">
-            {focusRow.hasDetail && focusRow.slug ? (
-              <Link href={`/demand/region/${focusRow.slug}`} className="font-bold text-teal-800">
+            {demandRegionSeoPathFromSelection(focusRow.selection) ? (
+              <Link
+                href={demandRegionSeoPathFromSelection(focusRow.selection)!}
+                className="font-bold text-teal-800"
+              >
                 {focusRow.pathLabel}
               </Link>
             ) : (

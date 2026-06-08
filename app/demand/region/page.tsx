@@ -1,6 +1,7 @@
 import Link from "next/link";
 import DemandShell from "@/components/demand/DemandShell";
 import DemandSearch from "@/components/demand/DemandSearch";
+import { demandRegionSeoPath } from "@/lib/demand/region-seo-path";
 import { SEOUL_GU_NAMES, guNameToSlug } from "@/lib/demand/slugs";
 import { DEMAND_TOP10 } from "@/lib/demand/dummy-data";
 
@@ -25,7 +26,7 @@ export default function DemandRegionIndexPage() {
             return (
               <li key={gu}>
                 {ready ? (
-                  <Link href={`/demand/region/${slug}`} className="text-sm text-slate-700 hover:text-teal-800">
+                  <Link href={demandRegionSeoPath("seoul", slug)} className="text-sm text-slate-700 hover:text-teal-800">
                     {gu}
                   </Link>
                 ) : (

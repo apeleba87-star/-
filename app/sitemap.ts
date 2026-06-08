@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
+import { listSeoSitemapDistricts } from "@/lib/demand/region-seo-data";
+import { demandRegionSeoPath } from "@/lib/demand/region-seo-path";
 import { getBaseUrl } from "@/lib/seo";
-import { DEMAND_REGION_REGISTRY } from "@/lib/demand/region-registry.generated";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
@@ -37,15 +38,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority,
   }));
 
-  for (const city of DEMAND_REGION_REGISTRY) {
-    for (const district of city.districts) {
-      entries.push({
-        url: `${base}/demand/region/${district.slug}`,
-        lastModified: now,
-        changeFrequency: "weekly" as const,
-        priority: 0.62,
-      });
-    }
+  const seoDistricts = await listSeoSitemapDistricts();
+  for (const d of seoDistricts) {
+    const priority =
+      d.cityId === "seoul" || d.cityId === "gyeonggi" || d.cityId === "incheon"
+        ? 0.72
+        : ["busan", "daegu", "gwangju", "daejeon", "ulsan"].includes(d.cityId)
+          ? 0.68
+          : 0.62;
+    entries.push({
+      url: `${base}${demandRegionSeoPath(d.cityId, d.guSlug)}`,
+      lastModified: d.lastModified ? new Date(d.lastModified).toISOString() : now,
+      changeFrequency: "weekly" as const,
+      priority,
+    });
   }
 
   const supabase = createClient();

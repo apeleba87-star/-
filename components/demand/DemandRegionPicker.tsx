@@ -74,36 +74,11 @@ export default function DemandRegionPicker({ selections, onAdd, onRemove, classN
     }
   }
 
-  function quickAdd(sel: DemandRegionSelection) {
-    const key = demandRegionSelectionKey(sel);
-    if (atMax || selections.some((s) => demandRegionSelectionKey(s) === key)) return;
-    onAdd(sel);
-  }
-
   const canAdd =
     draft != null && !atMax && !isDuplicate && (isNational || (cityId && guValue));
 
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={atMax || selections.some((s) => s.scope === "national")}
-          onClick={() => quickAdd({ scope: "national" })}
-          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-teal-300 hover:bg-teal-50 disabled:opacity-40"
-        >
-          + 전국
-        </button>
-        <button
-          type="button"
-          disabled={atMax || selections.some((s) => s.scope === "city" && s.cityId === "seoul")}
-          onClick={() => quickAdd({ scope: "city", cityId: "seoul" })}
-          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-teal-300 hover:bg-teal-50 disabled:opacity-40"
-        >
-          + 서울특별시
-        </button>
-      </div>
-
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
           <label htmlFor="demand-region-city" className="text-xs font-medium text-slate-600">
