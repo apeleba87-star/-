@@ -31,3 +31,37 @@ export function isDemandRegionKeyUnlocked(access: DemandUsageAccess, regionKey: 
   if (access.tier === "guest") return false;
   return access.unlockedRegionKeys.includes(regionKey);
 }
+
+const ACCESS_TIER_RANK: Record<DemandAccessTier, number> = {
+  guest: 0,
+  member: 1,
+  admin: 2,
+};
+
+/** API·SSR 응답 병합 — tier 하향·unlock 목록 유실 방지 */
+export function mergeDemandAccess(
+  prev: DemandUsageAccess,
+  next: DemandUsageAccess
+): DemandUsageAccess {
+  const prevRank = ACCESS_TIER_RANK[prev.tier];
+  const nextRank = ACCESS_TIER_RANK[next.tier];
+  if (nextRank > prevRank) return next;
+  if (nextRank < prevRank) return prev;
+
+  if (next.tier === "member") {
+    const unlockedRegionKeys = [
+      ...new Set([...prev.unlockedRegionKeys, ...next.unlockedRegionKeys]),
+    ];
+    const usedCount = unlockedRegionKeys.length;
+    return {
+      tier: "member",
+      dailyLimit: DEMAND_DAILY_REGION_VIEW_LIMIT,
+      usedCount,
+      remaining: Math.max(0, DEMAND_DAILY_REGION_VIEW_LIMIT - usedCount),
+      unlockedRegionKeys,
+      canViewData: true,
+    };
+  }
+
+  return next;
+}

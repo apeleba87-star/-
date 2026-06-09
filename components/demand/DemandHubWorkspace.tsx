@@ -36,6 +36,8 @@ import type { DemandRegionScopeResponse } from "@/lib/demand/region-scope-data";
 import {
   DEMAND_USAGE_REGION_QUOTA_HINT,
   DEMAND_USAGE_SHARE_TEASER_HINT,
+  isDemandRegionKeyUnlocked,
+  mergeDemandAccess,
   type DemandUsageAccess,
 } from "@/lib/demand/usage-limits";
 import {
@@ -129,12 +131,23 @@ export default function DemandHubWorkspace({
   const shareBootstrapped = useRef(false);
 
   const [access, setAccess] = useState<DemandUsageAccess>(initialAccess);
+  const accessRef = useRef(initialAccess);
   const [selections, setSelections] = useState<DemandRegionSelection[]>([]);
   const [selectedMetric, setSelectedMetric] = useState<DemandMetricId | null>("jeonse");
   const [chartRowKey, setChartRowKey] = useState<string | null>(null);
   const [keywordStoreState, setKeywordStoreState] = useState(keywordStore);
   const [rtmsSeriesState, setRtmsSeriesState] = useState(rtmsSeries);
+  const keywordStoreRef = useRef(keywordStore);
+  const rtmsSeriesRef = useRef(rtmsSeries);
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
+
+  accessRef.current = access;
+  keywordStoreRef.current = keywordStoreState;
+  rtmsSeriesRef.current = rtmsSeriesState;
+
+  useEffect(() => {
+    setAccess((prev) => mergeDemandAccess(prev, initialAccess));
+  }, [initialAccess]);
 
   useEffect(() => {
     setKeywordStoreState(keywordStore);
@@ -153,7 +166,21 @@ export default function DemandHubWorkspace({
   const ensureRegionScope = useCallback(
     async (sel: DemandRegionSelection, fromShare = false) => {
       const key = demandRegionSelectionKey(sel);
-      if (isDemandRegionScopeLoaded(sel, keywordStoreState, rtmsSeriesState)) return;
+      const currentAccess = accessRef.current;
+      const dataLoaded = isDemandRegionScopeLoaded(
+        sel,
+        keywordStoreRef.current,
+        rtmsSeriesRef.current
+      );
+      const shareTeaser =
+        currentAccess.tier === "guest" &&
+        (fromShare || (shareTeaserKey != null && shareTeaserKey === key));
+      const needsUnlock =
+        currentAccess.tier === "member" && !isDemandRegionKeyUnlocked(currentAccess, key);
+
+      if (currentAccess.tier === "admin") return;
+      if (dataLoaded && currentAccess.tier === "guest") return;
+      if (dataLoaded && currentAccess.tier === "member" && !needsUnlock) return;
 
       setLoadingKeys((prev) => {
         if (prev.has(key)) return prev;
@@ -164,20 +191,24 @@ export default function DemandHubWorkspace({
         const res = await fetch("/api/demand/region-scope", {
           method: "POST",
           cache: "no-store",
+          credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             selections: [sel],
-            shareTeaser:
-              fromShare || (shareTeaserKey != null && shareTeaserKey === key),
+            shareTeaser,
           }),
         });
         if (!res.ok) return;
         const data = (await res.json()) as DemandRegionScopeResponse;
-        setAccess(data.access);
-        setKeywordStoreState((prev) =>
-          mergeDemandKeywordStores(prev ?? { byRegion: {} }, data.keywordStore)
-        );
-        setRtmsSeriesState((prev) => mergeRtmsSeries(prev, data.rtmsSeries));
+        setAccess((prev) => mergeDemandAccess(prev, data.access));
+        if (Object.keys(data.keywordStore.byRegion).length > 0) {
+          setKeywordStoreState((prev) =>
+            mergeDemandKeywordStores(prev ?? { byRegion: {} }, data.keywordStore)
+          );
+        }
+        if (Object.keys(data.rtmsSeries).length > 0) {
+          setRtmsSeriesState((prev) => mergeRtmsSeries(prev, data.rtmsSeries));
+        }
       } finally {
         setLoadingKeys((prev) => {
           const next = new Set(prev);
@@ -186,8 +217,19 @@ export default function DemandHubWorkspace({
         });
       }
     },
-    [keywordStoreState, rtmsSeriesState, shareTeaserKey]
+    [shareTeaserKey]
   );
+
+  useEffect(() => {
+    const current = accessRef.current;
+    if (current.tier !== "member" || selections.length === 0) return;
+    for (const sel of selections) {
+      const key = demandRegionSelectionKey(sel);
+      if (!isDemandRegionKeyUnlocked(current, key)) {
+        void ensureRegionScope(sel);
+      }
+    }
+  }, [access.tier, selections, ensureRegionScope]);
 
   useEffect(() => {
     if (shareBootstrapped.current || !shareParam) return;

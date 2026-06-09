@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
 
@@ -23,7 +23,6 @@ const SOCIAL_PROVIDERS: { provider: SocialProvider; label: string; className?: s
 ];
 
 export default function LoginClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const nextUrl = searchParams?.get("next");
   const errorFromUrl = searchParams?.get("error");
@@ -44,8 +43,8 @@ export default function LoginClient() {
       setLoading(false);
       return;
     }
-    router.push(isValidNext(nextUrl) ? nextUrl : "/onboarding");
-    router.refresh();
+    const dest = isValidNext(nextUrl) ? nextUrl : "/onboarding";
+    window.location.assign(dest);
   }
 
   async function handleOAuth(provider: SocialProvider) {
