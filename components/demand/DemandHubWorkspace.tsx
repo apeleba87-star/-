@@ -250,7 +250,8 @@ export default function DemandHubWorkspace({
     : access.tier === "guest";
   const guestShareTeaser =
     access.tier === "guest" && shareTeaserKey != null && focusRowKey === shareTeaserKey;
-  const guestNeedsLogin = access.tier === "guest" && !guestShareTeaser;
+  const guestShowLoginCta =
+    access.tier === "guest" && hasSelection && scopeRows.length > 0;
   const anyRegionBlinded = scopeRows.some((r) =>
     isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
   );
@@ -310,7 +311,7 @@ export default function DemandHubWorkspace({
     <div
       className={cn(
         "space-y-4",
-        guestNeedsLogin && hasSelection && scopeRows.length > 0 && "pb-[5.5rem] md:pb-0"
+        guestShowLoginCta && "pb-[5.5rem] md:pb-0"
       )}
     >
       <DemandUsageBanner access={access} />
@@ -568,9 +569,9 @@ export default function DemandHubWorkspace({
         <DemandHubAdSlot slot={hubAds?.radar_table_below ?? null} className="mt-2 hidden md:block" />
       ) : null}
 
-      {guestNeedsLogin && hasSelection && scopeRows.length > 0 ? (
+      {guestShowLoginCta ? (
         <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">
-          <DemandGuestLoginCta />
+          <DemandGuestLoginCta shareTeaser={guestShareTeaser} />
         </div>
       ) : null}
     </div>
