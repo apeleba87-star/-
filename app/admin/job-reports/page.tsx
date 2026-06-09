@@ -1,3 +1,4 @@
+import ModerationSectionTabs from "@/components/admin/ModerationSectionTabs";
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 import RescindNoShowButton from "./RescindNoShowButton";
@@ -61,6 +62,7 @@ export default async function AdminJobReportsPage({
 
   return (
     <div>
+      <ModerationSectionTabs />
       <h1 className="mb-6 text-2xl font-bold text-slate-900">노쇼 신고 기록</h1>
 
       <section className="mb-8 rounded-xl border border-slate-200 bg-slate-50/50 p-5">

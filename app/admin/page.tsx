@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
-import G2bFetchButton from "./G2bFetchButton";
+import { ADMIN_HUBS } from "@/lib/admin/nav-config";
 
 export default async function AdminDashboardPage() {
   const supabase = await createServerSupabase();
@@ -52,9 +52,21 @@ export default async function AdminDashboardPage() {
           <p className="mt-1 text-2xl font-bold text-slate-800">{reportsCount ?? 0}건</p>
         </Link>
       </div>
-      <div className="mt-6">
-        <G2bFetchButton />
-      </div>
+      <section className="mt-10">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">업무 메뉴</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {ADMIN_HUBS.map((hub) => (
+            <Link
+              key={hub.id}
+              href={hub.href}
+              className="card block hover:border-slate-300 hover:shadow-sm"
+            >
+              <h3 className="font-medium text-slate-900">{hub.label}</h3>
+              <p className="mt-1 text-sm text-slate-500">{hub.description}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import ModerationSectionTabs from "@/components/admin/ModerationSectionTabs";
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 
@@ -11,6 +12,7 @@ export default async function AdminReportsPage() {
 
   return (
     <div>
+      <ModerationSectionTabs />
       <h1 className="mb-8 text-2xl font-bold text-slate-900">신고 관리</h1>
       {!reports?.length ? (
         <div className="card">

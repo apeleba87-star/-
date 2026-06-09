@@ -242,12 +242,14 @@ export async function getActiveDemandHubAds(): Promise<{
   radar_pulse_below: HomeAdSlotWithCampaign | null;
   radar_empty_state: HomeAdSlotWithCampaign | null;
   radar_table_below: HomeAdSlotWithCampaign | null;
+  radar_regional_fallback: HomeAdSlotWithCampaign | null;
 }> {
   const supabase = createClient();
   const map = await getActiveAdsForSlotKeys(supabase, [
     "radar_pulse_below",
     "radar_empty_state",
     "radar_table_below",
+    "radar_regional_fallback",
     "tender_report_budget_below",
   ]);
   const fallback = map.tender_report_budget_below ?? null;
@@ -255,6 +257,8 @@ export async function getActiveDemandHubAds(): Promise<{
     radar_pulse_below: applySlotScriptFallback(map.radar_pulse_below ?? null, fallback),
     radar_empty_state: applySlotScriptFallback(map.radar_empty_state ?? null, fallback),
     radar_table_below: applySlotScriptFallback(map.radar_table_below ?? null, fallback),
+    /** 지역 직거래 대체 — 입주레이더 전용 슬롯만 사용 (공통 fallback 미적용) */
+    radar_regional_fallback: map.radar_regional_fallback ?? null,
   };
 }
 

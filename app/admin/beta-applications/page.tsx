@@ -1,3 +1,4 @@
+import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { isBetaReviewStatus } from "@/lib/beta-admin-review";
 import BetaApplicationsPanel, { type BetaApplicationAdminRow } from "./BetaApplicationsPanel";
@@ -55,6 +56,7 @@ export default async function AdminBetaApplicationsPage({ searchParams }: { sear
 
   return (
     <div>
+      <MonetizationSectionTabs />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">베타 테스터 지원</h1>
       <p className="mb-6 text-sm text-slate-600">
         지원서 원시 데이터·검수 상태·태그·메모를 한곳에서 관리합니다. CSV는 최대 2000건까지 내려받습니다.

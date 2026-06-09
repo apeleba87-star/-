@@ -1,3 +1,4 @@
+import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getSubscriptionAmountCents, getSubscriptionPromoConfig } from "@/lib/app-settings";
 import SubscriptionConfigForm from "./SubscriptionConfigForm";
@@ -12,6 +13,7 @@ export default async function AdminSubscriptionConfigPage() {
 
   return (
     <div className="space-y-10">
+      <MonetizationSectionTabs />
       <div>
         <h1 className="mb-2 text-2xl font-bold text-slate-900">구독 결제 금액 설정</h1>
         <p className="mb-6 text-sm text-slate-500">

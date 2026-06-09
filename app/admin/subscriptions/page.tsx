@@ -1,3 +1,4 @@
+import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import Link from "next/link";
@@ -73,6 +74,7 @@ export default async function AdminSubscriptionsPage({ searchParams }: { searchP
 
   return (
     <div>
+      <MonetizationSectionTabs />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">구독 관리</h1>
       <p className="mb-4 text-sm text-slate-600">
         status, next_billing_at 기준 조회. 취소 예정 = cancelled 이면서 다음 결제일이 미래인 건.

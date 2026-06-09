@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, ImageUp, Calendar, ArrowUpDown, Code } from "lucide-react";
-import CoupangApiSlotPanel from "./CoupangApiSlotPanel";
+import AdPlacementMap from "@/components/admin/ads/AdPlacementMap";
+import type { EditorCampaign, EditorSlot } from "@/components/admin/ads/HomeAdSlotEditor";
+import type { AdPlacementSurfaceId } from "@/lib/admin/ad-slot-placement";
 import type { CoupangSlotConfig } from "@/lib/coupang-partners/types";
 import {
   toggleSlotEnabled,
@@ -20,46 +20,11 @@ import {
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-type Slot = {
-  id: string;
-  key: string;
-  name: string;
-  enabled: boolean;
-  slot_type: SlotType | null;
-  script_content: string | null;
-  fallback_type: "google" | "coupang" | null;
-  fallback_script_content: string | null;
-};
-
 type CoupangCacheInfo = {
   fetched_at: string | null;
   fetch_error: string | null;
   product_count: number;
 };
-type Campaign = {
-  id: string;
-  home_ad_slot_id: string;
-  title: string | null;
-  description: string | null;
-  cta_text: string | null;
-  cta_url: string | null;
-  image_url: string | null;
-  start_date: string;
-  end_date: string;
-  sort_order: number;
-};
-
-function statusLabel(start: string, end: string): string {
-  if (TODAY < start) return "대기중";
-  if (TODAY > end) return "종료";
-  return "진행중";
-}
-
-function statusColor(s: string) {
-  if (s === "진행중") return "bg-emerald-100 text-emerald-800";
-  if (s === "대기중") return "bg-amber-100 text-amber-800";
-  return "bg-slate-100 text-slate-600";
-}
 
 export default function HomeAdsManager({
   slots,
@@ -68,13 +33,14 @@ export default function HomeAdsManager({
   coupangConfigBySlotId = {},
   coupangApiConfigured = false,
 }: {
-  slots: Slot[];
-  campaigns: Campaign[];
+  slots: EditorSlot[];
+  campaigns: EditorCampaign[];
   coupangCacheByKey?: Record<string, CoupangCacheInfo>;
   coupangConfigBySlotId?: Record<string, CoupangSlotConfig | null>;
   coupangApiConfigured?: boolean;
 }) {
   const router = useRouter();
+  const [surfaceId, setSurfaceId] = useState<AdPlacementSurfaceId>("demand");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingSlotId, setAddingSlotId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -84,6 +50,7 @@ export default function HomeAdsManager({
   const [fallbackTypes, setFallbackTypes] = useState<Record<string, "google" | "coupang" | "">>({});
   const [savingScriptSlotId, setSavingScriptSlotId] = useState<string | null>(null);
   const [savingFallbackSlotId, setSavingFallbackSlotId] = useState<string | null>(null);
+  const [slotSearch, setSlotSearch] = useState("");
 
   const defaultForm: CampaignInput = {
     home_ad_slot_id: "",
@@ -105,7 +72,7 @@ export default function HomeAdsManager({
     setForm({ ...defaultForm, home_ad_slot_id: slotId });
   }
 
-  function startEdit(c: Campaign) {
+  function startEdit(c: EditorCampaign) {
     setEditingId(c.id);
     setAddingSlotId(null);
     setForm({
@@ -130,6 +97,7 @@ export default function HomeAdsManager({
   async function handleToggle(slotId: string, enabled: boolean) {
     const res = await toggleSlotEnabled(slotId, enabled);
     setMessage(res.ok ? { ok: true, text: "저장되었습니다." } : { ok: false, text: res.error ?? "실패" });
+    if (res.ok) router.refresh();
   }
 
   async function handleSlotTypeChange(slotId: string, slot_type: SlotType) {
@@ -174,11 +142,17 @@ export default function HomeAdsManager({
     if (editingId) {
       const res = await updateCampaign(editingId, form);
       setMessage(res.ok ? { ok: true, text: "수정되었습니다." } : { ok: false, text: res.error ?? "실패" });
-      if (res.ok) cancelForm();
+      if (res.ok) {
+        cancelForm();
+        router.refresh();
+      }
     } else {
       const res = await createCampaign(form);
       setMessage(res.ok ? { ok: true, text: "추가되었습니다." } : { ok: false, text: res.error ?? "실패" });
-      if (res.ok) cancelForm();
+      if (res.ok) {
+        cancelForm();
+        router.refresh();
+      }
     }
   }
 
@@ -186,7 +160,10 @@ export default function HomeAdsManager({
     if (!confirm("이 광고를 삭제할까요?")) return;
     const res = await deleteCampaign(id);
     setMessage(res.ok ? { ok: true, text: "삭제되었습니다." } : { ok: false, text: res.error ?? "실패" });
-    if (res.ok) cancelForm();
+    if (res.ok) {
+      cancelForm();
+      router.refresh();
+    }
   }
 
   async function handleImageChange(slotId: string, file: File) {
@@ -205,341 +182,47 @@ export default function HomeAdsManager({
   }
 
   return (
-    <div className="space-y-8">
-      {message && (
+    <div className="space-y-6">
+      {message ? (
         <p className={message.ok ? "text-sm text-green-600" : "text-sm text-red-600"}>{message.text}</p>
-      )}
+      ) : null}
 
-      {slots.map((slot) => {
-        const slotCampaigns = campaigns.filter((c) => c.home_ad_slot_id === slot.id).sort((a, b) => a.sort_order - b.sort_order);
-        const isFormOpen = addingSlotId === slot.id || (editingId && slotCampaigns.some((c) => c.id === editingId));
-
-        return (
-          <motion.section
-            key={slot.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-bold text-slate-900">{slot.name}</h2>
-              <label className="flex items-center gap-2">
-                <span className="text-sm text-slate-600">노출</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={slot.enabled}
-                  onClick={() => handleToggle(slot.id, !slot.enabled)}
-                  className={`relative h-7 w-12 rounded-full transition-colors ${
-                    slot.enabled ? "bg-emerald-500" : "bg-slate-300"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                      slot.enabled ? "left-6" : "left-1"
-                    }`}
-                  />
-                </button>
-                <span className="text-sm font-medium text-slate-700">{slot.enabled ? "ON" : "OFF"}</span>
-              </label>
-            </div>
-
-            <div className="mb-4">
-              <span className="mb-2 block text-sm font-medium text-slate-700">광고 유형</span>
-              <div className="flex flex-wrap gap-2">
-                {(["direct", "coupang_api", "google", "coupang"] as const).map((t) => {
-                  const isActive = (slot.slot_type ?? "direct") === t;
-                  const labels = {
-                    direct: "직접 수주",
-                    coupang_api: "쿠팡 API",
-                    google: "구글",
-                    coupang: "쿠팡 스크립트",
-                  };
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => handleSlotTypeChange(slot.id, t)}
-                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                        isActive
-                          ? "border-slate-800 bg-slate-800 text-white"
-                          : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {labels[t]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {(slot.slot_type ?? "direct") === "coupang_api" ? (
-              <CoupangApiSlotPanel
-                slotId={slot.id}
-                slotKey={slot.key}
-                initialConfig={coupangConfigBySlotId[slot.id] ?? null}
-                cache={coupangCacheByKey[slot.key] ?? null}
-                apiConfigured={coupangApiConfigured}
-              />
-            ) : (slot.slot_type ?? "direct") === "google" || (slot.slot_type ?? "direct") === "coupang" ? (
-              <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-                <label className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700">
-                  <Code className="h-4 w-4" />
-                  {(slot.slot_type ?? "direct") === "google" ? "구글" : "쿠팡"} 광고 스크립트
-                </label>
-                <p className="mb-2 text-xs text-slate-500">
-                  광고 플랫폼에서 발급한 HTML/스크립트 코드를 그대로 붙여넣으세요. 저장 후 해당 슬롯 위치에 노출됩니다.
-                </p>
-                <textarea
-                  value={scriptDrafts[slot.id] ?? slot.script_content ?? ""}
-                  onChange={(e) => setScriptDrafts((d) => ({ ...d, [slot.id]: e.target.value }))}
-                  placeholder='<script>...</script> 또는 <ins>...</ins> 등'
-                  rows={6}
-                  className="mb-2 w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm"
-                />
-                <button
-                  type="button"
-                  disabled={savingScriptSlotId === slot.id}
-                  onClick={() =>
-                    handleSaveScript(
-                      slot.id,
-                      (slot.slot_type ?? "direct") as SlotType,
-                      scriptDrafts[slot.id] ?? slot.script_content ?? ""
-                    )
-                  }
-                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-                >
-                  {savingScriptSlotId === slot.id ? "저장 중…" : "스크립트 저장"}
-                </button>
-              </div>
-            ) : (
-              <>
-                <p className="mb-4 text-xs text-slate-500">
-                  {slot.enabled
-                    ? "슬롯이 켜져 있습니다. 기간이 겹치는 경우 대기순서(숫자 작을수록 우선)로 1건만 노출됩니다."
-                    : "슬롯이 꺼져 있으면 해당 자리는 빈칸으로 표시됩니다."}
-                </p>
-
-                <ul className="mb-4 space-y-2">
-                  {slotCampaigns.length === 0 ? (
-                <li className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 py-4 text-center text-sm text-slate-500">
-                  등록된 광고 없음
-                </li>
-              ) : (
-                slotCampaigns.map((c) => {
-                  const status = statusLabel(c.start_date, c.end_date);
-                  return (
-                    <li
-                      key={c.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusColor(status)}`}>
-                          {status}
-                        </span>
-                        <span className="font-medium text-slate-800">{c.title || "(제목 없음)"}</span>
-                        <span className="text-xs text-slate-500">
-                          {c.start_date} ~ {c.end_date}
-                        </span>
-                        <span className="flex items-center gap-0.5 text-xs text-slate-500">
-                          <ArrowUpDown className="h-3 w-3" />
-                          {c.sort_order}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(c)}
-                          className="rounded p-1.5 text-slate-600 hover:bg-slate-200"
-                          aria-label="수정"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(c.id)}
-                          className="rounded p-1.5 text-red-600 hover:bg-red-50"
-                          aria-label="삭제"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })
-              )}
-            </ul>
-
-                {!isFormOpen && (
-                  <button
-                    type="button"
-                    onClick={() => startAdd(slot.id)}
-                    className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    <Plus className="h-4 w-4" />
-                    광고 추가
-                  </button>
-                )}
-
-                {isFormOpen && (
-              <form onSubmit={handleSubmit} className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-                <input type="hidden" name="home_ad_slot_id" value={form.home_ad_slot_id} />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">제목</span>
-                    <input
-                      type="text"
-                      value={form.title ?? ""}
-                      onChange={(e) => setForm((f) => ({ ...f, title: e.target.value || null }))}
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">링크 URL</span>
-                    <input
-                      type="url"
-                      value={form.cta_url ?? ""}
-                      onChange={(e) => setForm((f) => ({ ...f, cta_url: e.target.value || null }))}
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="https://..."
-                    />
-                  </label>
-                </div>
-                <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-slate-700">설명</span>
-                  <textarea
-                    value={form.description ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value || null }))}
-                    rows={2}
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </label>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">버튼 문구</span>
-                    <input
-                      type="text"
-                      value={form.cta_text ?? ""}
-                      onChange={(e) => setForm((f) => ({ ...f, cta_text: e.target.value || null }))}
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="자세히 보기"
-                    />
-                  </label>
-                </div>
-                <div className="flex flex-wrap items-end gap-4">
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">이미지 / GIF</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={uploading}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleImageChange(slot.id, f);
-                      }}
-                      className="block w-full text-sm text-slate-600 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-                    />
-                    {uploading && <span className="text-xs text-amber-600">업로드 중…</span>}
-                    {form.image_url && (
-                      <a href={form.image_url} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center gap-1 text-xs text-blue-600 hover:underline">
-                        <ImageUp className="h-3 w-3" /> 업로드됨
-                      </a>
-                    )}
-                  </label>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-700">
-                      <Calendar className="h-4 w-4" /> 시작일
-                    </span>
-                    <input
-                      type="date"
-                      value={form.start_date}
-                      onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-700">종료일</span>
-                    <input
-                      type="date"
-                      value={form.end_date}
-                      onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-700">
-                      <ArrowUpDown className="h-4 w-4" /> 대기순서
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.sort_order}
-                      onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) || 0 }))}
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-                  >
-                    {editingId ? "수정" : "추가"}
-                  </button>
-                  <button type="button" onClick={cancelForm} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                    취소
-                  </button>
-                </div>
-              </form>
-                )}
-
-                <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50/40 p-4">
-                  <p className="mb-1 text-sm font-medium text-slate-800">직접 캠페인 없을 때 대체 (쿠팡/구글)</p>
-                  <p className="mb-3 text-xs text-slate-500">
-                    활성 직접 캠페인이 없으면 아래 스크립트가 배너로 노출됩니다.
-                  </p>
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {(["", "coupang", "google"] as const).map((t) => {
-                      const current = fallbackTypes[slot.id] ?? slot.fallback_type ?? "";
-                      const active = current === t;
-                      const label = t === "" ? "없음" : t === "coupang" ? "쿠팡" : "구글";
-                      return (
-                        <button
-                          key={t || "none"}
-                          type="button"
-                          onClick={() => setFallbackTypes((d) => ({ ...d, [slot.id]: t }))}
-                          className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                            active ? "border-violet-700 bg-violet-700 text-white" : "border-slate-300 bg-white text-slate-600"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <textarea
-                    value={fallbackDrafts[slot.id] ?? slot.fallback_script_content ?? ""}
-                    onChange={(e) => setFallbackDrafts((d) => ({ ...d, [slot.id]: e.target.value }))}
-                    placeholder="대체 배너 스크립트"
-                    rows={4}
-                    className="mb-2 w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm"
-                  />
-                  <button
-                    type="button"
-                    disabled={savingFallbackSlotId === slot.id}
-                    onClick={() => handleSaveFallback(slot.id)}
-                    className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-medium text-white hover:bg-violet-800 disabled:opacity-50"
-                  >
-                    {savingFallbackSlotId === slot.id ? "저장 중…" : "대체 광고 저장"}
-                  </button>
-                </div>
-              </>
-            )}
-          </motion.section>
-        );
-      })}
+      <AdPlacementMap
+        surfaceId={surfaceId}
+        onSurfaceChange={setSurfaceId}
+        slots={slots}
+        campaigns={campaigns}
+        slotSearch={slotSearch}
+        onSlotSearchChange={setSlotSearch}
+        coupangCacheByKey={coupangCacheByKey}
+        coupangConfigBySlotId={coupangConfigBySlotId}
+        coupangApiConfigured={coupangApiConfigured}
+        editor={{
+          scriptDrafts,
+          fallbackDrafts,
+          fallbackTypes,
+          savingScriptSlotId,
+          savingFallbackSlotId,
+          uploading,
+          form,
+          editingId,
+          addingSlotId,
+          onToggle: handleToggle,
+          onSlotTypeChange: handleSlotTypeChange,
+          onScriptDraftChange: (slotId, v) => setScriptDrafts((d) => ({ ...d, [slotId]: v })),
+          onSaveScript: handleSaveScript,
+          onFallbackTypeChange: (slotId, t) => setFallbackTypes((d) => ({ ...d, [slotId]: t })),
+          onFallbackDraftChange: (slotId, v) => setFallbackDrafts((d) => ({ ...d, [slotId]: v })),
+          onSaveFallback: handleSaveFallback,
+          onStartAdd: startAdd,
+          onStartEdit: startEdit,
+          onDeleteCampaign: handleDelete,
+          onSubmitForm: handleSubmit,
+          onCancelForm: cancelForm,
+          onFormChange: (patch) => setForm((f) => ({ ...f, ...patch })),
+          onImageChange: handleImageChange,
+        }}
+      />
     </div>
   );
 }

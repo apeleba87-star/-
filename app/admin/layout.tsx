@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 function isInvalidSessionError(error: unknown): boolean {
@@ -38,92 +38,10 @@ export default async function AdminLayout({
     }
 
     return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <nav className="mb-8 flex flex-wrap gap-4 border-b border-slate-200 pb-4">
-        <Link href="/admin" className="font-medium text-slate-700 hover:text-slate-900">
-          대시보드
-        </Link>
-        <Link href="/admin/posts" className="font-medium text-slate-700 hover:text-slate-900">
-          글 관리
-        </Link>
-        <Link href="/admin/newsletter" className="font-medium text-slate-700 hover:text-slate-900">
-          뉴스레터 큐·발송
-        </Link>
-        <Link href="/admin/content-runs" className="font-medium text-slate-700 hover:text-slate-900">
-          자동 생성 로그
-        </Link>
-        <Link href="/admin/report-snapshots" className="font-medium text-slate-700 hover:text-slate-900">
-          리포트 스냅샷
-        </Link>
-        <Link href="/admin/ugc" className="font-medium text-slate-700 hover:text-slate-900">
-          UGC 검수
-        </Link>
-        <Link href="/admin/reports" className="font-medium text-slate-700 hover:text-slate-900">
-          신고
-        </Link>
-        <Link href="/admin/job-reports" className="font-medium text-slate-700 hover:text-slate-900">
-          노쇼 신고
-        </Link>
-        <Link href="/admin/ads" className="font-medium text-slate-700 hover:text-slate-900">
-          광고 슬롯
-        </Link>
-        <Link href="/admin/tender-keywords" className="font-medium text-slate-700 hover:text-slate-900">
-          입찰 키워드
-        </Link>
-        <Link href="/admin/open-data-ingest" className="font-medium text-slate-700 hover:text-slate-900">
-          공공 일자리 수집
-        </Link>
-        <Link href="/admin/scsbid-award-ingest" className="font-medium text-slate-700 hover:text-slate-900">
-          낙찰(용역) 원천
-        </Link>
-        <Link href="/admin/naver-trend-keywords" className="font-medium text-slate-700 hover:text-slate-900">
-          네이버 트렌드
-        </Link>
-        <Link href="/admin/job-wage-report" className="font-medium text-slate-700 hover:text-slate-900">
-          일당 리포트
-        </Link>
-        <Link href="/admin/industries" className="font-medium text-slate-700 hover:text-slate-900">
-          업종 관리
-        </Link>
-        <Link href="/admin/users" className="font-medium text-slate-700 hover:text-slate-900">
-          사용자
-        </Link>
-        <Link href="/admin/beta-applications" className="font-medium text-slate-700 hover:text-slate-900">
-          베타 지원
-        </Link>
-        <Link href="/admin/subscriptions" className="font-medium text-slate-700 hover:text-slate-900">
-          구독 관리
-        </Link>
-        <Link href="/admin/share-unlocks" className="font-medium text-slate-700 hover:text-slate-900">
-          공유 열람권 로그
-        </Link>
-        <Link href="/admin/subscription-config" className="font-medium text-slate-700 hover:text-slate-900">
-          구독 금액
-        </Link>
-        <Link href="/admin/listings/external" className="font-medium text-slate-700 hover:text-slate-900">
-          현장거래 등록(외부)
-        </Link>
-        <Link href="/admin/partners" className="font-medium text-slate-700 hover:text-slate-900">
-          협력센터 관리
-        </Link>
-        <Link href="/admin/listings/deal-completions" className="font-medium text-slate-700 hover:text-slate-900">
-          거래 완료 신고 확인
-        </Link>
-        <Link href="/admin/jobs/external" className="font-medium text-slate-700 hover:text-slate-900">
-          인력구인 등록(외부)
-        </Link>
-        <Link href="/admin/estimate-config" className="font-medium text-slate-700 hover:text-slate-900">
-          견적 단가
-        </Link>
-        <Link href="/admin/categories" className="font-medium text-slate-700 hover:text-slate-900">
-          카테고리
-        </Link>
-        <Link href="/" className="ml-auto text-slate-500 hover:text-slate-700">
-          사이트로
-        </Link>
-      </nav>
-      {children}
-    </div>
+      <div className="mx-auto flex max-w-7xl flex-col gap-0 px-4 py-6 lg:flex-row lg:gap-8 lg:py-8">
+        <AdminSidebar />
+        <main className="min-w-0 flex-1">{children}</main>
+      </div>
     );
   } catch (e) {
     if (isInvalidSessionError(e)) {

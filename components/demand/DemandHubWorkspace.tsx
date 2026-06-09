@@ -53,6 +53,9 @@ import DemandDataBlindOverlay from "@/components/demand/DemandDataBlindOverlay";
 import DemandGuestLoginCta from "@/components/demand/DemandGuestLoginCta";
 import DemandUsageBanner from "@/components/demand/DemandUsageBanner";
 import DemandHubAdSlot from "@/components/demand/DemandHubAdSlot";
+import DemandRadarNationalAd from "@/components/demand/DemandRadarNationalAd";
+import DemandRadarRegionalAd from "@/components/demand/DemandRadarRegionalAd";
+import { resolveRegionalAdRegionKeys } from "@/lib/demand/radar-ad-region-keys";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import type { HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import { cn } from "@/lib/utils";
@@ -112,6 +115,7 @@ type Props = {
     radar_pulse_below: HomeAdSlotWithCampaign | null;
     radar_empty_state: HomeAdSlotWithCampaign | null;
     radar_table_below: HomeAdSlotWithCampaign | null;
+    radar_regional_fallback: HomeAdSlotWithCampaign | null;
   };
 };
 
@@ -287,6 +291,11 @@ export default function DemandHubWorkspace({
     return demandRegionSelectionKey(scopeRows[0].selection);
   }, [scopeRows, chartRowKey]);
 
+  const regionalAdKeys = useMemo(
+    () => resolveRegionalAdRegionKeys({ focusRowKey, scopeRows, selections }),
+    [focusRowKey, scopeRows, selections]
+  );
+
   const focusRowBlinded = focusRowKey
     ? isRadarChartBlinded(access, focusRowKey, shareTeaserKey)
     : access.tier === "guest";
@@ -360,7 +369,7 @@ export default function DemandHubWorkspace({
 
       {dailyPulse ? <DemandHubPulseSection data={dailyPulse} compactOnMobile /> : null}
 
-      <DemandHubAdSlot slot={hubAds?.radar_pulse_below ?? null} className="my-1" />
+      <DemandRadarNationalAd className="my-4" />
 
       <div className="rounded-2xl border-2 border-teal-100 bg-white p-4 shadow-sm ring-1 ring-teal-50">
         <p className="text-sm font-semibold text-slate-800">지역 찾기</p>
@@ -378,16 +387,20 @@ export default function DemandHubWorkspace({
         ) : null}
       </div>
 
-      {hasSelection && primaryRow ? (
+      {hasSelection ? (
         <>
           {shareTeaserHint ? (
             <p className="text-xs text-slate-600">{shareTeaserHint}</p>
           ) : null}
           {quotaHint ? <p className="text-xs text-amber-800">{quotaHint}</p> : null}
 
+          {primaryRow ? (
+          <>
           <div className="hidden md:block">
             <DemandDataBlindOverlay
               blind={focusRowKey ? isRadarRowFullyBlinded(access, focusRowKey, shareTeaserKey) : access.tier === "guest"}
+              showCaption={access.tier === "guest"}
+              message="로그인 후 확인"
             >
               <DemandScopeSummaryStrip
                 rows={scopeRows}
@@ -404,23 +417,38 @@ export default function DemandHubWorkspace({
             </DemandDataBlindOverlay>
           </div>
 
-          <DemandDataBlindOverlay
-            blind={scopeRows.every((r) =>
-              isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
-            )}
-          >
-            <DemandScopeCompareCards
-              rows={scopeRows}
-              focusRowKey={focusRowKey}
-              selectedMetric={selectedMetric}
-              onFocusRow={setChartRowKey}
-              onSelectMetric={selectMetric}
-              rtmsBaseMonthLabel={rtmsBaseMonthLabel}
-              isMetricBlinded={focusMetricBlinded}
-            />
-          </DemandDataBlindOverlay>
+          <div className="relative">
+            <DemandDataBlindOverlay
+              blind={scopeRows.every((r) =>
+                isRadarRowFullyBlinded(access, demandRegionSelectionKey(r.selection), shareTeaserKey)
+              )}
+            >
+              <DemandScopeCompareCards
+                rows={scopeRows}
+                focusRowKey={focusRowKey}
+                selectedMetric={selectedMetric}
+                onFocusRow={setChartRowKey}
+                onSelectMetric={selectMetric}
+                rtmsBaseMonthLabel={rtmsBaseMonthLabel}
+                isMetricBlinded={focusMetricBlinded}
+              />
+            </DemandDataBlindOverlay>
+            {guestShowLoginCta ? (
+              <div className="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center p-8 md:flex">
+                <DemandGuestLoginCta shareTeaser={guestShareTeaser} variant="card" className="pointer-events-auto max-w-md" />
+              </div>
+            ) : null}
+          </div>
+          </>
+          ) : null}
 
-          {selectedMetric && scopeRows.length > 0 ? (
+          <DemandRadarRegionalAd
+            regionKeys={regionalAdKeys}
+            fallbackSlot={hubAds?.radar_regional_fallback ?? null}
+            className="my-4"
+          />
+
+          {primaryRow && selectedMetric && scopeRows.length > 0 ? (
             <DemandDataBlindOverlay blind={focusRowBlinded}>
               <DemandMetricChart
                 rows={scopeRows}

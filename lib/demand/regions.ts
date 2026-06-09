@@ -73,3 +73,27 @@ export function formatDemandRegionLabel(sel: DemandRegionSelection): string | nu
 export function formatDemandRegionPath(cityId: string, guSlug: string): string | null {
   return formatDemandRegionLabel({ scope: "district", cityId, guSlug });
 }
+
+/** `demandRegionSelectionKey` 역파싱 — 입주레이더 region_key → 선택 */
+export function parseDemandRegionKey(regionKey: string): DemandRegionSelection | null {
+  if (regionKey === "national") return { scope: "national" };
+  if (regionKey.startsWith("city:")) {
+    return { scope: "city", cityId: regionKey.slice("city:".length) };
+  }
+  if (regionKey.startsWith("district:")) {
+    const rest = regionKey.slice("district:".length);
+    const colon = rest.indexOf(":");
+    if (colon <= 0) return null;
+    return {
+      scope: "district",
+      cityId: rest.slice(0, colon),
+      guSlug: rest.slice(colon + 1),
+    };
+  }
+  return null;
+}
+
+export function labelFromDemandRegionKey(regionKey: string): string {
+  const sel = parseDemandRegionKey(regionKey);
+  return sel ? (formatDemandRegionLabel(sel) ?? regionKey) : regionKey;
+}

@@ -1,3 +1,4 @@
+import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs";
 import Link from "next/link";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 
@@ -50,6 +51,7 @@ export default async function AdminShareUnlocksPage({ searchParams }: { searchPa
 
   return (
     <div>
+      <MonetizationSectionTabs />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">공유 열람권 로그</h1>
       <p className="mb-4 text-sm text-slate-600">무료 사용자 공유/소모/차단 이력을 확인합니다.</p>
 

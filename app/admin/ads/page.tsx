@@ -1,3 +1,4 @@
+import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { isCoupangPartnersConfigured } from "@/lib/coupang-partners/client";
 import { parseCoupangSlotConfig } from "@/lib/coupang-partners/config";
@@ -55,9 +56,14 @@ export default async function AdminAdsPage() {
 
   return (
     <div>
+      <MonetizationSectionTabs />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">광고 슬롯</h1>
       <p className="mb-6 text-sm text-slate-600">
-        입찰·낙찰 목록·상세 광고 슬롯을 관리합니다.
+        화면(페이지)별로 광고가 들어가는 위치를 확인하고 편집합니다. 입주레이더 직거래는{" "}
+        <a href="/admin/radar-ads/manage" className="font-medium text-teal-700 hover:underline">
+          입주레이더 광고 관리
+        </a>
+        에서 설정합니다.
       </p>
       <HomeAdsManager
         slots={slots ?? []}
