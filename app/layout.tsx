@@ -81,18 +81,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body
-        className={`${notoSansKr.className} ${siteDisplay.variable} flex min-h-screen min-w-0 flex-col antialiased`}
-      >
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-JXV9GMLMEZ"
-          strategy="afterInteractive"
-        />
+      <head>
         <Script
           id="adsense-init"
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4236788855275924"
           crossOrigin="anonymous"
+          strategy="beforeInteractive"
+        />
+      </head>
+      <body
+        className={`${notoSansKr.className} ${siteDisplay.variable} flex min-h-screen min-w-0 flex-col antialiased`}
+      >
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-JXV9GMLMEZ"
           strategy="afterInteractive"
         />
         <Script id="gtag-init" strategy="afterInteractive">
