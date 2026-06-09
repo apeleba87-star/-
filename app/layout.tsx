@@ -82,12 +82,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <Script
-          id="adsense-init"
+        {/* AdSense 검증 — next/script 대신 head에 script 태그 직접 삽입 (크롤러 HTML 소스 확인) */}
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4236788855275924"
           crossOrigin="anonymous"
-          strategy="beforeInteractive"
         />
       </head>
       <body
