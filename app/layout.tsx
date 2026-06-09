@@ -88,6 +88,13 @@ export default function RootLayout({
           src="https://www.googletagmanager.com/gtag/js?id=G-JXV9GMLMEZ"
           strategy="afterInteractive"
         />
+        <Script
+          id="adsense-init"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4236788855275924"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <Script id="gtag-init" strategy="afterInteractive">
           {`window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
