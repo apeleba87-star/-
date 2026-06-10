@@ -34,10 +34,13 @@ import type { DailyPulseData } from "@/lib/demand/daily-pulse";
 import { mergeDemandKeywordStores, mergeRtmsSeries } from "@/lib/demand/merge-demand-data";
 import type { DemandRegionScopeResponse } from "@/lib/demand/region-scope-data";
 import {
+  applyDemandRegionScopeAccess,
   DEMAND_USAGE_REGION_QUOTA_HINT,
   DEMAND_USAGE_SHARE_TEASER_HINT,
   isDemandRegionKeyUnlocked,
   mergeDemandAccess,
+  optimisticallyUnlockDemandRegion,
+  removeDemandRegionUnlock,
   type DemandUsageAccess,
 } from "@/lib/demand/usage-limits";
 import {
@@ -144,6 +147,7 @@ export default function DemandHubWorkspace({
   const keywordStoreRef = useRef(keywordStore);
   const rtmsSeriesRef = useRef(rtmsSeries);
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
+  const pendingOptimisticKeys = useRef(new Set<string>());
 
   accessRef.current = access;
   keywordStoreRef.current = keywordStoreState;
@@ -186,6 +190,15 @@ export default function DemandHubWorkspace({
       if (dataLoaded && currentAccess.tier === "guest") return;
       if (dataLoaded && currentAccess.tier === "member" && !needsUnlock) return;
 
+      if (needsUnlock) {
+        const optimistic = optimisticallyUnlockDemandRegion(currentAccess, key);
+        if (optimistic) {
+          pendingOptimisticKeys.current.add(key);
+          accessRef.current = optimistic;
+          setAccess(optimistic);
+        }
+      }
+
       setLoadingKeys((prev) => {
         if (prev.has(key)) return prev;
         return new Set(prev).add(key);
@@ -202,9 +215,16 @@ export default function DemandHubWorkspace({
             shareTeaser,
           }),
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (pendingOptimisticKeys.current.has(key)) {
+            pendingOptimisticKeys.current.delete(key);
+            setAccess((prev) => removeDemandRegionUnlock(prev, key));
+          }
+          return;
+        }
         const data = (await res.json()) as DemandRegionScopeResponse;
-        setAccess((prev) => mergeDemandAccess(prev, data.access));
+        pendingOptimisticKeys.current.delete(key);
+        setAccess((prev) => applyDemandRegionScopeAccess(prev, data));
         if (Object.keys(data.keywordStore.byRegion).length > 0) {
           setKeywordStoreState((prev) =>
             mergeDemandKeywordStores(prev ?? { byRegion: {} }, data.keywordStore)
@@ -212,6 +232,11 @@ export default function DemandHubWorkspace({
         }
         if (Object.keys(data.rtmsSeries).length > 0) {
           setRtmsSeriesState((prev) => mergeRtmsSeries(prev, data.rtmsSeries));
+        }
+      } catch {
+        if (pendingOptimisticKeys.current.has(key)) {
+          pendingOptimisticKeys.current.delete(key);
+          setAccess((prev) => removeDemandRegionUnlock(prev, key));
         }
       } finally {
         setLoadingKeys((prev) => {

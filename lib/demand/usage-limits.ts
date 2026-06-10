@@ -32,6 +32,51 @@ export function isDemandRegionKeyUnlocked(access: DemandUsageAccess, regionKey: 
   return access.unlockedRegionKeys.includes(regionKey);
 }
 
+function memberAccessWithKeys(unlockedRegionKeys: string[]): DemandUsageAccess {
+  const usedCount = unlockedRegionKeys.length;
+  return {
+    tier: "member",
+    dailyLimit: DEMAND_DAILY_REGION_VIEW_LIMIT,
+    usedCount,
+    remaining: Math.max(0, DEMAND_DAILY_REGION_VIEW_LIMIT - usedCount),
+    unlockedRegionKeys,
+    canViewData: true,
+  };
+}
+
+/** 회원 새 지역 선택 직후 blur 플래시 방지 — remaining > 0 일 때만 */
+export function optimisticallyUnlockDemandRegion(
+  access: DemandUsageAccess,
+  regionKey: string
+): DemandUsageAccess | null {
+  if (access.tier !== "member") return null;
+  if (isDemandRegionKeyUnlocked(access, regionKey)) return null;
+  if (access.remaining <= 0) return null;
+  return memberAccessWithKeys([...access.unlockedRegionKeys, regionKey]);
+}
+
+/** API 거부·실패 시 낙관 unlock 롤백 */
+export function removeDemandRegionUnlock(
+  access: DemandUsageAccess,
+  regionKey: string
+): DemandUsageAccess {
+  if (access.tier !== "member") return access;
+  if (!access.unlockedRegionKeys.includes(regionKey)) return access;
+  return memberAccessWithKeys(access.unlockedRegionKeys.filter((k) => k !== regionKey));
+}
+
+/** region-scope API 응답 병합 — quotaBlockedKeys는 unlock 목록에서 제외 */
+export function applyDemandRegionScopeAccess(
+  prev: DemandUsageAccess,
+  response: { access: DemandUsageAccess; quotaBlockedKeys: string[] }
+): DemandUsageAccess {
+  let next = mergeDemandAccess(prev, response.access);
+  for (const key of response.quotaBlockedKeys) {
+    next = removeDemandRegionUnlock(next, key);
+  }
+  return next;
+}
+
 const ACCESS_TIER_RANK: Record<DemandAccessTier, number> = {
   guest: 0,
   member: 1,
