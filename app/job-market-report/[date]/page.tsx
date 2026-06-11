@@ -6,6 +6,7 @@ import KoreaProvinceGeoMap from "@/components/jobs/KoreaProvinceGeoMap";
 import JobWagePremiumInsights from "@/components/jobs/JobWagePremiumInsights";
 import JobWageProvinceScroll from "@/components/jobs/JobWageProvinceScroll";
 import JobWageProvinceTableCopyButton from "@/components/jobs/JobWageProvinceTableCopyButton";
+import JobWageReportShareCard from "@/components/jobs/JobWageReportShareCard";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { addDaysToDateString } from "@/lib/jobs/kst-date";
 import {
@@ -16,7 +17,6 @@ import {
 import { compareWeightedNationalAvg, provinceWeightedWageBins } from "@/lib/jobs/job-wage-premium-insights";
 import { WAGE_MAP_RANK_META } from "@/lib/jobs/wage-map-rank-palette";
 import ReportNextStep from "@/components/report/ReportNextStep";
-import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
 import { formatJobWageDominantDisplayName, jobWageReportListExcerptFromPayload } from "@/lib/jobs/job-wage-dominant-label";
 import {
   bottomProvinceFromProvinces,
@@ -29,7 +29,8 @@ import {
 import { getActiveReportPageAds, isAdSlotRenderable } from "@/lib/ads";
 import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 import DemandRadarNationalAd from "@/components/demand/DemandRadarNationalAd";
-import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
+import { buildJobWageShareCopy, jobWageReportMetaDescription } from "@/lib/report/job-wage-share-copy";
+import { buildPageMetadata } from "@/lib/seo";
 import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import GuestPreviewGate from "@/components/auth/GuestPreviewGate";
 import { formatReportLinkDate } from "@/lib/report/latest-report-dates";
@@ -89,10 +90,40 @@ function SectionHeader({
 export async function generateMetadata({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params;
   if (!isYmd(date)) return { title: "구인 일당 리포트" };
-  return {
-    title: `구인 일당 리포트 ${date} | 일당 리포트`,
-    description: "구인 신규 포지션 기준 시·도별 평균 일당과 지역 안내",
+
+  const supabase = createClient();
+  const { data: row } = await supabase
+    .from("job_wage_daily_reports")
+    .select("payload")
+    .eq("report_date", date)
+    .maybeSingle();
+
+  const raw = row?.payload as JobWageDailyReportPayload | null;
+  const provinces = raw ? provincesFromPayload(raw) : [];
+  const top = topProvinceFromProvinces(provinces);
+  const windowDays = raw?.windowDays ?? JOB_WAGE_REPORT_WINDOW_DAYS;
+  const windowStartKst =
+    raw?.windowStartKst ??
+    (raw?.reportDateKst ? addDaysToDateString(raw.reportDateKst, -(windowDays - 1)) : null);
+  const windowLabel =
+    raw?.reportDateKst ? jobWageWindowLabel(windowDays, windowStartKst, raw.reportDateKst) : null;
+  const dominantRaw = raw?.dominantCategory?.name?.trim() ?? null;
+
+  const sharePreview = {
+    reportDate: date,
+    windowLabel,
+    dominantCategory: dominantRaw ? formatJobWageDominantDisplayName(dominantRaw) : null,
+    topProvince: top?.province ?? null,
+    topAvgWon: top?.avgDailyWage ?? null,
+    topJobPostCount: top?.jobPostCount ?? null,
   };
+
+  const title = `${buildJobWageShareCopy(sharePreview).previewHeadline} | 일당 리포트`;
+  return buildPageMetadata({
+    title,
+    description: jobWageReportMetaDescription(sharePreview),
+    path: `/job-market-report/${date}`,
+  });
 }
 
 export default async function JobMarketReportDatePage({
@@ -182,9 +213,6 @@ export default async function JobMarketReportDatePage({
   const showReportTopAd = Boolean(user) && isAdSlotRenderable(reportAds.report_top);
   const showReportBottomAd = Boolean(user) && isAdSlotRenderable(reportAds.report_bottom);
 
-  const jobWageShareTitle = `일당 리포트 ${date}`;
-  const jobWageShareText = jobWageTeamShareText(date);
-
   const provinceTableTsv =
     hasPayload && payload
       ? [
@@ -206,6 +234,17 @@ export default async function JobMarketReportDatePage({
     hasPayload && payload
       ? jobWageWindowLabel(windowDays, windowStartKst, payload.reportDateKst)
       : null;
+
+  const jobWageSharePreview = {
+    reportDate: date,
+    windowLabel,
+    dominantCategory: jobWageDominantDisplay || null,
+    topProvince: topProvince?.province ?? null,
+    topAvgWon:
+      topProvince && !isGuestLockedWage(topProvince.avgDailyWage) ? topProvince.avgDailyWage : null,
+    topJobPostCount:
+      topProvince && !isGuestLockedWage(topProvince.avgDailyWage) ? topProvince.jobPostCount : null,
+  };
 
   const showSinglePostingWages = Boolean(user) && Boolean(payload?.maxDailyWage || payload?.minDailyWage);
 
@@ -559,14 +598,11 @@ export default async function JobMarketReportDatePage({
 
           {hasPayload && payload ? (
             <div className="mx-auto mt-6 max-w-2xl">
-              <ReportTeamShareButton
-                kind="job_wage"
+              <JobWageReportShareCard
                 reportDate={date}
-                shareTitle={jobWageShareTitle}
-                shareText={jobWageShareText}
                 loginNextPath={`/job-market-report/${date}`}
-                layout={user ? "compact" : "full"}
                 isLoggedIn={!!user}
+                preview={jobWageSharePreview}
               />
             </div>
           ) : null}
