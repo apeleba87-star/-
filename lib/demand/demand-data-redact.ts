@@ -44,14 +44,13 @@ export function redactDailyPulseForGuest(pulse: DailyPulseData): DailyPulseData 
   };
 }
 
-/** district 번들·시계열 제거 — 클라이언트 선로드 방지 */
+/** district 번들만 제거 — 전국·시 키워드는 허브 차트(입주 예상 점수)용으로 유지 */
 export function stripDistrictFromKeywordStore(store: DemandKeywordStore | null): DemandKeywordStore | null {
   if (!store) return store;
   const byRegion: DemandKeywordStore["byRegion"] = {};
   for (const [key, bundle] of Object.entries(store.byRegion)) {
-    if (!key.includes(":")) {
-      byRegion[key] = bundle;
-    }
+    if (key.startsWith("district:")) continue;
+    byRegion[key] = bundle;
   }
   return { byRegion };
 }

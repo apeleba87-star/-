@@ -105,6 +105,8 @@ type Props = {
   rtmsSeries?: DemandRtmsSeriesStore;
   keywordStore?: DemandKeywordStore | null;
   scoreContext?: DemandScoreContext | null;
+  /** 지역 scope lazy load 중 — 빈 차트 대신 로딩 표시 */
+  loading?: boolean;
 };
 
 function pctX(svgX: number): string {
@@ -165,6 +167,7 @@ export default function DemandMetricChart({
   rtmsSeries,
   keywordStore = null,
   scoreContext = null,
+  loading = false,
 }: Props) {
   const [range, setRange] = useState<DemandAnyChartRange>(() => defaultRangeForMetric(metricId));
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -331,8 +334,10 @@ export default function DemandMetricChart({
           </p>
         </div>
         <div className="px-4 py-10 text-center sm:px-5">
-          <p className="text-sm text-slate-600">표시할 추이 데이터가 없습니다.</p>
-          {emptySub ? (
+          <p className="text-sm text-slate-600">
+            {loading ? "지역 데이터 불러오는 중…" : "표시할 추이 데이터가 없습니다."}
+          </p>
+          {!loading && emptySub ? (
             <p className="mx-auto mt-2 max-w-lg text-[11px] leading-relaxed text-slate-500">{emptySub}</p>
           ) : null}
         </div>

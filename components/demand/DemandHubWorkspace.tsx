@@ -167,10 +167,16 @@ export default function DemandHubWorkspace({
     setAccess((prev) => mergeDemandAccess(prev, initialAccess));
   }, [initialAccess]);
 
+  /** SSR bootstrap 갱신 시 lazy load 병합분 유지 (교체하면 구 RTMS·점수가 전국 폴백으로 리셋됨) */
   useEffect(() => {
-    setKeywordStoreState(keywordStore);
-    setRtmsSeriesState(rtmsSeries);
-  }, [keywordStore, rtmsSeries]);
+    setKeywordStoreState((prev) =>
+      mergeDemandKeywordStores(keywordStore ?? { byRegion: {} }, prev ?? { byRegion: {} })
+    );
+  }, [keywordStore]);
+
+  useEffect(() => {
+    setRtmsSeriesState((prev) => mergeRtmsSeries(rtmsSeries, prev));
+  }, [rtmsSeries]);
 
   const liveScoreContext = useMemo(() => {
     if (!scoreContext) return null;
@@ -196,9 +202,11 @@ export default function DemandHubWorkspace({
       const needsUnlock =
         currentAccess.tier === "member" && !isDemandRegionKeyUnlocked(currentAccess, key);
 
-      if (currentAccess.tier === "admin") return;
-      if (dataLoaded && currentAccess.tier === "guest") return;
-      if (dataLoaded && currentAccess.tier === "member" && !needsUnlock) return;
+      if (dataLoaded) {
+        if (currentAccess.tier === "guest") return;
+        if (currentAccess.tier === "admin") return;
+        if (currentAccess.tier === "member" && !needsUnlock) return;
+      }
 
       if (needsUnlock) {
         const optimistic = optimisticallyUnlockDemandRegion(currentAccess, key);
@@ -260,15 +268,25 @@ export default function DemandHubWorkspace({
   );
 
   useEffect(() => {
+    if (selections.length === 0) return;
     const current = accessRef.current;
-    if (current.tier !== "member" || selections.length === 0) return;
+    if (current.tier === "guest") return;
     for (const sel of selections) {
       const key = demandRegionSelectionKey(sel);
-      if (!isDemandRegionKeyUnlocked(current, key)) {
-        void ensureRegionScope(sel);
+      if (loadingKeys.has(key)) continue;
+      if (isDemandRegionScopeLoaded(sel, keywordStoreState, rtmsSeriesState)) {
+        continue;
       }
+      void ensureRegionScope(sel);
     }
-  }, [access.tier, selections, ensureRegionScope]);
+  }, [
+    access.tier,
+    selections,
+    ensureRegionScope,
+    keywordStoreState,
+    rtmsSeriesState,
+    loadingKeys,
+  ]);
 
   useEffect(() => {
     if (shareBootstrapped.current || !shareParam) return;
@@ -386,6 +404,9 @@ export default function DemandHubWorkspace({
   function selectMetric(row: DemandScopeTableRow, metricId: DemandMetricId) {
     setSelectedMetric(metricId);
     setChartRowKey(demandRegionSelectionKey(row.selection));
+    if (metricId === "demandScore") {
+      void ensureRegionScope(row.selection);
+    }
   }
 
   const compareHref =
@@ -519,6 +540,7 @@ export default function DemandHubWorkspace({
                 rtmsSeries={rtmsSeriesState}
                 keywordStore={keywordStoreState}
                 scoreContext={liveScoreContext}
+                loading={focusRowKey != null && loadingKeys.has(focusRowKey)}
               />
             </DemandDataBlindOverlay>
           ) : null}
