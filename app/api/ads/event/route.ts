@@ -24,6 +24,8 @@ const SLOT_KEYS = [
   "tender_detail_summary_below",
   "tender_detail_strategy_below",
   "awards_industry_list_3rd",
+  "report_top",
+  "report_bottom",
 ];
 
 type Body = {

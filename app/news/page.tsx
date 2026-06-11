@@ -224,9 +224,20 @@ export default async function NewsPage({
     ? await countAwardReportPosts(supabase)
     : await countTenderDailyReportPosts(supabase);
   const reportPage = clampReportListPage(requestedPage, totalReports);
-  const [{ data: posts }, { data: marketingLatest }] = await Promise.all([
+  const [{ data: posts }, { data: marketingLatest }, { data: jobWageLatest }] = await Promise.all([
     fetchReportPostsPage(supabase, { isAward: isAwardReportCategory, page: reportPage }),
-    supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
+    supabase
+      .from("naver_trend_daily_reports")
+      .select("report_date")
+      .order("report_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("job_wage_daily_reports")
+      .select("report_date")
+      .order("report_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   return (
@@ -331,16 +342,30 @@ export default async function NewsPage({
               href="/tenders"
             />
           ) : (
-            <ReportNextStep
-              variant="slate"
-              situation="입찰·발주 쪽 흐름을 봤다면, 같은 날 검색 수요 트렌드도 같이 보면 마케팅·단가 방향을 잡기 쉽습니다."
-              actionLabel="지금 뜨는 키워드 확인하기"
-              href={
-                marketingLatest?.report_date
-                  ? `/marketing-report/${marketingLatest.report_date}`
-                  : "/marketing-report"
-              }
-            />
+            <>
+              <ReportNextStep
+                variant="slate"
+                situation="입찰·발주 쪽 흐름을 봤다면, 같은 날 검색 수요 트렌드도 같이 보면 마케팅·단가 방향을 잡기 쉽습니다."
+                actionLabel="지금 뜨는 키워드 확인하기"
+                href={
+                  marketingLatest?.report_date
+                    ? `/marketing-report/${marketingLatest.report_date}`
+                    : "/marketing-report"
+                }
+              />
+              <div className="mt-4">
+                <ReportNextStep
+                  variant="teal"
+                  situation="인건비·구인 단가 감을 잡으려면 같은 시기 일당 스냅샷을 함께 보는 것이 좋습니다."
+                  actionLabel="일당 리포트 보기"
+                  href={
+                    jobWageLatest?.report_date
+                      ? `/job-market-report/${jobWageLatest.report_date}`
+                      : "/job-market-report"
+                  }
+                />
+              </div>
+            </>
           )}
         </div>
       </div>

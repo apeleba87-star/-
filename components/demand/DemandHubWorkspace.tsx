@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import DemandHubPulseSection from "@/components/demand/DemandHubPulseSection";
+import DemandHubJobWageSlimLink from "@/components/demand/DemandHubJobWageSlimLink";
+import DemandHubMarketingFootLink from "@/components/demand/DemandHubMarketingFootLink";
+import DemandJobWageRegionBridge from "@/components/demand/DemandJobWageRegionBridge";
 import DemandMetricChart from "@/components/demand/DemandMetricChart";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
 import DemandScopeCompareCards from "@/components/demand/DemandScopeCompareCards";
@@ -22,6 +25,7 @@ import type { DemandMetricId } from "@/lib/demand/metrics";
 import {
   DEMAND_MAX_REGION_COMPARE,
   demandRegionSelectionKey,
+  formatDemandRegionLabel,
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
 import {
@@ -61,6 +65,7 @@ import DemandRadarRegionalAd from "@/components/demand/DemandRadarRegionalAd";
 import { resolveRegionalAdRegionKeys } from "@/lib/demand/radar-ad-region-keys";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import type { HomeAdSlotWithCampaign } from "@/lib/ads-shared";
+import type { JobWageHubTeaser } from "@/lib/report/job-wage-hub-teaser";
 import { cn } from "@/lib/utils";
 
 function ClickableMetricCell({
@@ -120,6 +125,8 @@ type Props = {
     radar_table_below: HomeAdSlotWithCampaign | null;
     radar_regional_fallback: HomeAdSlotWithCampaign | null;
   };
+  jobWageTeaser?: JobWageHubTeaser | null;
+  marketingReportDate?: string | null;
 };
 
 export default function DemandHubWorkspace({
@@ -131,6 +138,8 @@ export default function DemandHubWorkspace({
   dailyPulse = null,
   initialAccess,
   hubAds,
+  jobWageTeaser = null,
+  marketingReportDate = null,
 }: Props) {
   const searchParams = useSearchParams();
   const shareParam = searchParams.get("r");
@@ -383,6 +392,17 @@ export default function DemandHubWorkspace({
 
   const showTableBelowAd = hasSelection && scopeRows.length > 0 && access.tier !== "guest";
 
+  const focusSelection = useMemo(() => {
+    const row =
+      scopeRows.find((r) => demandRegionSelectionKey(r.selection) === focusRowKey) ?? primaryRow;
+    return row?.selection ?? null;
+  }, [scopeRows, focusRowKey, primaryRow]);
+
+  const focusRegionLabel = useMemo(
+    () => (focusSelection ? formatDemandRegionLabel(focusSelection) : null),
+    [focusSelection]
+  );
+
   return (
     <div
       className={cn(
@@ -393,6 +413,8 @@ export default function DemandHubWorkspace({
       <DemandUsageBanner access={access} />
 
       {dailyPulse ? <DemandHubPulseSection data={dailyPulse} compactOnMobile /> : null}
+
+      {jobWageTeaser && !hasSelection ? <DemandHubJobWageSlimLink teaser={jobWageTeaser} /> : null}
 
       <DemandRadarNationalAd className="my-4" />
 
@@ -411,6 +433,14 @@ export default function DemandHubWorkspace({
           </p>
         ) : null}
       </div>
+
+      {hasSelection && jobWageTeaser && focusSelection && focusRegionLabel ? (
+        <DemandJobWageRegionBridge
+          teaser={jobWageTeaser}
+          selection={focusSelection}
+          regionLabel={focusRegionLabel}
+        />
+      ) : null}
 
       {hasSelection ? (
         <>
@@ -663,6 +693,8 @@ export default function DemandHubWorkspace({
       {showTableBelowAd ? (
         <DemandHubAdSlot slot={hubAds?.radar_table_below ?? null} className="mt-2 hidden md:block" />
       ) : null}
+
+      <DemandHubMarketingFootLink reportDate={marketingReportDate} />
 
       {guestShowLoginCta ? (
         <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">

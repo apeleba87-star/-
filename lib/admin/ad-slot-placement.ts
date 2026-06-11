@@ -9,6 +9,7 @@ export type AdPlacementSurfaceId =
   | "award_report"
   | "estimate"
   | "marketing"
+  | "job_wage"
   | "all";
 
 export type AdPlacementBlockKind = "chrome" | "affiliate_slot" | "radar_direct";
@@ -214,13 +215,56 @@ export const AD_PLACEMENT_SURFACES: AdPlacementSurface[] = [
     label: "마케팅 리포트",
     pageLabel: "마케팅 일일 리포트",
     pagePath: "/marketing-report/[date]",
+    previewHref: "/marketing-report",
     blocks: [
+      {
+        id: "mr-top",
+        kind: "affiliate_slot",
+        label: "본문 상단",
+        slotKey: "report_top",
+      },
       { id: "mr-titles", kind: "chrome", label: "추천 제목 1·2" },
       {
         id: "mr-titles-ad",
         kind: "affiliate_slot",
         label: "추천 제목 사이",
         slotKey: "marketing_report_suggested_titles_1_2",
+      },
+      {
+        id: "mr-bottom",
+        kind: "affiliate_slot",
+        label: "본문 하단",
+        slotKey: "report_bottom",
+      },
+    ],
+  },
+  {
+    id: "job_wage",
+    label: "일당 리포트",
+    pageLabel: "구인 일당 일일 리포트",
+    pagePath: "/job-market-report/[date]",
+    previewHref: "/job-market-report",
+    blocks: [
+      {
+        id: "jw-national-direct",
+        kind: "radar_direct",
+        label: "전국 직거래 배너",
+        detail: "높음·낮음 요약 아래 · 지도 위 · 입주레이더 전국과 동일 캠페인",
+        radarDirectHref: "/admin/radar-ads/manage?section=national",
+      },
+      {
+        id: "jw-top",
+        kind: "affiliate_slot",
+        label: "본문 상단",
+        slotKey: "report_top",
+      },
+      { id: "jw-summary", kind: "chrome", label: "대표 직종 · 시·도 요약" },
+      { id: "jw-map", kind: "chrome", label: "시·도별 지도 · 표" },
+      {
+        id: "jw-bottom",
+        kind: "affiliate_slot",
+        label: "본문 하단",
+        slotKey: "report_bottom",
       },
     ],
   },

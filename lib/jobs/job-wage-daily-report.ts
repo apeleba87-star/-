@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatJobWageDominantDisplayName } from "@/lib/jobs/job-wage-dominant-label";
+import { syncJobWageDailySeries } from "@/lib/jobs/job-wage-daily-series";
 import { canonicalSidoFromRegion } from "@/lib/listings/regions";
 import {
   addDaysToDateString,
@@ -168,6 +169,8 @@ export async function runJobWage30DayReportJob(
       computed_at: new Date().toISOString(),
     });
     if (upErr) return { ok: false, error: upErr.message, report_date: windowEnd };
+    const series = await syncJobWageDailySeries(supabase, windowEnd, payload);
+    if (!series.ok) return { ok: false, error: series.error, report_date: windowEnd };
     return { ok: true, report_date: windowEnd };
   }
 
@@ -296,8 +299,10 @@ export async function runJobWage30DayReportJob(
   });
 
   if (upErr) return { ok: false, error: upErr.message, report_date: windowEnd };
+  const series = await syncJobWageDailySeries(supabase, windowEnd, payload);
+  if (!series.ok) return { ok: false, error: series.error, report_date: windowEnd };
   return { ok: true, report_date: windowEnd };
 }
 
-/** 크론·기존 호출 호환용 별칭 */
+/** 크론·기존 호환용 별칭 */
 export const runJobWageDailyReportJob = runJobWage30DayReportJob;

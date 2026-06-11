@@ -183,6 +183,24 @@ export async function getActiveAwardReportInlineAds(): Promise<{
   };
 }
 
+/** 일당·마케팅 리포트 페이지 상·하단 */
+export async function getActiveReportPageAds(): Promise<{
+  report_top: HomeAdSlotWithCampaign | null;
+  report_bottom: HomeAdSlotWithCampaign | null;
+}> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "report_top",
+    "report_bottom",
+    "tender_report_budget_below",
+  ]);
+  const fallback = map.tender_report_budget_below ?? null;
+  return {
+    report_top: applySlotScriptFallback(map.report_top ?? null, fallback),
+    report_bottom: applySlotScriptFallback(map.report_bottom ?? null, fallback),
+  };
+}
+
 /** 일간 입찰 리포트 본문 인라인 슬롯 */
 export async function getActiveTenderReportInlineAds(): Promise<{
   tender_report_glance_below: HomeAdSlotWithCampaign | null;

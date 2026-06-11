@@ -12,7 +12,8 @@ export default function JobWageReportManualSection() {
       <h2 className="text-sm font-semibold text-slate-800">일당 리포트 수동 갱신</h2>
       <p className="mt-1 text-xs text-slate-600">
         <strong>30일</strong>: KST <strong>어제</strong>를 말일로 하여 그날부터 <strong>30일(포함)</strong> 구간을 집계합니다.{" "}
-        <strong>당일</strong>: KST <strong>오늘</strong> 00:00~자정 직전에 생성된 포지션만 집계합니다. 결과는 <code className="rounded bg-white px-1">report_date</code>{" "}
+        <strong>당일</strong>: KST <strong>오늘</strong> 00:00~자정 직전에 생성된 포지션만 집계합니다. 입주레이더 허브·크론은 <strong>당일</strong> 리포트만
+        사용합니다(크론 KST 9·13·17·21시). 결과는 <code className="rounded bg-white px-1">report_date</code>{" "}
         키로 <strong>날짜별로 쌓이며</strong>, 같은 날짜를 다시 실행하면 그날 행만 덮어씁니다. 서버에{" "}
         <code className="rounded bg-white px-1">SUPABASE_SERVICE_ROLE_KEY</code> 가 있어야 합니다.
       </p>

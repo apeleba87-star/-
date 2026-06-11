@@ -3,9 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FileText, Lightbulb, Megaphone, PenLine, Search, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import { getActiveMarketingReportSuggestedTitlesAd } from "@/lib/ads";
+import { getActiveMarketingReportSuggestedTitlesAd, getActiveReportPageAds, isAdSlotRenderable } from "@/lib/ads";
 import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
-import { isAdSlotRenderable } from "@/lib/ads-shared";
 import {
   MARKETING_SUGGESTED_TITLE_DISPLAY_CAP,
   type DailyReportPayload,
@@ -91,15 +90,37 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }, { data: jobWageLatest }, crossPosts, suggestedTitlesAd] =
-    await Promise.all([
-      supabase.from("naver_trend_daily_reports").select("headline, payload, fetch_error").eq("report_date", date).maybeSingle(),
-      supabase.from("naver_trend_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(14),
-      supabase.from("job_wage_daily_reports").select("report_date").order("report_date", { ascending: false }).limit(1).maybeSingle(),
-      getCrossReportDiscoveryPosts(supabase, 4),
-      getActiveMarketingReportSuggestedTitlesAd(),
-    ]);
+  const [
+    { data: report, error },
+    { data: recent },
+    { data: jobWageLatest },
+    crossPosts,
+    suggestedTitlesAd,
+    reportAds,
+  ] = await Promise.all([
+    supabase
+      .from("naver_trend_daily_reports")
+      .select("headline, payload, fetch_error")
+      .eq("report_date", date)
+      .maybeSingle(),
+    supabase
+      .from("naver_trend_daily_reports")
+      .select("report_date")
+      .order("report_date", { ascending: false })
+      .limit(14),
+    supabase
+      .from("job_wage_daily_reports")
+      .select("report_date")
+      .order("report_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    getCrossReportDiscoveryPosts(supabase, 4),
+    getActiveMarketingReportSuggestedTitlesAd(),
+    getActiveReportPageAds(),
+  ]);
   const showSuggestedTitlesAd = isAdSlotRenderable(suggestedTitlesAd);
+  const showReportTopAd = Boolean(user) && isAdSlotRenderable(reportAds.report_top);
+  const showReportBottomAd = Boolean(user) && isAdSlotRenderable(reportAds.report_bottom);
 
   if (error || !report) notFound();
 
@@ -145,6 +166,9 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
           layout={user ? "crop" : "full"}
         >
         <div className="mx-auto mt-8 max-w-5xl space-y-6 px-0">
+          {showReportTopAd ? (
+            <AffiliateAdSlot slot={reportAds.report_top} variant="banner" className="mb-2" />
+          ) : null}
           <section className={insightClass}>
             <div className="flex flex-wrap items-start gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/25">
@@ -366,6 +390,10 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
               layout="full"
             />
           </div>
+
+          {showReportBottomAd ? (
+            <AffiliateAdSlot slot={reportAds.report_bottom} variant="banner" className="mt-4" />
+          ) : null}
 
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Link

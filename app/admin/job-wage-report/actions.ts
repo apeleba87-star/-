@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateJobWageReport } from "@/lib/report/revalidate-job-wage";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { runJobWage30DayReportJob } from "@/lib/jobs/job-wage-daily-report";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
@@ -27,10 +28,7 @@ export async function runJobWage30DayReportManual() {
     const supabase = createServiceSupabase();
     const result = await runJobWage30DayReportJob(supabase);
     revalidatePath("/admin/job-wage-report");
-    revalidatePath("/job-market-report");
-    if (result.report_date) {
-      revalidatePath(`/job-market-report/${result.report_date}`);
-    }
+    revalidateJobWageReport(result.report_date);
     return result;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -51,10 +49,7 @@ export async function runJobWageTodayReportManual() {
       windowEndKst: today,
     });
     revalidatePath("/admin/job-wage-report");
-    revalidatePath("/job-market-report");
-    if (result.report_date) {
-      revalidatePath(`/job-market-report/${result.report_date}`);
-    }
+    revalidateJobWageReport(result.report_date);
     return result;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
