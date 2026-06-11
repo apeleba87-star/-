@@ -5,6 +5,9 @@ import DemandRegionSeoView from "@/components/demand/DemandRegionSeoView";
 import { DEMAND_HEAT_BAND_LABELS } from "@/lib/demand/copy";
 import { getRegionSeoPageData } from "@/lib/demand/region-seo-data";
 import { demandRegionSeoPath, parseDemandRegionSeoParams } from "@/lib/demand/region-seo-path";
+import { demandRegionSelectionKey } from "@/lib/demand/regions";
+import { insertDemandRegionViewEvent } from "@/lib/demand/region-view-events";
+import { createServiceSupabase } from "@/lib/supabase-server";
 import {
   buildPageMetadata,
   getBaseUrl,
@@ -62,6 +65,16 @@ export default async function DemandRegionSeoPage({ params }: Props) {
 
   const data = await getRegionSeoPageData(cityId, guSlug);
   if (!data) notFound();
+
+  try {
+    void insertDemandRegionViewEvent(createServiceSupabase(), {
+      region_key: demandRegionSelectionKey({ scope: "district", cityId, guSlug }),
+      source: "seo",
+      page_path: demandRegionSeoPath(cityId, guSlug),
+    }).catch(() => {});
+  } catch {
+    // SEO 페이지 렌더는 계속
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",

@@ -6,7 +6,9 @@ import type { DemandRegionScopeResponse } from "@/lib/demand/region-scope-data";
 import { filterRegionScopePayload } from "@/lib/demand/demand-data-redact";
 import { grantDemandRegionScopeAccess } from "@/lib/demand/demand-usage-access";
 import { isDemandAdmin } from "@/lib/demand/access";
-import { getDemandCity, getDemandDistrictRef } from "@/lib/demand/regions";
+import { demandRegionSelectionKey, getDemandCity, getDemandDistrictRef } from "@/lib/demand/regions";
+import { insertDemandRegionViewEvent } from "@/lib/demand/region-view-events";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,26 @@ export async function POST(req: NextRequest) {
       access: grant.access,
       quotaBlockedKeys: grant.quotaBlockedKeys,
     };
+
+    try {
+      const authSupabase = await createServerSupabase();
+      const {
+        data: { user },
+      } = await authSupabase.auth.getUser();
+      const service = createServiceSupabase();
+      for (const sel of selections) {
+        const key = demandRegionSelectionKey(sel);
+        if (key === "national") continue;
+        void insertDemandRegionViewEvent(service, {
+          region_key: key,
+          source: shareTeaser ? "share" : "region_scope",
+          user_id: user?.id ?? null,
+        });
+      }
+    } catch {
+      // 조회 기록 실패해도 응답은 반환
+    }
+
     return NextResponse.json(responseBody);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

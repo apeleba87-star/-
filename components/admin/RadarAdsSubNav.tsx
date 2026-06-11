@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/admin/radar-ads", label: "대시보드", exact: true },
+  { href: "/admin/radar-ads/region-views", label: "지역 조회", exact: true },
   { href: "/admin/radar-ads/manage", label: "광고 관리", exact: false },
 ] as const;
 

@@ -28,6 +28,7 @@ import {
   formatDemandRegionLabel,
   type DemandRegionSelection,
 } from "@/lib/demand/regions";
+import { trackDemandRegionView } from "@/lib/demand/region-view-tracking";
 import {
   buildDemandScopeRowsWithRtms,
   type DemandRtmsDistrictOverrides,
@@ -324,6 +325,12 @@ export default function DemandHubWorkspace({
     }
     return demandRegionSelectionKey(scopeRows[0].selection);
   }, [scopeRows, chartRowKey]);
+
+  useEffect(() => {
+    if (!focusRowKey || focusRowKey === "national") return;
+    const source = shareTeaserKey != null && shareTeaserKey === focusRowKey ? "share" : "hub";
+    void trackDemandRegionView(focusRowKey, source);
+  }, [focusRowKey, shareTeaserKey]);
 
   const regionalAdKeys = useMemo(
     () => resolveRegionalAdRegionKeys({ focusRowKey, scopeRows, selections }),
