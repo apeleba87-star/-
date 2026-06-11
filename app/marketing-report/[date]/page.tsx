@@ -388,6 +388,7 @@ export default async function MarketingReportDatePage({ params }: { params: Prom
               shareText={MARKETING_TEAM_SHARE_TEXT}
               loginNextPath={`/marketing-report/${date}`}
               layout="full"
+              isLoggedIn={!!user}
             />
           </div>
 

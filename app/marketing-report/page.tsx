@@ -193,6 +193,7 @@ export default async function MarketingReportIndexPage({
             shareText={MARKETING_TEAM_SHARE_TEXT}
             loginNextPath="/marketing-report"
             layout="full"
+            isLoggedIn={!!user}
           />
         </div>
       </div>

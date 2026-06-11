@@ -14,6 +14,7 @@ type Props = {
   shareText: string;
   loginNextPath: string;
   layout?: "full" | "compact";
+  isLoggedIn?: boolean;
 };
 
 export default function JobWageInsightShareButton({
@@ -22,6 +23,7 @@ export default function JobWageInsightShareButton({
   shareText,
   loginNextPath,
   layout = "full",
+  isLoggedIn = false,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -85,7 +87,8 @@ export default function JobWageInsightShareButton({
     return (
       <div className="rounded-2xl border border-teal-200/90 bg-white/90 p-4 shadow-inner ring-1 ring-teal-100/60">
         <p className="text-sm text-slate-600">
-          이미 오늘 심화가 열려 있어도 <strong className="font-semibold text-slate-800">팀에 다시 알릴 수 있습니다.</strong>
+          리포트는 로그인 회원에게 무료로 열려 있습니다.{" "}
+          <strong className="font-semibold text-slate-800">팀에 알리려면 아래를 누르세요.</strong>
         </p>
         <button
           type="button"
@@ -96,16 +99,14 @@ export default function JobWageInsightShareButton({
           <Share2 className="h-4 w-4 shrink-0" aria-hidden />
           {loading ? "처리 중…" : "우리 팀 공유"}
         </button>
-        <p className="mt-2 text-xs text-slate-500">
-          <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className="font-medium text-teal-700 underline">
-            로그인
-          </Link>
-          이 필요합니다.{" "}
-          <Link href="/subscribe" className="font-medium text-teal-700 underline">
-            구독
-          </Link>
-          으로 전체를 열 수 있습니다.
-        </p>
+        {isLoggedIn ? null : (
+          <p className="mt-2 text-xs text-slate-500">
+            <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className="font-medium text-teal-700 underline">
+              로그인
+            </Link>
+            하면 표·심화 인사이트를 무료로 볼 수 있습니다.
+          </p>
+        )}
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       </div>
     );
@@ -114,8 +115,7 @@ export default function JobWageInsightShareButton({
   return (
     <div className="rounded-2xl border border-teal-200/90 bg-white/90 p-4 shadow-inner ring-1 ring-teal-100/60">
       <p className="text-sm font-medium text-slate-800">
-        오늘 <strong className="text-slate-900">첫 우리 팀 공유 1회</strong>로 전국 가중 평균·전일 대비·일당 구간 분포를 볼 수 있습니다. 입찰 리포트와{" "}
-        <strong className="text-slate-900">같은 날 열람권</strong>이 이어집니다.
+        표·심화 인사이트는 <strong className="text-slate-900">로그인</strong>하면 무료로 열립니다. 로그인 후 아래에서 팀에 링크를 보낼 수 있습니다.
       </p>
       <button
         type="button"
@@ -126,16 +126,14 @@ export default function JobWageInsightShareButton({
         <Share2 className="h-4 w-4 shrink-0" aria-hidden />
         {loading ? "처리 중…" : "우리 팀 공유"}
       </button>
-      <p className="mt-2 text-xs text-slate-500">
-        <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className="font-medium text-teal-700 underline">
-          로그인
-        </Link>
-        이 필요합니다. 공유가 어렵다면{" "}
-        <Link href="/subscribe" className="font-medium text-teal-700 underline">
-          구독
-        </Link>
-        으로 전체를 열 수 있습니다.
-      </p>
+      {isLoggedIn ? null : (
+        <p className="mt-2 text-xs text-slate-500">
+          <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className="font-medium text-teal-700 underline">
+            로그인
+          </Link>
+          하면 표·심화 인사이트를 무료로 볼 수 있습니다.
+        </p>
+      )}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );

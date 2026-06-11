@@ -16,7 +16,28 @@ type Props = {
   shareText: string;
   loginNextPath: string;
   layout?: "full" | "compact" | "inline";
+  isLoggedIn?: boolean;
 };
+
+function ShareFooterNote({
+  isLoggedIn,
+  loginNextPath,
+  linkClass,
+}: {
+  isLoggedIn: boolean;
+  loginNextPath: string;
+  linkClass: string;
+}) {
+  if (isLoggedIn) return null;
+  return (
+    <p className="mt-2 text-xs text-slate-500">
+      <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className={`font-medium underline ${linkClass}`}>
+        로그인
+      </Link>
+      하면 표·심화 인사이트를 무료로 볼 수 있습니다. 공유는 로그인 후 팀 안내용입니다.
+    </p>
+  );
+}
 
 const TONE = {
   job_wage: {
@@ -59,6 +80,7 @@ export default function ReportTeamShareButton({
   shareText,
   loginNextPath,
   layout = "full",
+  isLoggedIn = false,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -124,12 +146,12 @@ export default function ReportTeamShareButton({
     );
   }
 
-  if (layout === "compact") {
+  if (layout === "compact" || isLoggedIn) {
     return (
       <div className={`rounded-2xl border p-4 shadow-inner ring-1 ${tone.box}`}>
         <p className="text-sm text-slate-600">
-          이미 오늘 열람이 열려 있어도{" "}
-          <strong className="font-semibold text-slate-800">팀에 다시 알릴 수 있습니다.</strong>
+          리포트는 로그인 회원에게 무료로 열려 있습니다.{" "}
+          <strong className="font-semibold text-slate-800">팀에 알리려면 아래를 누르세요.</strong>
         </p>
         <button
           type="button"
@@ -140,16 +162,7 @@ export default function ReportTeamShareButton({
           <Share2 className="h-4 w-4 shrink-0" aria-hidden />
           {loading ? "처리 중…" : "우리 팀 공유"}
         </button>
-        <p className={`mt-2 text-xs text-slate-500`}>
-          <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className={`font-medium underline ${tone.link}`}>
-            로그인
-          </Link>
-          이 필요합니다.{" "}
-          <Link href="/subscribe" className={`font-medium underline ${tone.link}`}>
-            구독
-          </Link>
-          으로 전체를 열 수 있습니다.
-        </p>
+        <ShareFooterNote isLoggedIn={isLoggedIn} loginNextPath={loginNextPath} linkClass={tone.link} />
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       </div>
     );
@@ -158,8 +171,8 @@ export default function ReportTeamShareButton({
   return (
     <div className={`rounded-2xl border p-4 shadow-inner ring-1 ${tone.box}`}>
       <p className="text-sm font-medium text-slate-800">
-        오늘 <strong className="text-slate-900">첫 우리 팀 공유 1회</strong>로 당일 열람이 열리고, 입찰·일당·마케팅 리포트의{" "}
-        <strong className="text-slate-900">심화 영역</strong>에 같은 날 연결됩니다.
+        표·심화 인사이트는 <strong className="text-slate-900">로그인</strong>하면 무료로 열립니다. 로그인 후 아래에서 팀에
+        링크를 보낼 수 있습니다.
       </p>
       <button
         type="button"
@@ -170,16 +183,7 @@ export default function ReportTeamShareButton({
         <Share2 className="h-4 w-4 shrink-0" aria-hidden />
         {loading ? "처리 중…" : "우리 팀 공유"}
       </button>
-      <p className="mt-2 text-xs text-slate-500">
-        <Link href={`/login?next=${encodeURIComponent(loginNextPath)}`} className={`font-medium underline ${tone.link}`}>
-          로그인
-        </Link>
-        이 필요합니다. 공유가 어렵다면{" "}
-        <Link href="/subscribe" className={`font-medium underline ${tone.link}`}>
-          구독
-        </Link>
-        으로 전체를 열 수 있습니다.
-      </p>
+      <ShareFooterNote isLoggedIn={isLoggedIn} loginNextPath={loginNextPath} linkClass={tone.link} />
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );

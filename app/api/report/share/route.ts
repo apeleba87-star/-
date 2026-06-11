@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json(
-      { ok: false, error: "로그인 후 공유하면 1회 열람이 가능합니다." },
+      { ok: false, error: "로그인 후 팀 공유를 할 수 있습니다." },
       { status: 401 }
     );
   }
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
   if (existing) {
     return NextResponse.json({
       ok: true,
-      message: "오늘 공유로 열람이 적용된 상태입니다. 입찰·일당 리포트 심화 영역에 동일하게 적용됩니다.",
+      message: "오늘 이미 팀 공유를 완료했습니다.",
       revealed_panel_keys: (existing.revealed_panel_keys as string[] | null) ?? [],
     });
   }
@@ -176,7 +176,7 @@ export async function POST(req: Request) {
       if (race) {
         return NextResponse.json({
           ok: true,
-          message: "오늘 공유로 열람이 적용된 상태입니다. 입찰·일당 리포트 심화 영역에 동일하게 적용됩니다.",
+          message: "오늘 이미 팀 공유를 완료했습니다.",
           revealed_panel_keys: (race.revealed_panel_keys as string[] | null) ?? [],
         });
       }
@@ -186,11 +186,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    message: jobWageDate
-      ? "공유가 완료되었습니다. 일당 리포트 심화 인사이트가 열렸습니다."
-      : marketingDate
-        ? "공유가 완료되었습니다. 당일 열람이 적용되었습니다."
-        : "공유가 완료되었습니다. 심화 패널이 열렸습니다.",
+    message: "공유가 완료되었습니다. 팀에 알리기가 기록되었습니다.",
     revealed_panel_keys,
   });
 }

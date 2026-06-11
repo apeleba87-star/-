@@ -196,6 +196,7 @@ export default async function JobMarketReportIndexPage({
             shareText={jobWageTeamShareText(rows[0].report_date)}
             loginNextPath="/job-market-report"
             layout="full"
+            isLoggedIn={!!user}
           />
         </div>
       </div>

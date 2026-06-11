@@ -20,6 +20,8 @@ function formatWon(n: number): string {
 type Props = {
   provinceByName: Map<string, ProvinceAvg>;
   highlightTopN: number;
+  /** 허브 `?province=` 딥링크 — 해당 시·도 테두리 강조 */
+  focusProvince?: string | null;
 };
 
 const FILL_OTHER_DATA = "#c8e6d9";
@@ -28,7 +30,7 @@ const FILL_NO_DATA = "#cbd5e1";
 /**
  * 상위 N개 시·도는 1~N위마다 지도·카드에서 동일한 색. 범례에 순위·지역명을 표시합니다.
  */
-export default function KoreaProvinceGeoMap({ provinceByName, highlightTopN }: Props) {
+export default function KoreaProvinceGeoMap({ provinceByName, highlightTopN, focusProvince = null }: Props) {
   const w = 580;
   const h = 660;
   const pad = 22;
@@ -121,13 +123,15 @@ export default function KoreaProvinceGeoMap({ provinceByName, highlightTopN }: P
               if (rank) fill = WAGE_MAP_RANK_META[rank - 1]!.fill;
               else if (hasData) fill = FILL_OTHER_DATA;
 
+              const isFocus = Boolean(focusProvince && sido === focusProvince);
+
               return (
                 <path
                   key={`${name}-${i}`}
                   d={d}
                   fill={fill}
-                  stroke="#ffffff"
-                  strokeWidth={rank ? 2.25 : 2}
+                  stroke={isFocus ? "#0d9488" : "#ffffff"}
+                  strokeWidth={isFocus ? 3.5 : rank ? 2.25 : 2}
                   strokeLinejoin="round"
                 />
               );

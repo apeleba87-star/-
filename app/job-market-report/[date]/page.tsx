@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Lock, MapPin, Table2, TrendingDown, TrendingUp } from "lucide-react";
+import { MapPin, Table2, TrendingDown, TrendingUp } from "lucide-react";
 import KoreaProvinceGeoMap from "@/components/jobs/KoreaProvinceGeoMap";
 import JobWagePremiumInsights from "@/components/jobs/JobWagePremiumInsights";
+import JobWageProvinceScroll from "@/components/jobs/JobWageProvinceScroll";
 import JobWageProvinceTableCopyButton from "@/components/jobs/JobWageProvinceTableCopyButton";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
 import { addDaysToDateString } from "@/lib/jobs/kst-date";
@@ -19,7 +20,10 @@ import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
 import { formatJobWageDominantDisplayName, jobWageReportListExcerptFromPayload } from "@/lib/jobs/job-wage-dominant-label";
 import {
   bottomProvinceFromProvinces,
+  jobWageProvinceRowId,
+  pickPrevDailyReportRow,
   provincesFromPayload,
+  resolveHighlightProvince,
   topProvinceFromProvinces,
 } from "@/lib/jobs/job-wage-report-display";
 import { getActiveReportPageAds, isAdSlotRenderable } from "@/lib/ads";
@@ -91,8 +95,15 @@ export async function generateMetadata({ params }: { params: Promise<{ date: str
   };
 }
 
-export default async function JobMarketReportDatePage({ params }: { params: Promise<{ date: string }> }) {
+export default async function JobMarketReportDatePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ date: string }>;
+  searchParams: Promise<{ province?: string }>;
+}) {
   const { date } = await params;
+  const { province: provinceQuery } = await searchParams;
   if (!isYmd(date)) notFound();
 
   const authSupabase = await createServerSupabase();
@@ -105,7 +116,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
   const isAdmin = profile?.role === "admin" || profile?.role === "editor";
 
   const supabase = createClient();
-  const [{ data: report, error }, { data: recent }, { data: prevReportRow }, reportAds] =
+  const [{ data: report, error }, { data: recent }, { data: prevCandidates }, reportAds] =
     await Promise.all([
       supabase
         .from("job_wage_daily_reports")
@@ -122,10 +133,11 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
         .select("report_date, payload")
         .lt("report_date", date)
         .order("report_date", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .limit(30),
       getActiveReportPageAds(),
     ]);
+
+  const prevReportRow = pickPrevDailyReportRow(prevCandidates ?? [], date);
 
   if (error || !report) notFound();
 
@@ -144,6 +156,7 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
     (payload?.reportDateKst ? addDaysToDateString(payload.reportDateKst, -(windowDays - 1)) : null);
 
   const provinces = hasPayload && payload ? provincesFromPayload(payload) : [];
+  const highlightProvince = resolveHighlightProvince(provinceQuery, provinces);
   const topProvince = payload?.topProvinceByAvgWage ?? topProvinceFromProvinces(provinces);
   const bottomProvince = payload?.bottomProvinceByAvgWage ?? bottomProvinceFromProvinces(provinces);
 
@@ -166,7 +179,6 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
     ? { currAvg: null, prevAvg: null, delta: null, deltaPct: null }
     : nationalCompare;
 
-  const jobWageInsightUnlocked = Boolean(user) || isAdmin;
   const showReportTopAd = Boolean(user) && isAdSlotRenderable(reportAds.report_top);
   const showReportBottomAd = Boolean(user) && isAdSlotRenderable(reportAds.report_bottom);
 
@@ -315,55 +327,44 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                   {showSinglePostingWages ? (
                     <div className="mt-6 border-t border-slate-200/90 pt-6">
                       <p className="text-sm font-semibold text-slate-700">한 공고에 적힌 대표 일당</p>
-                      {!jobWageInsightUnlocked ? (
-                        <div className="mt-3 rounded-2xl border border-dashed border-amber-200/90 bg-amber-50/60 p-4 sm:p-5">
-                          <div className="flex items-start gap-2 text-sm text-amber-950">
-                            <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                            <p>
-                              금액·지역(시·군·구)은 <strong>심화 인사이트와 동일하게</strong> 우리 팀 공유 또는 구독 시에만 표시됩니다. 위쪽「심화 인사이트」에서 우리 팀 공유하면 이 구간도 함께 열립니다.
-                            </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-4">
+                        <div className="min-w-0 rounded-2xl border-2 border-emerald-400/90 bg-gradient-to-br from-emerald-50 to-white p-3 shadow-sm ring-1 ring-emerald-100 sm:p-5">
+                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-emerald-900 sm:text-xs">
+                            <TrendingUp className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                            가장 높은 일당
                           </div>
-                        </div>
-                      ) : (
-                        <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-4">
-                          <div className="min-w-0 rounded-2xl border-2 border-emerald-400/90 bg-gradient-to-br from-emerald-50 to-white p-3 shadow-sm ring-1 ring-emerald-100 sm:p-5">
-                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-emerald-900 sm:text-xs">
-                              <TrendingUp className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                              가장 높은 일당
-                            </div>
-                            {payload.maxDailyWage ? (
-                              <>
-                                <p className="mt-2 text-lg font-bold tabular-nums text-emerald-800 sm:text-xl">{formatWon(payload.maxDailyWage.amount)}</p>
-                                <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
-                                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700/80 sm:h-4 sm:w-4" aria-hidden />
-                                  <span className="break-words">{payload.maxDailyWage.region}</span>
-                                </p>
-                              </>
-                            ) : (
-                              <p className="mt-3 text-xs text-slate-500 sm:text-sm">표시할 데이터가 없습니다.</p>
-                            )}
-                          </div>
-                          <div className="min-w-0 rounded-2xl border-2 border-rose-400/90 bg-gradient-to-br from-rose-50 to-white p-3 shadow-sm ring-1 ring-rose-100 sm:p-5">
-                            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-rose-900 sm:text-xs">
-                              <TrendingDown className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                              가장 낮은 일당
-                            </div>
-                            {payload.minDailyWage ? (
-                              <>
-                                <p className="mt-2 text-lg font-bold tabular-nums text-rose-800 sm:text-xl">{formatWon(payload.minDailyWage.amount)}</p>
-                                <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
-                                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-700/80 sm:h-4 sm:w-4" aria-hidden />
-                                  <span className="break-words">{payload.minDailyWage.region}</span>
-                                </p>
-                              </>
-                            ) : (
-                              <p className="mt-3 text-xs leading-relaxed text-slate-600 sm:text-sm">
-                                이 구간에서 최저 일당을 골라 낼 수 없습니다.
+                          {payload.maxDailyWage ? (
+                            <>
+                              <p className="mt-2 text-lg font-bold tabular-nums text-emerald-800 sm:text-xl">{formatWon(payload.maxDailyWage.amount)}</p>
+                              <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700/80 sm:h-4 sm:w-4" aria-hidden />
+                                <span className="break-words">{payload.maxDailyWage.region}</span>
                               </p>
-                            )}
-                          </div>
+                            </>
+                          ) : (
+                            <p className="mt-3 text-xs text-slate-500 sm:text-sm">표시할 데이터가 없습니다.</p>
+                          )}
                         </div>
-                      )}
+                        <div className="min-w-0 rounded-2xl border-2 border-rose-400/90 bg-gradient-to-br from-rose-50 to-white p-3 shadow-sm ring-1 ring-rose-100 sm:p-5">
+                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-rose-900 sm:text-xs">
+                            <TrendingDown className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                            가장 낮은 일당
+                          </div>
+                          {payload.minDailyWage ? (
+                            <>
+                              <p className="mt-2 text-lg font-bold tabular-nums text-rose-800 sm:text-xl">{formatWon(payload.minDailyWage.amount)}</p>
+                              <p className="mt-2 flex items-start gap-1 text-xs font-medium leading-snug text-slate-800 sm:text-sm">
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-700/80 sm:h-4 sm:w-4" aria-hidden />
+                                <span className="break-words">{payload.minDailyWage.region}</span>
+                              </p>
+                            </>
+                          ) : (
+                            <p className="mt-3 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                              이 구간에서 최저 일당을 골라 낼 수 없습니다.
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ) : null}
                 </section>
@@ -383,7 +384,11 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                     iconBg="bg-gradient-to-br from-cyan-600 to-teal-600 shadow-cyan-500/25"
                   />
                   <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/40 p-3 ring-1 ring-slate-100/80 sm:p-4">
-                    <KoreaProvinceGeoMap provinceByName={provinceByName} highlightTopN={JOB_WAGE_MAP_TOP_PROVINCES} />
+                    <KoreaProvinceGeoMap
+                      provinceByName={provinceByName}
+                      highlightTopN={JOB_WAGE_MAP_TOP_PROVINCES}
+                      focusProvince={highlightProvince}
+                    />
                   </div>
                   {provinces.some((p) => p.province === "기타" && p.jobPostCount > 0) && (
                     <p className="mt-4 rounded-lg bg-amber-50/90 px-3 py-2 text-sm text-amber-950 ring-1 ring-amber-200/80">
@@ -401,7 +406,12 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                     description={`공고 ${payload.jobPostCount.toLocaleString("ko-KR")}곳 기준 · 평균 높은 순`}
                     iconBg="bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-500/20"
                   />
-                  {jobWageInsightUnlocked && provinces.length > 0 ? (
+                  {highlightProvince ? (
+                    <p className="mt-4 text-sm text-teal-800">
+                      <strong className="font-semibold">{highlightProvince}</strong> 시·도를 표에서 강조했습니다.
+                    </p>
+                  ) : null}
+                  {user && provinces.length > 0 ? (
                     <div className="mt-4 flex justify-end">
                       <JobWageProvinceTableCopyButton tsv={provinceTableTsv} />
                     </div>
@@ -425,11 +435,17 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                             idx < JOB_WAGE_MAP_TOP_PROVINCES && r.jobPostCount > 0 ? idx + 1 : null;
                           const rankColor =
                             mapRank != null ? WAGE_MAP_RANK_META[mapRank - 1]?.fill : null;
+                          const isHighlighted = highlightProvince === r.province;
                           return (
                             <tr
                               key={r.province}
+                              id={jobWageProvinceRowId(r.province)}
                               className={`border-b border-slate-100 last:border-0 ${
-                                mapRank ? "bg-slate-50/50" : ""
+                                isHighlighted
+                                  ? "bg-teal-50 ring-2 ring-inset ring-teal-400"
+                                  : mapRank
+                                    ? "bg-slate-50/50"
+                                    : ""
                               } hover:bg-teal-50/50`}
                             >
                               <td className="px-4 py-3.5 text-center">
@@ -475,14 +491,12 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                 ) : null}
               </section>
 
+              {highlightProvince ? <JobWageProvinceScroll province={highlightProvince} /> : null}
+
               {hasPayload && payload && provinces.some((p) => p.jobPostCount > 0) ? (
                 <JobWagePremiumInsights
-                  reportDate={date}
                   loginNextPath={`/job-market-report/${date}`}
-                  unlocked={jobWageInsightUnlocked}
                   guestTeaser={!user}
-                  shareTitle={jobWageShareTitle}
-                  shareText={jobWageShareText}
                   compare={premiumInsightsCompare}
                   bins={premiumInsightsBins}
                   dominantCategoryName={payload.dominantCategory?.name ?? null}
@@ -551,7 +565,8 @@ export default async function JobMarketReportDatePage({ params }: { params: Prom
                 shareTitle={jobWageShareTitle}
                 shareText={jobWageShareText}
                 loginNextPath={`/job-market-report/${date}`}
-                layout="full"
+                layout={user ? "compact" : "full"}
+                isLoggedIn={!!user}
               />
             </div>
           ) : null}
