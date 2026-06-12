@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = createClient();
-    const allJobs = await fetchPublicJobList(supabase, { limit: 500 });
+    const allJobs = await fetchPublicJobList(supabase, { fetchAll: true });
     const scopedJobs = filterLocalJobs(allJobs, pref);
     localCount = scopedJobs.length;
     nationalPay = sortPublicJobList(allJobs, "pay")[0] ?? null;

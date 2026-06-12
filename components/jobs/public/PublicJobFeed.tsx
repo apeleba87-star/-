@@ -31,19 +31,25 @@ function loadDensity(): PublicJobViewDensity {
   }
 }
 
+function zebraRowBg(stripe: number): string {
+  return stripe % 2 === 0 ? "bg-slate-50" : "bg-white";
+}
+
 function CompactRow({
   job,
   large,
   payMode,
+  stripe,
 }: {
   job: PublicJobOpeningListItem;
   large?: boolean;
   payMode: PublicJobPayDisplayMode;
+  stripe: number;
 }) {
   const meta = publicJobRowMeta(job, { payMode });
 
   return (
-    <tr className="group border-b border-slate-100 last:border-0 hover:bg-slate-50/80">
+    <tr className={cn("group border-b border-slate-100 last:border-0 hover:bg-slate-100/70", zebraRowBg(stripe))}>
       <td className={cn("py-2.5 pl-3 pr-2 font-medium text-slate-900", large ? "text-base" : "text-sm")}>
         <Link href={meta.detailHref} className="line-clamp-2 hover:underline">
           {meta.title}
@@ -80,18 +86,20 @@ function CompactMobileRow({
   job,
   large,
   payMode,
+  stripe,
 }: {
   job: PublicJobOpeningListItem;
   large?: boolean;
   payMode: PublicJobPayDisplayMode;
+  stripe: number;
 }) {
   const meta = publicJobRowMeta(job, { payMode });
 
   return (
-    <li className="border-b border-slate-100 last:border-0">
+    <li className={cn("border-b border-slate-100 last:border-0", zebraRowBg(stripe))}>
       <Link
         href={meta.detailHref}
-        className="flex min-h-[52px] items-center gap-3 px-3 py-2.5 active:bg-slate-50"
+        className="flex min-h-[52px] items-center gap-3 px-3 py-2.5 active:bg-slate-100/80"
       >
         <span className="min-w-0 flex-1">
           <span className={cn("block line-clamp-2 font-semibold text-slate-900", large ? "text-base" : "text-sm")}>
@@ -208,21 +216,29 @@ export default function PublicJobFeed({ jobs, fallbackJobs = [], showEmpty }: Pr
       </div>
 
       {density === "comfortable" ? (
-        <ul className="space-y-3">
-          {jobs.map((job) => (
-            <PublicJobCard key={job.id} job={job} large={large} payMode={payMode} />
+        <ul className="overflow-hidden rounded-xl border border-slate-200">
+          {jobs.map((job, index) => (
+            <li key={job.id} className={cn("border-b border-slate-100 last:border-0", zebraRowBg(index))}>
+              <PublicJobCard job={job} large={large} payMode={payMode} embedded />
+            </li>
           ))}
         </ul>
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white md:hidden">
+          <div className="overflow-hidden rounded-xl border border-slate-200 md:hidden">
             <ul>
-              {jobs.map((job) => (
-                <CompactMobileRow key={job.id} job={job} large={large} payMode={payMode} />
+              {jobs.map((job, index) => (
+                <CompactMobileRow
+                  key={job.id}
+                  job={job}
+                  large={large}
+                  payMode={payMode}
+                  stripe={index}
+                />
               ))}
             </ul>
           </div>
-          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
             <table className="w-full min-w-[640px] text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
@@ -235,8 +251,14 @@ export default function PublicJobFeed({ jobs, fallbackJobs = [], showEmpty }: Pr
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((job) => (
-                  <CompactRow key={job.id} job={job} large={large} payMode={payMode} />
+                {jobs.map((job, index) => (
+                  <CompactRow
+                    key={job.id}
+                    job={job}
+                    large={large}
+                    payMode={payMode}
+                    stripe={index}
+                  />
                 ))}
               </tbody>
             </table>

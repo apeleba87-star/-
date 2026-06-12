@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useSearchParams } from "next/navigation";
 import DemandHubPulseSection from "@/components/demand/DemandHubPulseSection";
 import DemandHubJobWageSlimLink from "@/components/demand/DemandHubJobWageSlimLink";
-import DemandHubMarketingFootLink from "@/components/demand/DemandHubMarketingFootLink";
+import DemandHubJobsPublicBridge from "@/components/region-hub/DemandHubJobsPublicBridge";
+import DemandHubJobsPublicSlimLink from "@/components/region-hub/DemandHubJobsPublicSlimLink";
 import DemandJobWageRegionBridge from "@/components/demand/DemandJobWageRegionBridge";
 import DemandMetricChart from "@/components/demand/DemandMetricChart";
 import DemandRegionPicker from "@/components/demand/DemandRegionPicker";
@@ -66,6 +67,7 @@ import DemandRadarRegionalAd from "@/components/demand/DemandRadarRegionalAd";
 import { resolveRegionalAdRegionKeys } from "@/lib/demand/radar-ad-region-keys";
 import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import type { HomeAdSlotWithCampaign } from "@/lib/ads-shared";
+import type { JobsPublicHubTeaser } from "@/lib/region-hub/jobs-public-teaser";
 import type { JobWageHubTeaser } from "@/lib/report/job-wage-hub-teaser";
 import { cn } from "@/lib/utils";
 
@@ -127,7 +129,7 @@ type Props = {
     radar_regional_fallback: HomeAdSlotWithCampaign | null;
   };
   jobWageTeaser?: JobWageHubTeaser | null;
-  marketingReportDate?: string | null;
+  jobsPublicTeaser?: JobsPublicHubTeaser | null;
 };
 
 export default function DemandHubWorkspace({
@@ -140,7 +142,7 @@ export default function DemandHubWorkspace({
   initialAccess,
   hubAds,
   jobWageTeaser = null,
-  marketingReportDate = null,
+  jobsPublicTeaser = null,
 }: Props) {
   const searchParams = useSearchParams();
   const shareParam = searchParams.get("r");
@@ -409,15 +411,6 @@ export default function DemandHubWorkspace({
     }
   }
 
-  const compareHref =
-    scopeRows.length >= 2
-      ? `/demand/compare?${scopeRows
-          .slice(0, DEMAND_MAX_REGION_COMPARE)
-          .filter((r) => r.slug)
-          .map((r, i) => `gu${i + 1}=${encodeURIComponent(r.slug!)}`)
-          .join("&")}`
-      : null;
-
   const showTableBelowAd = hasSelection && scopeRows.length > 0 && access.tier !== "guest";
 
   const focusSelection = useMemo(() => {
@@ -443,6 +436,10 @@ export default function DemandHubWorkspace({
       {dailyPulse ? <DemandHubPulseSection data={dailyPulse} compactOnMobile /> : null}
 
       {jobWageTeaser && !hasSelection ? <DemandHubJobWageSlimLink teaser={jobWageTeaser} /> : null}
+
+      {jobsPublicTeaser && !hasSelection ? (
+        <DemandHubJobsPublicSlimLink teaser={jobsPublicTeaser} />
+      ) : null}
 
       <DemandRadarNationalAd className="my-4" />
 
@@ -543,6 +540,15 @@ export default function DemandHubWorkspace({
                 loading={focusRowKey != null && loadingKeys.has(focusRowKey)}
               />
             </DemandDataBlindOverlay>
+          ) : null}
+
+          {jobsPublicTeaser && focusSelection && focusRegionLabel ? (
+            <DemandHubJobsPublicBridge
+              className="mt-4"
+              teaser={jobsPublicTeaser}
+              selection={focusSelection}
+              regionLabel={focusRegionLabel}
+            />
           ) : null}
         </>
       ) : null}
@@ -709,21 +715,12 @@ export default function DemandHubWorkspace({
           </div>
           </div>
 
-          {compareHref ? (
-            <p className="mt-3 text-center text-xs text-slate-500">
-              <Link href={compareHref} className="font-semibold text-slate-600 hover:underline">
-                비교 화면
-              </Link>
-            </p>
-          ) : null}
         </div>
       )}
 
       {showTableBelowAd ? (
         <DemandHubAdSlot slot={hubAds?.radar_table_below ?? null} className="mt-2 hidden md:block" />
       ) : null}
-
-      <DemandHubMarketingFootLink reportDate={marketingReportDate} />
 
       {guestShowLoginCta ? (
         <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">

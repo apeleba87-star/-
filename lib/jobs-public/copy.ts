@@ -1,7 +1,7 @@
 /** 채용 공고(워크넷) 화면 문구 — 50~60대 가독성 기준 */
 
 export const PUBLIC_JOBS_COPY = {
-  pageTitle: "청소·용역 채용",
+  pageTitle: "채용 정보",
   pageLead: "우리 지역 일자리와 급여가 높은 곳을 한눈에 확인하세요.",
   regionButton: "지역 바꾸기",
   regionDefaultLabel: "서울 전체",

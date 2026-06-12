@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { Banknote } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase-server";
-import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
-
 export default async function JobMarketReportEmptyPage() {
   const authSupabase = await createServerSupabase();
   const {
@@ -27,10 +25,6 @@ export default async function JobMarketReportEmptyPage() {
             아직 일당 리포트가 없습니다. 관리자 일당 리포트 화면에서「30일 기준」또는「당일(KST)」리포트 생성을 실행해 주세요.
           </p>
         </div>
-        <div className="mt-6">
-          <NewsCategoryTabs section="report" current="job_wage" showPrivateTab={isAdmin} />
-        </div>
-
         <div className="mx-auto mt-10 max-w-lg">
           <div className="rounded-3xl border border-teal-200/70 bg-gradient-to-br from-teal-50/90 via-white to-emerald-50/40 p-8 text-center shadow-md ring-1 ring-teal-100/60">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-600/25">

@@ -4,6 +4,7 @@ import PublicJobsFeedSection from "@/components/jobs/public/PublicJobsFeedSectio
 import { PublicJobPayModeProvider } from "@/components/jobs/public/PublicJobPayModeProvider";
 import PublicJobRegionWithShare from "@/components/jobs/public/PublicJobRegionWithShare";
 import PublicJobRadarAdsSection from "@/components/jobs/public/PublicJobRadarAdsSection";
+import PublicJobsRegionHubBridges from "@/components/region-hub/PublicJobsRegionHubBridges";
 import { PUBLIC_JOBS_COPY } from "@/lib/jobs-public/copy";
 import { jobPublicRegionKeysFromDraft } from "@/lib/jobs-public/radar-ad-region";
 import { jobPublicDraftFromScope } from "@/lib/jobs-public/job-region-scope";
@@ -23,6 +24,8 @@ import {
   filterLocalJobs,
   formatSyncedAt,
 } from "@/lib/jobs-public/queries";
+import { getCachedJobWageHubTeaserRaw } from "@/lib/report/job-wage-hub-teaser-cache";
+import { toJobWageHubTeaserForTier } from "@/lib/report/job-wage-hub-teaser";
 import { createClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +43,7 @@ export async function generateMetadata({
     parseJobPublicShareRegionFromSearchParams(params) ??
     (await getJobPublicRegionPreference());
   const nationalScope = isNationalPublicJobScope(pref);
-  const allJobs = await fetchPublicJobList(supabase, { limit: 500 });
+  const allJobs = await fetchPublicJobList(supabase, { fetchAll: true });
   const scopedJobs = filterLocalJobs(allJobs, pref);
   const localPay = nationalScope
     ? sortPublicJobList(allJobs, "pay")[0] ?? null
@@ -75,6 +78,8 @@ export default async function PublicJobsPage({
 }) {
   const params = await searchParams;
   const supabase = createClient();
+  const rawJobWageTeaser = await getCachedJobWageHubTeaserRaw();
+  const jobWageTeaser = toJobWageHubTeaserForTier(rawJobWageTeaser, "guest");
   const pref =
     parseJobPublicShareRegionFromSearchParams(params) ??
     (await getJobPublicRegionPreference());
@@ -85,7 +90,7 @@ export default async function PublicJobsPage({
       cityId: "seoul",
     };
   const nationalScope = isNationalPublicJobScope(pref);
-  const allJobs = await fetchPublicJobList(supabase, { limit: 500 });
+  const allJobs = await fetchPublicJobList(supabase, { fetchAll: true });
 
   const scopedJobs = filterLocalJobs(allJobs, pref);
   const localCount = scopedJobs.length;
@@ -113,10 +118,6 @@ export default async function PublicJobsPage({
             currentSido={pref.sido}
             currentSigungu={pref.sigungu}
             jobCount={localCount}
-            shareDraft={shareDraft}
-            pref={pref}
-            localPay={localPay}
-            nationalPay={nationalPay}
           />
           <p className="mt-2 text-sm text-slate-500">
             {PUBLIC_JOBS_COPY.syncedPrefix} · {formatSyncedAt(syncedAt)}
@@ -129,6 +130,8 @@ export default async function PublicJobsPage({
         regionKeys={radarRegionKeys}
         className="mt-5"
       />
+
+      <PublicJobsRegionHubBridges shareDraft={shareDraft} jobWageTeaser={jobWageTeaser} />
 
       <PublicJobPayModeProvider>
         <Suspense fallback={<SortChipsFallback />}>

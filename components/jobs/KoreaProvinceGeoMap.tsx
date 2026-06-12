@@ -138,10 +138,6 @@ export default function KoreaProvinceGeoMap({ provinceByName, highlightTopN, foc
             })}
           </g>
         </svg>
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-400">
-          통계청 2018 시·도 경계를 단순화했습니다.
-          {n > 0 ? " 범례 순서가 평균 일당 높은 순입니다." : ""}
-        </p>
       </div>
 
       <div className="mx-auto mt-8 max-w-3xl">

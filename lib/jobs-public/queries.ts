@@ -52,6 +52,10 @@ export type JobSpotlightSnapshot = {
 const LIST_SELECT =
   "id, wanted_auth_no, title, company, preset_label, pay_display, pay_monthly_normalized, sal_tp_cd, pay_min_won, pay_max_won, region_text, region_sido, region_sigungu, closing_at, holiday_label, career_label, external_url, last_synced_at";
 
+/** 배치 조회 상한 — 고용24 동기화 규모 내 전체 열린 공고 */
+export const PUBLIC_JOB_LIST_BATCH_SIZE = 500;
+export const PUBLIC_JOB_LIST_MAX_ROWS = 10_000;
+
 export async function fetchSpotlightSnapshot(
   supabase: SupabaseClient,
   scopeKey: string
@@ -66,11 +70,10 @@ export async function fetchSpotlightSnapshot(
   return (data as JobSpotlightSnapshot | null) ?? null;
 }
 
-export async function fetchPublicJobList(
+function publicJobListQuery(
   supabase: SupabaseClient,
-  opts: { limit?: number; orderByPay?: boolean } = {}
-): Promise<PublicJobOpeningListItem[]> {
-  const limit = opts.limit ?? 30;
+  opts: { orderByPay?: boolean }
+) {
   let q = supabase
     .from("public_job_openings")
     .select(LIST_SELECT)
@@ -82,9 +85,43 @@ export async function fetchPublicJobList(
   } else {
     q = q.order("last_synced_at", { ascending: false });
   }
-  const { data } = await q.limit(limit);
-  const openRows = filterOpenPublicJobs((data ?? []) as PublicJobOpeningListItem[]);
+  return q;
+}
+
+function finalizePublicJobListRows(
+  rows: PublicJobOpeningListItem[]
+): PublicJobOpeningListItem[] {
+  const openRows = filterOpenPublicJobs(rows);
   return filterPublicJobsBySyncFresh(openRows);
+}
+
+export async function fetchPublicJobList(
+  supabase: SupabaseClient,
+  opts: { limit?: number; orderByPay?: boolean; fetchAll?: boolean } = {}
+): Promise<PublicJobOpeningListItem[]> {
+  if (opts.fetchAll) {
+    const merged: PublicJobOpeningListItem[] = [];
+    let offset = 0;
+    while (merged.length < PUBLIC_JOB_LIST_MAX_ROWS) {
+      const take = Math.min(
+        PUBLIC_JOB_LIST_BATCH_SIZE,
+        PUBLIC_JOB_LIST_MAX_ROWS - merged.length
+      );
+      const { data } = await publicJobListQuery(supabase, opts).range(
+        offset,
+        offset + take - 1
+      );
+      const batch = finalizePublicJobListRows((data ?? []) as PublicJobOpeningListItem[]);
+      merged.push(...batch);
+      if (!data?.length || data.length < take) break;
+      offset += take;
+    }
+    return merged;
+  }
+
+  const limit = opts.limit ?? 30;
+  const { data } = await publicJobListQuery(supabase, opts).limit(limit);
+  return finalizePublicJobListRows((data ?? []) as PublicJobOpeningListItem[]);
 }
 
 export function filterLocalJobs(

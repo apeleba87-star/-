@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient, createServerSupabase } from "@/lib/supabase-server";
-import NewsCategoryTabs from "@/components/news/NewsCategoryTabs";
 import NewsCard from "@/components/news/NewsCard";
 import ReportNextStep from "@/components/report/ReportNextStep";
 import ReportTeamShareButton from "@/components/report/ReportTeamShareButton";
@@ -19,6 +18,8 @@ import {
   heroMetricsFromJobWagePayload,
 } from "@/lib/news/parseReportCardHero";
 import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
+import DemandHubJobsPublicSlimLink from "@/components/region-hub/DemandHubJobsPublicSlimLink";
+import { getCachedJobsPublicHubTeaser } from "@/lib/region-hub/jobs-public-teaser-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,11 @@ export default async function JobMarketReportIndexPage({
   const {
     data: { user },
   } = await authSupabase.auth.getUser();
-  const { data: profile } = user
-    ? await authSupabase.from("profiles").select("role").eq("id", user.id).single()
-    : { data: null };
-  const isAdmin = profile?.role === "admin" || profile?.role === "editor";
-
   const supabase = createClient();
-  const [total, crossPosts] = await Promise.all([
+  const [total, crossPosts, jobsPublicTeaser] = await Promise.all([
     countJobWageReports(supabase),
     getCrossReportDiscoveryPosts(supabase, 4),
+    getCachedJobsPublicHubTeaser(),
   ]);
   const listPage = clampReportListPage(requestedPage, total);
   const { data: rows, error } = await fetchJobWageReportsPage(supabase, listPage);
@@ -78,9 +75,6 @@ export default async function JobMarketReportIndexPage({
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700/90">구인 시장 스냅샷</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
             <p className="mx-auto mt-3 max-w-md text-sm text-slate-600">저장된 리포트가 없습니다.</p>
-          </div>
-          <div className="mt-6">
-            <NewsCategoryTabs section="report" current="job_wage" showPrivateTab={isAdmin} />
           </div>
           <div className="mx-auto mt-10 max-w-lg rounded-3xl border border-slate-200/70 bg-white p-8 text-center shadow-md ring-1 ring-slate-100/80">
             <p className="text-sm text-slate-600">다음으로 이동</p>
@@ -124,10 +118,6 @@ export default async function JobMarketReportIndexPage({
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">일당 리포트</h1>
         </div>
 
-        <div className="mt-6">
-          <NewsCategoryTabs section="report" current="job_wage" showPrivateTab={isAdmin} />
-        </div>
-
         <ul className="mx-auto mt-8 grid w-full max-w-6xl min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r, i) => (
             <li key={r.report_date}>
@@ -163,6 +153,10 @@ export default async function JobMarketReportIndexPage({
           totalCount={total}
           buildHref={buildJobMarketReportListHref}
         />
+
+        <div className="mx-auto mt-8 max-w-2xl">
+          <DemandHubJobsPublicSlimLink teaser={jobsPublicTeaser} />
+        </div>
 
         {crossPosts.length > 0 ? (
           <div className="mx-auto mt-10 max-w-5xl">

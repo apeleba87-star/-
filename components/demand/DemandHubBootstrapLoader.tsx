@@ -1,10 +1,9 @@
 import DemandHubWorkspace from "@/components/demand/DemandHubWorkspace";
 import { getActiveDemandHubAds } from "@/lib/ads";
-import { createClient } from "@/lib/supabase-server";
 import { stripDemandHubBootstrapForClient } from "@/lib/demand/demand-data-redact";
 import { getCachedDemandHubBootstrap } from "@/lib/demand/demand-cache";
 import type { DemandUsageAccess } from "@/lib/demand/usage-limits";
-import { getLatestMarketingReportDate } from "@/lib/report/latest-report-dates";
+import { getCachedJobsPublicHubTeaser } from "@/lib/region-hub/jobs-public-teaser-cache";
 import { getCachedJobWageHubTeaserRaw } from "@/lib/report/job-wage-hub-teaser-cache";
 import { toJobWageHubTeaserForTier } from "@/lib/report/job-wage-hub-teaser";
 
@@ -15,12 +14,11 @@ type Props = {
 
 /** 허브 데이터 — Suspense 안에서 로드해 셸·피커를 먼저 표시 */
 export default async function DemandHubBootstrapLoader({ initialAccess, tier }: Props) {
-  const supabase = createClient();
-  const [rawBootstrap, hubAds, marketingReportDate, rawJobWageTeaser] = await Promise.all([
+  const [rawBootstrap, hubAds, rawJobWageTeaser, jobsPublicTeaser] = await Promise.all([
     getCachedDemandHubBootstrap(),
     getActiveDemandHubAds(),
-    getLatestMarketingReportDate(supabase),
     getCachedJobWageHubTeaserRaw(),
+    getCachedJobsPublicHubTeaser(),
   ]);
   const bootstrap = stripDemandHubBootstrapForClient(rawBootstrap, tier);
   const jobWageTeaser = toJobWageHubTeaserForTier(rawJobWageTeaser, tier);
@@ -36,7 +34,7 @@ export default async function DemandHubBootstrapLoader({ initialAccess, tier }: 
       initialAccess={initialAccess}
       hubAds={hubAds}
       jobWageTeaser={jobWageTeaser}
-      marketingReportDate={marketingReportDate}
+      jobsPublicTeaser={jobsPublicTeaser}
     />
   );
 }
