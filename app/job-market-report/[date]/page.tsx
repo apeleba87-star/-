@@ -54,7 +54,6 @@ import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredIn
 import JobWageReportRegionHubBridges from "@/components/region-hub/JobWageReportRegionHubBridges";
 import JobWageReportRecentDates from "@/components/jobs/JobWageReportRecentDates";
 import JobWageReportShareButton from "@/components/jobs/JobWageReportShareButton";
-import { getCachedJobsPublicHubTeaser } from "@/lib/region-hub/jobs-public-teaser-cache";
 import type { JobWageSharePreview } from "@/lib/report/job-wage-share-copy";
 
 
@@ -265,8 +264,7 @@ export default async function JobMarketReportDatePage({
 
   const supabase = createClient();
 
-  const [{ data: report, error }, { data: recentRows }, reportAds, jobsPublicTeaser] =
-    await Promise.all([
+  const [{ data: report, error }, { data: recentRows }, reportAds] = await Promise.all([
       supabase
         .from("job_wage_daily_reports")
         .select("headline, payload, fetch_error")
@@ -279,7 +277,6 @@ export default async function JobMarketReportDatePage({
         .order("report_date", { ascending: false })
         .limit(3),
       getActiveReportPageAds(),
-      getCachedJobsPublicHubTeaser(),
     ]);
 
 
@@ -688,8 +685,6 @@ export default async function JobMarketReportDatePage({
                     <div className="mt-4">
 
                       <JobWageReportRegionHubBridges
-
-                        jobsTeaser={jobsPublicTeaser}
 
                         highlightProvince={highlightProvince}
 

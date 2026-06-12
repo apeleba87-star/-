@@ -28,16 +28,16 @@ export default function DemandHubJobsPublicBridge({
 
   return (
     <div className={className}>
-    <RegionHubBridgeCard
-      tone="indigo"
-      kicker="채용"
-      headline={regionHubJobsCompactHeadline()}
-      detail={regionHubJobsCompactDetail(scope.jobCount, hasPosts)}
-      href={href}
-      cta={REGION_HUB_JOBS_CTA}
-      ariaLabel={`${regionLabel} 채용 공고 보기`}
-      compact
-    />
+      <RegionHubBridgeCard
+        tone="indigo"
+        kicker="채용"
+        headline={regionHubJobsCompactHeadline()}
+        detail={regionHubJobsCompactDetail(scope.jobCount, hasPosts)}
+        href={href}
+        cta={REGION_HUB_JOBS_CTA}
+        ariaLabel={`${regionLabel} 채용 공고 보기`}
+        compact
+      />
     </div>
   );
 }

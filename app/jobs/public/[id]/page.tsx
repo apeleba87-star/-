@@ -27,12 +27,16 @@ import { buildPageMetadata } from "@/lib/seo";
 import { buildPublicJobDetailShareMessage } from "@/lib/jobs-public/share-metadata";
 import {
   fetchPublicJobByAuthNo,
-  fetchPublicJobList,
   formatSyncedAt,
   type PublicJobOpeningListItem,
 } from "@/lib/jobs-public/queries";
+import {
+  getCachedRegionalPayInsightJobs,
+  getCachedRelatedPublicJobs,
+  getPublicJobScopeCount,
+} from "@/lib/jobs-public/list-cache";
 import { jobPublicRegionKeysFromJob } from "@/lib/jobs-public/radar-ad-region";
-import { sortPublicJobList } from "@/lib/jobs-public/public-job-sort";
+import { preferenceFromScope } from "@/lib/jobs-public/region-preference-shared";
 import { jobPublicDraftFromScope } from "@/lib/jobs-public/job-region-scope";
 import { getCachedJobWageHubTeaserRaw } from "@/lib/report/job-wage-hub-teaser-cache";
 import { toJobWageHubTeaserForTier } from "@/lib/report/job-wage-hub-teaser";
@@ -96,23 +100,22 @@ export default async function PublicJobDetailPage({ params }: Props) {
   const job = await loadOpening(id);
   if (!job) notFound();
 
-  const [summaryAd, relatedAd, allJobs, rawJobWageTeaser] = await Promise.all([
-    getActiveJobsPublicDetailSummaryAd(),
-    getActiveJobsPublicDetailRelatedAd(),
-    fetchPublicJobList(createClient(), { fetchAll: true }),
-    getCachedJobWageHubTeaserRaw(),
-  ]);
-  const jobWageTeaser = toJobWageHubTeaserForTier(rawJobWageTeaser, "guest");
-
   const jobSido = job.region_sido;
   const jobSigungu = job.region_sigungu;
-  const sameRegionJobs = allJobs.filter((j) => {
-    if (j.id === job.id) return false;
-    if (jobSido && j.region_sido !== jobSido) return false;
-    if (jobSigungu && j.region_sigungu !== jobSigungu) return false;
-    return true;
-  });
-  const relatedJobs = sortPublicJobList(sameRegionJobs, "pay").slice(0, 4);
+  const regionalPref = jobSido
+    ? preferenceFromScope({ sido: jobSido, sigungu: jobSigungu })
+    : preferenceFromScope({ sido: "전국", sigungu: null });
+
+  const [summaryAd, relatedAd, relatedJobs, payInsightData, regionalJobCount, rawJobWageTeaser] =
+    await Promise.all([
+      getActiveJobsPublicDetailSummaryAd(),
+      getActiveJobsPublicDetailRelatedAd(),
+      getCachedRelatedPublicJobs(regionalPref, job.id, 4),
+      getCachedRegionalPayInsightJobs(regionalPref),
+      getPublicJobScopeCount(regionalPref),
+      getCachedJobWageHubTeaserRaw(),
+    ]);
+  const jobWageTeaser = toJobWageHubTeaserForTier(rawJobWageTeaser, "guest");
 
   const region = parseWorkRegion(job.region_text ?? "", {
     title: job.title,
@@ -125,7 +128,11 @@ export default async function PublicJobDetailPage({ params }: Props) {
   const preset = job.preset_label ?? "청소·용역";
   const payDisplay = job.pay_display || PUBLIC_JOBS_COPY.payNegotiable;
 
-  const payInsight = buildJobDetailPayInsight(job, sameRegionJobs, allJobs);
+  const payInsight = buildJobDetailPayInsight(
+    job,
+    payInsightData.regionalJobs,
+    payInsightData.nationalTop ? [payInsightData.nationalTop] : []
+  );
   const applyGuide = buildJobDetailApplyGuide(
     { pay_min_won: payMin, pay_max_won: payMax },
     { hasPayRange }
@@ -139,7 +146,7 @@ export default async function PublicJobDetailPage({ params }: Props) {
     career_label: job.career_label,
   });
   const regionListHref = buildJobDetailRegionListHref(jobSido, jobSigungu);
-  const regionalCount = sameRegionJobs.length + 1;
+  const regionalCount = regionalJobCount;
   const radarRegionKeys = jobPublicRegionKeysFromJob(job);
   const shareDraft =
     jobSido != null

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { revalidateJobsPublic } from "@/lib/jobs-public/revalidate-jobs-public";
 import { computeJobSpotlightSnapshots } from "@/lib/jobs-public-ingest/compute-job-spotlight-snapshots";
 import { closeWorknetOpeningsMissingFreshRaw } from "@/lib/jobs-public-ingest/worknet-freshness";
 import { runWorknetNormalizeFromRaw } from "@/lib/jobs-public-ingest/run-worknet-normalize";
@@ -75,5 +76,8 @@ export async function POST(req: NextRequest) {
   const normalize = await runWorknetNormalizeFromRaw({ supabase: service, maxRows: 5000 });
   const closedAbsent = await closeWorknetOpeningsMissingFreshRaw(service, ingestStartedAt);
   const spotlight = await computeJobSpotlightSnapshots(service);
+  if (spotlight.ok) {
+    revalidateJobsPublic();
+  }
   return NextResponse.json({ ok: true, ingest, normalize, closedAbsent, spotlight });
 }

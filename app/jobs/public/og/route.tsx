@@ -2,11 +2,10 @@ import { ImageResponse } from "next/og";
 import { type NextRequest } from "next/server";
 import { jobPublicScopeFromDraft } from "@/lib/jobs-public/job-region-scope";
 import {
-  fetchPublicJobList,
-  filterLocalJobs,
+  countPublicJobsInScope,
+  fetchTopPayJobInScope,
 } from "@/lib/jobs-public/queries";
 import { isNationalPublicJobScope, preferenceFromScope } from "@/lib/jobs-public/region-preference-shared";
-import { sortPublicJobList } from "@/lib/jobs-public/public-job-sort";
 import {
   buildPublicJobsShareHeadline,
   parseJobPublicShareRegionFromSearchParams,
@@ -37,13 +36,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = createClient();
-    const allJobs = await fetchPublicJobList(supabase, { fetchAll: true });
-    const scopedJobs = filterLocalJobs(allJobs, pref);
-    localCount = scopedJobs.length;
-    nationalPay = sortPublicJobList(allJobs, "pay")[0] ?? null;
-    localPay = isNationalPublicJobScope(pref)
-      ? nationalPay
-      : sortPublicJobList(scopedJobs, "pay")[0] ?? null;
+    const nationalPref = preferenceFromScope({ sido: "전국", sigungu: null });
+    const nationalScope = isNationalPublicJobScope(pref);
+    const [count, scopedTop, nationalTop] = await Promise.all([
+      countPublicJobsInScope(supabase, pref),
+      fetchTopPayJobInScope(supabase, pref),
+      fetchTopPayJobInScope(supabase, nationalPref),
+    ]);
+    localCount = count;
+    nationalPay = nationalTop;
+    localPay = nationalScope ? nationalTop : scopedTop;
   } catch {
     // text-only fallback
   }

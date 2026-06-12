@@ -6,6 +6,11 @@ import PublicJobRegionWithShare from "@/components/jobs/public/PublicJobRegionWi
 import PublicJobRadarAdsSection from "@/components/jobs/public/PublicJobRadarAdsSection";
 import PublicJobsRegionHubBridges from "@/components/region-hub/PublicJobsRegionHubBridges";
 import { PUBLIC_JOBS_COPY } from "@/lib/jobs-public/copy";
+import {
+  getCachedNationalFallbackJobs,
+  getPublicJobListBundle,
+  getPublicJobScopeMeta,
+} from "@/lib/jobs-public/list-cache";
 import { jobPublicRegionKeysFromDraft } from "@/lib/jobs-public/radar-ad-region";
 import { jobPublicDraftFromScope } from "@/lib/jobs-public/job-region-scope";
 import {
@@ -18,19 +23,25 @@ import {
   getJobPublicRegionPreference,
   isNationalPublicJobScope,
 } from "@/lib/jobs-public/region-preference";
-import { sortPublicJobList } from "@/lib/jobs-public/public-job-sort";
 import {
-  fetchPublicJobList,
-  filterLocalJobs,
-  formatSyncedAt,
-} from "@/lib/jobs-public/queries";
+  clampPublicJobPage,
+  parsePublicJobPage,
+} from "@/lib/jobs-public/public-job-pagination";
+import { parsePublicJobSort } from "@/lib/jobs-public/public-job-sort";
+import { formatSyncedAt } from "@/lib/jobs-public/queries";
 import { getCachedJobWageHubTeaserRaw } from "@/lib/report/job-wage-hub-teaser-cache";
 import { toJobWageHubTeaserForTier } from "@/lib/report/job-wage-hub-teaser";
-import { createClient } from "@/lib/supabase-server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
-export const revalidate = 0;
+async function resolveRegionPref(
+  params: Record<string, string | string[] | undefined>
+) {
+  return (
+    parseJobPublicShareRegionFromSearchParams(params) ??
+    (await getJobPublicRegionPreference())
+  );
+}
 
 export async function generateMetadata({
   searchParams,
@@ -38,32 +49,22 @@ export async function generateMetadata({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const params = await searchParams;
-  const supabase = createClient();
-  const pref =
-    parseJobPublicShareRegionFromSearchParams(params) ??
-    (await getJobPublicRegionPreference());
+  const pref = await resolveRegionPref(params);
   const nationalScope = isNationalPublicJobScope(pref);
-  const allJobs = await fetchPublicJobList(supabase, { fetchAll: true });
-  const scopedJobs = filterLocalJobs(allJobs, pref);
-  const localPay = nationalScope
-    ? sortPublicJobList(allJobs, "pay")[0] ?? null
-    : sortPublicJobList(scopedJobs, "pay")[0] ?? null;
-  const nationalPay = sortPublicJobList(allJobs, "pay")[0] ?? null;
+  const meta = await getPublicJobScopeMeta(pref, nationalScope);
 
   const sharePath = buildPublicJobsShareSearch(params);
   const path = sharePath ? `/jobs/public?${sharePath}` : "/jobs/public";
 
   return buildPublicJobsShareMetadata({
     pref,
-    localPay,
-    nationalPay,
-    localCount: scopedJobs.length,
+    localPay: meta.localPay,
+    nationalPay: meta.nationalPay,
+    localCount: meta.localCount,
     path,
     ogQueryParams: params,
   });
 }
-
-const FALLBACK_LIMIT = 8;
 
 function SortChipsFallback() {
   return (
@@ -77,12 +78,11 @@ export default async function PublicJobsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const supabase = createClient();
-  const rawJobWageTeaser = await getCachedJobWageHubTeaserRaw();
+  const [rawJobWageTeaser, pref] = await Promise.all([
+    getCachedJobWageHubTeaserRaw(),
+    resolveRegionPref(params),
+  ]);
   const jobWageTeaser = toJobWageHubTeaserForTier(rawJobWageTeaser, "guest");
-  const pref =
-    parseJobPublicShareRegionFromSearchParams(params) ??
-    (await getJobPublicRegionPreference());
   const shareDraft =
     jobPublicDraftFromSearchParams(params) ??
     jobPublicDraftFromScope({ sido: pref.sido, sigungu: pref.sigungu }) ?? {
@@ -90,18 +90,20 @@ export default async function PublicJobsPage({
       cityId: "seoul",
     };
   const nationalScope = isNationalPublicJobScope(pref);
-  const allJobs = await fetchPublicJobList(supabase, { fetchAll: true });
+  const sort = parsePublicJobSort(typeof params.sort === "string" ? params.sort : undefined);
 
-  const scopedJobs = filterLocalJobs(allJobs, pref);
-  const localCount = scopedJobs.length;
-  const nationalPay = sortPublicJobList(allJobs, "pay")[0] ?? null;
-  const localPay = nationalScope ? nationalPay : sortPublicJobList(scopedJobs, "pay")[0] ?? null;
+  const meta = await getPublicJobScopeMeta(pref, nationalScope);
+  const page = clampPublicJobPage(
+    parsePublicJobPage(typeof params.page === "string" ? params.page : undefined),
+    meta.localCount
+  );
+  const bundle = await getPublicJobListBundle(pref, sort, page);
+
   const fallbackJobs =
-    !nationalScope && localCount === 0
-      ? sortPublicJobList(allJobs, "pay").slice(0, FALLBACK_LIMIT)
+    !nationalScope && bundle.totalCount === 0
+      ? await getCachedNationalFallbackJobs()
       : [];
 
-  const syncedAt = allJobs[0]?.last_synced_at ?? null;
   const radarRegionKeys = jobPublicRegionKeysFromDraft(shareDraft);
 
   return (
@@ -117,10 +119,10 @@ export default async function PublicJobsPage({
           <PublicJobRegionWithShare
             currentSido={pref.sido}
             currentSigungu={pref.sigungu}
-            jobCount={localCount}
+            jobCount={bundle.totalCount}
           />
           <p className="mt-2 text-sm text-slate-500">
-            {PUBLIC_JOBS_COPY.syncedPrefix} · {formatSyncedAt(syncedAt)}
+            {PUBLIC_JOBS_COPY.syncedPrefix} · {formatSyncedAt(bundle.syncedAt)}
           </p>
         </div>
       </header>
@@ -136,9 +138,12 @@ export default async function PublicJobsPage({
       <PublicJobPayModeProvider>
         <Suspense fallback={<SortChipsFallback />}>
           <PublicJobsFeedSection
-            jobs={scopedJobs}
+            jobs={bundle.jobs}
             fallbackJobs={fallbackJobs}
-            jobCount={localCount}
+            jobCount={bundle.totalCount}
+            page={page}
+            totalCount={bundle.totalCount}
+            sort={sort}
           />
         </Suspense>
       </PublicJobPayModeProvider>

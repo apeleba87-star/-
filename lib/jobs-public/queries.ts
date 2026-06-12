@@ -10,7 +10,14 @@ import {
   isPublicJobSyncFresh,
   publicJobSyncFreshCutoffIso,
 } from "@/lib/jobs-public-ingest/worknet-freshness";
-import type { JobPublicRegionPreference } from "./region-preference-shared";
+import { PUBLIC_JOB_PAGE_SIZE } from "@/lib/jobs-public/public-job-pagination";
+import type { PublicJobSort } from "@/lib/jobs-public/public-job-sort";
+import { applyJobPublicScopeFilter } from "@/lib/jobs-public/scope-query";
+import {
+  NATIONAL_PUBLIC_JOB_SIDO,
+  type JobPublicRegionPreference,
+} from "@/lib/jobs-public/region-preference-shared";
+import { preferenceFromScope } from "@/lib/jobs-public/region-preference-shared";
 
 export type PublicJobOpeningListItem = {
   id: string;
@@ -70,22 +77,35 @@ export async function fetchSpotlightSnapshot(
   return (data as JobSpotlightSnapshot | null) ?? null;
 }
 
-function publicJobListQuery(
-  supabase: SupabaseClient,
-  opts: { orderByPay?: boolean }
-) {
-  let q = supabase
+function publicJobOpeningsBaseQuery(supabase: SupabaseClient) {
+  return supabase
     .from("public_job_openings")
     .select(LIST_SELECT)
     .eq("is_open", true)
     .or(openClosingOrFilter())
     .gte("last_synced_at", publicJobSyncFreshCutoffIso());
-  if (opts.orderByPay) {
-    q = q.order("pay_monthly_normalized", { ascending: false, nullsFirst: true });
-  } else {
-    q = q.order("last_synced_at", { ascending: false });
+}
+
+function applyPublicJobSort<Q extends { order: (col: string, opts: { ascending: boolean; nullsFirst?: boolean }) => Q }>(
+  query: Q,
+  sort: PublicJobSort
+): Q {
+  switch (sort) {
+    case "pay_asc":
+      return query.order("pay_monthly_normalized", { ascending: true, nullsFirst: false });
+    case "closing":
+      return query.order("closing_at", { ascending: true, nullsFirst: false });
+    case "latest":
+      return query.order("last_synced_at", { ascending: false });
+    case "pay":
+    default:
+      return query.order("pay_monthly_normalized", { ascending: false, nullsFirst: true });
   }
-  return q;
+}
+
+function publicJobListQuery(supabase: SupabaseClient, opts: { sort?: PublicJobSort; orderByPay?: boolean }) {
+  const sort = opts.sort ?? (opts.orderByPay ? "pay" : "latest");
+  return applyPublicJobSort(publicJobOpeningsBaseQuery(supabase), sort);
 }
 
 function finalizePublicJobListRows(
@@ -93,6 +113,86 @@ function finalizePublicJobListRows(
 ): PublicJobOpeningListItem[] {
   const openRows = filterOpenPublicJobs(rows);
   return filterPublicJobsBySyncFresh(openRows);
+}
+
+export async function countPublicJobsInScope(
+  supabase: SupabaseClient,
+  pref: JobPublicRegionPreference
+): Promise<number> {
+  let q = applyJobPublicScopeFilter(
+    supabase
+      .from("public_job_openings")
+      .select("id", { count: "exact", head: true })
+      .eq("is_open", true)
+      .or(openClosingOrFilter())
+      .gte("last_synced_at", publicJobSyncFreshCutoffIso()),
+    pref
+  );
+  const { count, error } = await q;
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function fetchTopPayJobInScope(
+  supabase: SupabaseClient,
+  pref: JobPublicRegionPreference
+): Promise<PublicJobOpeningListItem | null> {
+  let q = applyPublicJobSort(
+    applyJobPublicScopeFilter(publicJobOpeningsBaseQuery(supabase), pref),
+    "pay"
+  );
+  const { data } = await q.limit(1);
+  const rows = finalizePublicJobListRows((data ?? []) as PublicJobOpeningListItem[]);
+  return rows[0] ?? null;
+}
+
+export async function fetchPublicJobsPage(
+  supabase: SupabaseClient,
+  pref: JobPublicRegionPreference,
+  sort: PublicJobSort,
+  page: number,
+  pageSize = PUBLIC_JOB_PAGE_SIZE
+): Promise<PublicJobOpeningListItem[]> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  let q = applyPublicJobSort(
+    applyJobPublicScopeFilter(publicJobOpeningsBaseQuery(supabase), pref),
+    sort
+  );
+  const { data } = await q.range(from, to);
+  return finalizePublicJobListRows((data ?? []) as PublicJobOpeningListItem[]);
+}
+
+export async function fetchRelatedPublicJobs(
+  supabase: SupabaseClient,
+  pref: JobPublicRegionPreference,
+  excludeId: string,
+  limit: number
+): Promise<PublicJobOpeningListItem[]> {
+  let q = applyPublicJobSort(
+    applyJobPublicScopeFilter(publicJobOpeningsBaseQuery(supabase), pref),
+    "pay"
+  );
+  const { data } = await q.limit(limit + 1);
+  return finalizePublicJobListRows((data ?? []) as PublicJobOpeningListItem[])
+    .filter((j) => j.id !== excludeId)
+    .slice(0, limit);
+}
+
+export async function fetchRegionalJobsForPayInsight(
+  supabase: SupabaseClient,
+  pref: JobPublicRegionPreference,
+  limit = 80
+): Promise<PublicJobOpeningListItem[]> {
+  return fetchPublicJobsPage(supabase, pref, "pay", 1, limit);
+}
+
+export async function fetchNationalFallbackJobs(
+  supabase: SupabaseClient,
+  limit: number
+): Promise<PublicJobOpeningListItem[]> {
+  const nationalPref = preferenceFromScope({ sido: NATIONAL_PUBLIC_JOB_SIDO, sigungu: null });
+  return fetchPublicJobsPage(supabase, nationalPref, "pay", 1, limit);
 }
 
 export async function fetchPublicJobList(

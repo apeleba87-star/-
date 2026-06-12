@@ -4,6 +4,7 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { computeJobSpotlightSnapshots } from "@/lib/jobs-public-ingest/compute-job-spotlight-snapshots";
 import { closeWorknetOpeningsMissingFreshRaw } from "@/lib/jobs-public-ingest/worknet-freshness";
 import { runWorknetNormalizeFromRaw } from "@/lib/jobs-public-ingest/run-worknet-normalize";
+import { revalidateJobsPublic } from "@/lib/jobs-public/revalidate-jobs-public";
 import { runWorknetWantedIngest } from "@/lib/jobs-public-ingest/worknet/run-ingest";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,9 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   const closedAbsent = await closeWorknetOpeningsMissingFreshRaw(supabase, ingestStartedAt);
 
   const spotlight = await computeJobSpotlightSnapshots(supabase);
+  if (spotlight.ok) {
+    revalidateJobsPublic();
+  }
 
   return NextResponse.json({
     ok: spotlight.ok,
