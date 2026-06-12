@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { JOB_OPEN_DATA_SOURCE_WORKNET_WANTED } from "@/lib/jobs-public-ingest/source-slugs";
+import { closeWorknetOpeningsStaleSynced } from "@/lib/jobs-public-ingest/worknet-freshness";
 import { getWorknetCleaningKeywords } from "@/lib/jobs-public-ingest/worknet/cleaning-keywords";
 import { normalizeWorknetListItem } from "@/lib/jobs-public-ingest/worknet/normalize-row";
 import type { WorknetListItem } from "@/lib/jobs-public-ingest/worknet/types";
@@ -49,12 +50,16 @@ export async function runWorknetNormalizeFromRaw(opts: {
     offset += BATCH;
   }
 
-  const staleCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  await closeWorknetOpeningsStaleSynced(opts.supabase);
+
+  const nowIso = new Date().toISOString();
   await opts.supabase
     .from("public_job_openings")
     .update({ is_open: false })
     .eq("source_slug", JOB_OPEN_DATA_SOURCE_WORKNET_WANTED)
-    .lt("last_synced_at", staleCutoff);
+    .eq("is_open", true)
+    .not("closing_at", "is", null)
+    .lt("closing_at", nowIso);
 
   return { ok: true, processed, upserted };
 }

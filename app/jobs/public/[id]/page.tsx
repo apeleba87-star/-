@@ -1,17 +1,49 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Work24Attribution from "@/components/jobs/public/Work24Attribution";
-import { closingLabel } from "@/lib/jobs-public-ingest/worknet/normalize-row";
+import PublicJobAdSlot from "@/components/jobs/public/PublicJobAdSlot";
+import PublicJobDetailChecklist from "@/components/jobs/public/PublicJobDetailChecklist";
+import PublicJobDetailHero from "@/components/jobs/public/PublicJobDetailHero";
+import PublicJobDetailShareButton from "@/components/jobs/public/PublicJobDetailShareButton";
+import PublicJobDetailRelatedList from "@/components/jobs/public/PublicJobDetailRelatedList";
+import PublicJobRadarNationalBanner from "@/components/jobs/public/PublicJobRadarNationalBanner";
+import PublicJobRadarRegionalBanner from "@/components/jobs/public/PublicJobRadarRegionalBanner";
+import PublicJobWorknetApplyBar from "@/components/jobs/public/PublicJobWorknetApplyBar";
+import {
+  getActiveJobsPublicDetailRelatedAd,
+  getActiveJobsPublicDetailSummaryAd,
+} from "@/lib/ads";
+import {
+  buildJobDetailApplyGuide,
+  buildJobDetailFacts,
+  buildJobDetailPayInsight,
+  buildJobDetailRegionListHref,
+} from "@/lib/jobs-public/detail-page-context";
+import { isPublicJobStillOpen, openClosingOrFilter } from "@/lib/jobs-public/filter-open-jobs";
+import { isPublicJobSyncFresh } from "@/lib/jobs-public-ingest/worknet-freshness";
 import { parseWorkRegion } from "@/lib/jobs-public-ingest/worknet/region-parse";
 import { PUBLIC_JOBS_COPY } from "@/lib/jobs-public/copy";
-import { fetchPublicJobByAuthNo } from "@/lib/jobs-public/queries";
+import { buildPageMetadata } from "@/lib/seo";
+import { buildPublicJobDetailShareMessage } from "@/lib/jobs-public/share-metadata";
+import {
+  fetchPublicJobByAuthNo,
+  fetchPublicJobList,
+  formatSyncedAt,
+  type PublicJobOpeningListItem,
+} from "@/lib/jobs-public/queries";
+import { jobPublicRegionKeysFromJob } from "@/lib/jobs-public/radar-ad-region";
+import { sortPublicJobList } from "@/lib/jobs-public/public-job-sort";
 import { createClient } from "@/lib/supabase-server";
 
 export const revalidate = 300;
 
 type Props = { params: Promise<{ id: string }> };
 
-async function loadOpening(id: string) {
+type JobRow = PublicJobOpeningListItem & {
+  sal_tp_nm?: string | null;
+  industry_name?: string | null;
+};
+
+async function loadOpening(id: string): Promise<JobRow | null> {
   const supabase = createClient();
   const isUuid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -21,18 +53,38 @@ async function loadOpening(id: string) {
       .select("*")
       .eq("id", id)
       .eq("is_open", true)
+      .or(openClosingOrFilter())
       .maybeSingle();
-    return data;
+    if (!data || !isPublicJobStillOpen(data as { closing_at: string | null })) return null;
+    if (!isPublicJobSyncFresh(data as { last_synced_at: string })) return null;
+    return data as JobRow;
   }
-  return fetchPublicJobByAuthNo(supabase, id);
+  return fetchPublicJobByAuthNo(supabase, id) as Promise<JobRow | null>;
 }
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
   const row = await loadOpening(id);
-  return {
-    title: row?.title ? `${row.title} | 채용 공고` : "채용 공고",
-  };
+  if (!row) return { title: "채용 공고" };
+
+  const region = parseWorkRegion(row.region_text ?? "", {
+    title: row.title,
+    company: row.company,
+  }).regionLabel;
+  const payDisplay = row.pay_display || PUBLIC_JOBS_COPY.payNegotiable;
+  const { title, text, url } = buildPublicJobDetailShareMessage({
+    jobId: row.id,
+    title: row.title,
+    payDisplay,
+    regionLabel: region,
+    company: row.company,
+  });
+
+  return buildPageMetadata({
+    title: `${title} | 클린아이덱스`,
+    description: text,
+    path: new URL(url).pathname,
+  });
 }
 
 export default async function PublicJobDetailPage({ params }: Props) {
@@ -40,73 +92,103 @@ export default async function PublicJobDetailPage({ params }: Props) {
   const job = await loadOpening(id);
   if (!job) notFound();
 
+  const [summaryAd, relatedAd, allJobs] = await Promise.all([
+    getActiveJobsPublicDetailSummaryAd(),
+    getActiveJobsPublicDetailRelatedAd(),
+    fetchPublicJobList(createClient(), { limit: 500 }),
+  ]);
+
+  const jobSido = job.region_sido;
+  const jobSigungu = job.region_sigungu;
+  const sameRegionJobs = allJobs.filter((j) => {
+    if (j.id === job.id) return false;
+    if (jobSido && j.region_sido !== jobSido) return false;
+    if (jobSigungu && j.region_sigungu !== jobSigungu) return false;
+    return true;
+  });
+  const relatedJobs = sortPublicJobList(sameRegionJobs, "pay").slice(0, 4);
+
   const region = parseWorkRegion(job.region_text ?? "", {
-    title: job.title as string,
-    company: job.company as string | null,
+    title: job.title,
+    company: job.company,
   }).regionLabel;
-  const closing = closingLabel(job.closing_at ? new Date(job.closing_at) : null);
-  const externalUrl = (job.external_url as string)?.trim();
+  const externalUrl = job.external_url?.trim();
   const payMin = job.pay_min_won != null ? Number(job.pay_min_won) : null;
   const payMax = job.pay_max_won != null ? Number(job.pay_max_won) : null;
-  const hasPayRange =
-    payMin != null &&
-    payMax != null &&
-    payMax - payMin >= 100_000;
+  const hasPayRange = payMin != null && payMax != null && payMax - payMin >= 100_000;
+  const preset = job.preset_label ?? "청소·용역";
+  const payDisplay = job.pay_display || PUBLIC_JOBS_COPY.payNegotiable;
+
+  const payInsight = buildJobDetailPayInsight(job, sameRegionJobs, allJobs);
+  const applyGuide = buildJobDetailApplyGuide(
+    { pay_min_won: payMin, pay_max_won: payMax },
+    { hasPayRange }
+  );
+  const facts = buildJobDetailFacts({
+    regionLabel: region,
+    company: job.company,
+    industry_name: job.industry_name,
+    closing_at: job.closing_at,
+    holiday_label: job.holiday_label,
+    career_label: job.career_label,
+  });
+  const regionListHref = buildJobDetailRegionListHref(jobSido, jobSigungu);
+  const regionalCount = sameRegionJobs.length + 1;
+  const radarRegionKeys = jobPublicRegionKeysFromJob(job);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 pb-16">
-      <Link
-        href="/jobs/public"
-        className="text-lg font-medium text-blue-800 underline"
-      >
-        ← 목록으로
-      </Link>
+    <main className="mx-auto max-w-3xl px-4 py-5 pb-20 sm:py-6">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/jobs/public"
+          className="inline-flex min-h-[36px] items-center text-base font-medium text-blue-800 underline"
+        >
+          ← 목록
+        </Link>
+        <PublicJobDetailShareButton
+          jobId={job.id}
+          title={job.title}
+          payDisplay={payDisplay}
+          regionLabel={region}
+          company={job.company}
+        />
+      </div>
 
-      <header className="mt-6 rounded-2xl border-2 border-slate-200 bg-white p-6">
-        <p className="text-base font-medium text-slate-600">
-          {job.preset_label ?? "청소·용역"}
-        </p>
-        <h1 className="mt-2 text-2xl font-bold leading-snug text-slate-900">{job.title}</h1>
-        <p className="mt-4 text-3xl font-extrabold text-blue-900">
-          {job.pay_display || PUBLIC_JOBS_COPY.payNegotiable}
-        </p>
-        {job.sal_tp_nm && job.pay_display && !job.pay_display.includes(job.sal_tp_nm) ? (
-          <p className="mt-1 text-base text-slate-500">고용24 임금형태: {job.sal_tp_nm}</p>
-        ) : null}
-        {hasPayRange ? (
-          <p className="mt-2 text-base leading-relaxed text-slate-600">
-            이 공고는 모집 직무마다 급여가 다릅니다. (예: 7시간 근무와 8시간 근무). 자세한 금액은 아래
-            「채용정보 제공사이트로 이동」에서 확인하세요.
-          </p>
-        ) : null}
-        <ul className="mt-4 space-y-2 text-lg text-slate-800">
-          <li>📍 {region}</li>
-          {job.company ? <li>🏢 {job.company}</li> : null}
-          <li>📅 {closing}</li>
-          {job.holiday_label ? <li>근무형태: {job.holiday_label}</li> : null}
-          {job.career_label ? <li>경력: {job.career_label}</li> : null}
-        </ul>
-      </header>
+      <PublicJobDetailHero
+        preset={preset}
+        title={job.title}
+        payDisplay={payDisplay}
+        salTpNm={job.sal_tp_nm}
+        payBadges={payInsight?.payBadges ?? []}
+        facts={facts}
+        syncedLabel={formatSyncedAt(job.last_synced_at)}
+      />
 
-      {externalUrl ? (
-        <div className="mt-8">
-          <a
-            href={externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex min-h-[56px] w-full items-center justify-center rounded-2xl bg-blue-800 px-6 text-xl font-bold text-white"
-          >
-            {PUBLIC_JOBS_COPY.externalCta}
-          </a>
-          <p className="mt-2 text-center text-base text-slate-600">
-            {PUBLIC_JOBS_COPY.externalCtaSub}
-          </p>
-        </div>
+      <PublicJobDetailChecklist items={applyGuide} />
+
+      {radarRegionKeys.length > 0 ? (
+        <PublicJobRadarRegionalBanner regionKeys={radarRegionKeys} className="mt-6" />
       ) : null}
 
-      <p className="mt-6 text-base text-slate-600">{PUBLIC_JOBS_COPY.sourceNote}</p>
+      <PublicJobAdSlot slot={summaryAd} className="mt-6" />
 
-      <Work24Attribution />
+      {externalUrl ? <PublicJobWorknetApplyBar href={externalUrl} /> : null}
+
+      <PublicJobRadarNationalBanner className="mt-6" />
+
+      {relatedJobs.length > 0 ? (
+        <>
+          <PublicJobAdSlot slot={relatedAd} className="mt-8" />
+          <PublicJobDetailRelatedList
+            jobs={relatedJobs}
+            regionLabel={region}
+            regionListHref={regionListHref}
+            regionalCount={regionalCount}
+          />
+        </>
+      ) : null}
+
+      <p className="mt-8 text-center text-xs text-slate-400">{PUBLIC_JOBS_COPY.sourceNote}</p>
     </main>
   );
 }

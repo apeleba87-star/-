@@ -1,128 +1,202 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { ChevronRight } from "lucide-react";
+import { DEMAND_REGIONS } from "@/lib/demand/regions";
 import { PUBLIC_JOBS_COPY } from "@/lib/jobs-public/copy";
+import {
+  jobPublicDraftFromScope,
+  jobPublicRegionLabelFromDraft,
+  type JobPublicRegionDraft,
+} from "@/lib/jobs-public/job-region-scope";
+import { cn } from "@/lib/utils";
 
-const SIDO_OPTIONS = [
-  "서울",
-  "경기",
-  "인천",
-  "부산",
-  "대구",
-  "광주",
-  "대전",
-  "울산",
-  "세종",
-  "강원",
-  "충북",
-  "충남",
-  "전북",
-  "전남",
-  "경북",
-  "경남",
-  "제주",
-] as const;
+const SELECT_CLASS =
+  "min-h-[48px] w-full rounded-lg border border-slate-300 bg-white px-3 text-lg focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-200";
+
+const NATIONAL_VALUE = "__national__";
+const CITY_WHOLE_VALUE = "__city_whole__";
+
+function draftToPickerState(draft: JobPublicRegionDraft): {
+  cityId: string;
+  guValue: string;
+} {
+  if (draft.scope === "national") {
+    return { cityId: NATIONAL_VALUE, guValue: "" };
+  }
+  if (draft.scope === "city") {
+    return { cityId: draft.cityId, guValue: CITY_WHOLE_VALUE };
+  }
+  return { cityId: draft.cityId, guValue: draft.guSlug };
+}
+
+function pickerStateToDraft(
+  cityId: string,
+  guValue: string
+): JobPublicRegionDraft | null {
+  if (cityId === NATIONAL_VALUE) return { scope: "national" };
+  if (!cityId) return null;
+  if (guValue === CITY_WHOLE_VALUE) return { scope: "city", cityId };
+  if (!guValue) return null;
+  return { scope: "district", cityId, guSlug: guValue };
+}
 
 type Props = {
-  currentLabel: string;
   currentSido: string;
   currentSigungu: string | null;
+  jobCount?: number;
 };
 
 export default function PublicJobRegionPicker({
-  currentLabel,
   currentSido,
   currentSigungu,
+  jobCount,
 }: Props) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [sido, setSido] = useState(currentSido);
-  const [sigungu, setSigungu] = useState(currentSigungu ?? "");
   const [pending, startTransition] = useTransition();
 
-  const save = () => {
+  const initialDraft = useMemo(
+    () =>
+      jobPublicDraftFromScope({ sido: currentSido, sigungu: currentSigungu }) ?? {
+        scope: "city" as const,
+        cityId: "seoul",
+      },
+    [currentSido, currentSigungu]
+  );
+
+  const initialPicker = useMemo(() => draftToPickerState(initialDraft), [initialDraft]);
+
+  const [cityId, setCityId] = useState(initialPicker.cityId);
+  const [guValue, setGuValue] = useState(initialPicker.guValue);
+
+  useEffect(() => {
+    const next = draftToPickerState(initialDraft);
+    setCityId(next.cityId);
+    setGuValue(next.guValue);
+  }, [initialDraft]);
+
+  const isNational = cityId === NATIONAL_VALUE;
+  const city = cityId && !isNational ? DEMAND_REGIONS.find((c) => c.id === cityId) : undefined;
+  const draft = pickerStateToDraft(cityId, guValue);
+  const draftLabel = draft ? jobPublicRegionLabelFromDraft(draft) : null;
+  const currentLabel = jobPublicRegionLabelFromDraft(initialDraft);
+
+  const canApply =
+    draft != null &&
+    JSON.stringify(draft) !== JSON.stringify(initialDraft) &&
+    (isNational || (cityId && guValue));
+
+  function onCitySelect(nextId: string) {
+    setCityId(nextId);
+    if (nextId === NATIONAL_VALUE) {
+      setGuValue("");
+    } else {
+      setGuValue(CITY_WHOLE_VALUE);
+    }
+  }
+
+  const apply = () => {
+    if (!draft) return;
     startTransition(async () => {
       await fetch("/api/jobs-public/region", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sido,
-          sigungu: sigungu.trim() || null,
-        }),
+        body: JSON.stringify(draft),
       });
-      setOpen(false);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("page");
+      const q = url.searchParams.toString();
+      router.replace(q ? `${url.pathname}?${q}` : url.pathname);
       router.refresh();
     });
   };
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="min-h-[48px] rounded-xl border-2 border-slate-300 bg-white px-5 py-3 text-lg font-semibold text-slate-900"
-        aria-haspopup="dialog"
-      >
-        📍 {currentLabel}{" "}
-        <span className="text-base font-medium text-blue-800">({PUBLIC_JOBS_COPY.regionButton})</span>
-      </button>
+    <section className="w-full space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-2 text-base font-semibold text-slate-900 ring-1 ring-slate-200">
+          📍 {currentLabel}
+          {jobCount != null && jobCount > 0 ? (
+            <span className="font-bold text-blue-900">
+              {jobCount.toLocaleString("ko-KR")}
+              {PUBLIC_JOBS_COPY.regionCountSuffix}
+            </span>
+          ) : null}
+        </span>
+        {draftLabel && draftLabel !== currentLabel ? (
+          <span className="text-sm text-slate-500">→ {draftLabel}</span>
+        ) : null}
+      </div>
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="region-picker-title"
-        >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 id="region-picker-title" className="text-xl font-bold text-slate-900">
-              {PUBLIC_JOBS_COPY.regionButton}
-            </h2>
-            <label className="mt-4 block text-base font-medium text-slate-700">
-              시·도
-              <select
-                value={sido}
-                onChange={(e) => setSido(e.target.value)}
-                className="mt-2 w-full min-h-[48px] rounded-lg border border-slate-300 px-3 text-lg"
-              >
-                {SIDO_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="mt-4 block text-base font-medium text-slate-700">
-              구·군 (선택, 비우면 전체)
-              <input
-                type="text"
-                value={sigungu}
-                onChange={(e) => setSigungu(e.target.value)}
-                placeholder="예: 강남구"
-                className="mt-2 w-full min-h-[48px] rounded-lg border border-slate-300 px-3 text-lg"
-              />
-            </label>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="min-h-[48px] flex-1 rounded-xl border border-slate-300 text-lg font-medium"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={save}
-                disabled={pending}
-                className="min-h-[48px] flex-1 rounded-xl bg-slate-900 text-lg font-semibold text-white disabled:opacity-50"
-              >
-                {pending ? "저장 중…" : "저장"}
-              </button>
-            </div>
-          </div>
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div>
+          <label htmlFor="job-public-region-city" className="text-sm font-medium text-slate-700">
+            시·도
+          </label>
+          <select
+            id="job-public-region-city"
+            value={cityId}
+            onChange={(e) => onCitySelect(e.target.value)}
+            className={cn(SELECT_CLASS, "mt-1.5")}
+          >
+            <option value="">선택</option>
+            <option value={NATIONAL_VALUE}>{PUBLIC_JOBS_COPY.regionNationalLabel}</option>
+            {DEMAND_REGIONS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.fullLabel}
+              </option>
+            ))}
+          </select>
         </div>
-      ) : null}
-    </>
+
+        <div>
+          <label htmlFor="job-public-region-gu" className="text-sm font-medium text-slate-700">
+            {isNational ? "—" : "시·군·구"}
+          </label>
+          <select
+            id="job-public-region-gu"
+            value={guValue}
+            onChange={(e) => setGuValue(e.target.value)}
+            disabled={!cityId || isNational}
+            className={cn(
+              SELECT_CLASS,
+              "mt-1.5",
+              (!cityId || isNational) && "cursor-not-allowed bg-slate-100 text-slate-400"
+            )}
+          >
+            <option value="">
+              {!cityId ? "시·도 먼저" : isNational ? "전국 단일" : "선택"}
+            </option>
+            {city ? (
+              <option value={CITY_WHOLE_VALUE}>{city.fullLabel} 전체</option>
+            ) : null}
+            {city?.districts.map((d) => (
+              <option key={d.slug} value={d.slug}>
+                {city.fullLabel} {d.gu}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          onClick={apply}
+          disabled={!canApply || pending || (!isNational && (!cityId || !guValue))}
+          className="min-h-[48px] rounded-xl bg-slate-900 px-5 text-lg font-semibold text-white hover:bg-slate-800 disabled:opacity-40 sm:mt-0"
+        >
+          {pending ? "적용 중…" : "적용"}
+        </button>
+      </div>
+
+      <p className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
+        <span>전국</span>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+        <span>시·도 전체</span>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+        <span>시·군·구</span>
+        <span className="text-slate-400">순으로 고를 수 있습니다.</span>
+      </p>
+    </section>
   );
 }

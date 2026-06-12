@@ -10,6 +10,7 @@ export type AdPlacementSurfaceId =
   | "estimate"
   | "marketing"
   | "job_wage"
+  | "jobs_public"
   | "all";
 
 export type AdPlacementBlockKind = "chrome" | "affiliate_slot" | "radar_direct";
@@ -266,6 +267,44 @@ export const AD_PLACEMENT_SURFACES: AdPlacementSurface[] = [
         label: "본문 하단",
         slotKey: "report_bottom",
       },
+    ],
+  },
+  {
+    id: "jobs_public",
+    label: "청소·용역 채용",
+    pageLabel: "채용 공고 상세",
+    pagePath: "/jobs/public/[id]",
+    previewHref: "/jobs/public",
+    blocks: [
+      { id: "jp-detail-header", kind: "chrome", label: "공고명 · 급여 · 지역 요약" },
+      { id: "jp-detail-checklist", kind: "chrome", label: "지원 전 더 확인 (접기)" },
+      {
+        id: "jp-detail-regional-radar",
+        kind: "chrome",
+        label: "지역 직거래 배너 (확인 아래)",
+        detail: "입주레이더 지역 API",
+      },
+      {
+        id: "jp-detail-summary-ad",
+        kind: "affiliate_slot",
+        label: "지역 배너 아래 · 지원 CTA 위",
+        slotKey: "jobs_public_detail_summary_below",
+      },
+      { id: "jp-detail-cta", kind: "chrome", label: "고용24 지원 CTA" },
+      {
+        id: "jp-detail-national-radar",
+        kind: "radar_direct",
+        label: "전국 직거래 배너",
+        detail: "지원 CTA 아래 · 입주레이더 전국과 동일",
+        radarDirectHref: "/admin/radar-ads/manage?section=national",
+      },
+      {
+        id: "jp-detail-related-ad",
+        kind: "affiliate_slot",
+        label: "같은 지역 공고 위",
+        slotKey: "jobs_public_detail_related_above",
+      },
+      { id: "jp-detail-related", kind: "chrome", label: "같은 지역 다른 공고" },
     ],
   },
 ];

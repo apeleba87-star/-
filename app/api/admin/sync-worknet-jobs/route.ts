@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { computeJobSpotlightSnapshots } from "@/lib/jobs-public-ingest/compute-job-spotlight-snapshots";
+import { closeWorknetOpeningsMissingFreshRaw } from "@/lib/jobs-public-ingest/worknet-freshness";
 import { runWorknetNormalizeFromRaw } from "@/lib/jobs-public-ingest/run-worknet-normalize";
 import { runWorknetWantedIngest } from "@/lib/jobs-public-ingest/worknet/run-ingest";
 import { JOB_OPEN_DATA_SOURCE_WORKNET_WANTED } from "@/lib/jobs-public-ingest/source-slugs";
@@ -66,11 +67,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
   const maxRows = Number(req.nextUrl.searchParams.get("maxRows") ?? 300);
+  const ingestStartedAt = new Date().toISOString();
   const ingest = await runWorknetWantedIngest({ supabase: service, apiKey, maxRowsPerKeyword: maxRows });
   if (!ingest.ok) {
     return NextResponse.json({ ok: false, ingest }, { status: 500 });
   }
   const normalize = await runWorknetNormalizeFromRaw({ supabase: service, maxRows: 5000 });
+  const closedAbsent = await closeWorknetOpeningsMissingFreshRaw(service, ingestStartedAt);
   const spotlight = await computeJobSpotlightSnapshots(service);
-  return NextResponse.json({ ok: true, ingest, normalize, spotlight });
+  return NextResponse.json({ ok: true, ingest, normalize, closedAbsent, spotlight });
 }

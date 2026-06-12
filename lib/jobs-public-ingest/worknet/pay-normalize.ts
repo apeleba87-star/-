@@ -1,3 +1,9 @@
+import {
+  correctIngestPay,
+  isMonthlyPayOutlier,
+  resolveSalTpCdByAmount,
+} from "@/lib/jobs-public/pay-sanity";
+
 /** 만원 단위 */
 const MAN_WON = 10_000;
 
@@ -34,24 +40,7 @@ export function resolveSalTpCd(
   minRaw: number | null,
   maxRaw: number | null
 ): string | null {
-  const nm = (salTpNm ?? "").toLowerCase();
-  const peak = Math.max(minRaw ?? 0, maxRaw ?? 0);
-
-  if (nm.includes("연") || nm.includes("연봉")) return "Y";
-  if (nm.includes("월") || nm.includes("월급")) return "M";
-  if (nm.includes("일") || nm.includes("일급")) return "D";
-
-  if (nm.includes("시") || nm.includes("시급")) {
-    if (peak >= 1_000_000) return "M";
-    return "H";
-  }
-
-  if (peak >= 10_000_000) return "Y";
-  if (peak >= 300_000) return "M";
-  if (peak >= 100 && peak < 10_000) return "M";
-  if (peak >= 30_000 && peak < 300_000) return "D";
-  if (peak > 0 && peak < 30_000) return "H";
-  return null;
+  return resolveSalTpCdByAmount(salTpNm, minRaw, maxRaw);
 }
 
 /** 주 N일 근무 등 (고용24 근무형태) */
@@ -102,7 +91,7 @@ function formatPayDisplayNative(
 }
 
 /** 정렬용 월 환산 — 파트타임·시급은 근무일수 반영 (풀타임 8h×22일 환산 안 함) */
-function toMonthlyWonForCompare(
+export function toMonthlyWonForCompare(
   salTpCd: string | null,
   amountWon: number,
   opts?: { holidayTpNm?: string | null; title?: string | null }
@@ -141,25 +130,56 @@ export function normalizeWorknetPay(fields: {
   const minRaw = parseRawNumber(fields.minSal);
   const maxRaw = parseRawNumber(fields.maxSal) ?? minRaw;
 
-  const salTpCd =
+  let salTpCd =
     (fields.salTpCd?.trim() as "D" | "H" | "M" | "Y" | undefined) ||
     resolveSalTpCd(salTpNm, minRaw, maxRaw);
 
-  const payMinWon = minRaw != null ? amountToWon(minRaw, salTpCd) : null;
-  const payMaxWon = maxRaw != null ? amountToWon(maxRaw, salTpCd) : payMinWon;
+  let payMinWon = minRaw != null ? amountToWon(minRaw, salTpCd) : null;
+  let payMaxWon = maxRaw != null ? amountToWon(maxRaw, salTpCd) : payMinWon;
 
   const compareOpts = { holidayTpNm: fields.holidayTpNm, title: fields.title };
-  const monthlyMin =
+  let monthlyMin =
     payMinWon != null ? toMonthlyWonForCompare(salTpCd, payMinWon, compareOpts) : null;
-  const monthlyMax =
+  let monthlyMax =
     payMaxWon != null ? toMonthlyWonForCompare(salTpCd, payMaxWon, compareOpts) : monthlyMin;
 
-  const payMonthlyNormalized =
+  let payMonthlyNormalized =
     monthlyMax && monthlyMax > 0
       ? monthlyMax
       : monthlyMin && monthlyMin > 0
         ? monthlyMin
         : null;
+
+  if (isMonthlyPayOutlier(payMonthlyNormalized)) {
+    const fixed = correctIngestPay({
+      salTpCd,
+      payMinWon,
+      payMaxWon,
+      payMonthlyNormalized,
+      minRaw,
+      maxRaw,
+      salTpNm,
+    });
+    if (
+      fixed.salTpCd !== salTpCd ||
+      fixed.payMinWon !== payMinWon ||
+      fixed.payMaxWon !== payMaxWon
+    ) {
+      salTpCd = fixed.salTpCd;
+      payMinWon = fixed.payMinWon;
+      payMaxWon = fixed.payMaxWon;
+      monthlyMin =
+        payMinWon != null ? toMonthlyWonForCompare(salTpCd, payMinWon, compareOpts) : null;
+      monthlyMax =
+        payMaxWon != null ? toMonthlyWonForCompare(salTpCd, payMaxWon, compareOpts) : monthlyMin;
+      payMonthlyNormalized =
+        monthlyMax && monthlyMax > 0
+          ? monthlyMax
+          : monthlyMin && monthlyMin > 0
+            ? monthlyMin
+            : null;
+    }
+  }
 
   const payDisplay = formatPayDisplayNative(salTpCd, payMinWon, payMaxWon);
 

@@ -1,8 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { filterOpenPublicJobs, openClosingOrFilter } from "@/lib/jobs-public/filter-open-jobs";
+import {
+  closeWorknetOpeningsMissingFreshRaw,
+  closeWorknetOpeningsStaleSynced,
+  filterJobsWithFreshWorknetRaw,
+} from "@/lib/jobs-public-ingest/worknet-freshness";
 import { formatDeltaMan } from "@/lib/jobs-public-ingest/worknet/pay-normalize";
 import { closingLabel } from "@/lib/jobs-public-ingest/worknet/normalize-row";
 import {
   DEFAULT_PUBLIC_JOB_REGION,
+  NATIONAL_PUBLIC_JOB_SIDO,
   parseWorkRegion,
   regionMatchesScope,
   spotlightScopeKey,
@@ -10,6 +17,7 @@ import {
 
 type OpeningRow = {
   id: string;
+  wanted_auth_no: string;
   title: string;
   pay_display: string;
   pay_monthly_normalized: number | null;
@@ -35,13 +43,15 @@ async function loadOpenRows(supabase: SupabaseClient): Promise<OpeningRow[]> {
   const { data, error } = await supabase
     .from("public_job_openings")
     .select(
-      "id, title, pay_display, pay_monthly_normalized, preset_label, region_sido, region_sigungu, region_text, closing_at"
+      "id, wanted_auth_no, title, pay_display, pay_monthly_normalized, preset_label, region_sido, region_sigungu, region_text, closing_at"
     )
     .eq("is_open", true)
+    .or(openClosingOrFilter())
     .order("pay_monthly_normalized", { ascending: false, nullsFirst: false })
     .limit(2000);
   if (error || !data) return [];
-  return data as OpeningRow[];
+  const openRows = filterOpenPublicJobs(data as OpeningRow[]);
+  return filterJobsWithFreshWorknetRaw(supabase, openRows);
 }
 
 function buildSnapshot(
@@ -88,8 +98,8 @@ function buildSnapshot(
     pay_top_region_label: payTop ? parseWorkRegion(payTop.region_text ?? "").regionLabel : null,
     pay_delta_won: delta,
     pay_delta_display:
-      delta > 0 && localTop && payTopInScope
-        ? `${scope.sido} 최고보다 ${formatDeltaMan(delta)} (전국)`
+      delta > 0 && localTop && payTopInScope && nationalTop?.id !== localTop.id
+        ? `전국 최고보다 ${formatDeltaMan(delta)} 낮음`
         : payTopInScope
           ? null
           : nationalTop
@@ -107,6 +117,9 @@ export async function computeJobSpotlightSnapshots(
   const nationalTop = pickTopPay(all);
   const scopes: ReturnType<typeof buildSnapshot>[] = [];
 
+  scopes.push(
+    buildSnapshot({ sido: NATIONAL_PUBLIC_JOB_SIDO, sigungu: null }, all, nationalTop)
+  );
   scopes.push(buildSnapshot(DEFAULT_PUBLIC_JOB_REGION, all, nationalTop));
 
   const sigunguSet = new Set<string>();

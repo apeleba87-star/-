@@ -332,6 +332,32 @@ export async function getActiveTenderDetailStrategyAd(): Promise<HomeAdSlotWithC
   );
 }
 
+/** 채용 공고 상세: 요약·확인 섹션 사이 */
+export async function getActiveJobsPublicDetailSummaryAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "jobs_public_detail_summary_below",
+    "report_bottom",
+  ]);
+  return applySlotScriptFallback(
+    map.jobs_public_detail_summary_below ?? null,
+    map.report_bottom ?? null
+  );
+}
+
+/** 채용 공고 상세: 같은 지역 공고 위 */
+export async function getActiveJobsPublicDetailRelatedAd(): Promise<HomeAdSlotWithCampaign | null> {
+  const supabase = createClient();
+  const map = await getActiveAdsForSlotKeys(supabase, [
+    "jobs_public_detail_related_above",
+    "report_bottom",
+  ]);
+  return applySlotScriptFallback(
+    map.jobs_public_detail_related_above ?? null,
+    map.report_bottom ?? null
+  );
+}
+
 /** 키 목록으로 슬롯 데이터 조회 (관리자·이벤트용) */
 export async function getActiveAdsByKeys(
   keys: HomeAdSlotKey[]

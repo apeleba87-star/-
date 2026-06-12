@@ -19,7 +19,9 @@ export type HomeAdSlotKey =
   | "radar_table_below"
   | "radar_regional_fallback"
   | "report_top"
-  | "report_bottom";
+  | "report_bottom"
+  | "jobs_public_detail_summary_below"
+  | "jobs_public_detail_related_above";
 
 export type AdSlotType = "direct" | "google" | "coupang" | "coupang_api";
 

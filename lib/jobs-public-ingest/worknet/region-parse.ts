@@ -134,10 +134,17 @@ export function parseWorkRegion(
   return { regionText: regionText || hintBlob, regionSido, regionSigungu, regionLabel };
 }
 
+export const NATIONAL_PUBLIC_JOB_SIDO = "전국";
+
+export function isNationalPublicJobScope(scope: { sido: string }): boolean {
+  return scope.sido === NATIONAL_PUBLIC_JOB_SIDO;
+}
+
 export function regionMatchesScope(
   row: { region_sido: string | null; region_sigungu: string | null },
   scope: { sido: string; sigungu?: string | null }
 ): boolean {
+  if (isNationalPublicJobScope(scope)) return true;
   if (!row.region_sido || row.region_sido !== scope.sido) return false;
   if (!scope.sigungu?.trim()) return true;
   const g = scope.sigungu.trim().replace(/\s+/g, "");
@@ -147,6 +154,7 @@ export function regionMatchesScope(
 }
 
 export function spotlightScopeKey(scope: { sido: string; sigungu?: string | null }): string {
+  if (isNationalPublicJobScope(scope)) return "national:kr";
   if (scope.sigungu?.trim()) return `sigungu:${scope.sido}|${scope.sigungu.trim()}`;
   return `sido:${scope.sido}`;
 }

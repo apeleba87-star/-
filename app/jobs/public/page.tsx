@@ -1,97 +1,144 @@
-import Link from "next/link";
-import PublicJobCard from "@/components/jobs/public/PublicJobCard";
-import PublicJobRegionPicker from "@/components/jobs/public/PublicJobRegionPicker";
-import PublicJobSpotlightSection from "@/components/jobs/public/PublicJobSpotlightSection";
-import Work24Attribution from "@/components/jobs/public/Work24Attribution";
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import PublicJobsFeedSection from "@/components/jobs/public/PublicJobsFeedSection";
+import { PublicJobPayModeProvider } from "@/components/jobs/public/PublicJobPayModeProvider";
+import PublicJobRegionWithShare from "@/components/jobs/public/PublicJobRegionWithShare";
+import PublicJobRadarAdsSection from "@/components/jobs/public/PublicJobRadarAdsSection";
 import { PUBLIC_JOBS_COPY } from "@/lib/jobs-public/copy";
-import { getJobPublicRegionPreference } from "@/lib/jobs-public/region-preference";
+import { jobPublicRegionKeysFromDraft } from "@/lib/jobs-public/radar-ad-region";
+import { jobPublicDraftFromScope } from "@/lib/jobs-public/job-region-scope";
+import {
+  buildPublicJobsShareMetadata,
+  buildPublicJobsShareSearch,
+  jobPublicDraftFromSearchParams,
+  parseJobPublicShareRegionFromSearchParams,
+} from "@/lib/jobs-public/share-metadata";
+import {
+  getJobPublicRegionPreference,
+  isNationalPublicJobScope,
+} from "@/lib/jobs-public/region-preference";
+import { sortPublicJobList } from "@/lib/jobs-public/public-job-sort";
 import {
   fetchPublicJobList,
-  fetchSpotlightSnapshot,
   filterLocalJobs,
   formatSyncedAt,
 } from "@/lib/jobs-public/queries";
 import { createClient } from "@/lib/supabase-server";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "청소·용역 채용 | 클린아이덱스",
-  description: "고용24 워크넷 청소·용역 채용정보 — 우리 지역과 급여 높은 곳을 한눈에",
-};
+export const revalidate = 0;
 
-export default async function PublicJobsPage() {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
   const supabase = createClient();
-  const pref = await getJobPublicRegionPreference();
-  const [snapshot, allJobs] = await Promise.all([
-    fetchSpotlightSnapshot(supabase, pref.scopeKey),
-    fetchPublicJobList(supabase, { limit: 80, orderByPay: true }),
-  ]);
+  const pref =
+    parseJobPublicShareRegionFromSearchParams(params) ??
+    (await getJobPublicRegionPreference());
+  const nationalScope = isNationalPublicJobScope(pref);
+  const allJobs = await fetchPublicJobList(supabase, { limit: 500 });
+  const scopedJobs = filterLocalJobs(allJobs, pref);
+  const localPay = nationalScope
+    ? sortPublicJobList(allJobs, "pay")[0] ?? null
+    : sortPublicJobList(scopedJobs, "pay")[0] ?? null;
+  const nationalPay = sortPublicJobList(allJobs, "pay")[0] ?? null;
+
+  const sharePath = buildPublicJobsShareSearch(params);
+  const path = sharePath ? `/jobs/public?${sharePath}` : "/jobs/public";
+
+  return buildPublicJobsShareMetadata({
+    pref,
+    localPay,
+    nationalPay,
+    localCount: scopedJobs.length,
+    path,
+    ogQueryParams: params,
+  });
+}
+
+const FALLBACK_LIMIT = 8;
+
+function SortChipsFallback() {
+  return (
+    <div className="mt-6 h-12 animate-pulse rounded-xl bg-slate-100" aria-hidden />
+  );
+}
+
+export default async function PublicJobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const supabase = createClient();
+  const pref =
+    parseJobPublicShareRegionFromSearchParams(params) ??
+    (await getJobPublicRegionPreference());
+  const shareDraft =
+    jobPublicDraftFromSearchParams(params) ??
+    jobPublicDraftFromScope({ sido: pref.sido, sigungu: pref.sigungu }) ?? {
+      scope: "city" as const,
+      cityId: "seoul",
+    };
+  const nationalScope = isNationalPublicJobScope(pref);
+  const allJobs = await fetchPublicJobList(supabase, { limit: 500 });
 
   const scopedJobs = filterLocalJobs(allJobs, pref);
-  const localJobs = scopedJobs.slice(0, 15);
-  const payJobs = (scopedJobs.length > 0 ? scopedJobs : allJobs).slice(0, 15);
-  const syncedAt = snapshot?.computed_at ?? allJobs[0]?.last_synced_at ?? null;
+  const localCount = scopedJobs.length;
+  const nationalPay = sortPublicJobList(allJobs, "pay")[0] ?? null;
+  const localPay = nationalScope ? nationalPay : sortPublicJobList(scopedJobs, "pay")[0] ?? null;
+  const fallbackJobs =
+    !nationalScope && localCount === 0
+      ? sortPublicJobList(allJobs, "pay").slice(0, FALLBACK_LIMIT)
+      : [];
+
+  const syncedAt = allJobs[0]?.last_synced_at ?? null;
+  const radarRegionKeys = jobPublicRegionKeysFromDraft(shareDraft);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 pb-16">
+    <main className="mx-auto max-w-5xl px-4 py-6 pb-16 sm:py-8">
       <header>
-        <h1 className="text-3xl font-bold text-slate-900">{PUBLIC_JOBS_COPY.pageTitle}</h1>
-        <p className="mt-3 text-lg leading-relaxed text-slate-700">{PUBLIC_JOBS_COPY.pageLead}</p>
-        <div className="mt-5">
-          <PublicJobRegionPicker
-            currentLabel={pref.label}
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+          {PUBLIC_JOBS_COPY.pageTitle}
+        </h1>
+        <p className="mt-2 text-base leading-relaxed text-slate-700 sm:mt-3 sm:text-lg">
+          {PUBLIC_JOBS_COPY.pageLead}
+        </p>
+        <div className="mt-4 sm:mt-5">
+          <PublicJobRegionWithShare
             currentSido={pref.sido}
             currentSigungu={pref.sigungu}
+            jobCount={localCount}
+            shareDraft={shareDraft}
+            pref={pref}
+            localPay={localPay}
+            nationalPay={nationalPay}
           />
+          <p className="mt-2 text-sm text-slate-500">
+            {PUBLIC_JOBS_COPY.syncedPrefix} · {formatSyncedAt(syncedAt)}
+          </p>
         </div>
-        <p className="mt-3 text-base text-slate-500">
-          {PUBLIC_JOBS_COPY.syncedPrefix} · {formatSyncedAt(syncedAt)}
-        </p>
       </header>
 
-      <div className="mt-8">
-        <PublicJobSpotlightSection snapshot={snapshot} />
-      </div>
+      <PublicJobRadarAdsSection
+        nationalScope={nationalScope}
+        regionKeys={radarRegionKeys}
+        className="mt-5"
+      />
 
-      <section className="mt-10" aria-labelledby="feed-local">
-        <h2 id="feed-local" className="text-2xl font-bold text-slate-900">
-          {PUBLIC_JOBS_COPY.feedLocalTitle}
-        </h2>
-        {localJobs.length > 0 ? (
-          <ul className="mt-4 space-y-3">
-            {localJobs.map((job) => (
-              <PublicJobCard key={job.id} job={job} />
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-4 text-lg text-slate-600">{PUBLIC_JOBS_COPY.feedEmpty}</p>
-        )}
-      </section>
-
-      <section className="mt-10" aria-labelledby="feed-pay">
-        <h2 id="feed-pay" className="text-2xl font-bold text-slate-900">
-          {PUBLIC_JOBS_COPY.feedPayTitle}
-        </h2>
-        <p className="mt-1 text-base text-slate-500">{PUBLIC_JOBS_COPY.paySortNote}</p>
-        {payJobs.length > 0 ? (
-          <ul className="mt-4 space-y-3">
-            {payJobs.map((job) => (
-              <PublicJobCard key={`pay-${job.id}`} job={job} />
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-4 text-lg text-slate-600">{PUBLIC_JOBS_COPY.feedEmpty}</p>
-        )}
-      </section>
-
-      <p className="mt-8 text-center">
-        <Link href="/jobs" className="text-lg font-semibold text-blue-800 underline">
-          {PUBLIC_JOBS_COPY.platformJobsLink}
-        </Link>
-      </p>
-
-      <Work24Attribution />
+      <PublicJobPayModeProvider>
+        <Suspense fallback={<SortChipsFallback />}>
+          <PublicJobsFeedSection
+            jobs={scopedJobs}
+            fallbackJobs={fallbackJobs}
+            jobCount={localCount}
+          />
+        </Suspense>
+      </PublicJobPayModeProvider>
     </main>
   );
 }

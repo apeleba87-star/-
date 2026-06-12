@@ -24,6 +24,8 @@ const SLOT_KEYS = [
   "tender_detail_summary_below",
   "tender_detail_strategy_below",
   "awards_industry_list_3rd",
+  "jobs_public_detail_summary_below",
+  "jobs_public_detail_related_above",
   "report_top",
   "report_bottom",
 ];

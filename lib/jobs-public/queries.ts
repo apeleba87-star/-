@@ -1,6 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { regionMatchesScope } from "@/lib/jobs-public-ingest/worknet/region-parse";
-import type { JobPublicRegionPreference } from "./region-preference";
+import {
+  filterOpenPublicJobs,
+  isPublicJobStillOpen,
+  openClosingOrFilter,
+} from "@/lib/jobs-public/filter-open-jobs";
+import {
+  filterPublicJobsBySyncFresh,
+  isPublicJobSyncFresh,
+  publicJobSyncFreshCutoffIso,
+} from "@/lib/jobs-public-ingest/worknet-freshness";
+import type { JobPublicRegionPreference } from "./region-preference-shared";
 
 export type PublicJobOpeningListItem = {
   id: string;
@@ -10,6 +20,9 @@ export type PublicJobOpeningListItem = {
   preset_label: string | null;
   pay_display: string;
   pay_monthly_normalized: number | null;
+  sal_tp_cd: string | null;
+  pay_min_won: number | null;
+  pay_max_won: number | null;
   region_text: string | null;
   region_sido: string | null;
   region_sigungu: string | null;
@@ -37,7 +50,7 @@ export type JobSpotlightSnapshot = {
 };
 
 const LIST_SELECT =
-  "id, wanted_auth_no, title, company, preset_label, pay_display, pay_monthly_normalized, region_text, region_sido, region_sigungu, closing_at, holiday_label, career_label, external_url, last_synced_at";
+  "id, wanted_auth_no, title, company, preset_label, pay_display, pay_monthly_normalized, sal_tp_cd, pay_min_won, pay_max_won, region_text, region_sido, region_sigungu, closing_at, holiday_label, career_label, external_url, last_synced_at";
 
 export async function fetchSpotlightSnapshot(
   supabase: SupabaseClient,
@@ -61,14 +74,17 @@ export async function fetchPublicJobList(
   let q = supabase
     .from("public_job_openings")
     .select(LIST_SELECT)
-    .eq("is_open", true);
+    .eq("is_open", true)
+    .or(openClosingOrFilter())
+    .gte("last_synced_at", publicJobSyncFreshCutoffIso());
   if (opts.orderByPay) {
     q = q.order("pay_monthly_normalized", { ascending: false, nullsFirst: true });
   } else {
     q = q.order("last_synced_at", { ascending: false });
   }
   const { data } = await q.limit(limit);
-  return (data ?? []) as PublicJobOpeningListItem[];
+  const openRows = filterOpenPublicJobs((data ?? []) as PublicJobOpeningListItem[]);
+  return filterPublicJobsBySyncFresh(openRows);
 }
 
 export function filterLocalJobs(
@@ -92,7 +108,10 @@ export async function fetchPublicJobByAuthNo(
     .select("*")
     .eq("wanted_auth_no", wantedAuthNo.trim())
     .eq("is_open", true)
+    .or(openClosingOrFilter())
     .maybeSingle();
+  if (!data || !isPublicJobStillOpen(data as { closing_at: string | null })) return null;
+  if (!isPublicJobSyncFresh(data as { last_synced_at: string })) return null;
   return data;
 }
 
