@@ -4,6 +4,7 @@ import { Black_Han_Sans, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import RadarAdPlacementPreviewBoot from "@/components/advertise/RadarAdPlacementPreviewBoot";
 import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
 import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME, seoKeywords } from "@/lib/seo";
 
@@ -124,6 +125,7 @@ gtag('config', 'G-JXV9GMLMEZ');`}
           }}
         />
         <SupabaseSessionRefresh />
+        <RadarAdPlacementPreviewBoot />
         <Header />
         <main className="flex min-h-0 min-w-0 w-full max-w-[100vw] flex-1 flex-col items-stretch pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)] lg:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
           {children}

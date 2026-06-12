@@ -20,6 +20,36 @@ body {
   min-width: 0;
 }
 
+/* 광고 문의 iframe 미리보기 (?ad_preview=1) */
+html[data-ad-preview] header,
+html[data-ad-preview] footer {
+  display: none !important;
+}
+
+html[data-ad-preview] main {
+  padding-top: 0 !important;
+}
+
+html[data-ad-preview] [data-hide-in-ad-preview] {
+  display: none !important;
+}
+
+/* 광고 문의 미리보기 — 스크롤은 되고 클릭·입력만 차단 */
+html[data-ad-preview] main a,
+html[data-ad-preview] main button,
+html[data-ad-preview] main [role="button"],
+html[data-ad-preview] main input,
+html[data-ad-preview] main select,
+html[data-ad-preview] main textarea,
+html[data-ad-preview] main label {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+html[data-ad-preview] main {
+  user-select: none;
+}
+
 @layer components {
   /** 본문 공통: 최대 너비·좌우 패딩 통일 (모바일·PC 반응형) */
   .page-shell {

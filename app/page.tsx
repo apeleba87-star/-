@@ -8,7 +8,7 @@ import { buildPageMetadata, radarHomeDescription, radarHomeTitle } from "@/lib/s
 export const revalidate = 3600;
 
 type PageProps = {
-  searchParams: Promise<{ r?: string }>;
+  searchParams: Promise<{ r?: string; ad_preview?: string; ad_preview_scope?: string }>;
 };
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
@@ -34,6 +34,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   });
 }
 
-export default function HomePage() {
-  return <DemandHubPageView />;
+export default async function HomePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  return <DemandHubPageView searchParams={params} />;
 }

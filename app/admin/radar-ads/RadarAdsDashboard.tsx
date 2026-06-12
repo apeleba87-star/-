@@ -117,7 +117,7 @@ export default function RadarAdsDashboard({
         <StatCard
           label="슬롯 여유"
           value={stats.openRegions.length}
-          hint="게재 슬롯 1~2개 또는 비어 있음"
+          hint={`게재 슬롯 ${RADAR_AD_SLOTS_PER_BANNER}개 미만 또는 비어 있음`}
           tone="teal"
         />
         <StatCard

@@ -69,6 +69,7 @@ import type { DemandRtmsSeriesStore } from "@/lib/demand/rtms-types";
 import type { HomeAdSlotWithCampaign } from "@/lib/ads-shared";
 import type { JobsPublicHubTeaser } from "@/lib/region-hub/jobs-public-teaser";
 import type { JobWageHubTeaser } from "@/lib/report/job-wage-hub-teaser";
+import { useRadarAdPlacementPreview } from "@/components/demand/useRadarAdPlacementPreview";
 import { cn } from "@/lib/utils";
 
 function ClickableMetricCell({
@@ -346,11 +347,13 @@ export default function DemandHubWorkspace({
     return demandRegionSelectionKey(scopeRows[0].selection);
   }, [scopeRows, chartRowKey]);
 
+  const { enabled: placementPreview } = useRadarAdPlacementPreview();
+
   useEffect(() => {
-    if (!focusRowKey || focusRowKey === "national") return;
+    if (placementPreview || !focusRowKey || focusRowKey === "national") return;
     const source = shareTeaserKey != null && shareTeaserKey === focusRowKey ? "share" : "hub";
     void trackDemandRegionView(focusRowKey, source);
-  }, [focusRowKey, shareTeaserKey]);
+  }, [focusRowKey, shareTeaserKey, placementPreview]);
 
   const regionalAdKeys = useMemo(
     () => resolveRegionalAdRegionKeys({ focusRowKey, scopeRows, selections }),
@@ -723,7 +726,7 @@ export default function DemandHubWorkspace({
       ) : null}
 
       {guestShowLoginCta ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 md:hidden" data-hide-in-ad-preview>
           <DemandGuestLoginCta shareTeaser={guestShareTeaser} />
         </div>
       ) : null}

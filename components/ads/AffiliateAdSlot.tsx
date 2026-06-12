@@ -37,6 +37,7 @@ export default function AffiliateAdSlot({ slot, variant = "banner", className }:
     <aside
       className={`rounded-2xl border border-slate-200/90 bg-slate-50/80 ${className ?? ""}`}
       aria-label="광고"
+      data-hide-in-ad-preview
       data-ad-slot={slot!.key}
     >
       <div className="flex flex-col gap-1 border-b border-slate-200/80 bg-white/90 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">

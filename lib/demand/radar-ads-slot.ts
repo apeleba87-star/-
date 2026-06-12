@@ -3,7 +3,19 @@
 import { getDemandCity, getDemandDistrictRef, labelFromDemandRegionKey, parseDemandRegionKey } from "@/lib/demand/regions";
 import { addDaysToDateString } from "@/lib/jobs/kst-date";
 
-export const RADAR_AD_SLOTS_PER_BANNER = 3;
+export const RADAR_AD_SLOTS_PER_BANNER = 5;
+
+export function radarAdSlotIndices(): number[] {
+  return Array.from({ length: RADAR_AD_SLOTS_PER_BANNER }, (_, i) => i + 1);
+}
+
+export function createRadarAdSlotRecord<T>(factory: (slotIndex: number) => T): Record<number, T> {
+  const record: Record<number, T> = {};
+  for (const slotIndex of radarAdSlotIndices()) {
+    record[slotIndex] = factory(slotIndex);
+  }
+  return record;
+}
 export const RADAR_AD_EXPIRING_SOON_DAYS = 14;
 
 export type RadarAdSlotLike = {

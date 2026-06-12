@@ -23,7 +23,8 @@ function visibleRatio(el: HTMLElement): number {
 export function useRadarAdViewableImpression(
   containerRef: RefObject<HTMLElement | null>,
   slotId: string | undefined,
-  enabled: boolean
+  enabled: boolean,
+  onRecorded?: (slotId: string) => void
 ) {
   const pathname = usePathname();
   const firedRef = useRef(false);
@@ -52,6 +53,8 @@ export function useRadarAdViewableImpression(
         event_type: "impression",
         slot_id: slotId,
         page_path: pathname ?? undefined,
+      }).then((ok) => {
+        if (ok) onRecorded?.(slotId);
       });
     };
 
@@ -99,5 +102,5 @@ export function useRadarAdViewableImpression(
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [containerRef, slotId, enabled, pathname]);
+  }, [containerRef, slotId, enabled, pathname, onRecorded]);
 }

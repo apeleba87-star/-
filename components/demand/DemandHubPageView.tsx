@@ -16,7 +16,11 @@ function HubBootstrapFallback() {
 /** 입주레이더 허브 — `/` 및 legacy 경로 공통 */
 export const dynamic = "force-dynamic";
 
-export default async function DemandHubPageView() {
+type Props = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+export default async function DemandHubPageView(_props: Props = {}) {
   const isAdmin = await isDemandAdmin();
   const access = await getDemandUsageAccess(isAdmin);
   const tier = access.tier === "admin" ? "admin" : access.tier;

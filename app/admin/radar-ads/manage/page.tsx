@@ -2,6 +2,7 @@ import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs"
 import RadarAdsSubNav from "@/components/admin/RadarAdsSubNav";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { loadRadarAdsAdminBundle } from "@/lib/demand/radar-ads-admin-load";
+import { RADAR_AD_SLOTS_PER_BANNER } from "@/lib/demand/radar-ads-slot";
 import RadarAdsManager from "../RadarAdsManager";
 
 type SearchParams = Promise<{ banner?: string; slot?: string; section?: string }>;
@@ -32,7 +33,9 @@ export default async function AdminRadarAdsManagePage({
   const initialBannerId = params.banner?.trim() || null;
   const slotNum = params.slot ? Number(params.slot) : NaN;
   const initialSlotIndex =
-    Number.isInteger(slotNum) && slotNum >= 1 && slotNum <= 3 ? slotNum : undefined;
+    Number.isInteger(slotNum) && slotNum >= 1 && slotNum <= RADAR_AD_SLOTS_PER_BANNER
+      ? slotNum
+      : undefined;
   const initialScope = resolveInitialScope(
     params.section?.trim(),
     initialBannerId,

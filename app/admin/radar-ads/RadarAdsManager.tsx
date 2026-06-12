@@ -28,7 +28,10 @@ import { DEFAULT_RADAR_AD_IMAGE_CROP } from "@/lib/demand/radar-ad-image-crop";
 import { labelFromDemandRegionKey } from "@/lib/demand/regions";
 import {
   countLiveRadarSlots,
+  createRadarAdSlotRecord,
   formatRadarAdRegionShortLabel,
+  RADAR_AD_SLOTS_PER_BANNER,
+  radarAdSlotIndices,
 } from "@/lib/demand/radar-ads-slot";
 
 import {
@@ -789,7 +792,7 @@ function BannerPanel({
 
     const init: Record<number, RadarAdSlotInput> = {};
 
-    for (let i = 1; i <= 3; i++) {
+    for (const i of radarAdSlotIndices()) {
 
       const existing = slots.find((s) => s.slot_index === i);
 
@@ -801,9 +804,13 @@ function BannerPanel({
 
   });
 
-  const [messages, setMessages] = useState<Record<number, string | null>>({ 1: null, 2: null, 3: null });
+  const [messages, setMessages] = useState<Record<number, string | null>>(() =>
+    createRadarAdSlotRecord(() => null)
+  );
 
-  const [savingSlots, setSavingSlots] = useState<Record<number, boolean>>({ 1: false, 2: false, 3: false });
+  const [savingSlots, setSavingSlots] = useState<Record<number, boolean>>(() =>
+    createRadarAdSlotRecord(() => false)
+  );
 
   const idleImageUpload = { status: "idle" as RadarAdImageUploadStatus, error: null as string | null };
 
@@ -811,7 +818,7 @@ function BannerPanel({
 
     Record<number, { status: RadarAdImageUploadStatus; error: string | null }>
 
-  >({ 1: idleImageUpload, 2: idleImageUpload, 3: idleImageUpload });
+  >(() => createRadarAdSlotRecord(() => idleImageUpload));
 
   const [batchSaving, setBatchSaving] = useState(false);
 
@@ -824,7 +831,7 @@ function BannerPanel({
 
     const next: Record<number, RadarAdSlotInput> = {};
 
-    for (let i = 1; i <= 3; i++) {
+    for (const i of radarAdSlotIndices()) {
 
       const existing = slots.find((s) => s.slot_index === i);
 
@@ -834,9 +841,9 @@ function BannerPanel({
 
     setForms(next);
 
-    setMessages({ 1: null, 2: null, 3: null });
+    setMessages(createRadarAdSlotRecord(() => null));
 
-    setImageUploadBySlot({ 1: idleImageUpload, 2: idleImageUpload, 3: idleImageUpload });
+    setImageUploadBySlot(createRadarAdSlotRecord(() => idleImageUpload));
 
   }, [banner.id]);
 
@@ -941,7 +948,9 @@ function BannerPanel({
 
     setBatchSaving(true);
 
-    const results = await Promise.all([1, 2, 3].map((i) => upsertRadarAdSlot(forms[i]!)));
+    const results = await Promise.all(
+      radarAdSlotIndices().map((i) => upsertRadarAdSlot(forms[i]!))
+    );
 
     setBatchSaving(false);
 
@@ -953,7 +962,7 @@ function BannerPanel({
 
     } else {
 
-      setMessages({ 1: "저장됨", 2: "저장됨", 3: "저장됨" });
+      setMessages(createRadarAdSlotRecord(() => "저장됨"));
 
       router.refresh();
 
@@ -1131,7 +1140,7 @@ function BannerPanel({
 
         <div className="flex flex-wrap gap-1">
 
-          {[1, 2, 3].map((i) => {
+          {radarAdSlotIndices().map((i) => {
 
             const f = forms[i]!;
 
@@ -1201,7 +1210,7 @@ function BannerPanel({
 
         >
 
-          {batchSaving ? "저장 중…" : "3개 슬롯 모두 저장"}
+          {batchSaving ? "저장 중…" : `${RADAR_AD_SLOTS_PER_BANNER}개 슬롯 모두 저장`}
 
         </button>
 
@@ -1370,7 +1379,8 @@ function RegionalBannerSection({
 
         <p className="text-sm text-slate-600">
 
-          입주레이더에서 해당 지역을 선택한 사용자에게만 노출됩니다. 지역을 고른 뒤 슬롯을 편집하세요.
+          입주레이더에서 해당 지역을 선택한 사용자에게만 노출됩니다. 지역·배너당 슬롯 {RADAR_AD_SLOTS_PER_BANNER}
+          개(로테이션)를 편집하세요.
 
         </p>
 
@@ -1433,7 +1443,7 @@ function RegionalBannerSection({
 
               }
 
-              subtitle="지표 카드 아래 · 해당 지역 선택 시 노출"
+              subtitle={`지표 카드 아래 · 해당 지역 선택 시 노출 · 슬롯 ${RADAR_AD_SLOTS_PER_BANNER}개 로테이션`}
 
               initialActiveTab={
 
@@ -1619,7 +1629,7 @@ export default function RadarAdsManager({
 
             title="전체 광고"
 
-            subtitle="펄스 아래 · 지역 선택과 무관하게 전국 노출"
+            subtitle={`펄스 아래 · 전국 노출 · 슬롯 ${RADAR_AD_SLOTS_PER_BANNER}개 로테이션`}
 
             initialActiveTab={nationalInitialTab}
 

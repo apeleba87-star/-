@@ -11,6 +11,7 @@ import {
   type RadarAdSlotStatus,
 } from "@/lib/demand/radar-ads-shared";
 import { normalizeRadarAdSlotStatusForSave } from "@/lib/demand/radar-ad-slot-lifecycle";
+import { RADAR_AD_SLOTS_PER_BANNER } from "@/lib/demand/radar-ads-slot";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
 
 async function requireStaff() {
@@ -90,6 +91,17 @@ export async function upsertRadarAdSlot(
 
   if (input.start_date > input.end_date) {
     return { ok: false, error: "종료일은 시작일보다 같거나 늦어야 합니다." };
+  }
+
+  if (
+    !Number.isInteger(input.slot_index) ||
+    input.slot_index < 1 ||
+    input.slot_index > RADAR_AD_SLOTS_PER_BANNER
+  ) {
+    return {
+      ok: false,
+      error: `슬롯 번호는 1~${RADAR_AD_SLOTS_PER_BANNER}만 가능합니다.`,
+    };
   }
 
   const today = getKstTodayString();

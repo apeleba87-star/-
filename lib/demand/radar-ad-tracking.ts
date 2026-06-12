@@ -8,7 +8,7 @@ const SESSION_KEY = "ad_session_id";
 const VISITOR_KEY = "ad_visitor_id";
 const COOLDOWN_PREFIX = "radar_ad_imp_at_";
 
-/** 배너 50% 이상 보인 뒤 이 시간(ms) 유지 시 노출 1회 */
+/** 배너 25% 이상 보인 뒤 이 시간(ms) 유지 시 노출 1회 */
 export const RADAR_AD_VIEWABLE_MS = 400;
 
 /** 화면에 보이는 면적 비율 기준 (배너 요소) */

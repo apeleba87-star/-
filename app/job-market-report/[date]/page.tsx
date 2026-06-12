@@ -243,13 +243,15 @@ export default async function JobMarketReportDatePage({
 
   params: Promise<{ date: string }>;
 
-  searchParams: Promise<{ province?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 
 }) {
 
   const { date } = await params;
 
-  const { province: provinceQuery } = await searchParams;
+  const search = await searchParams;
+  const provinceRaw = search.province;
+  const provinceQuery = typeof provinceRaw === "string" ? provinceRaw : undefined;
 
   if (!isYmd(date)) notFound();
 

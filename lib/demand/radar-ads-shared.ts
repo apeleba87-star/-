@@ -100,5 +100,7 @@ export type RadarAdBannerPayload = {
   regionKey: string | null;
   regionLabel: string | null;
   rotationSeconds: number;
+  /** KST 오늘 impression 수 — 슬롯 id → 건수 */
+  dailyImpressions: Record<string, number>;
   slots: RadarAdSlot[];
 };

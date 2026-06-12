@@ -68,6 +68,7 @@ export default function DemandGuestLoginCta({
 
   return (
     <div
+      data-hide-in-ad-preview
       className={cn(
         "border-t border-teal-100 bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur-sm",
         className

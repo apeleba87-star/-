@@ -14,6 +14,8 @@ export type RadarAdSlotCardProps = {
   badgeLabel: string;
   /** 관리자 미리보기 — 클릭·외부 링크·추적 비활성 */
   preview?: boolean;
+  /** 뷰어블 impression 기록 시 — 로테이션 균형 카운트 */
+  onImpressionRecorded?: (slotId: string) => void;
   className?: string;
 };
 
@@ -86,6 +88,7 @@ export default function RadarAdSlotCard({
   slot,
   badgeLabel,
   preview = false,
+  onImpressionRecorded,
   className,
 }: RadarAdSlotCardProps) {
   const pathname = usePathname();
@@ -94,7 +97,7 @@ export default function RadarAdSlotCard({
   const hasImage = Boolean(slot.imageUrl);
   const trackEnabled = !preview && Boolean(slot.id);
   const trackRef = useRef<HTMLDivElement>(null);
-  useRadarAdViewableImpression(trackRef, slot.id, trackEnabled);
+  useRadarAdViewableImpression(trackRef, slot.id, trackEnabled, onImpressionRecorded);
 
   const linkClass = cn(
     "block outline-none transition-colors",

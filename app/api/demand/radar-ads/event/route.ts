@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isRadarSlotLive } from "@/lib/demand/radar-ads-slot";
+import { getKstTodayString } from "@/lib/jobs/kst-date";
 import { createServiceSupabase } from "@/lib/supabase-server";
 
 const ALLOWED_TYPES = ["impression", "click", "phone_click"] as const;
@@ -11,6 +13,14 @@ type Body = {
   page_path?: string | null;
   referrer?: string | null;
   meta?: Record<string, unknown> | null;
+};
+
+type SlotRow = {
+  id: string;
+  banner_id: string;
+  status: string;
+  start_date: string;
+  end_date: string;
 };
 
 const memoryHits = new Map<string, { count: number; resetAt: number }>();
@@ -49,12 +59,28 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceSupabase();
     const { data: slot, error: slotErr } = await supabase
       .from("radar_ad_slots")
-      .select("id, banner_id, status")
+      .select("id, banner_id, status, start_date, end_date")
       .eq("id", slot_id)
       .maybeSingle();
 
     if (slotErr || !slot) {
       return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    }
+
+    const slotRow = slot as SlotRow;
+    const today = getKstTodayString();
+    if (!isRadarSlotLive(slotRow, today)) {
+      return NextResponse.json({ error: "Slot not live" }, { status: 403 });
+    }
+
+    const { data: banner, error: bannerErr } = await supabase
+      .from("radar_ad_banners")
+      .select("enabled")
+      .eq("id", slotRow.banner_id)
+      .maybeSingle();
+
+    if (bannerErr || !banner?.enabled) {
+      return NextResponse.json({ error: "Banner not enabled" }, { status: 403 });
     }
 
     const baseMeta =
@@ -64,8 +90,8 @@ export async function POST(request: NextRequest) {
     }
 
     const row = {
-      slot_id: slot.id,
-      banner_id: slot.banner_id,
+      slot_id: slotRow.id,
+      banner_id: slotRow.banner_id,
       event_type,
       session_id: session_id && typeof session_id === "string" ? session_id.slice(0, 256) : null,
       anon_visitor_id:

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { labelFromDemandRegionKey } from "@/lib/demand/regions";
 import { isRadarSlotLive } from "@/lib/demand/radar-ads-slot";
 import { cropFromRow } from "@/lib/demand/radar-ad-image-crop";
+import { loadRadarAdDailyImpressionCounts } from "@/lib/demand/radar-ad-daily-impressions";
 import { clampRadarAdCopy } from "@/lib/demand/radar-ads-shared";
 import type {
   RadarAdBannerPayload,
@@ -107,6 +108,8 @@ async function loadBannerWithSlots(
 
   if (slots.length === 0) return null;
 
+  const dailyImpressions = await loadRadarAdDailyImpressionCounts(slots.map((s) => s.id));
+
   return {
     scope,
     regionKey: banner.region_key,
@@ -117,12 +120,31 @@ async function loadBannerWithSlots(
           ? labelFromDemandRegionKey(banner.region_key)
           : null,
     rotationSeconds: banner.rotation_seconds,
+    dailyImpressions,
     slots,
   };
 }
 
 export async function getRadarNationalAdBanner(): Promise<RadarAdBannerPayload | null> {
   return loadBannerWithSlots("national", null);
+}
+
+async function loadFirstRegionalBannerByRegionPrefix(
+  regionKeyPrefix: string
+): Promise<RadarAdBannerPayload | null> {
+  const supabase = createClient();
+  const { data: bannerRows } = await supabase
+    .from("radar_ad_banners")
+    .select("region_key")
+    .eq("scope", "regional")
+    .eq("enabled", true)
+    .like("region_key", `${regionKeyPrefix}%`)
+    .order("region_key", { ascending: true })
+    .limit(1);
+
+  const regionKey = (bannerRows?.[0] as { region_key?: string } | undefined)?.region_key;
+  if (!regionKey) return null;
+  return loadBannerWithSlots("regional", regionKey);
 }
 
 export async function getRadarRegionalAdBanner(
@@ -138,6 +160,14 @@ export async function getRadarRegionalAdBanner(
       const cityId = rest.slice(0, colon);
       const cityBanner = await loadBannerWithSlots("regional", `city:${cityId}`);
       if (cityBanner) return cityBanner;
+    }
+  }
+
+  if (regionKey.startsWith("city:")) {
+    const cityId = regionKey.slice("city:".length);
+    if (cityId) {
+      const districtBanner = await loadFirstRegionalBannerByRegionPrefix(`district:${cityId}:`);
+      if (districtBanner) return districtBanner;
     }
   }
 
