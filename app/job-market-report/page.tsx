@@ -18,6 +18,7 @@ import {
   heroMetricsFromJobWagePayload,
 } from "@/lib/news/parseReportCardHero";
 import { jobWageTeamShareText } from "@/lib/report/team-share-messages";
+import JobWageReportGuestLoginSticky from "@/components/jobs/JobWageReportGuestLoginSticky";
 import DemandHubJobsPublicSlimLink from "@/components/region-hub/DemandHubJobsPublicSlimLink";
 import { getCachedJobsPublicHubTeaser } from "@/lib/region-hub/jobs-public-teaser-cache";
 
@@ -107,7 +108,9 @@ export default async function JobMarketReportIndexPage({
   const dominantDisplay = rawDominant ? formatJobWageDominantDisplayName(rawDominant) : "";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50">
+    <div
+      className={`relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50${!user ? " pb-[5.5rem] md:pb-0" : ""}`}
+    >
       <div
         className="pointer-events-none absolute inset-x-0 -top-24 h-72 bg-gradient-to-b from-teal-200/25 via-emerald-100/15 to-transparent blur-3xl"
         aria-hidden
@@ -194,6 +197,7 @@ export default async function JobMarketReportIndexPage({
           />
         </div>
       </div>
+      {!user ? <JobWageReportGuestLoginSticky /> : null}
     </div>
   );
 }

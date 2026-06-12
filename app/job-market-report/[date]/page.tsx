@@ -53,6 +53,7 @@ import ReportLoginRequiredInline from "@/components/report/ReportLoginRequiredIn
 
 import JobWageReportRegionHubBridges from "@/components/region-hub/JobWageReportRegionHubBridges";
 import JobWageReportRecentDates from "@/components/jobs/JobWageReportRecentDates";
+import JobWageReportGuestLoginSticky from "@/components/jobs/JobWageReportGuestLoginSticky";
 import JobWageReportShareButton from "@/components/jobs/JobWageReportShareButton";
 import type { JobWageSharePreview } from "@/lib/report/job-wage-share-copy";
 
@@ -356,7 +357,9 @@ export default async function JobMarketReportDatePage({
 
   return (
 
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50">
+    <div
+      className={`relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100/80 via-white to-teal-50/50${!user ? " pb-[5.5rem] md:pb-0" : ""}`}
+    >
 
       <div
 
@@ -404,7 +407,15 @@ export default async function JobMarketReportDatePage({
 
           tone="teal"
 
-          layout={user ? "crop" : "full"}
+          layout="crop"
+
+          footer="desktop-only"
+
+          headline="위 내용은 일부만 미리 보기예요."
+
+          description="로그인하면 시·도별 일당 표, 지도, 상·하위 지역 비교를 모두 확인할 수 있어요."
+
+          ctaLabel="로그인하고 전체 보기"
 
         >
 
@@ -709,6 +720,8 @@ export default async function JobMarketReportDatePage({
         </GuestPreviewGate>
 
       </div>
+
+      {!user ? <JobWageReportGuestLoginSticky /> : null}
 
     </div>
 

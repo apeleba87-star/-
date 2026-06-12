@@ -22,6 +22,11 @@ type Props = {
   tone?: Tone;
   /** crop: 기존 높이 제한. full: 전체 스크롤(리포트 티저+락 UI용). */
   layout?: "crop" | "full";
+  /** mobile: 하단 고정 바 사용 시 푸터 카드 숨김. desktop-only: md 이상에서만 푸터 카드 */
+  footer?: "always" | "desktop-only" | "none";
+  headline?: string;
+  description?: string;
+  ctaLabel?: string;
   children: React.ReactNode;
 };
 
@@ -31,12 +36,21 @@ export default function GuestPreviewGate({
   loginNext,
   tone = "slate",
   layout = "crop",
+  footer = "always",
+  headline = "위 내용은 일부만 미리 보기예요.",
+  description = "로그인하면 표·지도·연락처·심화 데이터를 모두 확인할 수 있어요.",
+  ctaLabel = "로그인하고 전체 보기",
   children,
 }: Props) {
   if (isLoggedIn) return <>{children}</>;
 
   const ring = TONE_RING[tone];
   const btn = TONE_BTN[tone];
+  const showFooter = footer !== "none";
+  const footerClass =
+    footer === "desktop-only"
+      ? "mx-auto mt-8 hidden max-w-lg md:block"
+      : "mx-auto mt-8 max-w-lg";
 
   return (
     <>
@@ -53,20 +67,20 @@ export default function GuestPreviewGate({
           </>
         )}
       </div>
-      <div
-        className={`mx-auto mt-8 max-w-lg rounded-2xl border bg-white px-5 py-5 text-center shadow-md ring-1 ${ring}`}
-      >
-        <p className="text-sm font-semibold text-slate-900">위 내용은 일부만 미리 보기예요.</p>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          로그인하면 표·지도·연락처·심화 데이터를 모두 확인할 수 있어요.
-        </p>
-        <Link
-          href={`/login?next=${encodeURIComponent(loginNext)}`}
-          className={`mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-semibold text-white shadow-md transition sm:w-auto ${btn}`}
+      {showFooter ? (
+        <div
+          className={`${footerClass} rounded-2xl border bg-white px-5 py-5 text-center shadow-md ring-1 ${ring}`}
         >
-          로그인하고 전체 보기
-        </Link>
-      </div>
+          <p className="text-sm font-semibold text-slate-900">{headline}</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">{description}</p>
+          <Link
+            href={`/login?next=${encodeURIComponent(loginNext)}`}
+            className={`mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-semibold text-white shadow-md transition sm:w-auto ${btn}`}
+          >
+            {ctaLabel}
+          </Link>
+        </div>
+      ) : null}
     </>
   );
 }
