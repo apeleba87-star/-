@@ -1,0 +1,44 @@
+import { createClient } from "@/lib/supabase-server";
+import type { MagamListingPublic } from "@/lib/magam/types";
+
+const PUBLIC_SELECT =
+  "id, user_id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, created_at, updated_at, closed_at";
+
+export async function getMagamListingBySlug(slug: string): Promise<MagamListingPublic | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("magam_listings_public")
+    .select(PUBLIC_SELECT)
+    .eq("share_slug", slug)
+    .maybeSingle();
+  return (data as MagamListingPublic | null) ?? null;
+}
+
+export async function getMagamOpenListings(options?: {
+  regionGu?: string;
+  listingType?: string;
+  excludeSlug?: string;
+  limit?: number;
+}): Promise<MagamListingPublic[]> {
+  const supabase = createClient();
+  const limit = options?.limit ?? 20;
+  let query = supabase
+    .from("magam_listings_public")
+    .select(PUBLIC_SELECT)
+    .eq("status", "open")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (options?.regionGu) {
+    query = query.eq("region_gu", options.regionGu);
+  }
+  if (options?.listingType) {
+    query = query.eq("listing_type", options.listingType);
+  }
+  if (options?.excludeSlug) {
+    query = query.neq("share_slug", options.excludeSlug);
+  }
+
+  const { data } = await query;
+  return (data as MagamListingPublic[] | null) ?? [];
+}

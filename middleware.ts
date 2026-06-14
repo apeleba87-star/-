@@ -90,6 +90,16 @@ function rateLimitResponse(retryAfterSec: number): NextResponse {
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
+  // OAuth PKCE — Site URL(/) 로 떨어진 code 를 /auth/callback 으로 넘김 (마감앱 등 misredirect 대비)
+  if (pathname === "/" && req.nextUrl.searchParams.has("code")) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    if (!url.searchParams.has("next")) {
+      url.searchParams.set("next", "/onboarding");
+    }
+    return NextResponse.redirect(url);
+  }
+
   if (pathname === "/demand") {
     const url = req.nextUrl.clone();
     url.pathname = "/";

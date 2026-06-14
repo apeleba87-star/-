@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import PublicJobsFeedSection from "@/components/jobs/public/PublicJobsFeedSection";
@@ -123,6 +124,14 @@ export default async function PublicJobsPage({
           />
           <p className="mt-2 text-sm text-slate-500">
             {PUBLIC_JOBS_COPY.syncedPrefix} · {formatSyncedAt(bundle.syncedAt)}
+          </p>
+          <p className="mt-2">
+            <Link
+              href="/magam/live"
+              className="text-sm font-medium text-slate-800 underline-offset-2 hover:underline"
+            >
+              실시간 도급·구인·매매 모집 보기 →
+            </Link>
           </p>
         </div>
       </header>

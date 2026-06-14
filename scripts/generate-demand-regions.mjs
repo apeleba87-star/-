@@ -317,7 +317,67 @@ function main() {
     `/** Auto-generated from RTMS LAWD CSV — scripts/generate-demand-regions.mjs */\n\nexport type DemandRegistryDistrict = {\n  /** RTMS sigungu 표기 (예: 강남구, 안동시, 성남시 분당구) */\n  gu: string;\n  slug: string;\n  lawdCd: string;\n};\n\nexport type DemandRegistryCity = {\n  id: string;\n  label: string;\n  fullLabel: string;\n  districts: DemandRegistryDistrict[];\n};\n\nexport const DEMAND_REGION_REGISTRY: DemandRegistryCity[] = [\n${registryBody}\n];\n`
   );
 
+  writeMagamDartRegistry(cities);
+
   console.log("Wrote region-registry.generated.ts and lawd-codes.generated.ts");
+}
+
+function writeMagamDartRegistry(cities) {
+  const dartDir = path.join(root, "magam_app/lib/constants");
+  fs.mkdirSync(dartDir, { recursive: true });
+
+  const cityBlocks = cities.map((city) => {
+    const districtLines = city.districts
+      .map((d) => `      MagamRegionDistrict(${JSON.stringify(d.gu)}, ${JSON.stringify(d.slug)}),`)
+      .join("\n");
+    return `  MagamRegionCity(\n    ${JSON.stringify(city.id)},\n    ${JSON.stringify(city.label)},\n    [\n${districtLines}\n    ],\n  ),`;
+  }).join("\n");
+
+  const body = `// Auto-generated from lib/demand/region-registry — scripts/generate-demand-regions.mjs
+// 입주레이더(클린아이덱스)와 동일 시·군·구 목록
+
+class MagamRegionDistrict {
+  const MagamRegionDistrict(this.gu, this.slug);
+  final String gu;
+  final String slug;
+}
+
+class MagamRegionCity {
+  const MagamRegionCity(this.id, this.label, this.districts);
+  final String id;
+  final String label;
+  final List<MagamRegionDistrict> districts;
+
+  /// 예: 서울 강남구, 경북 안동시
+  String labelFor(MagamRegionDistrict district) => '\$label \${district.gu}';
+}
+
+const kMagamRegionCities = <MagamRegionCity>[
+${cityBlocks}
+];
+
+MagamRegionCity? magamCityById(String id) {
+  for (final city in kMagamRegionCities) {
+    if (city.id == id) return city;
+  }
+  return null;
+}
+
+MagamRegionCity get kMagamDefaultCity =>
+    magamCityById('seoul') ?? kMagamRegionCities.first;
+
+String magamRegionDisplayLabel(String cityId, String districtSlug) {
+  final city = magamCityById(cityId);
+  if (city == null) return districtSlug;
+  for (final d in city.districts) {
+    if (d.slug == districtSlug) return city.labelFor(d);
+  }
+  return districtSlug;
+}
+`;
+
+  fs.writeFileSync(path.join(dartDir, "region_registry.g.dart"), body);
+  console.log("Wrote magam_app/lib/constants/region_registry.g.dart");
 }
 
 main();
