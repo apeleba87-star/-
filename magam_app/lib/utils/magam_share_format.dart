@@ -1,5 +1,6 @@
 import '../constants/magam_copy.dart';
 import '../constants/work_kind_copy.dart';
+import '../config/app_config.dart';
 import '../models/magam_listing.dart';
 import '../utils/kr_phone_format.dart';
 
@@ -147,7 +148,7 @@ class MagamShareFormat {
       message = message.isEmpty ? phone : '$message\n\n\n$phone';
     }
 
-    final uri = Uri.tryParse(url);
+    final uri = Uri.tryParse(normalizeShareUrl(url));
     final link = uri != null ? '${uri.host}${uri.path}' : url;
     final footer = [
       magamShareLinkCtaBracket,
@@ -181,5 +182,15 @@ class MagamShareFormat {
     final parts = scheduleText.split(' · ');
     if (parts.length < 2) return null;
     return parts.sublist(1).join(' · ');
+  }
+
+  static String normalizeShareUrl(String url) {
+    final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null) return trimmed;
+    if (uri.host == 'cleanidex.com') {
+      return AppConfig.normalizeShareBaseUrl(trimmed);
+    }
+    return trimmed;
   }
 }

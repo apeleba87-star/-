@@ -20,12 +20,9 @@ export default function MagamShareLayout({ children }: { children: React.ReactNo
     <div className="flex min-h-[60vh] flex-col bg-slate-50">
       <div className="flex-1">{children}</div>
       <footer className="border-t border-slate-200/80 px-4 py-4 text-center text-xs text-slate-400">
-        <p>{MAGAM_SHARE_PAGE_TITLE}</p>
-        <p className="mt-2">
-          <Link href={MAGAM_LIVE_PATH} className="font-medium text-slate-600 underline-offset-2 hover:underline">
-            전체 모집 목록 보기
-          </Link>
-        </p>
+        <Link href={MAGAM_LIVE_PATH} className="font-medium text-slate-600 underline-offset-2 hover:underline">
+          전체 모집 목록 보기
+        </Link>
       </footer>
     </div>
   );

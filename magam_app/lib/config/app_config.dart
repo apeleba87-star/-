@@ -25,15 +25,28 @@ class AppConfig {
 
   static String get shareBaseUrl {
     const fromDefine = String.fromEnvironment('MAGAM_SHARE_BASE_URL');
-    if (fromDefine.isNotEmpty) return fromDefine.replaceAll(RegExp(r'/+$'), '');
+    if (fromDefine.isNotEmpty) {
+      return normalizeShareBaseUrl(fromDefine);
+    }
     final fromEnv = _fromDotenv('MAGAM_SHARE_BASE_URL');
     if (fromEnv.isNotEmpty) {
-      return fromEnv.replaceAll(RegExp(r'/+$'), '');
+      return normalizeShareBaseUrl(fromEnv);
     }
-    return 'https://cleanidex.com';
+    return 'https://cleanidex.co.kr';
   }
 
-  static String shareUrl(String slug) => '$shareBaseUrl/p/$slug';
+  /// 등록되지 않은 cleanidex.com → cleanidex.co.kr (DNS NXDOMAIN 방지)
+  static String normalizeShareBaseUrl(String raw) {
+    final trimmed = raw.trim().replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.host == 'cleanidex.com') {
+      return 'https://cleanidex.co.kr';
+    }
+    return trimmed;
+  }
+
+  static String shareUrl(String slug) =>
+      '${normalizeShareBaseUrl(shareBaseUrl)}/p/$slug';
 
   /// 로컬 웹 개발 고정 포트 (run_web.ps1 / --web-port 와 동일)
   static const int webDevPort = 54222;

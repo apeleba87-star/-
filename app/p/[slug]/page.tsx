@@ -40,11 +40,12 @@ export default async function MagamSharePage({ params }: Props) {
   const listing = await getMagamListingBySlug(slug);
   if (!listing) notFound();
 
+  const typeLabel = MAGAM_LISTING_TYPE_LABEL[listing.listing_type];
+
   const openListings = await getMagamOpenListings({
-    regionGu: listing.region_gu,
     listingType: listing.listing_type,
     excludeSlug: slug,
-    limit: 12,
+    limit: 8,
   });
 
   return (
@@ -57,8 +58,8 @@ export default async function MagamSharePage({ params }: Props) {
 
       <MagamOpenListings
         listings={openListings}
-        title={`${listing.region_gu} · ${MAGAM_LISTING_TYPE_LABEL[listing.listing_type]} 모집 중`}
-        emptyHint="같은 지역·유형의 다른 모집 글이 없습니다."
+        title={`전국 · ${typeLabel} 모집`}
+        emptyHint="다른 모집 글이 없습니다."
       />
     </div>
   );

@@ -15,7 +15,7 @@
      - Android: `io.supabase.magamapp://login-callback/`  
    - 카카오 개발자 콘솔 Redirect URI에도 Android 콜백 URL 등록 (웹 cleanidex URL과 별도)
 3. **`.env`** — 이 폴더에 `.env.example` 을 복사해 `SUPABASE_URL`, `SUPABASE_ANON_KEY` 입력  
-   - `MAGAM_SHARE_BASE_URL` = Next.js 공유 페이지 주소 (예: `https://cleanidex.com`)
+   - `MAGAM_SHARE_BASE_URL` = Next.js 공유 페이지 주소 (예: `https://cleanidex.co.kr`)
 
 ## Flutter 설치 (Windows)
 

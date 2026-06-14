@@ -4,4 +4,4 @@
 $ErrorActionPreference = "Stop"
 $env:Path = "C:\proj\flutter\bin;" + $env:Path
 Set-Location $PSScriptRoot
-flutter run -d chrome --web-hostname=localhost --web-port=54222
+flutter run -d chrome --web-hostname=localhost --web-port=54222 --dart-define=MAGAM_SHARE_BASE_URL=https://cleanidex.co.kr
