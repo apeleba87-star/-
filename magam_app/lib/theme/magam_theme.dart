@@ -16,6 +16,17 @@ abstract final class MagamColors {
   static const danger = Color(0xFFDC2626);
   static const dangerSoft = Color(0xFFFEF2F2);
 
+  /// 도급 — 파란 계열
+  static const subcontract = Color(0xFF2563EB);
+  static const subcontractSoft = Color(0xFFEEF3FF);
+
+  /// 구인 — 주황 계열
+  static const hiring = Color(0xFFEA580C);
+  static const hiringSoft = Color(0xFFFFF7ED);
+
+  static const closedSurface = Color(0xFFF3F4F6);
+  static const closedBorder = Color(0xFFE5E7EB);
+
   static const radiusLg = 18.0;
   static const radiusMd = 14.0;
   static const radiusSm = 10.0;

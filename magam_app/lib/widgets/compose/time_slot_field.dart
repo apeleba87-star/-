@@ -7,14 +7,16 @@ class TimeSlotField extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onChanged,
+    this.slots = allSlots,
     this.enabled = true,
   });
 
   final String? selected;
   final ValueChanged<String?> onChanged;
+  final List<String> slots;
   final bool enabled;
 
-  static const slots = ['morning', 'afternoon', 'same_day', 'flexible'];
+  static const allSlots = ['morning', 'afternoon', 'same_day', 'flexible'];
 
   @override
   Widget build(BuildContext context) {

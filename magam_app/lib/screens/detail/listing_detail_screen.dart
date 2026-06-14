@@ -9,9 +9,11 @@ import '../../services/magam_kakao_share.dart';
 import '../../services/magam_repository.dart';
 import '../../services/magam_share_prefs.dart';
 import '../../theme/magam_theme.dart';
+import '../../utils/magam_share_format.dart';
 import '../../widgets/kakao_share_button.dart';
 import '../../widgets/kakao_share_phone_option.dart';
 import '../../widgets/magam_listing_share_view.dart';
+import '../../widgets/naver_cafe_copy_button.dart';
 
 
 
@@ -201,25 +203,35 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
 
     final ok = await showDialog<bool>(
-
       context: context,
-
       builder: (ctx) => AlertDialog(
-
         title: const Text('마감할까요?'),
-
-        content: const Text('마감하면 모든 화면에서 연락처가 숨겨집니다.'),
-
-        actions: [
-
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('마감')),
-
-        ],
-
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('마감하면 모든 화면에서 연락처가 숨겨집니다.'),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('취소'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('마감'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-
     );
 
     if (ok != true) return;
@@ -329,7 +341,28 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
 
 
-  Widget _kakaoShareBlock(MagamListing listing) {
+  Future<void> _copyForNaverCafe() async {
+    final listing = _listing;
+    if (listing == null) return;
+
+    final url = _repo.buildShareUrl(listing);
+    final text = MagamShareFormat.buildNaverCafeMessage(
+      listing: listing,
+      url: url,
+      includePhone: _includePhoneInKakaoShare,
+    );
+    await Clipboard.setData(ClipboardData(text: text));
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(magamNaverCafeCopyDone),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
+  Widget _shareBlock(MagamListing listing) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -345,7 +378,49 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
           onPressed: _shareToKakao,
           loading: _kakaoSharing,
         ),
+        const SizedBox(height: 10),
+        NaverCafeCopyButton(onPressed: _copyForNaverCafe),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: _copyLink,
+          icon: const Icon(Icons.link_rounded, size: 20),
+          label: Text(widget.highlightShare ? '공유 링크 복사' : '링크 복사'),
+        ),
       ],
+    );
+  }
+
+  Widget _registrationBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: MagamColors.successSoft,
+        borderRadius: BorderRadius.circular(MagamColors.radiusLg),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_outline, color: MagamColors.success),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '등록 완료!',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '내용 확인 후 카톡·카페에 붙여넣으세요.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -398,58 +473,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       ),
 
       body: ListView(
-
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-
         children: [
-
           if (widget.highlightShare) ...[
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: MagamColors.successSoft,
-                borderRadius: BorderRadius.circular(MagamColors.radiusLg),
-                border: Border.all(color: const Color(0xFFA7F3D0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.check_circle_outline, color: MagamColors.success),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '등록 완료!',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '링크 복사 또는 카톡 단톡방 공유로 마무리하세요.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _copyLink,
-                    icon: const Icon(Icons.link_rounded),
-                    label: const Text('공유 링크 복사'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: MagamColors.success,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  _kakaoShareBlock(listing),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: _goHome,
-                    child: const Text('내 공고로 가기'),
-                  ),
-                ],
-              ),
-            ),
+            _registrationBanner(context),
             const SizedBox(height: 12),
           ],
           MagamListingShareView(
@@ -457,31 +484,23 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             typeLabel: typeLabel,
             statusLabel: statusLabel,
           ),
-
-          if (!widget.highlightShare) ...[
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _copyLink,
-              icon: const Icon(Icons.link_rounded),
-              label: const Text('링크 복사'),
+          const SizedBox(height: 16),
+          _shareBlock(listing),
+          if (widget.highlightShare) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: _goHome,
+                child: const Text('내 공고로 가기'),
+              ),
             ),
-            const SizedBox(height: 10),
-            _kakaoShareBlock(listing),
           ],
           if (listing.isOpen) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             OutlinedButton(
               onPressed: _closing ? null : _closeListing,
               style: OutlinedButton.styleFrom(foregroundColor: MagamColors.danger),
               child: Text(_closing ? '마감 중…' : '모집 마감하기'),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '모집이 끝나면 눌러 주세요. 연락처가 모든 화면에서 숨겨집니다.',
-                style: Theme.of(context).textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
             ),
           ],
         ],

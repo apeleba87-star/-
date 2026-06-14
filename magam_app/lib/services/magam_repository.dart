@@ -75,7 +75,7 @@ class MagamRepository {
 
     required String contactPhone,
 
-    required String workKind,
+    String? workKind,
 
     DateTime? scheduleDate,
 
@@ -129,7 +129,7 @@ class MagamRepository {
 
           'contact_phone': KrPhoneFormat.normalize(contactPhone),
 
-          'work_kind': workKind,
+          'work_kind': _nullIfEmpty(workKind),
 
           'schedule_date': scheduleDate != null ? _formatDate(scheduleDate) : null,
 

@@ -25,6 +25,18 @@ export const MAGAM_TIME_SLOT_LABEL: Record<string, string> = {
   flexible: "시간 미정",
 };
 
+export const MAGAM_AC_TYPE_LABEL: Record<string, string> = {
+  wall: "벽걸이",
+  stand: "스탠드",
+  two_in_one: "2in1",
+  one_two_way: "1way·2way",
+  four_way: "4way",
+  other: "기타",
+};
+
+export const MAGAM_HIRING_WORK_LABEL = "작업내용";
+export const MAGAM_SHARE_WORK_LABEL = "작업";
+
 export const MAGAM_SYNC_CONSENT_TITLE = "모집 안내 노출 동의";
 
 export const MAGAM_SYNC_CONSENT_VERSION = "1";
@@ -44,4 +56,6 @@ import { MAGAM_PRODUCT_NAME } from "@/lib/magam/brand";
 export const MAGAM_SHARE_PAGE_TITLE = MAGAM_PRODUCT_NAME;
 
 /** 카카오·공유 링크 CTA (URL 대신 안내 문구) */
-export const MAGAM_SHARE_LINK_CTA = "접수 마감 확인하기";
+export const MAGAM_SHARE_LINK_CTA = "접수상태 확인";
+/** 카카오 공유 문구용 (대괄호 포함) */
+export const MAGAM_SHARE_LINK_CTA_BRACKET = "[접수상태 확인]";

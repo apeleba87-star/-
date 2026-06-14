@@ -28,7 +28,10 @@ import '../../widgets/compose/region_picker_section.dart';
 
 import '../../widgets/compose/time_slot_field.dart';
 
+import '../../widgets/compose/listing_type_section.dart';
 import '../../widgets/compose/work_kind_section.dart';
+
+import '../../constants/magam_copy.dart';
 
 import '../../widgets/magam_sync_consent_tile.dart';
 
@@ -56,6 +59,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   final _pyeongController = TextEditingController();
 
+  final _workDescriptionController = TextEditingController();
+
   final _otherDetailController = TextEditingController();
 
   final _specialNotesController = TextEditingController();
@@ -77,8 +82,6 @@ class _ComposeScreenState extends State<ComposeScreen> {
   DateTime? _scheduleDate;
 
   String? _timeSlot;
-
-  String _priceUnit = 'man';
 
   Set<String> _acTypes = {};
 
@@ -127,6 +130,23 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
 
   ListingDraft? get _draft {
+    if (_listingType == 'hiring') {
+      final desc = _workDescriptionController.text.trim();
+      if (desc.isEmpty) return null;
+      return ListingDraft(
+        listingType: _listingType,
+        cityId: _cityId,
+        districtSlug: _districtSlug,
+        workDescription: desc,
+        scheduleDate: _scheduleDate,
+        timeSlot: _timeSlot,
+        specialNotes: _specialNotesController.text.trim().isEmpty
+            ? null
+            : _specialNotesController.text.trim(),
+        priceAmount: PriceField.parseAmount(_priceController.text),
+        priceUnit: 'man',
+      );
+    }
 
     if (_workKind == null) return null;
 
@@ -160,9 +180,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
           : _specialNotesController.text.trim(),
 
-      priceAmount: PriceField.parseAmount(_priceController.text, _priceUnit),
+      priceAmount: PriceField.parseAmount(_priceController.text),
 
-      priceUnit: _priceUnit,
+      priceUnit: 'man',
 
     );
 
@@ -233,6 +253,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
     _pyeongController.dispose();
 
+    _workDescriptionController.dispose();
+
     _otherDetailController.dispose();
 
     _specialNotesController.dispose();
@@ -280,27 +302,25 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
 
   String? _validate() {
+    if (_listingType == 'hiring') {
+      if (_workDescriptionController.text.trim().length < 2) {
+        return '작업내용을 2자 이상 입력해 주세요.';
+      }
+    } else {
+      if (_workKind == null) return '작업 종류를 선택해 주세요.';
 
-    if (_workKind == null) return '작업 종류를 선택해 주세요.';
+      if (_workKind == 'move_in_new' || _workKind == 'move_out') {
+        final p = int.tryParse(_pyeongController.text.trim());
+        if (p == null || p <= 0) return '평형을 입력해 주세요.';
+      }
 
-    if (_workKind == 'move_in_new' || _workKind == 'move_out') {
+      if (_workKind == 'ac' && _acTypes.isEmpty) {
+        return '에어컨 종류를 하나 이상 선택해 주세요.';
+      }
 
-      final p = int.tryParse(_pyeongController.text.trim());
-
-      if (p == null || p <= 0) return '평형을 입력해 주세요.';
-
-    }
-
-    if (_workKind == 'ac' && _acTypes.isEmpty) {
-
-      return '에어컨 종류를 하나 이상 선택해 주세요.';
-
-    }
-
-    if (_workKind == 'other' && _otherDetailController.text.trim().length < 4) {
-
-      return '어떤 청소인지 4자 이상 입력해 주세요.';
-
+      if (_workKind == 'other' && _otherDetailController.text.trim().length < 4) {
+        return '어떤 청소인지 4자 이상 입력해 주세요.';
+      }
     }
 
     if (KrPhoneFormat.digitsOnly(_phoneController.text).length < 10) {
@@ -385,9 +405,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
         timeSlot: draft.timeSlot,
 
-        pyeong: draft.pyeong,
+        pyeong: draft.isHiring ? null : draft.pyeong,
 
-        acTypes: draft.acTypes,
+        acTypes: draft.isHiring ? const [] : draft.acTypes,
 
         priceAmount: draft.priceAmount,
 
@@ -425,6 +445,28 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
 
 
+  void _onListingTypeChanged(String type) {
+    setState(() {
+      _listingType = type;
+      if (type == 'hiring') {
+        _workKind = null;
+        _acTypes = {};
+        _pyeongController.clear();
+        _otherDetailController.clear();
+        if (_timeSlot == 'flexible') _timeSlot = null;
+        if (_scheduleDate != null) {
+          final d = ScheduleDateField.dateOnly(_scheduleDate!);
+          final t = ScheduleDateField.today;
+          if (d == t || d == t.add(const Duration(days: 1))) {
+            _scheduleDate = null;
+          }
+        }
+      } else {
+        _workDescriptionController.clear();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final draft = _draft;
@@ -437,6 +479,15 @@ class _ComposeScreenState extends State<ComposeScreen> {
         children: [
           ComposeSection(
             step: '1',
+            title: '도급 / 구인',
+            child: ListingTypeSection(
+              listingType: _listingType,
+              enabled: !_loading,
+              onChanged: _onListingTypeChanged,
+            ),
+          ),
+          ComposeSection(
+            step: '2',
             title: '언제',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,6 +496,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   selectedDate: _scheduleDate,
                   enabled: !_loading,
                   compact: true,
+                  showTodayTomorrow: _listingType != 'hiring',
                   onDateChanged: (date) => setState(() => _scheduleDate = date),
                 ),
                 const SizedBox(height: 16),
@@ -453,13 +505,16 @@ class _ComposeScreenState extends State<ComposeScreen> {
                 TimeSlotField(
                   selected: _timeSlot,
                   enabled: !_loading,
+                  slots: _listingType == 'hiring'
+                      ? const ['morning', 'afternoon', 'same_day']
+                      : TimeSlotField.allSlots,
                   onChanged: (slot) => setState(() => _timeSlot = slot),
                 ),
               ],
             ),
           ),
           ComposeSection(
-            step: '2',
+            step: '3',
             title: '어디',
             child: RegionPickerSection(
               cities: _cities,
@@ -473,16 +528,16 @@ class _ComposeScreenState extends State<ComposeScreen> {
             ),
           ),
           ComposeSection(
-            step: '3',
-            title: '어떤 일',
+            step: '4',
+            title: _listingType == 'hiring' ? '작업내용' : '어떤 일',
             child: WorkKindSection(
               listingType: _listingType,
               workKind: _workKind,
               pyeongController: _pyeongController,
               otherDetailController: _otherDetailController,
+              workDescriptionController: _workDescriptionController,
               acTypes: _acTypes,
               enabled: !_loading,
-              onListingTypeChanged: (type) => setState(() => _listingType = type),
               onWorkKindChanged: (kind) => setState(() {
                 _workKind = kind;
                 if (kind != 'ac') _acTypes = {};
@@ -497,25 +552,27 @@ class _ComposeScreenState extends State<ComposeScreen> {
             ),
           ),
           ComposeSection(
-            step: '4',
-            title: '얼마',
+            step: '5',
+            title: _listingType == 'hiring' ? '일당' : '얼마',
             child: PriceField(
               controller: _priceController,
-              unit: _priceUnit,
-              enabled: !_loading,
-              onUnitChanged: (unit) => setState(() => _priceUnit = unit),
-            ),
-          ),
-          ComposeSection(
-            step: '5',
-            title: '특이사항',
-            child: SpecialNotesField(
-              controller: _specialNotesController,
+              isHiring: _listingType == 'hiring',
               enabled: !_loading,
             ),
           ),
           ComposeSection(
             step: '6',
+            title: '특이사항',
+            child: SpecialNotesField(
+              controller: _specialNotesController,
+              hintText: _listingType == 'hiring'
+                  ? magamHiringSpecialNotesHint
+                  : magamSubcontractSpecialNotesHint,
+              enabled: !_loading,
+            ),
+          ),
+          ComposeSection(
+            step: '7',
             title: '연락처',
             child: TextField(
               controller: _phoneController,
@@ -530,9 +587,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   );
                 }
               },
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '010-0000-0000',
-                helperText: '다음 글쓰기 때 자동으로 채워집니다',
+                helperText: _listingType == 'hiring'
+                    ? magamHiringPhoneHelper
+                    : '다음 글쓰기 때 자동으로 채워집니다',
               ),
             ),
           ),

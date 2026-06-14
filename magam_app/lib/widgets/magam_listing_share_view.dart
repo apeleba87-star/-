@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../constants/magam_copy.dart';
-import '../models/magam_listing.dart';
-import '../theme/magam_theme.dart';
+import '../models/magam_listing.dart';import '../theme/magam_theme.dart';
 import '../utils/kr_phone_format.dart';
 import '../utils/magam_share_format.dart';
 import 'magam_section_card.dart';
@@ -96,28 +94,6 @@ class MagamListingShareView extends StatelessWidget {
                   ),
             ),
           ],
-          const SizedBox(height: _sectionGap),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  magamShareLinkCtaBracket,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: MagamColors.accent,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  magamShareLinkArrows,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: MagamColors.inkMuted,
-                        letterSpacing: 4,
-                      ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

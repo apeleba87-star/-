@@ -10,12 +10,14 @@ class ScheduleDateField extends StatelessWidget {
     required this.onDateChanged,
     this.enabled = true,
     this.compact = false,
+    this.showTodayTomorrow = true,
   });
 
   final DateTime? selectedDate;
   final ValueChanged<DateTime?> onDateChanged;
   final bool enabled;
   final bool compact;
+  final bool showTodayTomorrow;
 
   static DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -67,20 +69,22 @@ class ScheduleDateField extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            ChoiceChip(
-              label: const Text('오늘'),
-              selected: isToday,
-              onSelected: enabled
-                  ? (on) => onDateChanged(on ? today : null)
-                  : null,
-            ),
-            ChoiceChip(
-              label: const Text('내일'),
-              selected: isTomorrow,
-              onSelected: enabled
-                  ? (on) => onDateChanged(on ? tomorrow : null)
-                  : null,
-            ),
+            if (showTodayTomorrow) ...[
+              ChoiceChip(
+                label: const Text('오늘'),
+                selected: isToday,
+                onSelected: enabled
+                    ? (on) => onDateChanged(on ? today : null)
+                    : null,
+              ),
+              ChoiceChip(
+                label: const Text('내일'),
+                selected: isTomorrow,
+                onSelected: enabled
+                    ? (on) => onDateChanged(on ? tomorrow : null)
+                    : null,
+              ),
+            ],
             ActionChip(
               label: const Text('날짜 선택'),
               avatar: Icon(Icons.calendar_today_outlined, size: 18, color: MagamColors.inkMuted),

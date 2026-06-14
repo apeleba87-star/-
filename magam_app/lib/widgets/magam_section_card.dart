@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/magam_copy.dart';
 import '../theme/magam_theme.dart';
 
 /// 글쓰기 등 폼 섹션 카드
@@ -128,10 +129,10 @@ class MagamStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isOpen ? MagamColors.successSoft : const Color(0xFFF3F4F6),
+        color: isOpen ? MagamColors.successSoft : MagamColors.closedSurface,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: isOpen ? const Color(0xFFA7F3D0) : MagamColors.border,
+          color: isOpen ? const Color(0xFFA7F3D0) : MagamColors.closedBorder,
         ),
       ),
       child: Text(
@@ -140,6 +141,45 @@ class MagamStatusBadge extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: isOpen ? MagamColors.success : MagamColors.inkMuted,
+        ),
+      ),
+    );
+  }
+}
+
+class MagamListingTypeBadge extends StatelessWidget {
+  const MagamListingTypeBadge({
+    super.key,
+    required this.listingType,
+    this.muted = false,
+  });
+
+  final String listingType;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = listingTypeLabels[listingType] ?? listingType;
+    final bg = muted
+        ? MagamColors.inkMuted
+        : listingType == 'hiring'
+            ? MagamColors.hiring
+            : listingType == 'subcontract'
+                ? MagamColors.subcontract
+                : MagamColors.ink;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

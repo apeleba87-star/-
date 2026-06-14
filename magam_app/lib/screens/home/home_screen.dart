@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../constants/magam_copy.dart';
 import '../../models/magam_listing.dart';
 import '../../services/magam_repository.dart';
 import '../../theme/magam_theme.dart';
+import '../../widgets/my_listing_card.dart';
 import '../../widgets/magam_section_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -150,81 +150,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                  ..._listings.map((item) {
-                    final typeLabel =
-                        listingTypeLabels[item.listingType] ?? item.listingType;
-                    final statusLabel =
-                        statusLabels[item.status] ?? item.status;
-                    return Padding(
+                  ..._listings.map(
+                    (item) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: Material(
-                        color: MagamColors.surface,
-                        borderRadius: BorderRadius.circular(MagamColors.radiusLg),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(MagamColors.radiusLg),
-                          onTap: () async {
-                            await context.push('/listing/${item.id}');
-                            if (mounted) _load();
-                          },
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(MagamColors.radiusLg),
-                              border: Border.all(color: MagamColors.border),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: MagamColors.ink,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          typeLabel,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          item.regionGu,
-                                          style: Theme.of(context).textTheme.titleMedium,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      MagamStatusBadge(
-                                        label: statusLabel,
-                                        isOpen: item.isOpen,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    item.bodyText.replaceAll('\n', ' '),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                      child: MyListingCard(
+                        listing: item,
+                        onTap: () async {
+                          await context.push('/listing/${item.id}');
+                          if (mounted) _load();
+                        },
                       ),
-                    );
-                  }),
+                    ),
+                  ),
                 ],
               ),
       ),

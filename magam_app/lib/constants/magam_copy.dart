@@ -24,15 +24,36 @@ const statusLabels = {
 };
 
 /// 카카오·공유 링크 CTA
-const magamShareLinkCta = '접수 마감 확인하기';
+const magamShareLinkCta = '[접수상태 확인]';
 
-const magamShareLinkCtaBracket = '[접수 마감 확인하기]';
+const magamShareLinkArrows = '👇👇👇👇👇';
 
-const magamShareLinkArrows = '↓ ↓ ↓';
+const magamKakaoShareIncludePhone = '공유·복사에 연락처 포함';
 
-const magamKakaoShareIncludePhone = '카톡 공유에 연락처 포함';
+const magamKakaoShareIncludePhoneHint =
+    '켜면 카톡·카페 복사 문구에 연락처가 들어갑니다';
 
-const magamKakaoShareIncludePhoneHint = '켜면 공유 문구에 연락처가 들어갑니다';
+const magamNaverCafeCopyLabel = '네이버 카페용 복사';
 
-/// 카카오 공유 — 도급·작업·평형·금액 한 줄 라벨
+const magamNaverCafeCopyDone = '카페에 붙여넣을 내용이 복사됐어요.';
+
 const magamShareWorkLabel = '작업';
+
+/// 구인(일당) — 카카오·상세 표시 라벨
+const magamHiringWorkLabel = '작업내용';
+
+/// 구인 글쓰기 — 안내 문구 (네이버 카페 일당 구인 패턴)
+const magamHiringWorkHint = '예) 입주청소, 후드청소, 준공청소';
+const magamHiringWorkHelper = '카페 제목처럼 하시는 일을 직접 적어 주세요';
+
+const magamHiringPriceHint = '13';
+const magamHiringPriceSuffix = '만원';
+
+const magamHiringSpecialNotesHint =
+    '예) 08:00~17:00, 1명, 작업 후 계좌 지급';
+const magamHiringPhoneHelper =
+    '구직자가 전화·문자할 번호 · 다음 글쓰기 때 자동 입력';
+
+/// 도급 글쓰기 — 특이사항
+const magamSubcontractSpecialNotesHint =
+    '예) 엘리베이터 없음, 주차 가능, 반려동물 있음';

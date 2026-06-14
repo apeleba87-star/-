@@ -59,7 +59,6 @@ export default async function MagamSharePage({ params }: Props) {
       <MagamOpenListings
         listings={openListings}
         title={`전국 · ${typeLabel} 모집`}
-        emptyHint="다른 모집 글이 없습니다."
       />
     </div>
   );

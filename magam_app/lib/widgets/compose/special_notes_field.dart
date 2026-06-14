@@ -4,10 +4,12 @@ class SpecialNotesField extends StatelessWidget {
   const SpecialNotesField({
     super.key,
     required this.controller,
+    required this.hintText,
     this.enabled = true,
   });
 
   final TextEditingController controller;
+  final String hintText;
   final bool enabled;
 
   @override
@@ -17,9 +19,9 @@ class SpecialNotesField extends StatelessWidget {
       enabled: enabled,
       maxLines: 4,
       minLines: 2,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: '특이사항 (선택)',
-        hintText: '예) 엘리베이터 없음, 주차 가능, 반려동물 있음',
+        hintText: hintText,
         alignLabelWithHint: true,
       ),
     );
