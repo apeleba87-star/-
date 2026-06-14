@@ -16,6 +16,7 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/job-market-report", priority: 0.75, changeFrequency: "daily" },
   { path: "/jobs", priority: 0.8, changeFrequency: "daily" },
   { path: "/jobs/public", priority: 0.82, changeFrequency: "daily" },
+  { path: "/magam/live", priority: 0.8, changeFrequency: "daily" },
   { path: "/beta", priority: 0.7, changeFrequency: "weekly" },
   { path: "/cleanidex", priority: 0.65, changeFrequency: "weekly" },
   { path: "/cleanidex/about", priority: 0.6, changeFrequency: "monthly" },

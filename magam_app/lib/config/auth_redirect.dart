@@ -13,13 +13,10 @@ class AuthRedirect {
     if (override != null && override.isNotEmpty) return override;
 
     if (kIsWeb) {
-      final base = Uri.base;
-      // origin + path (쿼리·해시 제외). Flutter web 기본은 http://localhost:포트/
-      final path = base.path.isEmpty || base.path == '/' ? '/' : base.path;
-      return '${base.origin}$path';
+      return AppConfig.webDevOrigin;
     }
     return androidCallback;
   }
 
-  static String signupUrl(String siteBase) => '$siteBase/signup';
+  static String signupUrl(String siteBase) => '$siteBase/signup?from=magam';
 }

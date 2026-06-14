@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Black_Han_Sans, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import SiteShell from "@/components/layout/SiteShell";
+import SiteBrandingScripts from "@/components/layout/SiteBrandingScripts";
 import RadarAdPlacementPreviewBoot from "@/components/advertise/RadarAdPlacementPreviewBoot";
 import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
 import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME, seoKeywords } from "@/lib/seo";
@@ -103,34 +103,10 @@ function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-JXV9GMLMEZ');`}
         </Script>
-        <Script
-          id="ld-json-site"
-          type="application/ld+json"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              name: SITE_NAME,
-              alternateName: "Cleanidex",
-              url: getBaseUrl(),
-              description: defaultDescription,
-              inLanguage: "ko-KR",
-              publisher: {
-                "@type": "Organization",
-                name: SITE_NAME,
-                url: getBaseUrl(),
-              },
-            }),
-          }}
-        />
+        <SiteBrandingScripts />
         <SupabaseSessionRefresh />
         <RadarAdPlacementPreviewBoot />
-        <Header />
-        <main className="flex min-h-0 min-w-0 w-full max-w-[100vw] flex-1 flex-col items-stretch pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)] lg:pt-[calc(4.5rem+env(safe-area-inset-top,0px))] xl:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
-          {children}
-        </main>
-        <Footer />
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

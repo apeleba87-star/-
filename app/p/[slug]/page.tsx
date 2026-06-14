@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MagamOpenListings from "@/components/magam/MagamOpenListings";
 import MagamShareCard from "@/components/magam/MagamShareCard";
-import { MAGAM_SHARE_PAGE_TITLE } from "@/lib/magam/copy";
+import { MAGAM_SHARE_PAGE_TITLE, MAGAM_SHARE_LINK_CTA } from "@/lib/magam/copy";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
 import { MAGAM_LISTING_TYPE_LABEL } from "@/lib/magam/copy";
 
@@ -20,12 +20,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const typeLabel = MAGAM_LISTING_TYPE_LABEL[listing.listing_type];
   const preview = listing.body_text.replace(/\s+/g, " ").trim().slice(0, 80);
+  const ogTitle =
+    listing.status === "open"
+      ? `${MAGAM_SHARE_LINK_CTA} · ${listing.region_gu}`
+      : `모집 마감 · ${listing.region_gu}`;
   return {
-    title: `${typeLabel} · ${listing.region_gu}`,
+    title: { absolute: `${typeLabel} · ${listing.region_gu}` },
     description: preview,
     openGraph: {
-      title: `${typeLabel} · ${listing.region_gu} | ${MAGAM_SHARE_PAGE_TITLE}`,
+      title: ogTitle,
       description: preview,
+      siteName: MAGAM_SHARE_PAGE_TITLE,
     },
   };
 }

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/magam_listing.dart';
-import '../constants/magam_copy.dart';
+import '../utils/magam_share_format.dart';
 
 enum KakaoShareOutcome {
   openedKakaoTalk,
@@ -15,19 +15,13 @@ class MagamKakaoShare {
   static String buildShareText({
     required MagamListing listing,
     required String url,
+    bool includePhone = false,
   }) {
-    final typeLabel =
-        listingTypeLabels[listing.listingType] ?? listing.listingType;
-    final lines = <String>[
-      '$typeLabel · ${listing.regionGu}',
-      listing.bodyText,
-      if (listing.scheduleText != null) '일정: ${listing.scheduleText}',
-      if (listing.priceText != null) '금액: ${listing.priceText}',
-      if (listing.specialNotes != null && listing.specialNotes!.trim().isNotEmpty)
-        '특이사항: ${listing.specialNotes!.trim()}',
-      url,
-    ];
-    return lines.join('\n');
+    return MagamShareFormat.buildShareMessage(
+      listing: listing,
+      url: url,
+      includePhone: includePhone,
+    );
   }
 
   /// 카카오톡 채팅방 선택 화면으로 공유 (kakaotalk://send)

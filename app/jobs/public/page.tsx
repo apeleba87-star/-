@@ -130,7 +130,7 @@ export default async function PublicJobsPage({
               href="/magam/live"
               className="text-sm font-medium text-slate-800 underline-offset-2 hover:underline"
             >
-              실시간 도급·구인·매매 모집 보기 →
+              실시간 도급·구인 모집 보기 →
             </Link>
           </p>
         </div>

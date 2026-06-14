@@ -4,7 +4,7 @@ import '../../constants/magam_copy.dart';
 import '../../theme/magam_theme.dart';
 
 /// 체크 없이는 [onChanged](false) — 글 등록 불가.
-/// [expanded]는 「연동 모집 노출 동의」 라벨 탭으로만 펼침.
+/// [expanded]는 「모집 안내 노출 동의」 라벨 탭으로만 펼침.
 class MagamSyncConsentTile extends StatefulWidget {
   const MagamSyncConsentTile({
     super.key,

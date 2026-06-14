@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 
 import '../models/magam_listing.dart';
+import '../utils/kr_phone_format.dart';
 
 
 
@@ -126,7 +127,7 @@ class MagamRepository {
 
           'body_text': bodyText.trim(),
 
-          'contact_phone': contactPhone.trim(),
+          'contact_phone': KrPhoneFormat.normalize(contactPhone),
 
           'work_kind': workKind,
 

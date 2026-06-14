@@ -106,6 +106,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _openSupabaseRedirectSettings() async {
+    final url = AppConfig.supabaseAuthUrlConfigLink;
+    if (url == null) return;
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
+      setState(() => _error = 'Supabase 설정 페이지를 열 수 없습니다.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final busy = _loading || _kakaoLoading;
@@ -134,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text('마감 앱', style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 8),
                   Text(
-                    '클린아이덱스 계정으로 로그인하세요',
+                    '카카오 또는 이메일로 로그인하세요',
                     style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),
@@ -146,6 +156,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         if (_error != null) ...[
                           MagamErrorBanner(message: _error!),
+                          const SizedBox(height: 16),
+                        ],
+                        if (kIsWeb) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: MagamColors.accentSoft,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '카카오 로그인 후 다른 주소로 넘어가면 Supabase Redirect URLs 에\n'
+                              '${AuthRedirect.oauthRedirect} 가 없어서입니다.\n'
+                              '아래 버튼으로 Supabase 설정에 추가하세요.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: busy ? null : _openSupabaseRedirectSettings,
+                            child: const Text('Supabase Redirect URLs 설정 열기'),
+                          ),
                           const SizedBox(height: 16),
                         ],
                         SizedBox(

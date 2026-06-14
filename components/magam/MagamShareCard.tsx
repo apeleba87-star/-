@@ -4,6 +4,12 @@ import {
   MAGAM_LISTING_TYPE_LABEL,
   MAGAM_STATUS_LABEL,
 } from "@/lib/magam/copy";
+import {
+  formatMagamPrice,
+  formatMagamSchedule,
+  formatMagamWorkSummary,
+} from "@/lib/magam/format-listing";
+import { formatKrMobilePhone, telHref } from "@/lib/format/kr-mobile-phone";
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -77,10 +83,10 @@ export default function MagamShareCard({ listing, highlight }: Props) {
           <p className="text-sm text-slate-700">
             연락처{" "}
             <a
-              href={`tel:${listing.contact_phone.replace(/[^\d+]/g, "")}`}
+              href={telHref(listing.contact_phone)}
               className="font-semibold text-slate-900 underline-offset-2 hover:underline"
             >
-              {listing.contact_phone}
+              {formatKrMobilePhone(listing.contact_phone)}
             </a>
           </p>
         ) : (
@@ -99,18 +105,34 @@ export default function MagamShareCard({ listing, highlight }: Props) {
 /** 목록용 축약 카드 */
 export function MagamListingListItem({ listing }: { listing: MagamListingPublic }) {
   const typeLabel = MAGAM_LISTING_TYPE_LABEL[listing.listing_type];
-  const preview = listing.body_text.replace(/\s+/g, " ").trim().slice(0, 72);
+  const schedule = formatMagamSchedule(listing);
+  const work = formatMagamWorkSummary(listing);
+  const price = formatMagamPrice(listing);
+  const preview = listing.body_text.replace(/\s+/g, " ").trim().slice(0, 96);
 
   return (
     <Link
       href={`/p/${listing.share_slug}`}
       className="block rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-slate-300 hover:bg-slate-50"
     >
-      <div className="flex items-center gap-2 text-xs text-slate-500">
-        <span className="font-semibold text-slate-700">{typeLabel}</span>
-        <span>{listing.region_gu}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-semibold text-white">
+              {typeLabel}
+            </span>
+            <span className="text-sm font-medium text-slate-800">{listing.region_gu}</span>
+          </div>
+          {schedule ? <p className="mt-1.5 text-xs font-medium text-teal-800">{schedule}</p> : null}
+          {work ? <p className="mt-1 text-xs text-slate-500">{work}</p> : null}
+          <p className="mt-1 line-clamp-2 text-sm text-slate-700">{preview}</p>
+        </div>
+        {price ? (
+          <span className="shrink-0 text-right text-sm font-semibold tabular-nums text-slate-900">
+            {price}
+          </span>
+        ) : null}
       </div>
-      <p className="mt-1 line-clamp-2 text-sm text-slate-800">{preview}</p>
     </Link>
   );
 }

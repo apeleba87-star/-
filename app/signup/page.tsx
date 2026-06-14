@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
+import { MAGAM_APP_NAME } from "@/lib/magam/brand";
+import { isMagamFromQuery } from "@/lib/magam/brand";
 import { checkEmailAvailable, checkNicknameAvailable } from "./actions";
 
 /** 휴대폰 입력: 숫자만 남기고 010-XXXX-XXXX 형식으로 포맷 */
@@ -15,6 +18,17 @@ function formatPhoneInput(value: string): string {
 }
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-md px-4 py-16 text-center text-slate-500">불러오는 중…</div>}>
+      <SignupPageInner />
+    </Suspense>
+  );
+}
+
+function SignupPageInner() {
+  const searchParams = useSearchParams();
+  const fromMagam = isMagamFromQuery(searchParams?.get("from"));
+  const loginHref = fromMagam ? "/login?from=magam" : "/login";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -115,7 +129,7 @@ export default function SignupPage() {
           <p className="mt-2 text-xs text-slate-500">
             회원가입 후 바로 로그인되지 않습니다. 반드시 이메일 확인을 완료해 주세요.
           </p>
-          <Link href="/login" className="mt-4 inline-block text-blue-600 hover:underline">
+          <Link href={loginHref} className="mt-4 inline-block text-blue-600 hover:underline">
             로그인 페이지로
           </Link>
         </div>
@@ -125,7 +139,12 @@ export default function SignupPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <h1 className="mb-8 text-2xl font-bold text-slate-900">회원가입</h1>
+      <h1 className="mb-2 text-2xl font-bold text-slate-900">
+        {fromMagam ? `${MAGAM_APP_NAME} 회원가입` : "회원가입"}
+      </h1>
+      {fromMagam ? (
+        <p className="mb-6 text-sm text-slate-600">모집 공고를 올리려면 계정이 필요합니다.</p>
+      ) : null}
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <label className="label">이메일</label>
@@ -240,8 +259,12 @@ export default function SignupPage() {
         </Button>
       </form>
       <p className="mt-4 text-center text-sm text-slate-600">
-        이미 계정이 있으신가요? <Link href="/login" className="text-blue-600 hover:underline">로그인</Link>
+        이미 계정이 있으신가요?{" "}
+        <Link href={loginHref} className="text-blue-600 hover:underline">
+          로그인
+        </Link>
       </p>
+      {fromMagam ? <p className="mt-6 text-center text-xs text-slate-400">{MAGAM_APP_NAME}</p> : null}
     </div>
   );
 }

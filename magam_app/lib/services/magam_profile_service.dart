@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../utils/kr_phone_format.dart';
+
 class MagamProfileService {
   MagamProfileService(this._client);
 
@@ -19,7 +21,7 @@ class MagamProfileService {
       if (row == null) return null;
       final phone = row['magam_contact_phone'] as String?;
       if (phone == null || phone.trim().isEmpty) return null;
-      return phone.trim();
+      return KrPhoneFormat.formatInput(phone.trim());
     } catch (_) {
       return null;
     }
@@ -30,7 +32,7 @@ class MagamProfileService {
     if (userId == null) return;
 
     await _client.from('profiles').update({
-      'magam_contact_phone': phone.trim(),
+      'magam_contact_phone': KrPhoneFormat.normalize(phone),
     }).eq('id', userId);
   }
 }

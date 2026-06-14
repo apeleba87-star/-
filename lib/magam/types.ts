@@ -19,6 +19,15 @@ export type MagamListingPublic = {
   created_at: string;
   updated_at: string;
   closed_at: string | null;
+  schedule_date?: string | null;
+  time_slot?: string | null;
+  city_id?: string | null;
+  district_slug?: string | null;
+  work_kind?: string | null;
+  pyeong?: number | null;
+  ac_types?: string[] | null;
+  price_amount?: number | null;
+  price_unit?: string | null;
 };
 
 export type MagamListingRow = MagamListingPublic & {

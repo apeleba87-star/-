@@ -14,6 +14,7 @@
    - **Redirect URLs**에 다음을 모두 추가:
      - `https://cleanidex.co.kr/auth/callback`
      - `https://www.cleanidex.co.kr/auth/callback`
+     - **마감 앱(로컬 웹)**: `http://localhost:54222/` (또는 `http://localhost:**`)
      - 로컬 개발용: `http://localhost:3000/auth/callback` (또는 `http://localhost:3001/...`)
 3. **Providers**에서 Google / Kakao 각각 활성화 및 키 입력
 

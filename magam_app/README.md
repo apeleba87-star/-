@@ -10,7 +10,8 @@
    - Providers → **Email** 활성화 (이메일+비밀번호 — 클린아이덱스 웹과 동일)  
    - Providers → **Kakao** (웹과 동일 설정)  
    - **URL Configuration** → Redirect URLs 추가:  
-     - 웹 테스트: `http://localhost:포트번호` (실행 시 주소)  
+     - 웹(고정 포트 권장): `http://localhost:54222/`  
+     - 또는 와일드카드: `http://localhost:**`  
      - Android: `io.supabase.magamapp://login-callback/`  
    - 카카오 개발자 콘솔 Redirect URI에도 Android 콜백 URL 등록 (웹 cleanidex URL과 별도)
 3. **`.env`** — 이 폴더에 `.env.example` 을 복사해 `SUPABASE_URL`, `SUPABASE_ANON_KEY` 입력  
@@ -29,12 +30,37 @@ Android Studio + SDK 없으면 `flutter doctor` 안내에 따라 설치하세요
 
 ## 실행
 
+### 웹 (Chrome) — **포트 고정 권장**
+
+매번 `flutter run` 하면 localhost 포트가 바뀝니다. 카카오 OAuth·Supabase Redirect URL 은 **주소가 고정**되어야 합니다.
+
+1. Supabase Redirect URLs 에 **`http://localhost:54222/`** 한 번만 등록  
+2. `.env` 에 `MAGAM_OAUTH_REDIRECT_URL=http://localhost:54222/`  
+3. 아래 중 하나로 실행:
+
+```powershell
+cd magam_app
+.\run_web.bat
+```
+
+(PowerShell에서 `.ps1` 정책 오류가 나면 `.bat` 사용. 또는 `powershell -ExecutionPolicy Bypass -File .\run_web.ps1`)
+
+또는:
+
+```powershell
+flutter run -d chrome --web-hostname=localhost --web-port=54222
+```
+
+→ 항상 **http://localhost:54222** 로 열립니다.
+
+### Android / 기타
+
 ```powershell
 cd magam_app
 copy .env.example .env
 # .env 편집 후
 flutter pub get
-flutter run
+flutter run -d android
 ```
 
 또는 dart-define:

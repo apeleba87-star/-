@@ -5,11 +5,21 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
+import { MAGAM_APP_NAME, isMagamFromQuery } from "@/lib/magam/brand";
 
 function isValidNext(path: string | null): path is string {
   if (!path || typeof path !== "string") return false;
   const p = path.trim();
   return p.startsWith("/") && !p.startsWith("//");
+}
+
+function loginErrorMessage(raw: string | null): string | null {
+  if (!raw) return null;
+  const decoded = decodeURIComponent(raw);
+  if (decoded === "auth") {
+    return "카카오 로그인 후 돌아오는 주소가 맞지 않습니다. 마감 앱(localhost:54222)에서 로그인했다면 Supabase Redirect URLs에 http://localhost:54222/ 를 추가해 주세요.";
+  }
+  return decoded;
 }
 
 type SocialProvider = "kakao";
@@ -24,13 +34,15 @@ const SOCIAL_PROVIDERS: { provider: SocialProvider; label: string; className?: s
 
 export default function LoginClient() {
   const searchParams = useSearchParams();
+  const fromMagam = isMagamFromQuery(searchParams?.get("from"));
+  const signupHref = fromMagam ? "/signup?from=magam" : "/signup";
   const nextUrl = searchParams?.get("next");
   const errorFromUrl = searchParams?.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<SocialProvider | null>(null);
-  const [error, setError] = useState<string | null>(errorFromUrl ? decodeURIComponent(errorFromUrl) : null);
+  const [error, setError] = useState<string | null>(loginErrorMessage(errorFromUrl));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,10 +82,10 @@ export default function LoginClient() {
       <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-xl">
         <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
           <h1 className="mb-2 text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-[1.75rem]">
-            로그인
+            {fromMagam ? `${MAGAM_APP_NAME} 로그인` : "로그인"}
           </h1>
           <p className="mb-8 text-center text-sm text-slate-500 sm:text-base">
-            클린아이덱스 계정으로 로그인하세요
+            {fromMagam ? "카카오 또는 이메일로 로그인하세요" : "클린아이덱스 계정으로 로그인하세요"}
           </p>
 
           {error && (
@@ -134,12 +146,13 @@ export default function LoginClient() {
           </form>
           <p className="mt-6 text-center text-sm text-slate-600 sm:text-base">
             계정이 없으신가요?{" "}
-            <Link href="/signup" className="font-medium text-blue-600 hover:underline">
+            <Link href={signupHref} className="font-medium text-blue-600 hover:underline">
               회원가입
             </Link>
           </p>
         </div>
       </div>
+      {fromMagam ? <p className="mt-6 text-center text-xs text-slate-400">{MAGAM_APP_NAME}</p> : null}
     </div>
   );
 }

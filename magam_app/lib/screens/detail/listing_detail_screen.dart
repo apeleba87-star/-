@@ -4,13 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/magam_copy.dart';
-import '../../constants/work_kind_copy.dart';
 import '../../models/magam_listing.dart';
 import '../../services/magam_kakao_share.dart';
 import '../../services/magam_repository.dart';
+import '../../services/magam_share_prefs.dart';
 import '../../theme/magam_theme.dart';
 import '../../widgets/kakao_share_button.dart';
-import '../../widgets/magam_section_card.dart';
+import '../../widgets/kakao_share_phone_option.dart';
+import '../../widgets/magam_listing_share_view.dart';
 
 
 
@@ -54,6 +55,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
   bool _copiedOnEntry = false;
   bool _kakaoSharing = false;
+  bool _includePhoneInKakaoShare = false;
   String? _error;
 
 
@@ -79,6 +81,28 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     _repo = MagamRepository(Supabase.instance.client);
 
     _load();
+
+    _loadSharePrefs();
+
+  }
+
+
+
+  Future<void> _loadSharePrefs() async {
+
+    final includePhone = await MagamSharePrefs.loadIncludePhoneInKakao();
+
+    if (mounted) setState(() => _includePhoneInKakaoShare = includePhone);
+
+  }
+
+
+
+  Future<void> _setIncludePhoneInKakao(bool value) async {
+
+    setState(() => _includePhoneInKakaoShare = value);
+
+    await MagamSharePrefs.saveIncludePhoneInKakao(value);
 
   }
 
@@ -285,7 +309,11 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     setState(() => _kakaoSharing = true);
     try {
       final url = _repo.buildShareUrl(listing);
-      final text = MagamKakaoShare.buildShareText(listing: listing, url: url);
+      final text = MagamKakaoShare.buildShareText(
+        listing: listing,
+        url: url,
+        includePhone: _includePhoneInKakaoShare,
+      );
       final outcome = await MagamKakaoShare.shareToKakaoTalk(text);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -301,34 +329,29 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
 
 
-  String? _workDetailLine(MagamListing listing) {
-
-    if (listing.workKind == null) return null;
-
-    final work = workKindLabels[listing.workKind] ?? listing.workKind!;
-
-    final parts = <String>[work];
-
-    if (listing.pyeong != null) parts.add('${listing.pyeong}평');
-
-    if (listing.acTypes.isNotEmpty) {
-
-      parts.add(
-
-        listing.acTypes.map((t) => acTypeLabels[t] ?? t).join(', '),
-
-      );
-
-    }
-
-    return parts.join(' · ');
-
+  Widget _kakaoShareBlock(MagamListing listing) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (listing.isOpen) ...[
+          KakaoSharePhoneOption(
+            value: _includePhoneInKakaoShare,
+            onChanged: _kakaoSharing ? null : _setIncludePhoneInKakao,
+            enabled: !_kakaoSharing,
+          ),
+          const SizedBox(height: 10),
+        ],
+        KakaoShareButton(
+          onPressed: _shareToKakao,
+          loading: _kakaoSharing,
+        ),
+      ],
+    );
   }
 
 
 
   @override
-
   Widget build(BuildContext context) {
 
     if (_loading) {
@@ -365,13 +388,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
     final statusLabel = statusLabels[listing.status] ?? listing.status;
 
-    final workLine = _workDetailLine(listing);
-
-
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('$typeLabel · ${listing.regionGu}'),
+        title: const Text('모집 안내'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _goHome,
@@ -422,10 +441,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  KakaoShareButton(
-                    onPressed: _shareToKakao,
-                    loading: _kakaoSharing,
-                  ),
+                  _kakaoShareBlock(listing),
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: _goHome,
@@ -436,74 +452,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             ),
             const SizedBox(height: 12),
           ],
-          MagamSectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    MagamStatusBadge(label: statusLabel, isOpen: listing.isOpen),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: MagamColors.ink,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        typeLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(listing.bodyText, style: Theme.of(context).textTheme.bodyLarge),
-                if (workLine != null) ...[
-                  const SizedBox(height: 8),
-                  Text(workLine, style: Theme.of(context).textTheme.bodySmall),
-                ],
-                if (listing.scheduleText != null) ...[
-                  const SizedBox(height: 14),
-                  _DetailRow(label: '일정', value: listing.scheduleText!),
-                ],
-                if (listing.priceText != null) ...[
-                  const SizedBox(height: 8),
-                  _DetailRow(label: '금액', value: listing.priceText!),
-                ],
-                if (listing.specialNotes != null &&
-                    listing.specialNotes!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Text('특이사항', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  Text(
-                    listing.specialNotes!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: MagamColors.canvas,
-                    borderRadius: BorderRadius.circular(MagamColors.radiusMd),
-                  ),
-                  child: Text(
-                    listing.isOpen
-                        ? '연락처  ${listing.contactPhone}'
-                        : '마감됨 — 연락처 숨김',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: listing.isOpen ? MagamColors.ink : MagamColors.inkMuted,
-                        ),
-                  ),
-                ),
-              ],
-            ),
+          MagamListingShareView(
+            listing: listing,
+            typeLabel: typeLabel,
+            statusLabel: statusLabel,
           ),
 
           if (!widget.highlightShare) ...[
@@ -514,10 +466,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               label: const Text('링크 복사'),
             ),
             const SizedBox(height: 10),
-            KakaoShareButton(
-              onPressed: _shareToKakao,
-              loading: _kakaoSharing,
-            ),
+            _kakaoShareBlock(listing),
           ],
           if (listing.isOpen) ...[
             const SizedBox(height: 16),
@@ -540,28 +489,3 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     );
   }
 }
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 44,
-          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ),
-        Expanded(
-          child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-      ],
-    );
-  }
-}
-
-

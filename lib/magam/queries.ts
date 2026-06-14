@@ -2,7 +2,9 @@ import { createClient } from "@/lib/supabase-server";
 import type { MagamListingPublic } from "@/lib/magam/types";
 
 const PUBLIC_SELECT =
-  "id, user_id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, created_at, updated_at, closed_at";
+  "id, user_id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit";
+
+const LIVE_LISTING_TYPES = ["subcontract", "hiring"] as const;
 
 export async function getMagamListingBySlug(slug: string): Promise<MagamListingPublic | null> {
   const supabase = createClient();
@@ -26,6 +28,7 @@ export async function getMagamOpenListings(options?: {
     .from("magam_listings_public")
     .select(PUBLIC_SELECT)
     .eq("status", "open")
+    .in("listing_type", LIVE_LISTING_TYPES)
     .order("created_at", { ascending: false })
     .limit(limit);
 

@@ -35,14 +35,33 @@ class AppConfig {
 
   static String shareUrl(String slug) => '$shareBaseUrl/p/$slug';
 
-  /// 카카오 OAuth redirectTo (선택). 미설정 시 현재 웹 origin 사용.
+  /// 로컬 웹 개발 고정 포트 (run_web.ps1 / --web-port 와 동일)
+  static const int webDevPort = 54222;
+
+  static String get webDevOrigin => 'http://localhost:$webDevPort/';
+
+  /// 카카오 OAuth redirectTo. 미설정 시 웹은 [webDevOrigin] 사용.
   static String? get oauthRedirectUrl {
     const fromDefine = String.fromEnvironment('MAGAM_OAUTH_REDIRECT_URL');
     if (fromDefine.isNotEmpty) return fromDefine;
     final fromEnv = _fromDotenv('MAGAM_OAUTH_REDIRECT_URL');
-    return fromEnv.isNotEmpty ? fromEnv : null;
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return null;
   }
 
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+
+  /// Supabase Dashboard → Auth → URL Configuration
+  static String? get supabaseAuthUrlConfigLink {
+    if (supabaseUrl.isEmpty) return null;
+    try {
+      final host = Uri.parse(supabaseUrl).host;
+      final ref = host.split('.').first;
+      if (ref.isEmpty) return null;
+      return 'https://supabase.com/dashboard/project/$ref/auth/url-configuration';
+    } catch (_) {
+      return null;
+    }
+  }
 }

@@ -15,6 +15,7 @@ import '../../services/magam_repository.dart';
 import '../../services/recent_regions_store.dart';
 
 import '../../utils/listing_summary.dart';
+import '../../utils/kr_phone_format.dart';
 
 import '../../widgets/compose/compose_section.dart';
 import '../../widgets/magam_section_card.dart';
@@ -220,7 +221,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
       _disclosed = granted;
       _consentLoading = false;
       _recentRegions = recent;
-      if (phone != null) _phoneController.text = phone;
+      if (phone != null) _phoneController.text = KrPhoneFormat.formatInput(phone);
     });
   }
 
@@ -302,7 +303,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
     }
 
-    if (_phoneController.text.trim().length < 9) {
+    if (KrPhoneFormat.digitsOnly(_phoneController.text).length < 10) {
 
       return '연락처를 입력해 주세요.';
 
@@ -310,7 +311,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
     if (!_disclosed) {
 
-      return '「연동 모집 노출 동의」에 체크해야 글을 올릴 수 있습니다.';
+      return '「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다.';
 
     }
 
@@ -356,7 +357,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
 
 
-      final phone = _phoneController.text.trim();
+      final phone = KrPhoneFormat.normalize(_phoneController.text.trim());
 
       await _profile.saveContactPhone(phone);
 
@@ -520,6 +521,15 @@ class _ComposeScreenState extends State<ComposeScreen> {
               controller: _phoneController,
               enabled: !_loading,
               keyboardType: TextInputType.phone,
+              onChanged: (v) {
+                final formatted = KrPhoneFormat.formatInput(v);
+                if (formatted != v) {
+                  _phoneController.value = TextEditingValue(
+                    text: formatted,
+                    selection: TextSelection.collapsed(offset: formatted.length),
+                  );
+                }
+              },
               decoration: const InputDecoration(
                 hintText: '010-0000-0000',
                 helperText: '다음 글쓰기 때 자동으로 채워집니다',
