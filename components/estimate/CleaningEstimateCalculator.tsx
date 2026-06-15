@@ -34,6 +34,9 @@ import {
 } from "@/lib/estimate-calc";
 import AffiliateAdSlot from "@/components/ads/AffiliateAdSlot";
 import { isAdSlotRenderable, type HomeAdSlotWithCampaign } from "@/lib/ads-shared";
+import { isKakaoInAppBrowser } from "@/lib/kakao/detect";
+import { ensureKakaoShareReady, getKakaoJavascriptKey } from "@/lib/kakao/sdk";
+import { shareContent } from "@/lib/kakao/share";
 
 const KAKAO_CHAT_URL = process.env.NEXT_PUBLIC_KAKAO_CHAT_URL || "#";
 const SHARE_TITLE = "내 단가 전략 점검 완료";
@@ -71,10 +74,7 @@ function isMobileContext(): boolean {
 }
 
 function fromKakao(): boolean {
-  if (typeof window === "undefined") return false;
-  const ua = navigator.userAgent.toLowerCase();
-  const ref = (document.referrer || "").toLowerCase();
-  return /kakao|daum|kakaotalk/.test(ua) || /kakao|daum|kakaotalk/.test(ref);
+  return isKakaoInAppBrowser();
 }
 
 type TabMode = "area" | "labor";
@@ -208,7 +208,8 @@ export default function CleaningEstimateCalculator({
 
   const isMobile = isMobileContext();
   const hasNativeShare = typeof navigator !== "undefined" && !!navigator.share;
-  const hasKakaoShare = fromKakao() && typeof window !== "undefined" && !!(window as unknown as { Kakao?: { Share?: { sendDefault?: unknown } } }).Kakao?.Share?.sendDefault;
+  const hasKakaoShare =
+    fromKakao() && !!getKakaoJavascriptKey();
   const canUseShare = isMobile && (hasNativeShare || hasKakaoShare);
   const canUseCopyFallback = isMobile && !hasNativeShare && !hasKakaoShare;
 
@@ -268,33 +269,30 @@ export default function CleaningEstimateCalculator({
     const url = typeof window !== "undefined" ? window.location.href : "";
     const shareTitle = SHARE_TITLE;
     const shareText = SHARE_TEXT;
-    const shareMessage = `[${SHARE_TITLE}] ${SHARE_TEXT}\n${url}`;
 
-    if (canUseShare && hasNativeShare) {
-      navigator
-        .share({ title: shareTitle, text: shareText, url })
-        .then(() => doUnlockAfterShare())
-        .catch(() => setShareCancelled(true));
-      return;
-    }
-    if (canUseShare && !hasNativeShare && fromKakao() && hasKakaoShare) {
-      const Kakao = (window as unknown as { Kakao?: { Share: { sendDefault: (opts: { objectType: string; text: string; link: { mobileWebUrl: string; webUrl: string } }) => void } } }).Kakao;
-      if (Kakao?.Share?.sendDefault) {
-        Kakao.Share.sendDefault({ objectType: "text", text: shareMessage, link: { mobileWebUrl: url, webUrl: url } });
-        setKakaoSharePending(true);
+    void (async () => {
+      if (fromKakao() && getKakaoJavascriptKey()) {
+        await ensureKakaoShareReady();
       }
-      return;
-    }
-    if (canUseCopyFallback) {
-      navigator.clipboard
-        ?.writeText(shareText + "\n" + url)
-        .then(() => {
-          setCopyToast(true);
-          setTimeout(() => setCopyToast(false), 2000);
+      const outcome = await shareContent({ title: shareTitle, text: shareText, url });
+      if (outcome === "opened") {
+        if (fromKakao() && !hasNativeShare) {
+          setKakaoSharePending(true);
+        } else {
           doUnlockAfterShare();
-        })
-        .catch(() => setShareCancelled(true));
-    }
+        }
+        return;
+      }
+      if (outcome === "copied" && canUseCopyFallback) {
+        setCopyToast(true);
+        setTimeout(() => setCopyToast(false), 2000);
+        doUnlockAfterShare();
+        return;
+      }
+      if (outcome !== "cancelled") {
+        setShareCancelled(true);
+      }
+    })();
   }
 
   function handleCopyAndUnlock() {
