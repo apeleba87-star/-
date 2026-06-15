@@ -4,7 +4,11 @@ import path from "node:path";
 
 import { injectMagamPwaRuntimeConfig } from "@/lib/magam/pwa-runtime-config";
 
-const PWA_ROOT = path.join(process.cwd(), "public", "magam", "app");
+/** 정적 에셋 (JS·wasm·아이콘) — public 에 두되 index.html 은 제외 */
+const PWA_ASSETS = path.join(process.cwd(), "public", "magam", "app");
+
+/** SPA shell — Next 라우트에서만 서빙 (Supabase 런타임 주입) */
+const PWA_INDEX = path.join(process.cwd(), "magam_app", "web", "index.html");
 
 const MIME_BY_EXT: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -18,45 +22,44 @@ const MIME_BY_EXT: Record<string, string> = {
   ".ttf": "font/ttf",
 };
 
-function resolvePwaFile(segments: string[] | undefined): string | null {
+function safeAssetPath(segments: string[] | undefined): string | null {
   const rel = (segments ?? []).join("/");
   const normalized = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, "");
-  const candidate = path.join(PWA_ROOT, normalized);
-  const rootWithSep = `${PWA_ROOT}${path.sep}`;
+  const candidate = path.join(PWA_ASSETS, normalized);
+  const rootWithSep = `${PWA_ASSETS}${path.sep}`;
 
-  if (candidate !== PWA_ROOT && !candidate.startsWith(rootWithSep)) {
+  if (candidate !== PWA_ASSETS && !candidate.startsWith(rootWithSep)) {
     return null;
   }
+  if (!rel) return null;
+  if (!existsSync(candidate) || candidate.endsWith(path.sep)) return null;
+  return candidate;
+}
 
-  if (!rel) {
-    return path.join(PWA_ROOT, "index.html");
-  }
-
-  if (existsSync(candidate) && !candidate.endsWith(path.sep)) {
-    return candidate;
-  }
-
-  return path.join(PWA_ROOT, "index.html");
+async function serveIndexHtml(): Promise<Response | null> {
+  if (!existsSync(PWA_INDEX)) return null;
+  const raw = await readFile(PWA_INDEX, "utf8");
+  const html = injectMagamPwaRuntimeConfig(raw);
+  return new Response(html, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-cache",
+    },
+  });
 }
 
 export async function serveMagamPwa(segments: string[] | undefined): Promise<Response | null> {
-  const filePath = resolvePwaFile(segments);
-  if (!filePath || !existsSync(filePath)) {
-    return null;
+  const assetPath = safeAssetPath(segments);
+  if (assetPath) {
+    const raw = await readFile(assetPath);
+    const ext = path.extname(assetPath).toLowerCase();
+    return new Response(raw, {
+      headers: {
+        "Content-Type": MIME_BY_EXT[ext] ?? "application/octet-stream",
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
   }
 
-  const raw = await readFile(filePath);
-  const ext = path.extname(filePath).toLowerCase();
-  const isHtml = ext === ".html";
-
-  const body = isHtml
-    ? Buffer.from(injectMagamPwaRuntimeConfig(raw.toString("utf8")), "utf8")
-    : raw;
-
-  return new Response(body, {
-    headers: {
-      "Content-Type": MIME_BY_EXT[ext] ?? "application/octet-stream",
-      "Cache-Control": isHtml ? "no-cache" : "public, max-age=31536000, immutable",
-    },
-  });
+  return serveIndexHtml();
 }

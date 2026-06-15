@@ -75,6 +75,12 @@ rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 cpSync(buildDir, outDir, { recursive: true });
 
+const indexInPublic = path.join(outDir, "index.html");
+if (existsSync(indexInPublic)) {
+  rmSync(indexInPublic);
+  console.log("✓ public/magam/app/index.html 제거 (Next 라우트에서 주입 서빙)");
+}
+
 console.log("\n✓ PWA 복사 완료 → public/magam/app");
 console.log("  로컬: npm run dev 후 http://localhost:3001/magam/app/");
 console.log("  배포: git push → Vercel");

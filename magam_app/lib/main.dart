@@ -1,8 +1,11 @@
 import 'package:app_links/app_links.dart';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
@@ -62,6 +65,33 @@ Future<void> _bindMobileAuthDeepLinks() async {
   });
 }
 
+Future<void> _ensureWebRuntimeConfig() async {
+  if (!kIsWeb) return;
+
+  AppConfig.useRuntimeConfig(readMagamRuntimeConfig());
+  if (AppConfig.isConfigured) return;
+
+  try {
+    final uri = Uri.base.resolve('/api/magam/pwa-config');
+    final res = await http.get(uri);
+    if (res.statusCode != 200) return;
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    final url = json['supabaseUrl']?.toString().trim() ?? '';
+    final key = json['supabaseAnonKey']?.toString().trim() ?? '';
+    final share = json['shareBaseUrl']?.toString().trim();
+    if (url.isEmpty || key.isEmpty) return;
+    AppConfig.useRuntimeConfig(
+      MagamRuntimeValues(
+        supabaseUrl: url,
+        supabaseAnonKey: key,
+        shareBaseUrl: share != null && share.isNotEmpty ? share : null,
+      ),
+    );
+  } catch (_) {
+    // 오프라인·로컬 dev
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -71,9 +101,7 @@ Future<void> main() async {
     // .env 없으면 --dart-define 또는 웹 런타임 설정 사용
   }
 
-  if (kIsWeb) {
-    AppConfig.useRuntimeConfig(readMagamRuntimeConfig());
-  }
+  await _ensureWebRuntimeConfig();
 
   if (!AppConfig.isConfigured) {
     runApp(const _ConfigErrorApp());
