@@ -81,6 +81,14 @@ if (existsSync(indexInPublic)) {
   console.log("✓ public/magam/app/index.html 제거 (Next 라우트에서 주입 서빙)");
 }
 
+const manifestPath = path.join(outDir, "manifest.json");
+if (existsSync(manifestPath)) {
+  const manifest = readFileSync(manifestPath, "utf8")
+    .replace('"start_url": "."', '"start_url": "/magam/app/"')
+    .replace('"scope": "."', '"scope": "/magam/app/"');
+  writeFileSync(manifestPath, manifest, "utf8");
+}
+
 console.log("\n✓ PWA 복사 완료 → public/magam/app");
 console.log("  로컬: npm run dev 후 http://localhost:3001/magam/app/");
 console.log("  배포: git push → Vercel");

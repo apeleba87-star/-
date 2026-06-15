@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { injectMagamPwaRuntimeConfig } from "@/lib/magam/pwa-runtime-config";
+import { preparePwaIndexHtml } from "@/lib/magam/pwa-runtime-config";
 
 /** 정적 에셋 (JS·wasm·아이콘) — public 에 두되 index.html 은 제외 */
 const PWA_ASSETS = path.join(process.cwd(), "public", "magam", "app");
@@ -39,7 +39,7 @@ function safeAssetPath(segments: string[] | undefined): string | null {
 async function serveIndexHtml(): Promise<Response | null> {
   if (!existsSync(PWA_INDEX)) return null;
   const raw = await readFile(PWA_INDEX, "utf8");
-  const html = injectMagamPwaRuntimeConfig(raw);
+  const html = preparePwaIndexHtml(raw);
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",

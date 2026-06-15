@@ -1,8 +1,8 @@
 {
     "name": "마감링크",
     "short_name": "마감링크",
-    "start_url": ".",
-    "scope": ".",
+    "start_url": "/magam/app/",
+    "scope": "/magam/app/",
     "display": "standalone",
     "background_color": "#1A234E",
     "theme_color": "#1A234E",

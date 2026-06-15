@@ -47,3 +47,8 @@ export function injectMagamPwaRuntimeConfig(html: string): string {
   }
   return `${script}\n${html}`;
 }
+
+export function preparePwaIndexHtml(html: string): string {
+  const withBase = html.replace(/\$FLUTTER_BASE_HREF/g, "/magam/app/");
+  return injectMagamPwaRuntimeConfig(withBase);
+}
