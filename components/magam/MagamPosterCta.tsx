@@ -13,20 +13,14 @@ export default function MagamPosterCta() {
       <p className="text-sm font-semibold text-slate-900">{MAGAM_APP_NAME}</p>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">{MAGAM_APP_TAGLINE}</p>
       <p className="mt-2 text-sm text-slate-600">
-        이런 공고, 링크 하나로 올리고 마감하면 연락처가 숨겨집니다.
+        링크 하나로 올리고 마감하면 연락처가 숨겨집니다.
       </p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4">
         <Link
           href="/magam/app/"
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
         >
           나도 공고 올리기
-        </Link>
-        <Link
-          href="/magam/live"
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
-        >
-          모집 중 공고 보기
         </Link>
       </div>
       <p className="mt-3 text-xs text-slate-400">
