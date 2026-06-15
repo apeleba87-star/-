@@ -3,6 +3,7 @@ import AdminSectionTabs from "./AdminSectionTabs";
 const TABS = [
   { href: "/admin/ads", label: "광고 슬롯" },
   { href: "/admin/radar-ads", label: "입주레이더 광고" },
+  { href: "/admin/magam-stats", label: "마감앱 통계" },
   { href: "/admin/subscriptions", label: "구독 관리" },
   { href: "/admin/subscription-config", label: "구독 금액" },
   { href: "/admin/share-unlocks", label: "공유 열람권" },

@@ -146,7 +146,9 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
     super.initState();
     _activeIndex = 0;
     _scheduleRotation();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _trackImpression());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_trackImpression());
+    });
   }
 
   @override
@@ -156,7 +158,7 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
       _activeIndex = 0;
       _timer?.cancel();
       _scheduleRotation();
-      _trackImpression();
+      unawaited(_trackImpression());
     }
   }
 
@@ -170,24 +172,24 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
     final count = widget.banner.slots.length;
     if (count <= 1) return;
     final seconds = widget.banner.rotationSeconds.clamp(5, 60);
-    _timer = Timer.periodic(Duration(seconds: seconds), (_) {
+    _timer = Timer.periodic(Duration(seconds: seconds), (_) async {
       if (!mounted) return;
       setState(() => _activeIndex = (_activeIndex + 1) % count);
-      _trackImpression();
+      await _trackImpression();
     });
   }
 
-  void _trackImpression() {
+  Future<void> _trackImpression() async {
     final slot = widget.banner.slots[_activeIndex];
     if (_impressed.contains(slot.id)) return;
-    _impressed.add(slot.id);
-    unawaited(
-      widget.service.trackEvent(
-        eventType: 'impression',
-        slotId: slot.id,
-        pagePath: widget.pagePath,
-      ),
+    final ok = await widget.service.trackEvent(
+      eventType: 'impression',
+      slotId: slot.id,
+      pagePath: widget.pagePath,
     );
+    if (ok && mounted) {
+      _impressed.add(slot.id);
+    }
   }
 
   Future<void> _onTap(RadarAdSlot slot) async {
@@ -294,7 +296,7 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
                   return GestureDetector(
                     onTap: () {
                       setState(() => _activeIndex = i);
-                      _trackImpression();
+                      unawaited(_trackImpression());
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),

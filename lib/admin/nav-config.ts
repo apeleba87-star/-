@@ -44,6 +44,7 @@ export const ADMIN_HUBS: AdminHub[] = [
     items: [
       { href: "/admin/ads", label: "광고 슬롯", description: "홈·입찰·낙찰 광고 슬롯" },
       { href: "/admin/radar-ads", label: "입주레이더 광고", description: "광고 대시보드·배너 A·B 관리" },
+      { href: "/admin/magam-stats", label: "마감앱 통계", description: "마감앱 사용자·광고 성과(기간별)" },
       { href: "/admin/subscriptions", label: "구독 관리", description: "프리미엄 구독자 목록" },
       { href: "/admin/subscription-config", label: "구독 금액", description: "요금·프로모 설정" },
       { href: "/admin/share-unlocks", label: "공유 열람권 로그", description: "공유 링크 열람 기록" },

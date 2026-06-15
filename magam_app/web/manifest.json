@@ -1,11 +1,11 @@
 {
-    "name": "magam_app",
-    "short_name": "magam_app",
+    "name": "마감링크",
+    "short_name": "마감링크",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0F172A",
+    "theme_color": "#0F172A",
+    "description": "구인·도급 공고 링크 공유 · 마감하면 연락처 비공개",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

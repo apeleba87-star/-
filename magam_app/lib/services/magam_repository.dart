@@ -17,19 +17,21 @@ class MagamRepository {
 
   final SupabaseClient _client;
 
-
-
-  static const _select =
-
+  static const listingSelect =
       'id, user_id, listing_type, region_gu, body_text, contact_phone, '
-
       'price_text, schedule_text, schedule_date, time_slot, city_id, '
-
       'district_slug, work_kind, pyeong, ac_types, price_amount, price_unit, '
-
       'special_notes, status, share_slug, linked_service_disclosed, created_at, closed_at';
 
-
+  Future<MagamListing?> fetchListingById(String id) async {
+    final row = await _client
+        .from('magam_listings')
+        .select(listingSelect)
+        .eq('id', id)
+        .maybeSingle();
+    if (row == null) return null;
+    return MagamListing.fromJson(Map<String, dynamic>.from(row));
+  }
 
   Future<List<MagamListing>> fetchMyListings() async {
 
@@ -43,7 +45,7 @@ class MagamRepository {
 
         .from('magam_listings')
 
-        .select(_select)
+        .select(listingSelect)
 
         .eq('user_id', userId)
 
@@ -153,7 +155,7 @@ class MagamRepository {
 
         })
 
-        .select(_select)
+        .select(listingSelect)
 
         .single();
 
@@ -175,7 +177,7 @@ class MagamRepository {
 
         .eq('id', id)
 
-        .select(_select)
+        .select(listingSelect)
 
         .single();
 

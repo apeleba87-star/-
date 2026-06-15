@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../constants/magam_copy.dart';
 import '../../config/app_config.dart';
 import '../../config/auth_redirect.dart';
 import '../../theme/magam_theme.dart';
@@ -141,10 +142,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Icon(Icons.check_circle_outline, color: Colors.white, size: 28),
                   ),
                   const SizedBox(height: 20),
-                  Text('마감 앱', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(magamAppName, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 8),
                   Text(
-                    '카카오 또는 이메일로 로그인하세요',
+                    magamAppTagline,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: MagamColors.accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    magamLoginPrompt,
                     style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),

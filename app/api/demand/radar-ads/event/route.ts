@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isRadarSlotLive } from "@/lib/demand/radar-ads-slot";
 import { getKstTodayString } from "@/lib/jobs/kst-date";
+import { magamCorsHeaders, withMagamCors } from "@/lib/api/magam-cors";
 import { createServiceSupabase } from "@/lib/supabase-server";
 
 const ALLOWED_TYPES = ["impression", "click", "phone_click"] as const;
@@ -36,24 +37,43 @@ function rateLimit(ip: string, limit = 180, windowMs = 60_000): boolean {
   return entry.count <= limit;
 }
 
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return new NextResponse(null, {
+    status: 204,
+    headers: magamCorsHeaders(origin),
+  });
+}
+
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+
   try {
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       "unknown";
     if (!rateLimit(ip)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      return withMagamCors(
+        NextResponse.json({ error: "Too many requests" }, { status: 429 }),
+        origin
+      );
     }
 
     const body = (await request.json()) as Body;
     const { event_type, slot_id, session_id, anon_visitor_id, page_path, referrer, meta } = body;
 
     if (!event_type || !ALLOWED_TYPES.includes(event_type as (typeof ALLOWED_TYPES)[number])) {
-      return NextResponse.json({ error: "Invalid event_type" }, { status: 400 });
+      return withMagamCors(
+        NextResponse.json({ error: "Invalid event_type" }, { status: 400 }),
+        origin
+      );
     }
     if (!slot_id || !/^[0-9a-f-]{36}$/i.test(slot_id)) {
-      return NextResponse.json({ error: "Invalid slot_id" }, { status: 400 });
+      return withMagamCors(
+        NextResponse.json({ error: "Invalid slot_id" }, { status: 400 }),
+        origin
+      );
     }
 
     const supabase = createServiceSupabase();
@@ -64,13 +84,19 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (slotErr || !slot) {
-      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+      return withMagamCors(
+        NextResponse.json({ error: "Slot not found" }, { status: 404 }),
+        origin
+      );
     }
 
     const slotRow = slot as SlotRow;
     const today = getKstTodayString();
     if (!isRadarSlotLive(slotRow, today)) {
-      return NextResponse.json({ error: "Slot not live" }, { status: 403 });
+      return withMagamCors(
+        NextResponse.json({ error: "Slot not live" }, { status: 403 }),
+        origin
+      );
     }
 
     const { data: banner, error: bannerErr } = await supabase
@@ -80,7 +106,10 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (bannerErr || !banner?.enabled) {
-      return NextResponse.json({ error: "Banner not enabled" }, { status: 403 });
+      return withMagamCors(
+        NextResponse.json({ error: "Banner not enabled" }, { status: 403 }),
+        origin
+      );
     }
 
     const baseMeta =
@@ -105,12 +134,15 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from("radar_ad_events").insert(row);
     if (error) {
       console.error("[radar-ads/event] insert error:", error);
-      return NextResponse.json({ error: "Failed to record event" }, { status: 500 });
+      return withMagamCors(
+        NextResponse.json({ error: "Failed to record event" }, { status: 500 }),
+        origin
+      );
     }
 
-    return NextResponse.json({ ok: true });
+    return withMagamCors(NextResponse.json({ ok: true }), origin);
   } catch (e) {
     console.error("[radar-ads/event]", e);
-    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+    return withMagamCors(NextResponse.json({ error: "Bad request" }, { status: 400 }), origin);
   }
 }

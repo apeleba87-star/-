@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
-import { MAGAM_APP_NAME, isMagamFromQuery } from "@/lib/magam/brand";
+import { MAGAM_APP_NAME, MAGAM_APP_TAGLINE, isMagamFromQuery } from "@/lib/magam/brand";
 
 function isValidNext(path: string | null): path is string {
   if (!path || typeof path !== "string") return false;
@@ -17,7 +17,7 @@ function loginErrorMessage(raw: string | null): string | null {
   if (!raw) return null;
   const decoded = decodeURIComponent(raw);
   if (decoded === "auth") {
-    return "카카오 로그인 후 돌아오는 주소가 맞지 않습니다. 마감 앱(localhost:54222)에서 로그인했다면 Supabase Redirect URLs에 http://localhost:54222/ 를 추가해 주세요.";
+    return "카카오 로그인 후 돌아오는 주소가 맞지 않습니다. 마감링크(localhost:54222)에서 로그인했다면 Supabase Redirect URLs에 http://localhost:54222/ 를 추가해 주세요.";
   }
   return decoded;
 }
@@ -84,6 +84,11 @@ export default function LoginClient() {
           <h1 className="mb-2 text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-[1.75rem]">
             {fromMagam ? `${MAGAM_APP_NAME} 로그인` : "로그인"}
           </h1>
+          {fromMagam ? (
+            <p className="mb-2 text-center text-sm font-medium text-teal-800 sm:text-base">
+              {MAGAM_APP_TAGLINE}
+            </p>
+          ) : null}
           <p className="mb-8 text-center text-sm text-slate-500 sm:text-base">
             {fromMagam ? "카카오 또는 이메일로 로그인하세요" : "클린아이덱스 계정으로 로그인하세요"}
           </p>

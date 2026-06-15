@@ -63,20 +63,6 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   bool _includePhoneInKakaoShare = false;
   String? _error;
 
-
-
-  static const _select =
-
-      'id, user_id, listing_type, region_gu, body_text, contact_phone, '
-
-      'price_text, schedule_text, schedule_date, time_slot, work_kind, '
-
-      'pyeong, ac_types, price_amount, price_unit, special_notes, status, share_slug, '
-
-      'linked_service_disclosed, created_at, closed_at';
-
-
-
   @override
 
   void initState() {
@@ -125,21 +111,11 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
     try {
 
-      final row = await Supabase.instance.client
-
-          .from('magam_listings')
-
-          .select(_select)
-
-          .eq('id', widget.listingId)
-
-          .maybeSingle();
-
-
+      final listing = await _repo.fetchListingById(widget.listingId);
 
       if (!mounted) return;
 
-      if (row == null) {
+      if (listing == null) {
 
         setState(() {
 
@@ -152,8 +128,6 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
         return;
 
       }
-
-      final listing = MagamListing.fromJson(Map<String, dynamic>.from(row));
 
       setState(() {
 
@@ -213,7 +187,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('마감하면 모든 화면에서 연락처가 숨겨집니다.'),
+            const Text(magamCloseConfirmBody),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -466,12 +440,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
     final statusLabel = statusLabels[listing.status] ?? listing.status;
 
-    final regionalKeys = listing.cityId != null &&
-            listing.districtSlug != null &&
-            listing.cityId!.isNotEmpty &&
-            listing.districtSlug!.isNotEmpty
-        ? magamRegionalAdCandidateKeys(listing.cityId!, listing.districtSlug!)
-        : <String>[];
+    final regionalKeys = magamRegionalAdKeysForListing(listing);
 
     return Scaffold(
       appBar: AppBar(

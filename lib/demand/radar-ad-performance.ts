@@ -1,7 +1,10 @@
 import { labelFromDemandRegionKey } from "@/lib/demand/regions";
+import type { StatsDateRange } from "@/lib/demand/stats-date-range";
+import { kstInclusiveUtcRange } from "@/lib/demand/stats-date-range";
 import type { RadarAdAdminBanner, RadarAdAdminSlot, RadarAdsAdminBundle } from "@/lib/demand/radar-ads-admin-load";
 import { isRadarSlotLive } from "@/lib/demand/radar-ads-slot";
-import { addDaysToDateString, getKstTodayString } from "@/lib/jobs/kst-date";
+import { getKstTodayString } from "@/lib/jobs/kst-date";
+import { isMagamRadarAdEvent } from "@/lib/magam/radar-ad-channel";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type RadarAdSlotPerformanceRow = {
@@ -13,12 +16,14 @@ export type RadarAdSlotPerformanceRow = {
   title: string;
   advertiserName: string | null;
   isLive: boolean;
-  impressionsRaw7d: number;
-  impressionsRaw30d: number;
-  impressionsDeduped30d: number;
-  impressionsUnique30d: number;
-  clicksRaw30d: number;
-  ctr30d: number | null;
+  impressionsRaw: number;
+  impressionsMagam: number;
+  impressionsWeb: number;
+  impressionsUnique: number;
+  clicksRaw: number;
+  clicksMagam: number;
+  clicksWeb: number;
+  ctr: number | null;
 };
 
 type EventRow = {
@@ -26,6 +31,8 @@ type EventRow = {
   event_type: string;
   session_id: string | null;
   anon_visitor_id: string | null;
+  page_path: string | null;
+  meta: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -41,35 +48,54 @@ function ctr(impressions: number, clicks: number): number | null {
 
 function aggregateEvents(
   events: EventRow[],
-  slotId: string,
-  sinceIso: string
+  slotId: string
 ): {
   impressionsRaw: number;
-  impressionsDeduped: number;
+  impressionsMagam: number;
+  impressionsWeb: number;
   impressionsUnique: number;
   clicksRaw: number;
+  clicksMagam: number;
+  clicksWeb: number;
 } {
-  const filtered = events.filter((e) => e.slot_id === slotId && e.created_at >= sinceIso);
+  const filtered = events.filter((e) => e.slot_id === slotId);
   const impressions = filtered.filter((e) => e.event_type === "impression");
-  const clicks = filtered.filter((e) => e.event_type === "click" || e.event_type === "phone_click");
-  const sessions = new Set(impressions.map((e) => e.session_id).filter(Boolean));
+  const clicks = filtered.filter(
+    (e) => e.event_type === "click" || e.event_type === "phone_click"
+  );
   const visitors = new Set(impressions.map((e) => e.anon_visitor_id).filter(Boolean));
+
+  let impressionsMagam = 0;
+  let impressionsWeb = 0;
+  let clicksMagam = 0;
+  let clicksWeb = 0;
+
+  for (const e of impressions) {
+    if (isMagamRadarAdEvent(e)) impressionsMagam += 1;
+    else impressionsWeb += 1;
+  }
+  for (const e of clicks) {
+    if (isMagamRadarAdEvent(e)) clicksMagam += 1;
+    else clicksWeb += 1;
+  }
 
   return {
     impressionsRaw: impressions.length,
-    impressionsDeduped: sessions.size,
+    impressionsMagam,
+    impressionsWeb,
     impressionsUnique: visitors.size,
     clicksRaw: clicks.length,
+    clicksMagam,
+    clicksWeb,
   };
 }
 
 export async function loadRadarAdPerformanceRows(
   supabase: SupabaseClient,
-  bundle: RadarAdsAdminBundle
+  bundle: RadarAdsAdminBundle,
+  range: StatsDateRange
 ): Promise<RadarAdSlotPerformanceRow[]> {
-  const today = bundle.today;
-  const since30 = `${addDaysToDateString(today, -29)}T00:00:00+09:00`;
-  const since7 = `${addDaysToDateString(today, -6)}T00:00:00+09:00`;
+  const [startUtc, endExclusiveUtc] = kstInclusiveUtcRange(range.from, range.to);
 
   const slotMeta: {
     slot: RadarAdAdminSlot;
@@ -92,9 +118,12 @@ export async function loadRadarAdPerformanceRows(
 
   const { data: events, error: eventsErr } = await supabase
     .from("radar_ad_events")
-    .select("slot_id, event_type, session_id, anon_visitor_id, created_at")
+    .select(
+      "slot_id, event_type, session_id, anon_visitor_id, page_path, meta, created_at"
+    )
     .in("slot_id", slotIds)
-    .gte("created_at", since30)
+    .gte("created_at", startUtc)
+    .lt("created_at", endExclusiveUtc)
     .order("created_at", { ascending: false });
 
   if (eventsErr) {
@@ -105,8 +134,7 @@ export async function loadRadarAdPerformanceRows(
 
   return slotMeta
     .map(({ slot, banner }) => {
-      const a30 = aggregateEvents(eventList, slot.id, since30);
-      const a7 = aggregateEvents(eventList, slot.id, since7);
+      const agg = aggregateEvents(eventList, slot.id);
       const scope = banner.scope as "national" | "regional";
 
       return {
@@ -118,16 +146,18 @@ export async function loadRadarAdPerformanceRows(
         title: slot.title,
         advertiserName: slot.advertiser_name,
         isLive: isRadarSlotLive(slot, getKstTodayString()),
-        impressionsRaw7d: a7.impressionsRaw,
-        impressionsRaw30d: a30.impressionsRaw,
-        impressionsDeduped30d: a30.impressionsDeduped,
-        impressionsUnique30d: a30.impressionsUnique,
-        clicksRaw30d: a30.clicksRaw,
-        ctr30d: ctr(a30.impressionsRaw, a30.clicksRaw),
+        impressionsRaw: agg.impressionsRaw,
+        impressionsMagam: agg.impressionsMagam,
+        impressionsWeb: agg.impressionsWeb,
+        impressionsUnique: agg.impressionsUnique,
+        clicksRaw: agg.clicksRaw,
+        clicksMagam: agg.clicksMagam,
+        clicksWeb: agg.clicksWeb,
+        ctr: ctr(agg.impressionsRaw, agg.clicksRaw),
       };
     })
     .sort((a, b) => {
       if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
-      return b.impressionsRaw30d - a.impressionsRaw30d;
+      return b.impressionsRaw - a.impressionsRaw;
     });
 }

@@ -1,5 +1,5 @@
 name: magam_app
-description: 마감 앱 — 도급·구인·매매 공고 작성 및 마감
+description: 마감링크 — 구인·도급 공고 링크 공유 · 마감하면 연락처 비공개
 publish_to: "none"
 version: 0.1.0+1
 

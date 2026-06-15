@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { RadarAdSlotPerformanceRow } from "@/lib/demand/radar-ad-performance";
+import type { StatsDateRange } from "@/lib/demand/stats-date-range";
 
 function manageHref(row: RadarAdSlotPerformanceRow) {
   const params = new URLSearchParams({
@@ -19,15 +20,23 @@ function fmtCtr(ctr: number | null): string {
   return `${ctr.toFixed(2)}%`;
 }
 
-export default function RadarAdsPerformanceTable({ rows }: { rows: RadarAdSlotPerformanceRow[] }) {
+export default function RadarAdsPerformanceTable({
+  rows,
+  range,
+}: {
+  rows: RadarAdSlotPerformanceRow[];
+  range: StatsDateRange;
+}) {
   const liveRows = rows.filter((r) => r.isLive);
   const totals = rows.reduce(
     (acc, r) => ({
-      imp7: acc.imp7 + r.impressionsRaw7d,
-      imp30: acc.imp30 + r.impressionsRaw30d,
-      clicks30: acc.clicks30 + r.clicksRaw30d,
+      imp: acc.imp + r.impressionsRaw,
+      impMagam: acc.impMagam + r.impressionsMagam,
+      impWeb: acc.impWeb + r.impressionsWeb,
+      clicks: acc.clicks + r.clicksRaw,
+      clicksMagam: acc.clicksMagam + r.clicksMagam,
     }),
-    { imp7: 0, imp30: 0, clicks30: 0 }
+    { imp: 0, impMagam: 0, impWeb: 0, clicks: 0, clicksMagam: 0 }
   );
 
   return (
@@ -36,8 +45,8 @@ export default function RadarAdsPerformanceTable({ rows }: { rows: RadarAdSlotPe
         <div>
           <h2 className="text-lg font-bold text-slate-900">광고 성과</h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            노출: 배너 50% 이상·0.4초 이상 표시 시 집계 · 동일 세션·슬롯 30분 쿨다운 · 클릭은
-            배너 클릭 1회 = 1회
+            {range.from} ~ {range.to} (KST) · 노출: 배너 표시 시 집계 · 마감앱은 meta.surface=
+            magam_app 구분
           </p>
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-slate-600">
@@ -45,10 +54,16 @@ export default function RadarAdsPerformanceTable({ rows }: { rows: RadarAdSlotPe
             게재 중 <strong className="text-slate-900">{liveRows.length}</strong>슬롯
           </span>
           <span>
-            30일 노출 <strong className="text-slate-900">{fmt(totals.imp30)}</strong>
+            노출 <strong className="text-slate-900">{fmt(totals.imp)}</strong>
           </span>
           <span>
-            30일 클릭 <strong className="text-slate-900">{fmt(totals.clicks30)}</strong>
+            마감앱 <strong className="text-violet-800">{fmt(totals.impMagam)}</strong>
+          </span>
+          <span>
+            웹 <strong className="text-slate-900">{fmt(totals.impWeb)}</strong>
+          </span>
+          <span>
+            클릭 <strong className="text-slate-900">{fmt(totals.clicks)}</strong>
           </span>
         </div>
       </div>
@@ -64,11 +79,13 @@ export default function RadarAdsPerformanceTable({ rows }: { rows: RadarAdSlotPe
               <tr>
                 <th className="px-4 py-3 font-medium">광고</th>
                 <th className="px-4 py-3 font-medium">구분</th>
-                <th className="px-4 py-3 font-medium text-right">노출 7일</th>
-                <th className="px-4 py-3 font-medium text-right">노출 30일</th>
-                <th className="px-4 py-3 font-medium text-right">순방문 30일</th>
-                <th className="px-4 py-3 font-medium text-right">클릭 30일</th>
-                <th className="px-4 py-3 font-medium text-right">CTR 30일</th>
+                <th className="px-4 py-3 font-medium text-right">노출</th>
+                <th className="px-4 py-3 font-medium text-right">마감앱</th>
+                <th className="px-4 py-3 font-medium text-right">웹</th>
+                <th className="px-4 py-3 font-medium text-right">순방문</th>
+                <th className="px-4 py-3 font-medium text-right">클릭</th>
+                <th className="px-4 py-3 font-medium text-right">마감 클릭</th>
+                <th className="px-4 py-3 font-medium text-right">CTR</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
@@ -90,15 +107,23 @@ export default function RadarAdsPerformanceTable({ rows }: { rows: RadarAdSlotPe
                     </p>
                   </td>
                   <td className="px-4 py-3 text-xs">{row.regionLabel}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{fmt(row.impressionsRaw7d)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium text-slate-900">
-                    {fmt(row.impressionsRaw30d)}
+                    {fmt(row.impressionsRaw)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-violet-800">
+                    {fmt(row.impressionsMagam)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-600">
-                    {fmt(row.impressionsUnique30d)}
+                    {fmt(row.impressionsWeb)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">{fmt(row.clicksRaw30d)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{fmtCtr(row.ctr30d)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                    {fmt(row.impressionsUnique)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmt(row.clicksRaw)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-violet-800">
+                    {fmt(row.clicksMagam)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtCtr(row.ctr)}</td>
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={manageHref(row)}
@@ -115,8 +140,10 @@ export default function RadarAdsPerformanceTable({ rows }: { rows: RadarAdSlotPe
       )}
 
       <p className="text-[11px] text-slate-400">
-        노출 30일 = raw(표시 횟수) · 순방문 30일 = 방문자(anon) 기준 unique · CTR = 클릭 ÷ 노출
-        30일
+        순방문 = 기간 내 anon_visitor_id unique · CTR = 클릭 ÷ 노출 · 상세 화면별 분석은{" "}
+        <Link href="/admin/magam-stats" className="text-teal-700 hover:underline">
+          마감앱 통계
+        </Link>
       </p>
     </section>
   );

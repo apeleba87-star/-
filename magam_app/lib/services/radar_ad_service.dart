@@ -49,7 +49,7 @@ class RadarAdService {
     }
   }
 
-  Future<void> trackEvent({
+  Future<bool> trackEvent({
     required String eventType,
     required String slotId,
     required String pagePath,
@@ -59,15 +59,16 @@ class RadarAdService {
       final key = 'radar_ad_imp_$slotId';
       final last = prefs.getInt(key);
       final now = DateTime.now().millisecondsSinceEpoch;
-      if (last != null && now - last < _impressionCooldownMs) return;
-      await prefs.setInt(key, now);
+      if (last != null && now - last < _impressionCooldownMs) {
+        return false;
+      }
     }
 
     final sessionId = await _sessionId();
     final visitorId = await _visitorId();
 
     try {
-      await _client
+      final res = await _client
           .post(
             Uri.parse('$_apiBase/api/demand/radar-ads/event'),
             headers: {'Content-Type': 'application/json'},
@@ -81,7 +82,20 @@ class RadarAdService {
             }),
           )
           .timeout(const Duration(seconds: 8));
-    } catch (_) {}
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return false;
+      }
+
+      if (eventType == 'impression') {
+        final prefs = await SharedPreferences.getInstance();
+        final key = 'radar_ad_imp_$slotId';
+        await prefs.setInt(key, DateTime.now().millisecondsSinceEpoch);
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<String> _sessionId() async {

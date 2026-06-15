@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
-import { MAGAM_APP_NAME } from "@/lib/magam/brand";
+import { MAGAM_APP_NAME, MAGAM_APP_TAGLINE } from "@/lib/magam/brand";
 import { isMagamFromQuery } from "@/lib/magam/brand";
 import { checkEmailAvailable, checkNicknameAvailable } from "./actions";
 
@@ -143,7 +143,10 @@ function SignupPageInner() {
         {fromMagam ? `${MAGAM_APP_NAME} 회원가입` : "회원가입"}
       </h1>
       {fromMagam ? (
-        <p className="mb-6 text-sm text-slate-600">모집 공고를 올리려면 계정이 필요합니다.</p>
+        <p className="mb-6 text-sm text-slate-600">
+          {MAGAM_APP_TAGLINE}
+          <span className="mt-1 block text-slate-500">모집 공고를 올리려면 계정이 필요합니다.</span>
+        </p>
       ) : null}
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>

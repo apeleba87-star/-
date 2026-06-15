@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
+import 'constants/magam_copy.dart';
 import 'router/app_router.dart';
 import 'theme/magam_theme.dart';
 
@@ -18,7 +19,7 @@ class MagamApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: '마감 앱',
+      title: magamAppName,
       locale: const Locale('ko', 'KR'),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

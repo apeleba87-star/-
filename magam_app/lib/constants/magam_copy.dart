@@ -1,5 +1,14 @@
 /// 모집 안내 노출 동의 — 체크박스만 노출, 「모집 안내 노출 동의」 탭 시 본문 펼침
 
+const magamAppName = '마감링크';
+
+const magamAppTagline = '링크 공유 · 마감하면 연락처 비공개';
+
+const magamLoginPrompt = '카카오 또는 이메일로 로그인하세요';
+
+const magamCloseConfirmBody =
+    '마감하면 공유 링크에서 연락처가 더 이상 보이지 않습니다.';
+
 const magamSyncConsentTitle = '모집 안내 노출 동의';
 
 const magamSyncConsentVersion = '1';

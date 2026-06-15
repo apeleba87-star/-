@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../constants/magam_copy.dart';
 import '../../models/magam_listing.dart';
 import '../../services/magam_repository.dart';
 import '../../theme/magam_theme.dart';
@@ -132,6 +133,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    magamAppTagline,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: MagamColors.inkMuted,
+                        ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   const RadarAdNationalBanner(pagePath: 'magam:home'),

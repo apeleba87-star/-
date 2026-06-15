@@ -1,39 +1,38 @@
 import Link from "next/link";
 import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs";
-import RadarAdsSubNav from "@/components/admin/RadarAdsSubNav";
-import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
-import { buildRadarAdsDashboardStats } from "@/lib/demand/radar-ads-admin-stats";
 import { loadRadarAdsAdminBundle } from "@/lib/demand/radar-ads-admin-load";
-import { loadRadarAdPerformanceRows } from "@/lib/demand/radar-ad-performance";
 import { addDaysToDateString, getKstTodayString } from "@/lib/jobs/kst-date";
-import { parseStatsDateRange } from "@/lib/demand/stats-date-range";
-import RadarAdsDashboard from "./RadarAdsDashboard";
+import { loadMagamAdminStats, parseMagamStatsDateRange } from "@/lib/magam/admin-stats";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import MagamStatsDashboard from "./MagamStatsDashboard";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ from?: string; to?: string }>;
 
-export default async function AdminRadarAdsDashboardPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function AdminMagamStatsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const range = parseStatsDateRange(params.from, params.to);
+  const range = parseMagamStatsDateRange(params.from, params.to);
   const today = getKstTodayString();
 
-  const supabase = await createServerSupabase();
-  const bundle = await loadRadarAdsAdminBundle(supabase);
-  let performanceSupabase = supabase;
+  const sessionSupabase = await createServerSupabase();
+
+  let statsSupabase;
   try {
-    performanceSupabase = createServiceSupabase();
+    statsSupabase = createServiceSupabase();
   } catch {
-    // service role 없으면 RLS 세션으로 조회
+    return (
+      <div className="space-y-6">
+        <MonetizationSectionTabs />
+        <p className="text-red-600">
+          SUPABASE_SERVICE_ROLE_KEY가 필요합니다. 마감앱 전체 공고·광고 통계를 불러올 수 없습니다.
+        </p>
+      </div>
+    );
   }
-  const [stats, performanceRows] = await Promise.all([
-    Promise.resolve(buildRadarAdsDashboardStats(bundle)),
-    loadRadarAdPerformanceRows(performanceSupabase, bundle, range),
-  ]);
+
+  const bundle = await loadRadarAdsAdminBundle(sessionSupabase);
+  const data = await loadMagamAdminStats(statsSupabase, range, bundle);
 
   const preset7From = addDaysToDateString(today, -6);
   const preset30From = addDaysToDateString(today, -29);
@@ -42,11 +41,10 @@ export default async function AdminRadarAdsDashboardPage({
   return (
     <div className="space-y-6">
       <MonetizationSectionTabs />
-      <RadarAdsSubNav />
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">입주레이더 광고 대시보드</h1>
+        <h1 className="text-2xl font-bold text-slate-900">마감앱 통계</h1>
         <p className="mt-1 text-sm text-slate-600">
-          노출·클릭 성과와 마감 임박·슬롯 현황을 한눈에 확인할 수 있습니다.
+          마감앱 사용자·공고 수와 직거래 배너 성과를 클린아이덱스 웹과 구분해 확인합니다.
         </p>
       </div>
 
@@ -87,19 +85,19 @@ export default async function AdminRadarAdsDashboardPage({
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="text-slate-500">빠른 선택:</span>
           <Link
-            href={`/admin/radar-ads?from=${preset7From}&to=${today}`}
+            href={`/admin/magam-stats?from=${preset7From}&to=${today}`}
             className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-200"
           >
             최근 7일
           </Link>
           <Link
-            href={`/admin/radar-ads?from=${preset30From}&to=${today}`}
+            href={`/admin/magam-stats?from=${preset30From}&to=${today}`}
             className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-200"
           >
             최근 30일
           </Link>
           <Link
-            href={`/admin/radar-ads?from=${preset90From}&to=${today}`}
+            href={`/admin/magam-stats?from=${preset90From}&to=${today}`}
             className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-200"
           >
             최근 90일
@@ -107,7 +105,7 @@ export default async function AdminRadarAdsDashboardPage({
         </div>
       </form>
 
-      <RadarAdsDashboard stats={stats} performanceRows={performanceRows} range={range} />
+      <MagamStatsDashboard data={data} />
     </div>
   );
 }

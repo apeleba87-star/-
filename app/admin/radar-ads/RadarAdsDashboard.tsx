@@ -3,6 +3,7 @@ import RadarAdArchiveExpiredButton from "@/components/admin/RadarAdArchiveExpire
 import RadarAdsPerformanceTable from "@/components/admin/RadarAdsPerformanceTable";
 import type { RadarAdSlotPerformanceRow } from "@/lib/demand/radar-ad-performance";
 import type { RadarAdsDashboardStats } from "@/lib/demand/radar-ads-admin-stats";
+import type { StatsDateRange } from "@/lib/demand/stats-date-range";
 import { RADAR_AD_EXPIRING_SOON_DAYS, RADAR_AD_SLOTS_PER_BANNER } from "@/lib/demand/radar-ads-slot";
 
 function manageHref(
@@ -49,13 +50,15 @@ function StatCard({
 export default function RadarAdsDashboard({
   stats,
   performanceRows,
+  range,
 }: {
   stats: RadarAdsDashboardStats;
   performanceRows: RadarAdSlotPerformanceRow[];
+  range: StatsDateRange;
 }) {
   return (
     <div className="space-y-8">
-      <RadarAdsPerformanceTable rows={performanceRows} />
+      <RadarAdsPerformanceTable rows={performanceRows} range={range} />
 
       {stats.staleActive.length > 0 ? (
         <section className="space-y-3 rounded-xl border border-orange-200 bg-orange-50/40 p-4">
