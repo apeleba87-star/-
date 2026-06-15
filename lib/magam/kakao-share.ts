@@ -35,10 +35,9 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** 단톡방 모집 글 복사 — 클립보드에 전체 문구 복사 */
+/** 단톡방 모집 글 — 클린아이덱스 공유하기와 동일: navigator.share → 복사 */
 export async function copyMagamListingMessage(fullText: string): Promise<MagamKakaoShareResult> {
-  const copied = await copyToClipboard(fullText);
-  return copied ? { outcome: "copied", truncated: false } : { outcome: "failed", truncated: false };
+  return shareToKakaoTalk(fullText);
 }
 
 /** 마감링크 소개 등 — navigator.share → 복사 */
@@ -69,12 +68,7 @@ export async function shareToKakaoTalk(fullText: string): Promise<MagamKakaoShar
 }
 
 export function magamListingCopyToast(outcome: MagamKakaoShareOutcome): string {
-  switch (outcome) {
-    case "copied":
-      return "모집 글을 복사했어요. 카톡 단톡방에 붙여넣으세요.";
-    default:
-      return "복사에 실패했습니다.";
-  }
+  return magamKakaoShareToast(outcome);
 }
 
 export function magamKakaoShareToast(outcome: MagamKakaoShareOutcome): string {

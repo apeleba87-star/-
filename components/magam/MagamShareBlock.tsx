@@ -15,7 +15,7 @@ import {
   MAGAM_SHARE_REFERRAL_HINT,
   MAGAM_SHARE_REFERRAL_SECTION,
 } from "@/lib/magam/copy";
-import { copyMagamListingMessage, magamListingCopyToast } from "@/lib/magam/kakao-share";
+import { magamKakaoShareToast, shareToKakaoTalk } from "@/lib/magam/kakao-share";
 import { buildMagamNaverCafeMessage, buildMagamShareMessage } from "@/lib/magam/share-format";
 import {
   loadMagamShareIncludePhone,
@@ -72,9 +72,9 @@ export default function MagamShareBlock({
   const handleGroupChatCopy = async () => {
     setCopyLoading(true);
     const text = buildMagamShareMessage(listing, shareUrl, includePhone);
-    const { outcome } = await copyMagamListingMessage(text);
+    const { outcome } = await shareToKakaoTalk(text);
     setCopyLoading(false);
-    notify(magamListingCopyToast(outcome));
+    notify(magamKakaoShareToast(outcome));
     if (outcome === "failed") {
       window.prompt("아래 내용을 복사해 카톡에 붙여넣으세요.", text);
     }
