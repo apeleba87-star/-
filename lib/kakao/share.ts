@@ -1,5 +1,10 @@
 import { isKakaoInAppBrowser } from "@/lib/kakao/detect";
-import { kakaoShareText } from "@/lib/kakao/sdk";
+import {
+  ensureKakaoShareReady,
+  getKakaoJavascriptKey,
+  kakaoShareFeedSync,
+  kakaoShareScrapSync,
+} from "@/lib/kakao/sdk";
 
 export type KakaoAwareShareOutcome = "opened" | "copied" | "failed" | "cancelled";
 
@@ -38,10 +43,20 @@ export async function shareContent(params: {
   const { title, text, url } = params;
   const clipboardText = [title, text, url].filter(Boolean).join("\n");
 
-  if (isKakaoInAppBrowser()) {
+  if (isKakaoInAppBrowser() && getKakaoJavascriptKey()) {
     const message = [title, text].filter(Boolean).join("\n") || text;
-    const shared = await kakaoShareText({ text: message, url });
-    if (shared) return "opened";
+    const feed = {
+      title: title?.trim() || message.split("\n")[0]?.trim() || "공유하기",
+      description: message.slice(0, 500),
+      url,
+    };
+
+    if (kakaoShareFeedSync(feed)) return "opened";
+
+    await ensureKakaoShareReady();
+
+    if (kakaoShareFeedSync(feed)) return "opened";
+    if (kakaoShareScrapSync(url)) return "opened";
   }
 
   try {

@@ -13,7 +13,8 @@ import {
   MAGAM_SHARE_REFERRAL_HINT,
   MAGAM_SHARE_REFERRAL_SECTION,
 } from "@/lib/magam/copy";
-import { magamKakaoShareToast, shareToKakaoTalk } from "@/lib/magam/kakao-share";
+import { magamKakaoShareToast, shareMagamListingToKakaoTalk } from "@/lib/magam/kakao-share";
+import { ensureKakaoShareReady } from "@/lib/kakao/sdk";
 import { buildMagamNaverCafeMessage, buildMagamShareMessage } from "@/lib/magam/share-format";
 import {
   loadMagamShareIncludePhone,
@@ -49,6 +50,7 @@ export default function MagamShareBlock({
 
   useEffect(() => {
     setIncludePhone(loadMagamShareIncludePhone());
+    void ensureKakaoShareReady();
   }, []);
 
   useEffect(() => {
@@ -69,11 +71,11 @@ export default function MagamShareBlock({
 
   const handleKakao = async () => {
     setKakaoLoading(true);
-    const text = buildMagamShareMessage(listing, shareUrl, includePhone);
-    const { outcome } = await shareToKakaoTalk(text);
+    const { outcome } = await shareMagamListingToKakaoTalk(listing, shareUrl, includePhone);
     setKakaoLoading(false);
     notify(magamKakaoShareToast(outcome));
     if (outcome === "failed") {
+      const text = buildMagamShareMessage(listing, shareUrl, includePhone);
       window.prompt("아래 내용을 복사해 카톡에 붙여넣으세요.", text);
     }
   };
