@@ -70,9 +70,9 @@ export default function MagamShareBlock({
   const handleKakao = async () => {
     setKakaoLoading(true);
     const text = buildMagamShareMessage(listing, shareUrl, includePhone);
-    const { outcome, truncated } = await shareToKakaoTalk(text);
+    const { outcome } = await shareToKakaoTalk(text);
     setKakaoLoading(false);
-    notify(magamKakaoShareToast(outcome, truncated));
+    notify(magamKakaoShareToast(outcome));
     if (outcome === "failed") {
       window.prompt("아래 내용을 복사해 카톡에 붙여넣으세요.", text);
     }
@@ -134,7 +134,7 @@ export default function MagamShareBlock({
             disabled={kakaoLoading}
             className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#FEE500] text-base font-bold text-[#191919] disabled:opacity-50"
           >
-            {kakaoLoading ? "카카오톡 여는 중…" : "카톡 단톡방 공유"}
+            {kakaoLoading ? "공유 중…" : "카톡 단톡방 공유"}
           </button>
 
           <button

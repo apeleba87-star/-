@@ -58,9 +58,9 @@ export default function MagamReferralCopyButton({
       variant === "afterClose"
         ? buildMagamIntroAfterCloseCopy(siteBase)
         : buildMagamIntroCopy(siteBase);
-    const { outcome, truncated } = await shareToKakaoTalk(text);
+    const { outcome } = await shareToKakaoTalk(text);
     setLoading(false);
-    notify(magamKakaoShareToast(outcome, truncated));
+    notify(magamKakaoShareToast(outcome));
     if (outcome === "failed") {
       window.prompt("아래 문구를 복사해 카톡에 붙여넣으세요.", text);
     }
@@ -77,7 +77,7 @@ export default function MagamReferralCopyButton({
         <span aria-hidden className="text-base">
           {loading ? "…" : "💬"}
         </span>
-        {loading ? "카카오톡 여는 중…" : label}
+        {loading ? "공유 중…" : label}
       </button>
       {!onNotify && showToast && toast ? (
         <p className="rounded-[10px] bg-[#141824] px-3 py-2 text-center text-xs text-white">
