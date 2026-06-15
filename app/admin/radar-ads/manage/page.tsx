@@ -1,8 +1,10 @@
 import MonetizationSectionTabs from "@/components/admin/MonetizationSectionTabs";
 import RadarAdsSubNav from "@/components/admin/RadarAdsSubNav";
 import { createServerSupabase } from "@/lib/supabase-server";
+import { getMagamRadarAdSettings } from "@/lib/demand/magam-radar-ad-settings";
 import { loadRadarAdsAdminBundle } from "@/lib/demand/radar-ads-admin-load";
 import { RADAR_AD_SLOTS_PER_BANNER } from "@/lib/demand/radar-ads-slot";
+import MagamRadarAdsSettingsPanel from "../MagamRadarAdsSettingsPanel";
 import RadarAdsManager from "../RadarAdsManager";
 
 type SearchParams = Promise<{ banner?: string; slot?: string; section?: string }>;
@@ -28,7 +30,10 @@ export default async function AdminRadarAdsManagePage({
 }) {
   const params = await searchParams;
   const supabase = await createServerSupabase();
-  const bundle = await loadRadarAdsAdminBundle(supabase);
+  const [bundle, magamAdSettings] = await Promise.all([
+    loadRadarAdsAdminBundle(supabase),
+    getMagamRadarAdSettings(supabase),
+  ]);
 
   const initialBannerId = params.banner?.trim() || null;
   const slotNum = params.slot ? Number(params.slot) : NaN;
@@ -53,6 +58,7 @@ export default async function AdminRadarAdsManagePage({
           전체 광고·지역 광고 탭에서 슬롯을 편집합니다. 입금 확인 후 게재 상태를 active로 바꾸세요.
         </p>
       </div>
+      <MagamRadarAdsSettingsPanel initial={magamAdSettings} />
       <RadarAdsManager
         nationalBanner={bundle.nationalBanner}
         nationalSlots={bundle.nationalSlots}

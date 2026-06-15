@@ -79,6 +79,48 @@ export const RADAR_AD_INQUIRY_SURFACES: RadarAdInquirySurface[] = [
       { kind: "chrome", label: "시·도별 지도 · 표" },
     ],
   },
+  {
+    id: "magam_home",
+    productLabel: "마감앱",
+    pageLabel: "내 공고",
+    pagePath: "magam://home",
+    previewHref: "/admin/radar-ads/manage",
+    audienceNote: "도급·구인 공고를 올리는 청소·용역 사업자",
+    wireframe: [
+      { kind: "chrome", label: "계정 · 내 공고 목록" },
+      { kind: "ad", scope: "national", label: "전국 직거래 배너" },
+      { kind: "chrome", label: "공고 카드 · 글쓰기 FAB" },
+    ],
+  },
+  {
+    id: "magam_compose",
+    productLabel: "마감앱",
+    pageLabel: "글쓰기",
+    pagePath: "magam://compose",
+    previewHref: "/admin/radar-ads/manage",
+    audienceNote: "공고 작성 중 — 지역을 고르는 단계",
+    wireframe: [
+      { kind: "ad", scope: "national", label: "전국 직거래 배너" },
+      { kind: "chrome", label: "도급/구인 · 일정 · 어디(지역)" },
+      { kind: "ad", scope: "regional", label: "지역 직거래 배너" },
+      { kind: "chrome", label: "작업 · 금액 · 등록" },
+    ],
+  },
+  {
+    id: "magam_share",
+    productLabel: "마감앱",
+    pageLabel: "모집 안내 · 공유",
+    pagePath: "magam://listing/[id]",
+    previewHref: "/admin/radar-ads/manage",
+    audienceNote: "등록 직후 카톡·카페 공유 · 마감",
+    wireframe: [
+      { kind: "chrome", label: "공고 미리보기" },
+      { kind: "ad", scope: "regional", label: "지역 직거래 배너" },
+      { kind: "chrome", label: "카톡 · 카페 · 링크 복사" },
+      { kind: "ad", scope: "national", label: "전국 직거래 배너" },
+      { kind: "chrome", label: "모집 마감하기" },
+    ],
+  },
 ];
 
 export const RADAR_AD_INQUIRY_SCOPE_SUMMARY = {

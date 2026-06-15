@@ -84,6 +84,14 @@ flutter run --dart-define-from-file=.env
 | `/p/[slug]` | 공유 페이지 (마감 시 연락처 숨김 + 아래 모집 중) |
 | `/magam/live` | 실시간 모집 목록 (클린아이덱스) |
 
+## 직거래 배너 광고
+
+입주레이더와 **동일한 전국·지역 직거래 배너**를 API로 불러옵니다.  
+마감앱 노출은 **기본 꺼짐** — 클린아이덱스 **관리자 → 입주레이더 광고 관리** 상단 **「마감앱 광고 노출」**에서 전국/지역을 각각 켜세요.
+
+- API: `{MAGAM_SHARE_BASE_URL}/api/magam/radar-ads/national` · `…/regional?region=…`
+- Supabase migration `175_magam_radar_ad_settings.sql` 적용 필요
+
 ## 다음 단계
 
 - Phone OTP 로그인

@@ -6,7 +6,9 @@ import '../../models/magam_listing.dart';
 import '../../services/magam_repository.dart';
 import '../../theme/magam_theme.dart';
 import '../../widgets/my_listing_card.dart';
+import '../../widgets/magam_screen_padding.dart';
 import '../../widgets/magam_section_card.dart';
+import '../../widgets/radar_ad_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -88,20 +90,23 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await context.push('/compose');
-          if (mounted) _load();
-        },
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('글쓰기'),
+      floatingActionButton: Padding(
+        padding: MagamScreenPadding.fab(context),
+        child: FloatingActionButton.extended(
+          onPressed: () async {
+            await context.push('/compose');
+            if (mounted) _load();
+          },
+          icon: const Icon(Icons.edit_outlined),
+          label: const Text('글쓰기'),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                padding: MagamScreenPadding.listWithFab(context),
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -129,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  const RadarAdNationalBanner(pagePath: 'magam:home'),
                   if (_error != null) MagamErrorBanner(message: _error!),
                   if (!_loading && _listings.isEmpty)
                     Padding(

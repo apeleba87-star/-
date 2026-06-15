@@ -9,10 +9,9 @@ class AuthRedirect {
 
   /// 카카오 OAuth 후 돌아올 URL. Supabase Dashboard Redirect URLs 와 **정확히** 일치해야 함.
   static String get oauthRedirect {
-    final override = AppConfig.oauthRedirectUrl;
-    if (override != null && override.isNotEmpty) return override;
-
     if (kIsWeb) {
+      final override = AppConfig.oauthRedirectUrl;
+      if (override != null && override.isNotEmpty) return override;
       return AppConfig.webDevOrigin;
     }
     return androidCallback;

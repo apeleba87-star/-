@@ -33,6 +33,9 @@ import '../../widgets/compose/work_kind_section.dart';
 
 import '../../constants/magam_copy.dart';
 
+import '../../widgets/magam_screen_padding.dart';
+import '../../widgets/radar_ad_banner.dart';
+import '../../utils/magam_region_key.dart';
 import '../../widgets/magam_sync_consent_tile.dart';
 
 import '../../widgets/schedule_date_field.dart';
@@ -475,8 +478,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('글쓰기')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: MagamScreenPadding.list(context, extraBottom: 32),
         children: [
+          const RadarAdNationalBanner(pagePath: 'magam:compose'),
           ComposeSection(
             step: '1',
             title: '도급 / 구인',
@@ -526,6 +530,10 @@ class _ComposeScreenState extends State<ComposeScreen> {
               onDistrictChanged: (slug) => setState(() => _districtSlug = slug),
               onRecentSelected: _onRecentSelected,
             ),
+          ),
+          RadarAdRegionalBanner(
+            regionKeys: magamRegionalAdCandidateKeys(_cityId, _districtSlug),
+            pagePath: 'magam:compose',
           ),
           ComposeSection(
             step: '4',

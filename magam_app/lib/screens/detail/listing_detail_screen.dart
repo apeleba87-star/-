@@ -13,7 +13,10 @@ import '../../utils/magam_share_format.dart';
 import '../../widgets/kakao_share_button.dart';
 import '../../widgets/kakao_share_phone_option.dart';
 import '../../widgets/magam_listing_share_view.dart';
+import '../../widgets/magam_screen_padding.dart';
 import '../../widgets/naver_cafe_copy_button.dart';
+import '../../widgets/radar_ad_banner.dart';
+import '../../utils/magam_region_key.dart';
 
 
 
@@ -463,6 +466,13 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
     final statusLabel = statusLabels[listing.status] ?? listing.status;
 
+    final regionalKeys = listing.cityId != null &&
+            listing.districtSlug != null &&
+            listing.cityId!.isNotEmpty &&
+            listing.districtSlug!.isNotEmpty
+        ? magamRegionalAdCandidateKeys(listing.cityId!, listing.districtSlug!)
+        : <String>[];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('모집 안내'),
@@ -473,7 +483,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       ),
 
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: MagamScreenPadding.list(context, extraBottom: 32),
         children: [
           if (widget.highlightShare) ...[
             _registrationBanner(context),
@@ -484,8 +494,14 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             typeLabel: typeLabel,
             statusLabel: statusLabel,
           ),
+          if (regionalKeys.isNotEmpty)
+            RadarAdRegionalBanner(
+              regionKeys: regionalKeys,
+              pagePath: 'magam:listing/${listing.id}',
+            ),
           const SizedBox(height: 16),
           _shareBlock(listing),
+          RadarAdNationalBanner(pagePath: 'magam:listing/${listing.id}'),
           if (widget.highlightShare) ...[
             const SizedBox(height: 8),
             Center(

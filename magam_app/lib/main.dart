@@ -1,3 +1,5 @@
+import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -6,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/app_config.dart';
 import 'router/app_router.dart';
 import 'theme/magam_theme.dart';
+
 class MagamApp extends StatelessWidget {
   MagamApp({super.key, required this.authNotifier});
 
@@ -31,6 +34,32 @@ class MagamApp extends StatelessWidget {
   }
 }
 
+Future<void> _recoverOAuthSession(Uri uri) async {
+  if (!uri.hasQuery && uri.fragment.isEmpty) return;
+  try {
+    await Supabase.instance.client.auth.getSessionFromUrl(uri);
+  } catch (_) {
+    // OAuth 콜백이 아닌 딥링크
+  }
+}
+
+Future<void> _bindMobileAuthDeepLinks() async {
+  if (kIsWeb) return;
+
+  final appLinks = AppLinks();
+
+  try {
+    final initial = await appLinks.getInitialLink();
+    if (initial != null) {
+      await _recoverOAuthSession(initial);
+    }
+  } catch (_) {}
+
+  appLinks.uriLinkStream.listen((uri) async {
+    await _recoverOAuthSession(uri);
+  });
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -48,20 +77,24 @@ Future<void> main() async {
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
-    authOptions: FlutterAuthClientOptions(
+    authOptions: const FlutterAuthClientOptions(
       authFlowType: AuthFlowType.pkce,
       detectSessionInUri: true,
     ),
   );
 
-  // OAuth(카카오) PKCE 콜백 URL에서 세션 복구
-  try {
-    await Supabase.instance.client.auth.getSessionFromUrl(Uri.base);
-  } catch (_) {
-    // 일반 진입 URL이면 무시
+  if (kIsWeb) {
+    try {
+      await Supabase.instance.client.auth.getSessionFromUrl(Uri.base);
+    } catch (_) {
+      // 일반 진입 URL이면 무시
+    }
+  } else {
+    await _bindMobileAuthDeepLinks();
   }
 
-  final authNotifier = AuthRefreshNotifier();  runApp(MagamApp(authNotifier: authNotifier));
+  final authNotifier = AuthRefreshNotifier();
+  runApp(MagamApp(authNotifier: authNotifier));
 }
 
 class _ConfigErrorApp extends StatelessWidget {
@@ -85,7 +118,7 @@ class _ConfigErrorApp extends StatelessWidget {
                 Text(
                   'magam_app/.env.example 을 .env 로 복사한 뒤\n'
                   'SUPABASE_URL, SUPABASE_ANON_KEY 를 입력하세요.\n\n'
-                  '또는 flutter run --dart-define-from-file=.env',
+                  '또는 flutter build apk --dart-define-from-file=.env',
                 ),
               ],
             ),

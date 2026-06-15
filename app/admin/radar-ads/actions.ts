@@ -33,7 +33,29 @@ async function requireStaff() {
 
 function revalidateRadarAds() {
   revalidatePath("/admin/radar-ads");
+  revalidatePath("/admin/radar-ads/manage");
   revalidatePath("/");
+}
+
+export async function updateMagamRadarAdSettings(
+  nationalEnabled: boolean,
+  regionalEnabled: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const { supabase, error: authErr } = await requireStaff();
+  if (authErr) return { ok: false, error: authErr };
+
+  const { error } = await supabase
+    .from("magam_radar_ad_settings")
+    .update({
+      national_enabled: nationalEnabled,
+      regional_enabled: regionalEnabled,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateRadarAds();
+  return { ok: true };
 }
 
 export async function updateRadarBannerSettings(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConfig {
@@ -53,8 +54,10 @@ class AppConfig {
 
   static String get webDevOrigin => 'http://localhost:$webDevPort/';
 
-  /// 카카오 OAuth redirectTo. 미설정 시 웹은 [webDevOrigin] 사용.
+  /// 카카오 OAuth redirectTo. 웹 전용 — 네이티브(APK)는 [AuthRedirect.androidCallback].
   static String? get oauthRedirectUrl {
+    if (!kIsWeb) return null;
+
     const fromDefine = String.fromEnvironment('MAGAM_OAUTH_REDIRECT_URL');
     if (fromDefine.isNotEmpty) return fromDefine;
     final fromEnv = _fromDotenv('MAGAM_OAUTH_REDIRECT_URL');
