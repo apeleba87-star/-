@@ -81,7 +81,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-function openDeepLink(url: string): void {
+function openDeepLinkWithAnchor(url: string): void {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.rel = "noopener noreferrer";
@@ -91,29 +91,54 @@ function openDeepLink(url: string): void {
   document.body.removeChild(anchor);
 }
 
+/** 모바일에서 카카오톡 공유 화면 열기 시도 */
 function openKakaoSendDeepLink(text: string): void {
   const encoded = encodeURIComponent(text);
-  const url = isAndroidUa()
-    ? `intent://send?text=${encoded}#Intent;scheme=kakaotalk;package=com.kakao.talk;end`
-    : `kakaotalk://send?text=${encoded}`;
-  openDeepLink(url);
+  const urls = isAndroidUa()
+    ? [
+        `intent://send?text=${encoded}#Intent;scheme=kakaotalk;package=com.kakao.talk;end`,
+        `kakaotalk://send?text=${encoded}`,
+        `kakaolink://send?text=${encoded}`,
+      ]
+    : [`kakaotalk://send?text=${encoded}`, `kakaolink://send?text=${encoded}`];
+
+  try {
+    window.location.assign(urls[0]);
+  } catch {
+    openDeepLinkWithAnchor(urls[0]);
+  }
+
+  // 일부 브라우저는 첫 스킴 실패 시 보조 스킴 시도
+  if (urls.length > 1) {
+    window.setTimeout(() => {
+      try {
+        openDeepLinkWithAnchor(urls[1]);
+      } catch {
+        /* ignore */
+      }
+    }, 400);
+  }
 }
 
 /**
- * 카카오톡 공유 — 전체 문구는 클립보드에, 딥링크에는 길이 제한 내 문구만 전달.
+ * 카카오톡 공유
+ * - 모바일: 앱 공유 화면 열기 + 전체 문구 클립보드
+ * - PC: 클립보드 복사 (웹 카톡 앱 연동 불가)
  */
 export async function shareToKakaoTalk(fullText: string): Promise<MagamKakaoShareResult> {
   if (typeof window === "undefined") {
     return { outcome: "failed", truncated: false };
   }
 
-  const copied = await copyToClipboard(fullText);
   const { text: deepText, truncated } = textForKakaoDeepLink(fullText);
 
   if (isMobileUa()) {
     openKakaoSendDeepLink(deepText);
+    void copyToClipboard(fullText);
+    return { outcome: "opened", truncated };
   }
 
+  const copied = await copyToClipboard(fullText);
   if (copied) {
     return { outcome: "copied", truncated };
   }
@@ -126,12 +151,11 @@ export function magamKakaoShareToast(
 ): string {
   switch (outcome) {
     case "opened":
-      return "카카오톡에서 공유할 채팅방을 선택하세요.";
+      return truncated
+        ? "카카오톡에서 채팅방을 선택하세요. 전체 내용은 붙여넣기로 넣을 수 있어요."
+        : "카카오톡에서 공유할 채팅방을 선택하세요.";
     case "copied":
-      if (truncated || isMobileUa()) {
-        return "전체 내용이 복사됐어요. 카톡에서 채팅방을 고른 뒤 붙여넣어 전송하세요.";
-      }
-      return "복사됐어요. 카톡에 붙여넣으세요.";
+      return "PC에서는 카톡이 자동으로 열리지 않아요. 내용이 복사됐으니 카톡에 붙여넣어 주세요.";
     default:
       return "복사에 실패했습니다. 링크 복사 후 카톡에 붙여넣어 주세요.";
   }

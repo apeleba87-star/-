@@ -17,11 +17,11 @@ export default function ContactButtons({ phone, disabled, variant = "default" }:
   const isDetail = variant === "listingDetail";
 
   const buttonClass = isDetail
-    ? "inline-flex min-h-14 min-w-[140px] items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition-all duration-200"
+    ? "inline-flex min-h-12 w-full flex-1 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-200"
     : "inline-flex min-h-[48px] min-w-[120px] items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold";
 
   const activeTelClass = isDetail
-    ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_20px_rgba(5,150,105,0.35)] hover:shadow-[0_12px_28px_rgba(5,150,105,0.4)] hover:scale-[1.02]"
+    ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_20px_rgba(5,150,105,0.35)] hover:shadow-[0_12px_28px_rgba(5,150,105,0.4)]"
     : "bg-emerald-600 text-white shadow-md hover:bg-emerald-700";
 
   const activeSmsClass = isDetail
@@ -31,36 +31,36 @@ export default function ContactButtons({ phone, disabled, variant = "default" }:
   const disabledClass = "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400";
 
   const Wrap = isDetail ? motion.div : "div";
-  const wrapProps = isDetail ? { whileHover: { scale: 1.02 }, className: "inline-block" } : {};
+  const wrapProps = isDetail ? { whileHover: { scale: 1.02 }, className: "flex flex-1" } : {};
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className={isDetail ? "flex w-full gap-2" : "flex flex-wrap items-center gap-3"}>
       {hrefTel != null ? (
         <Wrap {...wrapProps}>
           <a href={hrefTel} className={`${buttonClass} ${activeTelClass}`}>
-            전화하기
+            {isDetail ? "전화" : "전화하기"}
           </a>
         </Wrap>
       ) : (
         <span
-          className={`${buttonClass} ${disabledClass}`}
+          className={`${buttonClass} ${disabledClass}${isDetail ? " flex-1" : ""}`}
           title={disabled ? "확정된 지원자만 연락할 수 있습니다." : undefined}
         >
-          전화하기
+          {isDetail ? "전화" : "전화하기"}
         </span>
       )}
       {hrefSms != null ? (
         <Wrap {...wrapProps}>
           <a href={hrefSms} className={`${buttonClass} ${activeSmsClass}`}>
-            문자하기
+            {isDetail ? "문자" : "문자하기"}
           </a>
         </Wrap>
       ) : (
         <span
-          className={`${buttonClass} ${disabledClass}`}
+          className={`${buttonClass} ${disabledClass}${isDetail ? " flex-1" : ""}`}
           title={disabled ? "확정된 지원자만 연락할 수 있습니다." : undefined}
         >
-          문자하기
+          {isDetail ? "문자" : "문자하기"}
         </span>
       )}
       {disabled && (

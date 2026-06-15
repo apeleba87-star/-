@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -9,6 +8,7 @@ import {
   type MagamWriteBootstrap,
 } from "@/app/magam/actions";
 import MagamRegionPicker from "@/components/magam/MagamRegionPicker";
+import MagamScheduleDateField from "@/components/magam/MagamScheduleDateField";
 import {
   MagamRadarNationalBanner,
   MagamRadarRegionalBanner,
@@ -25,10 +25,15 @@ import {
 } from "@/components/magam/ui/MagamUi";
 import {
   MAGAM_AC_TYPE_LABEL,
+  MAGAM_HIRING_PHONE_HELPER,
+  MAGAM_HIRING_SPECIAL_NOTES_HINT,
+  MAGAM_HIRING_WORK_HELPER,
+  MAGAM_HIRING_WORK_HINT,
+  MAGAM_OTHER_WORK_HINT,
+  MAGAM_SUBCONTRACT_PHONE_HELPER,
+  MAGAM_SUBCONTRACT_SPECIAL_NOTES_HINT,
   MAGAM_SYNC_CONSENT_DETAILS,
   MAGAM_SYNC_CONSENT_TITLE,
-  MAGAM_TERMS_CONSENT_HINT,
-  MAGAM_TERMS_CONSENT_REQUIRED,
   MAGAM_TIME_SLOT_LABEL,
   MAGAM_WORK_KIND_LABEL,
 } from "@/lib/magam/copy";
@@ -39,12 +44,25 @@ import {
 import { formatMagamPhoneInput, normalizeMagamPhone } from "@/lib/magam/phone";
 import { MAGAM_DEFAULT_CITY_ID, magamDefaultDistrictSlug } from "@/lib/magam/regions";
 import { magamRegionalAdCandidateKeys } from "@/lib/magam/region-ad-keys";
-import { magamLegalHref } from "@/lib/magam/surface";
+import { pushMagamRecentRegion } from "@/lib/magam/recent-regions";
 
 const WORK_KINDS = ["move_in_new", "move_out", "ac", "other"] as const;
 const AC_TYPES = ["wall", "stand", "two_in_one", "one_two_way", "four_way", "other"] as const;
 const SUBCONTRACT_SLOTS = ["morning", "afternoon", "same_day", "flexible"] as const;
 const HIRING_SLOTS = ["morning", "afternoon", "same_day"] as const;
+
+function localDateIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function clearHiringQuickDates(iso: string): string {
+  const today = localDateIso(new Date());
+  const tomorrow = localDateIso(new Date(Date.now() + 86400000));
+  return iso === today || iso === tomorrow ? "" : iso;
+}
 
 type Props = { bootstrap: MagamWriteBootstrap };
 
@@ -65,7 +83,6 @@ export default function MagamWriteForm({ bootstrap }: Props) {
   const [contactPhone, setContactPhone] = useState(
     bootstrap.contactPhone ? formatMagamPhoneInput(bootstrap.contactPhone) : ""
   );
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [disclosed, setDisclosed] = useState(bootstrap.alreadyConsented);
   const [showConsentDetails, setShowConsentDetails] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -104,11 +121,10 @@ export default function MagamWriteForm({ bootstrap }: Props) {
       }
       if (workKind === "ac" && acTypes.length === 0) return "에어컨 종류를 하나 이상 선택해 주세요.";
       if (workKind === "other" && otherDetail.trim().length < 4) {
-        return "어떤 청소인지 4자 이상 입력해 주세요.";
+        return "기타 청소 내용을 4자 이상 입력해 주세요.";
       }
     }
     if (normalizeMagamPhone(contactPhone).length < 10) return "연락처를 입력해 주세요.";
-    if (!termsAccepted) return MAGAM_TERMS_CONSENT_REQUIRED;
     if (!disclosed) return "「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다.";
     return null;
   }
@@ -144,6 +160,7 @@ export default function MagamWriteForm({ bootstrap }: Props) {
       setError(result.error);
       return;
     }
+    pushMagamRecentRegion(cityId, districtSlug);
     router.push(`/magam/listing/${result.data!.id}?new=1`);
   }
 
@@ -167,6 +184,7 @@ export default function MagamWriteForm({ bootstrap }: Props) {
                   setPyeong("");
                   setOtherDetail("");
                   if (timeSlot === "flexible") setTimeSlot("");
+                  setScheduleDate((prev) => clearHiringQuickDates(prev));
                 } else {
                   setWorkDescription("");
                 }
@@ -179,15 +197,14 @@ export default function MagamWriteForm({ bootstrap }: Props) {
       </MagamComposeSection>
 
       <MagamComposeSection step="2" title="언제">
-        <MagamFieldLabel htmlFor="schedule-date">일정 (선택)</MagamFieldLabel>
-        <input
-          id="schedule-date"
-          type="date"
-          className={magamInputClass}
-          disabled={loading}
-          value={scheduleDate}
-          onChange={(e) => setScheduleDate(e.target.value)}
-        />
+        <div>
+          <MagamScheduleDateField
+            value={scheduleDate}
+            onChange={setScheduleDate}
+            disabled={loading}
+            showTodayTomorrow={listingType !== "hiring"}
+          />
+        </div>
         <div className="mt-4">
           <MagamSubLabel>시간대 (선택)</MagamSubLabel>
           <div className="mt-2.5 flex flex-wrap gap-2">
@@ -223,22 +240,31 @@ export default function MagamWriteForm({ bootstrap }: Props) {
 
       <MagamComposeSection step="4" title={listingType === "hiring" ? "작업내용" : "어떤 일"}>
         {listingType === "hiring" ? (
-          <textarea
-            className={`${magamInputClass} min-h-[88px]`}
-            disabled={loading}
-            placeholder="예) 입주청소, 후드청소, 준공청소"
-            value={workDescription}
-            onChange={(e) => setWorkDescription(e.target.value)}
-          />
+          <div>
+            <textarea
+              className={`${magamInputClass} min-h-[88px]`}
+              disabled={loading}
+              placeholder={MAGAM_HIRING_WORK_HINT}
+              value={workDescription}
+              onChange={(e) => setWorkDescription(e.target.value)}
+            />
+            <p className="mt-1.5 text-[13px] text-[#5B6472]">{MAGAM_HIRING_WORK_HELPER}</p>
+          </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2">
+            <MagamSubLabel>작업 종류</MagamSubLabel>
+            <div className="mt-2.5 flex flex-wrap gap-2">
               {WORK_KINDS.map((kind) => (
                 <MagamChoiceChip
                   key={kind}
                   selected={workKind === kind}
                   disabled={loading}
                   onClick={() => {
+                    if (kind === "other" && workKind === "other") {
+                      setWorkKind("");
+                      setOtherDetail("");
+                      return;
+                    }
                     setWorkKind(kind);
                     if (kind !== "ac") setAcTypes([]);
                     if (kind !== "move_in_new" && kind !== "move_out") setPyeong("");
@@ -251,20 +277,26 @@ export default function MagamWriteForm({ bootstrap }: Props) {
             </div>
             {(workKind === "move_in_new" || workKind === "move_out") && (
               <div className="mt-4">
-                <MagamFieldLabel htmlFor="pyeong">평형</MagamFieldLabel>
-                <input
-                  id="pyeong"
-                  type="number"
-                  min={1}
-                  className={magamInputClass}
-                  disabled={loading}
-                  value={pyeong}
-                  onChange={(e) => setPyeong(e.target.value)}
-                />
+                <MagamFieldLabel htmlFor="pyeong">평형(공급면적)</MagamFieldLabel>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    id="pyeong"
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    className={`${magamInputClass} max-w-[140px]`}
+                    disabled={loading}
+                    value={pyeong}
+                    onChange={(e) => setPyeong(e.target.value.replace(/\D/g, ""))}
+                  />
+                  <span className="text-sm font-medium text-[#5B6472]">평</span>
+                </div>
               </div>
             )}
             {workKind === "ac" && (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4">
+                <MagamSubLabel>에어컨 종류 (복수 선택)</MagamSubLabel>
+                <div className="mt-2.5 flex flex-wrap gap-2">
                 {AC_TYPES.map((t) => (
                   <MagamChoiceChip
                     key={t}
@@ -279,16 +311,21 @@ export default function MagamWriteForm({ bootstrap }: Props) {
                     {MAGAM_AC_TYPE_LABEL[t]}
                   </MagamChoiceChip>
                 ))}
+                </div>
               </div>
             )}
             {workKind === "other" && (
-              <input
-                className={`${magamInputClass} mt-4`}
-                disabled={loading}
-                placeholder="어떤 청소인지 적어 주세요"
-                value={otherDetail}
-                onChange={(e) => setOtherDetail(e.target.value)}
-              />
+              <div className="mt-4">
+                <input
+                  id="other-detail"
+                  className={magamInputClass}
+                  disabled={loading}
+                  placeholder={MAGAM_OTHER_WORK_HINT}
+                  value={otherDetail}
+                  onChange={(e) => setOtherDetail(e.target.value)}
+                  autoFocus
+                />
+              </div>
             )}
           </>
         )}
@@ -299,20 +336,27 @@ export default function MagamWriteForm({ bootstrap }: Props) {
           <input
             type="number"
             min={1}
+            inputMode="numeric"
             className={`${magamInputClass} max-w-[140px]`}
             disabled={loading}
-            placeholder={listingType === "hiring" ? "13" : "50"}
+            placeholder="13"
             value={priceMan}
-            onChange={(e) => setPriceMan(e.target.value)}
+            onChange={(e) => setPriceMan(e.target.value.replace(/\D/g, ""))}
           />
-          <span className="text-sm text-[#5B6472]">만원 (선택)</span>
+          <span className="text-sm font-medium text-[#5B6472]">만원</span>
         </div>
       </MagamComposeSection>
 
       <MagamComposeSection step="6" title="특이사항">
+        <MagamSubLabel>특이사항 (선택)</MagamSubLabel>
         <textarea
-          className={`${magamInputClass} min-h-[72px]`}
+          className={`${magamInputClass} mt-2 min-h-[88px]`}
           disabled={loading}
+          placeholder={
+            listingType === "hiring"
+              ? MAGAM_HIRING_SPECIAL_NOTES_HINT
+              : MAGAM_SUBCONTRACT_SPECIAL_NOTES_HINT
+          }
           value={specialNotes}
           onChange={(e) => setSpecialNotes(e.target.value)}
         />
@@ -327,28 +371,12 @@ export default function MagamWriteForm({ bootstrap }: Props) {
           value={contactPhone}
           onChange={(e) => setContactPhone(formatMagamPhoneInput(e.target.value))}
         />
+        <p className="mt-1.5 text-[13px] text-[#5B6472]">
+          {listingType === "hiring" ? MAGAM_HIRING_PHONE_HELPER : MAGAM_SUBCONTRACT_PHONE_HELPER}
+        </p>
       </MagamComposeSection>
 
       {preview ? <MagamPreviewCard text={preview} /> : null}
-
-      <MagamSectionCardLike>
-        <label className="flex cursor-pointer gap-3">
-          <input
-            type="checkbox"
-            className="mt-1 accent-[#2563EB]"
-            checked={termsAccepted}
-            disabled={loading}
-            onChange={(e) => setTermsAccepted(e.target.checked)}
-          />
-          <span className="text-sm text-[#141824]">
-            <Link href={magamLegalHref("/terms")} className="font-semibold text-[#2563EB] underline">
-              이용약관
-            </Link>
-            에 동의합니다
-            <span className="mt-1 block text-xs text-[#8B93A1]">{MAGAM_TERMS_CONSENT_HINT}</span>
-          </span>
-        </label>
-      </MagamSectionCardLike>
 
       {bootstrap.alreadyConsented ? (
         <p className="mb-3 rounded-[14px] border border-[#D6E4FF] bg-[#EEF3FF] px-4 py-3 text-sm text-[#141824]">

@@ -8,6 +8,7 @@ import { isMagamFromQuery } from "@/lib/magam/brand";
  */
 export function isNeutralMagamSurface(pathname: string, fromQuery?: string | null): boolean {
   if (pathname === "/p" || pathname.startsWith("/p/")) return true;
+  if (pathname === "/magam/live" && fromQuery === "cleanidex") return false;
   if (pathname === "/magam" || pathname.startsWith("/magam/")) return true;
   if (
     isMagamFromQuery(fromQuery) &&

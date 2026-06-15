@@ -6,7 +6,7 @@ export function magamSupportEmail(): string {
   return (
     process.env.MAGAM_SUPPORT_EMAIL?.trim() ||
     process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL?.trim() ||
-    "help@cleanidex.co.kr"
+    "apeleba2@naver.com"
   );
 }
 

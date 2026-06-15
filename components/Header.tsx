@@ -29,6 +29,7 @@ import { withAdminNavLabel } from "@/lib/admin-nav-label";
 import HeaderAuth from "./HeaderAuth";
 import NotificationBell from "./notifications/NotificationBell";
 import TenderFocusNavChip from "./TenderFocusNavChip";
+import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
 
 type NavItem = {
   href: string;
@@ -80,7 +81,7 @@ type MobileDrawerRow =
 const primaryNavItems: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "입주레이더", Icon: Sparkles },
   { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText, adminOnly: true },
-  { kind: "link", href: "/magam/live", label: "실시간", Icon: Radio },
+  { kind: "link", href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간", Icon: Radio },
   {
     kind: "mega",
     label: "데이터 분석",
@@ -92,7 +93,7 @@ const primaryNavItems: PrimaryNavEntry[] = [
           { href: "/tenders", label: "입찰 공고", Icon: Gavel },
           { href: "/tender-awards", label: "낙찰 공고", Icon: Trophy },
           { href: "/jobs/public", label: "채용 공고", Icon: Landmark },
-          { href: "/magam/live", label: "실시간 모집", Icon: Radio },
+          { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집", Icon: Radio },
         ],
       },
       {

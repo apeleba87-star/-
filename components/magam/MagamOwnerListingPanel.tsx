@@ -13,6 +13,7 @@ import { useState } from "react";
 import { closeMagamListing } from "@/app/magam/actions";
 
 import MagamCloseListingButton from "@/components/magam/MagamCloseListingButton";
+import MagamCloseListingDialog from "@/components/magam/MagamCloseListingDialog";
 
 import MagamListingDisplayRows from "@/components/magam/MagamListingDisplayRows";
 
@@ -41,8 +42,6 @@ import {
 } from "@/components/magam/ui/MagamUi";
 
 import {
-
-  MAGAM_CLOSE_CONFIRM_BODY,
 
   MAGAM_LISTING_TYPE_LABEL,
 
@@ -79,7 +78,7 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
   const router = useRouter();
 
   const [closing, setClosing] = useState(false);
-
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isOpen = listing.status === "open";
@@ -92,12 +91,8 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
 
 
 
-  async function handleClose() {
-
-    if (!window.confirm(MAGAM_CLOSE_CONFIRM_BODY)) return;
-
+  async function handleCloseConfirm() {
     setClosing(true);
-
     setError(null);
 
     const result = await closeMagamListing(listing.id);
@@ -105,15 +100,12 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
     setClosing(false);
 
     if (!result.ok) {
-
       setError(result.error);
-
       return;
-
     }
 
+    setCloseDialogOpen(false);
     router.refresh();
-
   }
 
 
@@ -195,7 +187,7 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
 
       {isOpen ? (
 
-        <MagamCloseListingButton onClick={handleClose} loading={closing} />
+        <MagamCloseListingButton onClick={() => setCloseDialogOpen(true)} loading={closing} />
 
       ) : null}
 
@@ -239,6 +231,12 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
 
       {error ? <MagamErrorBanner message={error} /> : null}
 
+      <MagamCloseListingDialog
+        open={closeDialogOpen}
+        loading={closing}
+        onClose={() => setCloseDialogOpen(false)}
+        onConfirm={handleCloseConfirm}
+      />
     </div>
 
   );

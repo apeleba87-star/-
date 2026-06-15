@@ -110,12 +110,12 @@ export default function PrivacyPage() {
         <p className="mt-2 text-sm text-slate-600">
           이메일:{" "}
           <a
-            href={`mailto:${process.env.MAGAM_SUPPORT_EMAIL ?? process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL ?? "help@cleanidex.co.kr"}`}
+            href={`mailto:${process.env.MAGAM_SUPPORT_EMAIL ?? process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL ?? "apeleba2@naver.com"}`}
             className="font-medium text-slate-800 underline-offset-2 hover:underline"
           >
             {process.env.MAGAM_SUPPORT_EMAIL ??
               process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL ??
-              "help@cleanidex.co.kr"}
+              "apeleba2@naver.com"}
           </a>
         </p>
       </section>

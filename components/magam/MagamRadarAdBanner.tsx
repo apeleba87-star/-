@@ -43,10 +43,16 @@ export function MagamRadarRegionalBanner({ regionKeys, pagePath, className }: Re
   const keys = regionKeys.join(",");
 
   useEffect(() => {
-    if (!regionKeys.length) return;
+    if (!regionKeys.length) {
+      setBanner(null);
+      return;
+    }
+
     let cancelled = false;
+    setBanner(null);
 
     async function load() {
+      let found: RadarAdBannerPayload | null = null;
       for (const key of regionKeys) {
         const res = await fetch(
           `/api/magam/radar-ads/regional?region=${encodeURIComponent(key)}`,
@@ -55,10 +61,11 @@ export function MagamRadarRegionalBanner({ regionKeys, pagePath, className }: Re
         const data = (await res.json()) as { banner: RadarAdBannerPayload | null };
         if (cancelled) return;
         if (data.banner?.slots?.length) {
-          setBanner(data.banner);
-          return;
+          found = data.banner;
+          break;
         }
       }
+      if (!cancelled) setBanner(found);
     }
 
     void load();
@@ -68,5 +75,5 @@ export function MagamRadarRegionalBanner({ regionKeys, pagePath, className }: Re
   }, [keys, pagePath, regionKeys]);
 
   if (!banner) return null;
-  return <DemandRadarAdCarousel banner={banner} className={className} />;
+  return <DemandRadarAdCarousel key={keys} banner={banner} className={className} />;
 }

@@ -9,6 +9,7 @@ import { formatKrMobilePhone } from "@/lib/format/kr-mobile-phone";
 import { formatMagamWhen } from "@/lib/format/kr-datetime";
 import ContactButtons from "@/components/listings/ContactButtons";
 import MagamListingDisplayRows from "@/components/magam/MagamListingDisplayRows";
+import MagamReportListingButton from "@/components/magam/MagamReportListingButton";
 
 type Props = {
   listing: MagamListingPublic;
@@ -48,8 +49,8 @@ export default function MagamShareCard({ listing, highlight }: Props) {
           </p>
         ) : listing.contact_phone ? (
           <div className="space-y-3">
-            <p className="text-sm text-slate-700">
-              <span className="font-medium text-slate-500">연락처</span>{" "}
+            <p className="text-center text-sm text-slate-700">
+              <span className="font-medium text-slate-500">연락처 </span>
               <span className="font-semibold text-slate-900">
                 {formatKrMobilePhone(listing.contact_phone)}
               </span>
@@ -65,6 +66,12 @@ export default function MagamShareCard({ listing, highlight }: Props) {
         등록 {formatMagamWhen(listing.created_at)}
         {listing.closed_at ? ` · 마감 ${formatMagamWhen(listing.closed_at)}` : null}
       </p>
+
+      {!isClosed ? (
+        <div className="mt-3 border-t border-slate-100 pt-3 text-center">
+          <MagamReportListingButton listingId={listing.id} shareSlug={listing.share_slug} />
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -76,23 +83,31 @@ export function MagamListingListItem({ listing }: { listing: MagamListingPublic 
   const rows = getMagamListingDisplayRows(listing);
 
   return (
-    <Link
-      href={`/p/${listing.share_slug}`}
-      className="block rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-slate-300 hover:bg-slate-50"
-    >
-      <div className="flex items-center gap-2">
-        <span className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-semibold text-white">
-          {typeLabel}
-        </span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-            isClosed ? "bg-slate-200 text-slate-600" : "bg-emerald-100 text-emerald-800"
-          }`}
-        >
-          {MAGAM_STATUS_LABEL[listing.status]}
-        </span>
-      </div>
-      <MagamListingDisplayRows rows={rows} compact />
-    </Link>
+    <div className="relative rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:bg-slate-50">
+      <Link href={`/p/${listing.share_slug}`} className="block px-4 py-3 pr-14">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-semibold text-white">
+            {typeLabel}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              isClosed ? "bg-slate-200 text-slate-600" : "bg-emerald-100 text-emerald-800"
+            }`}
+          >
+            {MAGAM_STATUS_LABEL[listing.status]}
+          </span>
+        </div>
+        <MagamListingDisplayRows rows={rows} compact />
+      </Link>
+      {!isClosed ? (
+        <div className="absolute right-3 top-3">
+          <MagamReportListingButton
+            listingId={listing.id}
+            shareSlug={listing.share_slug}
+            compact
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }

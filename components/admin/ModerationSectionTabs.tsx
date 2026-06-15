@@ -2,6 +2,7 @@ import AdminSectionTabs from "./AdminSectionTabs";
 
 const TABS = [
   { href: "/admin/reports", label: "신고" },
+  { href: "/admin/magam-listings", label: "마감링크 공고" },
   { href: "/admin/job-reports", label: "노쇼 신고" },
 ];
 

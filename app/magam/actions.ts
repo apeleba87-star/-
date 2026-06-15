@@ -127,9 +127,13 @@ export async function createMagamListing(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("magam_sync_consent_at")
+    .select("magam_sync_consent_at, magam_suspended_at")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (profile?.magam_suspended_at) {
+    return { ok: false, error: "마감링크 이용이 정지된 계정입니다. 고객지원으로 문의해 주세요." };
+  }
 
   if (!profile?.magam_sync_consent_at) {
     await supabase

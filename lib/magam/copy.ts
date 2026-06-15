@@ -11,6 +11,9 @@ export const MAGAM_STATUS_LABEL: Record<MagamListingStatus, string> = {
   closed: "마감",
 };
 
+export const MAGAM_OTHER_WORK_LABEL = "기타 (직접 입력)";
+export const MAGAM_OTHER_WORK_HINT = "예) 유리창 청소, 특수청소";
+
 export const MAGAM_WORK_KIND_LABEL: Record<string, string> = {
   move_in_new: "신축입주 청소",
   move_out: "이사 청소",
@@ -56,9 +59,9 @@ import { MAGAM_PRODUCT_NAME } from "@/lib/magam/brand";
 export const MAGAM_SHARE_PAGE_TITLE = MAGAM_PRODUCT_NAME;
 
 /** 카카오·공유 링크 CTA (URL 대신 안내 문구) */
-export const MAGAM_SHARE_LINK_CTA = "접수상태 확인";
+export const MAGAM_SHARE_LINK_CTA = "마감 상태 확인";
 /** 카카오 공유 문구용 (대괄호 포함) */
-export const MAGAM_SHARE_LINK_CTA_BRACKET = "[접수상태 확인]";
+export const MAGAM_SHARE_LINK_CTA_BRACKET = "[마감 상태 확인]";
 export const MAGAM_SHARE_LINK_ARROWS = "👇👇👇👇👇";
 
 export const MAGAM_KAKAO_SHARE_INCLUDE_PHONE = "공유·복사에 연락처 포함";
@@ -80,8 +83,12 @@ export const MAGAM_SHARE_PREVIEW_LABEL = "공고 미리보기";
 export const MAGAM_TERMS_CONSENT_REQUIRED = "이용약관에 동의해야 글을 올릴 수 있습니다.";
 export const MAGAM_TERMS_CONSENT_HINT =
   "허위·불법 구인, 연락처 도용 등 부적절한 공고는 금지됩니다.";
+export const MAGAM_CLOSE_CONFIRM_TITLE = "마감할까요?";
 export const MAGAM_CLOSE_CONFIRM_BODY =
   "마감하면 공유 링크에서 연락처가 더 이상 보이지 않습니다.";
+export const MAGAM_CLOSE_CONFIRM_HINT = "한 번 마감하면 되돌릴 수 없습니다.";
+export const MAGAM_CLOSE_CONFIRM_CANCEL = "취소";
+export const MAGAM_CLOSE_CONFIRM_ACTION = "마감";
 export const MAGAM_SYNC_CONSENT_ALREADY_GRANTED =
   "모집 안내 노출에 동의한 상태입니다. 설정에서 철회할 수 있습니다.";
 
@@ -102,3 +109,11 @@ export const MAGAM_DELETE_ACCOUNT_BODY =
 
 export const MAGAM_HIRING_PHONE_HELPER =
   "구직자가 전화·문자할 번호 · 다음 글쓰기 때 자동 입력";
+export const MAGAM_SUBCONTRACT_PHONE_HELPER = "다음 글쓰기 때 자동으로 채워집니다";
+
+export const MAGAM_HIRING_WORK_HINT = "예) 입주청소, 후드청소, 준공청소";
+export const MAGAM_HIRING_WORK_HELPER = "카페 제목처럼 하시는 일을 직접 적어 주세요";
+export const MAGAM_HIRING_SPECIAL_NOTES_HINT =
+  "예) 08:00~17:00, 1명, 작업 후 계좌 지급";
+export const MAGAM_SUBCONTRACT_SPECIAL_NOTES_HINT =
+  "예) 엘리베이터 없음, 주차 가능, 반려동물 있음";

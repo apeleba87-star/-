@@ -6,6 +6,7 @@ import { PublicJobPayModeProvider } from "@/components/jobs/public/PublicJobPayM
 import PublicJobRegionWithShare from "@/components/jobs/public/PublicJobRegionWithShare";
 import PublicJobRadarAdsSection from "@/components/jobs/public/PublicJobRadarAdsSection";
 import PublicJobsRegionHubBridges from "@/components/region-hub/PublicJobsRegionHubBridges";
+import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
 import { PUBLIC_JOBS_COPY } from "@/lib/jobs-public/copy";
 import {
   getCachedNationalFallbackJobs,
@@ -127,7 +128,7 @@ export default async function PublicJobsPage({
           </p>
           <p className="mt-2">
             <Link
-              href="/magam/live"
+              href={magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX)}
               className="text-sm font-medium text-slate-800 underline-offset-2 hover:underline"
             >
               실시간 도급·구인 모집 보기 →

@@ -61,7 +61,7 @@ const statusLabels = {
 };
 
 /// 카카오·공유 링크 CTA
-const magamShareLinkCta = '[접수상태 확인]';
+const magamShareLinkCta = '[마감 상태 확인]';
 
 const magamShareLinkArrows = '👇👇👇👇👇';
 
@@ -118,3 +118,6 @@ const magamHiringPhoneHelper =
 /// 도급 글쓰기 — 특이사항
 const magamSubcontractSpecialNotesHint =
     '예) 엘리베이터 없음, 주차 가능, 반려동물 있음';
+
+const magamOtherWorkLabel = '기타 (직접 입력)';
+const magamOtherWorkHint = '예) 유리창 청소, 특수청소';

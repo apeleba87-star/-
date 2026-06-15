@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import MagamLiveFeed from "@/components/magam/MagamLiveFeed";
 import { MagamPageHeader } from "@/components/magam/ui/MagamUi";
+import { isMagamLiveSiteEntry, magamLiveBackHref } from "@/lib/magam/live-entry";
 import { getMagamOpenListings } from "@/lib/magam/queries";
 
 export const revalidate = 60;
@@ -11,13 +12,20 @@ export const metadata: Metadata = {
   description: "현재 모집 중인 도급·구인 공고",
 };
 
-export default async function MagamLivePage() {
+type SearchParams = Promise<{ from?: string }>;
+
+export default async function MagamLivePage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const fromSite = isMagamLiveSiteEntry(params.from);
   const listings = await getMagamOpenListings({ limit: 100 });
+
   return (
     <>
-      <MagamPageHeader title="실시간 모집" backHref="/magam/me" />
+      <MagamPageHeader title="실시간 모집" backHref={magamLiveBackHref(params.from)} />
       <p className="mb-4 text-[13px] text-[#5B6472]">
-        현재 모집 중인 도급·구인 공고입니다.
+        {fromSite
+          ? "클린아이덱스에 등록된 현재 모집 중인 도급·구인 공고입니다."
+          : "현재 모집 중인 도급·구인 공고입니다."}
       </p>
       <MagamLiveFeed initialListings={listings} />
     </>

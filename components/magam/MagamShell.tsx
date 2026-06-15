@@ -13,11 +13,13 @@ const TABS = [
 ] as const;
 
 function hideBottomNav(pathname: string): boolean {
-  return (
-    pathname.startsWith("/magam/listing/") ||
-    pathname === "/magam/support" ||
-    pathname === "/magam/live"
-  );
+  return pathname === "/magam/support" || pathname === "/magam/live";
+}
+
+function isTabActive(pathname: string, href: string): boolean {
+  if (pathname === href || pathname.startsWith(`${href}/`)) return true;
+  if (href === "/magam/me" && pathname.startsWith("/magam/listing/")) return true;
+  return false;
 }
 
 export default function MagamShell({ children }: { children: ReactNode }) {
@@ -34,7 +36,7 @@ export default function MagamShell({ children }: { children: ReactNode }) {
         >
           <div className="mx-auto flex max-w-lg">
             {TABS.map((tab) => {
-              const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+              const active = isTabActive(pathname, tab.href);
               return (
                 <Link
                   key={tab.href}

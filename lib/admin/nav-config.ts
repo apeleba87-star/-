@@ -33,6 +33,7 @@ export const ADMIN_HUBS: AdminHub[] = [
     description: "콘텐츠 신고 및 노쇼 신고 처리",
     items: [
       { href: "/admin/reports", label: "신고", description: "콘텐츠·댓글 신고 검토" },
+      { href: "/admin/magam-listings", label: "마감링크 공고", description: "공고 신고·강제 마감·이용 정지" },
       { href: "/admin/job-reports", label: "노쇼 신고", description: "일자리 노쇼 신고 처리" },
     ],
   },

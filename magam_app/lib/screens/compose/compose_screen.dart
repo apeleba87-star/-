@@ -324,7 +324,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
       }
 
       if (_workKind == 'other' && _otherDetailController.text.trim().length < 4) {
-        return '어떤 청소인지 4자 이상 입력해 주세요.';
+        return '기타 청소 내용을 4자 이상 입력해 주세요.';
       }
     }
 
@@ -553,7 +553,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
               acTypes: _acTypes,
               enabled: !_loading,
               onWorkKindChanged: (kind) => setState(() {
-                _workKind = kind;
+                _workKind = kind.isEmpty ? null : kind;
                 if (kind != 'ac') _acTypes = {};
                 if (kind != 'move_in_new' && kind != 'move_out') {
                   _pyeongController.clear();
