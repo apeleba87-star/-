@@ -70,9 +70,9 @@ export default function MagamShareBlock({
   const handleKakao = async () => {
     setKakaoLoading(true);
     const text = buildMagamShareMessage(listing, shareUrl, includePhone);
-    const outcome = await shareToKakaoTalk(text);
+    const { outcome, truncated } = await shareToKakaoTalk(text);
     setKakaoLoading(false);
-    notify(magamKakaoShareToast(outcome));
+    notify(magamKakaoShareToast(outcome, truncated));
     if (outcome === "failed") {
       window.prompt("아래 내용을 복사해 카톡에 붙여넣으세요.", text);
     }

@@ -58,9 +58,9 @@ export default function MagamReferralCopyButton({
       variant === "afterClose"
         ? buildMagamIntroAfterCloseCopy(siteBase)
         : buildMagamIntroCopy(siteBase);
-    const outcome = await shareToKakaoTalk(text);
+    const { outcome, truncated } = await shareToKakaoTalk(text);
     setLoading(false);
-    notify(magamKakaoShareToast(outcome));
+    notify(magamKakaoShareToast(outcome, truncated));
     if (outcome === "failed") {
       window.prompt("아래 문구를 복사해 카톡에 붙여넣으세요.", text);
     }
