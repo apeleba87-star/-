@@ -10,6 +10,7 @@ import '../../services/magam_consent_service.dart';
 import '../../services/magam_profile_service.dart';
 import '../../theme/magam_theme.dart';
 import '../../utils/kr_phone_format.dart';
+import '../../widgets/magam_app_pitch.dart';
 import '../../widgets/magam_screen_padding.dart';
 import '../../widgets/magam_install_guide_dialog.dart';
 import '../../widgets/magam_section_card.dart';
@@ -232,13 +233,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text('계정', style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 8),
                         Text(_accountLabel(), style: Theme.of(context).textTheme.bodyMedium),
-                        const SizedBox(height: 4),
-                        Text(
-                          magamAppTagline,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: MagamColors.inkMuted,
-                              ),
-                        ),
+                        const SizedBox(height: 8),
+                        const MagamAppPitch(dense: true),
                       ],
                     ),
                   ),

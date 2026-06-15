@@ -1,7 +1,8 @@
 import Link from "next/link";
 
+import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import MagamReferralCopyButton from "@/components/magam/MagamReferralCopyButton";
-import { MAGAM_APP_NAME, MAGAM_APP_TAGLINE } from "@/lib/magam/brand";
+import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 
 /** 공고(/p/)를 본 사람 → 올리는 사람 전환 */
 export default function MagamPosterCta() {
@@ -11,10 +12,7 @@ export default function MagamPosterCta() {
       aria-label="공고 올리기 안내"
     >
       <p className="text-sm font-semibold text-slate-900">{MAGAM_APP_NAME}</p>
-      <p className="mt-1 text-sm leading-relaxed text-slate-600">{MAGAM_APP_TAGLINE}</p>
-      <p className="mt-2 text-sm text-slate-600">
-        링크 하나로 올리고 마감하면 연락처가 숨겨집니다.
-      </p>
+      <MagamAppPitch className="mt-1" />
       <div className="mt-4">
         <Link
           href="/magam/app/"

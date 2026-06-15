@@ -4,7 +4,17 @@ const magamAppName = '마감링크';
 
 const magamAppVersion = '1.0.0';
 
-const magamAppTagline = '링크 공유 · 마감하면 연락처 비공개';
+const magamAppTagline = '도급·구인 모집, 이제 마감도 쉽게';
+
+const magamAppHighlights = [
+  '링크 하나로 공고 등록',
+  '모집 완료 후 마감 버튼 한 번',
+  '연락처 자동 비공개',
+];
+
+/// 카톡·SNS 링크 미리보기
+const magamPwaOgDescription =
+    '도급·구인 모집, 이제 마감도 쉽게. 링크 등록 후 마감 버튼 한 번이면 연락처가 자동 비공개됩니다.';
 
 const magamLoginPrompt = '카카오 또는 이메일로 로그인하세요';
 
@@ -70,7 +80,7 @@ const magamShareBrandAttribution = '(공고 관리: 마감링크)';
 const magamIntroStoreNotice = '※ 앱스토어 출시 전 · 위 주소로 바로 이용하세요.';
 
 const magamIntroAfterCloseLead =
-    '공고 마감하면 링크에서 연락처가 안 보이게 할 수 있어요.';
+    '모집 완료 후 마감 버튼 한 번이면 연락처가 자동 비공개됩니다.';
 
 const magamReferralCopyLabel = '동료에게 알리기 (문구 복사)';
 const magamReferralCopyAfterCloseLabel = '동료에게 소개 (문구 복사)';

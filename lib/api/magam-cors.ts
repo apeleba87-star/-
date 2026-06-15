@@ -8,7 +8,7 @@ export function isMagamCorsOrigin(origin: string | null): boolean {
 }
 
 export function magamCorsHeaders(origin: string | null): HeadersInit {
-  if (!isMagamCorsOrigin(origin)) return {};
+  if (!origin || !isMagamCorsOrigin(origin)) return {};
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",

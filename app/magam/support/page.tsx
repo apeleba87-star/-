@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { MAGAM_APP_NAME, MAGAM_APP_TAGLINE } from "@/lib/magam/brand";
+import MagamAppPitch from "@/components/magam/MagamAppPitch";
+import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 import { magamSupportEmail } from "@/lib/magam/support";
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export default function MagamSupportPage() {
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{MAGAM_APP_NAME}</p>
       <h1 className="mt-2 text-2xl font-bold text-slate-900">고객지원</h1>
-      <p className="mt-2 text-sm text-slate-600">{MAGAM_APP_TAGLINE}</p>
+      <MagamAppPitch className="mt-2" />
 
       <section className="mt-8 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">자주 묻는 질문</h2>

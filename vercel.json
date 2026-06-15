@@ -1,18 +1,4 @@
 {
-  "rewrites": [
-    {
-      "source": "/magam/app",
-      "destination": "/magam/app/index.html"
-    },
-    {
-      "source": "/magam/app/",
-      "destination": "/magam/app/index.html"
-    },
-    {
-      "source": "/magam/app/:path*",
-      "destination": "/magam/app/index.html"
-    }
-  ],
   "crons": [
     {
       "path": "/api/cron/fetch-g2b",

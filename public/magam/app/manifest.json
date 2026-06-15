@@ -6,7 +6,7 @@
     "display": "standalone",
     "background_color": "#1A234E",
     "theme_color": "#1A234E",
-    "description": "구인·도급 공고 링크 공유 · 마감하면 연락처 비공개",
+    "description": "도급·구인 모집, 이제 마감도 쉽게",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "lang": "ko",

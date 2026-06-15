@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
-import { MAGAM_APP_NAME, MAGAM_APP_TAGLINE, isMagamFromQuery } from "@/lib/magam/brand";
+import MagamAppPitch from "@/components/magam/MagamAppPitch";
+import { MAGAM_APP_NAME, isMagamFromQuery } from "@/lib/magam/brand";
 
 function isValidNext(path: string | null): path is string {
   if (!path || typeof path !== "string") return false;
@@ -85,9 +86,12 @@ export default function LoginClient() {
             {fromMagam ? `${MAGAM_APP_NAME} 로그인` : "로그인"}
           </h1>
           {fromMagam ? (
-            <p className="mb-2 text-center text-sm font-medium text-teal-800 sm:text-base">
-              {MAGAM_APP_TAGLINE}
-            </p>
+            <div className="mb-4">
+              <MagamAppPitch
+                headlineClassName="text-center text-sm font-medium text-teal-800 sm:text-base"
+                bulletClassName="text-sm text-slate-600"
+              />
+            </div>
           ) : null}
           <p className="mb-8 text-center text-sm text-slate-500 sm:text-base">
             {fromMagam ? "카카오 또는 이메일로 로그인하세요" : "클린아이덱스 계정으로 로그인하세요"}

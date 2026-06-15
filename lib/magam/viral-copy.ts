@@ -1,4 +1,9 @@
-import { MAGAM_APP_NAME, MAGAM_APP_TAGLINE, MAGAM_WEB_APP_PATH } from "@/lib/magam/brand";
+import {
+  MAGAM_APP_NAME,
+  MAGAM_APP_HIGHLIGHTS,
+  MAGAM_APP_TAGLINE,
+  MAGAM_WEB_APP_PATH,
+} from "@/lib/magam/brand";
 
 export function magamWebAppUrl(siteBase = "https://cleanidex.co.kr"): string {
   const base = siteBase.replace(/\/+$/, "");
@@ -9,8 +14,8 @@ export function magamWebAppUrl(siteBase = "https://cleanidex.co.kr"): string {
 export function buildMagamIntroCopy(siteBase = "https://cleanidex.co.kr"): string {
   const appUrl = magamWebAppUrl(siteBase);
   return [
-    `구인·도급 올릴 때 ${MAGAM_APP_NAME} 씁니다.`,
-    MAGAM_APP_TAGLINE,
+    `${MAGAM_APP_NAME} — ${MAGAM_APP_TAGLINE}`,
+    ...MAGAM_APP_HIGHLIGHTS.map((line) => `· ${line}`),
     "",
     `▶ ${appUrl}`,
     "",
@@ -21,7 +26,7 @@ export function buildMagamIntroCopy(siteBase = "https://cleanidex.co.kr"): strin
 /** 마감 후 동료에게 알릴 때 */
 export function buildMagamIntroAfterCloseCopy(siteBase = "https://cleanidex.co.kr"): string {
   return [
-    "공고 마감하면 링크에서 연락처가 안 보이게 할 수 있어요.",
+    "모집 완료 후 마감 버튼 한 번이면 연락처가 자동 비공개됩니다.",
     buildMagamIntroCopy(siteBase),
   ].join("\n\n");
 }

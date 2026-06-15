@@ -6,8 +6,8 @@ class MagamViralCopy {
 
   static String buildIntroCopy() {
     return [
-      '구인·도급 올릴 때 $magamAppName 씁니다.',
-      magamAppTagline,
+      '$magamAppName — $magamAppTagline',
+      for (final line in magamAppHighlights) '· $line',
       '',
       '▶ ${webAppUrl()}',
       '',

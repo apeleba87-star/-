@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../constants/magam_copy.dart';
 import '../../models/magam_listing.dart';
 import '../../services/magam_repository.dart';
 import '../../theme/magam_theme.dart';
+import '../../widgets/magam_app_pitch.dart';
 import '../../widgets/my_listing_card.dart';
 import '../../widgets/magam_screen_padding.dart';
 import '../../widgets/magam_section_card.dart';
@@ -63,13 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : ListView(
                 padding: MagamScreenPadding.listWithBottomNav(context),
                 children: [
-                  Text(
-                    magamAppTagline,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: MagamColors.inkMuted,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
+                  const MagamAppPitch(textAlign: TextAlign.center, dense: true),
                   const SizedBox(height: 16),
                   const RadarAdNationalBanner(pagePath: 'magam:home'),
                   if (_error != null) MagamErrorBanner(message: _error!),

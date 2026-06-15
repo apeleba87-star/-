@@ -7,6 +7,7 @@ import '../../constants/magam_copy.dart';
 import '../../config/app_config.dart';
 import '../../config/auth_redirect.dart';
 import '../../theme/magam_theme.dart';
+import '../../widgets/magam_app_pitch.dart';
 import '../../widgets/magam_section_card.dart';
 import '../../widgets/magam_web_beta_banner.dart';
 
@@ -153,14 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   Text(magamAppName, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 8),
-                  Text(
-                    magamAppTagline,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: MagamColors.accent,
-                          fontWeight: FontWeight.w600,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
+                  const MagamAppPitch(textAlign: TextAlign.center),
                   const SizedBox(height: 6),
                   Text(
                     magamLoginPrompt,
