@@ -6,6 +6,7 @@ extension type _MagamRuntimeConfig(JSObject _) implements JSObject {
   external String? get supabaseUrl;
   external String? get supabaseAnonKey;
   external String? get shareBaseUrl;
+  external String? get oauthRedirectUrl;
 }
 
 @JS('window.__MAGAM_CONFIG__')
@@ -18,9 +19,11 @@ MagamRuntimeValues? readMagamRuntimeConfig() {
   final key = cfg.supabaseAnonKey?.trim() ?? '';
   if (url.isEmpty || key.isEmpty) return null;
   final share = cfg.shareBaseUrl?.trim();
+  final oauth = cfg.oauthRedirectUrl?.trim();
   return MagamRuntimeValues(
     supabaseUrl: url,
     supabaseAnonKey: key,
     shareBaseUrl: share != null && share.isNotEmpty ? share : null,
+    oauthRedirectUrl: oauth != null && oauth.isNotEmpty ? oauth : null,
   );
 }

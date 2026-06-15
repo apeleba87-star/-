@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { magamLoginRedirectPath } from "@/lib/magam/surface";
 import { createServerClient } from "@supabase/ssr";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
@@ -20,7 +21,9 @@ export async function GET(request: NextRequest) {
 
   if (errorParam) {
     const msg = errorDescription ? `${errorParam}: ${decodeURIComponent(errorDescription)}` : errorParam;
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, request.url));
+    return NextResponse.redirect(
+      new URL(magamLoginRedirectPath(next, msg), request.url)
+    );
   }
 
   let response = NextResponse.redirect(new URL(next, request.url));
@@ -52,5 +55,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(new URL("/login?error=auth", request.url));
+  return NextResponse.redirect(new URL(magamLoginRedirectPath(next, "auth"), request.url));
 }

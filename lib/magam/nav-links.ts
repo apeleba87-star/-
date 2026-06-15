@@ -7,11 +7,17 @@ export type MagamNavLink = {
   adminOnly?: boolean;
 };
 
+export const MAGAM_HUB_PATH = "/magam";
+export const MAGAM_WRITE_PATH = "/magam/write";
+export const MAGAM_ME_PATH = "/magam/me";
 export const MAGAM_LIVE_PATH = "/magam/live";
 
-/** 클린아이덱스·공유 링크 공통 — 실시간 모집 목록 */
+/** 마감링크 웹 네비 */
 export const MAGAM_NAV_LINKS: MagamNavLink[] = [
-  { href: MAGAM_LIVE_PATH, label: "실시간 모집", exact: true },
+  { href: MAGAM_HUB_PATH, label: "홈", exact: true },
+  { href: MAGAM_WRITE_PATH, label: "올리기", exact: true },
+  { href: MAGAM_ME_PATH, label: "내 공고", exact: true },
+  { href: MAGAM_LIVE_PATH, label: "실시간", exact: true },
 ];
 
 export function magamNavLinksForUser(isAdmin: boolean): MagamNavLink[] {

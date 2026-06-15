@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <base href="/magam/app/">
+  <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -34,8 +34,44 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
   <title>마감링크</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    #magam-boot {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: #1A234E;
+      color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    #magam-boot p { margin: 0; font-size: 15px; opacity: 0.9; }
+    #magam-boot .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: magam-spin 0.8s linear infinite;
+    }
+    @keyframes magam-spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
+  <div id="magam-boot" aria-live="polite" aria-busy="true">
+    <div class="spinner" aria-hidden="true"></div>
+    <p>마감링크 불러오는 중…</p>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('magam-boot');
+      if (el) el.remove();
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

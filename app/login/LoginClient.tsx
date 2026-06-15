@@ -1,12 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase";
-import Button from "@/components/Button";
+import { useState } from "react";
+
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
+import MagamWebBetaBanner from "@/components/magam/MagamWebBetaBanner";
+import {
+  MagamDividerOr,
+  MagamErrorBanner,
+  MagamFieldLabel,
+  MagamSectionCard,
+  magamInputClass,
+  magamPrimaryBtnClass,
+} from "@/components/magam/ui/MagamUi";
 import { MAGAM_APP_NAME, isMagamFromQuery } from "@/lib/magam/brand";
+import { createClient } from "@/lib/supabase";
 
 function isValidNext(path: string | null): path is string {
   if (!path || typeof path !== "string") return false;
@@ -18,20 +28,12 @@ function loginErrorMessage(raw: string | null): string | null {
   if (!raw) return null;
   const decoded = decodeURIComponent(raw);
   if (decoded === "auth") {
-    return "카카오 로그인 후 돌아오는 주소가 맞지 않습니다. 마감링크(localhost:54222)에서 로그인했다면 Supabase Redirect URLs에 http://localhost:54222/ 를 추가해 주세요.";
+    return "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
   }
   return decoded;
 }
 
 type SocialProvider = "kakao";
-const SOCIAL_PROVIDERS: { provider: SocialProvider; label: string; className?: string; sizeClass?: string }[] = [
-  {
-    provider: "kakao",
-    label: "카카오로 로그인",
-    className: "border-[#FEE500] bg-[#FEE500] text-[#191919] hover:bg-[#f5d900]",
-    sizeClass: "min-h-[52px] py-3.5 text-base font-semibold sm:min-h-[56px] sm:text-lg",
-  },
-];
 
 export default function LoginClient() {
   const searchParams = useSearchParams();
@@ -39,6 +41,7 @@ export default function LoginClient() {
   const signupHref = fromMagam ? "/signup?from=magam" : "/signup";
   const nextUrl = searchParams?.get("next");
   const errorFromUrl = searchParams?.get("error");
+  const defaultNext = fromMagam ? "/magam/me" : "/onboarding";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,7 +59,7 @@ export default function LoginClient() {
       setLoading(false);
       return;
     }
-    const dest = isValidNext(nextUrl) ? nextUrl : "/onboarding";
+    const dest = isValidNext(nextUrl) ? nextUrl : defaultNext;
     window.location.assign(dest);
   }
 
@@ -64,8 +67,11 @@ export default function LoginClient() {
     setError(null);
     setOauthLoading(provider);
     const supabase = createClient();
-    const next = isValidNext(nextUrl) ? nextUrl : "/onboarding";
-    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` : undefined;
+    const next = isValidNext(nextUrl) ? nextUrl : defaultNext;
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+        : undefined;
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo },
@@ -73,9 +79,87 @@ export default function LoginClient() {
     if (err) {
       setError(err.message);
       setOauthLoading(null);
-      return;
     }
-    setOauthLoading(null);
+  }
+
+  if (fromMagam) {
+    const busy = loading || oauthLoading !== null;
+    return (
+      <div className="min-h-[100dvh] bg-[#F2F3F6] px-4 py-8">
+        <div className="mx-auto w-full max-w-[420px]">
+          <div className="flex flex-col items-center text-center">
+            <Image
+              src="/magam/app/icons/Icon-192.png"
+              alt=""
+              width={72}
+              height={72}
+              className="rounded-[18px]"
+              priority
+            />
+            <h1 className="mt-5 text-[26px] font-extrabold tracking-[-0.6px] text-[#141824]">
+              {MAGAM_APP_NAME}
+            </h1>
+            <MagamAppPitch textAlign="center" className="mt-2" />
+            <p className="mt-1.5 text-[13px] text-[#5B6472]">카카오 또는 이메일로 로그인하세요</p>
+          </div>
+
+          <MagamWebBetaBanner />
+
+          <MagamSectionCard className="mt-8" padding="p-5">
+            {error ? <MagamErrorBanner message={error} /> : null}
+            <button
+              type="button"
+              onClick={() => handleOAuth("kakao")}
+              disabled={busy}
+              className="flex min-h-[52px] w-full items-center justify-center rounded-[14px] bg-[#FEE500] text-base font-semibold text-[#191919] disabled:opacity-50"
+            >
+              {oauthLoading === "kakao" ? "연결 중…" : "카카오로 로그인"}
+            </button>
+
+            <MagamDividerOr />
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <MagamFieldLabel htmlFor="magam-email">이메일</MagamFieldLabel>
+                <input
+                  id="magam-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={magamInputClass}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div>
+                <MagamFieldLabel htmlFor="magam-password">비밀번호</MagamFieldLabel>
+                <input
+                  id="magam-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={magamInputClass}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              <button type="submit" disabled={busy} className={magamPrimaryBtnClass}>
+                {loading ? "로그인 중…" : "로그인"}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-[#5B6472]">
+              계정이 없으신가요?{" "}
+              <Link href={signupHref} className="font-semibold text-[#2563EB] hover:underline">
+                회원가입
+              </Link>
+            </p>
+          </MagamSectionCard>
+
+          <p className="mt-6 text-center text-xs text-[#8B93A1]">{MAGAM_APP_NAME}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -83,38 +167,30 @@ export default function LoginClient() {
       <div className="mx-auto w-full max-w-md sm:max-w-lg lg:max-w-xl">
         <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
           <h1 className="mb-2 text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-[1.75rem]">
-            {fromMagam ? `${MAGAM_APP_NAME} 로그인` : "로그인"}
+            로그인
           </h1>
-          {fromMagam ? (
-            <div className="mb-4">
-              <MagamAppPitch
-                headlineClassName="text-center text-sm font-medium text-teal-800 sm:text-base"
-                bulletClassName="text-sm text-slate-600"
-              />
-            </div>
-          ) : null}
           <p className="mb-8 text-center text-sm text-slate-500 sm:text-base">
-            {fromMagam ? "카카오 또는 이메일로 로그인하세요" : "클린아이덱스 계정으로 로그인하세요"}
+            클린아이덱스 계정으로 로그인하세요
           </p>
 
           {error && (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:text-base" role="alert">
+            <div
+              className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:text-base"
+              role="alert"
+            >
               {error}
             </div>
           )}
 
           <div className="mb-8 space-y-3 sm:space-y-3.5">
-            {SOCIAL_PROVIDERS.map(({ provider, label, className, sizeClass }) => (
-              <button
-                key={provider}
-                type="button"
-                onClick={() => handleOAuth(provider)}
-                disabled={!!oauthLoading}
-                className={`w-full rounded-xl border px-4 text-center font-medium transition disabled:opacity-50 ${className} ${sizeClass ?? "min-h-[48px] py-3 text-sm sm:text-base"}`}
-              >
-                {oauthLoading === provider ? "연결 중…" : label}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => handleOAuth("kakao")}
+              disabled={!!oauthLoading}
+              className="w-full min-h-[52px] rounded-xl border border-[#FEE500] bg-[#FEE500] px-4 text-center text-base font-semibold text-[#191919] transition hover:bg-[#f5d900] disabled:opacity-50"
+            >
+              {oauthLoading === "kakao" ? "연결 중…" : "카카오로 로그인"}
+            </button>
           </div>
 
           <div className="relative mb-8">
@@ -149,9 +225,13 @@ export default function LoginClient() {
                 required
               />
             </div>
-            <Button type="submit" disabled={loading} className="w-full min-h-[48px] text-base font-semibold sm:min-h-[52px]">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full min-h-[48px] rounded-xl bg-slate-900 text-base font-semibold text-white sm:min-h-[52px] disabled:opacity-50"
+            >
               {loading ? "로그인 중…" : "로그인"}
-            </Button>
+            </button>
           </form>
           <p className="mt-6 text-center text-sm text-slate-600 sm:text-base">
             계정이 없으신가요?{" "}
@@ -161,7 +241,6 @@ export default function LoginClient() {
           </p>
         </div>
       </div>
-      {fromMagam ? <p className="mt-6 text-center text-xs text-slate-400">{MAGAM_APP_NAME}</p> : null}
     </div>
   );
 }

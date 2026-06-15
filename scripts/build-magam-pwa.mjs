@@ -48,7 +48,35 @@ const flutterBin =
     : "flutter";
 
 const envFile = path.join(magamDir, ".env");
-const defineArgs = existsSync(envFile) ? ["--dart-define-from-file=.env"] : [];
+const pwaEnvFile = path.join(magamDir, ".env.pwa.build");
+
+/** PWA 릴리스 빌드 — localhost OAuth 등 개발 전용 값 제외 */
+function writePwaBuildEnvFile() {
+  if (!existsSync(envFile)) return;
+  const allowed = new Set([
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "MAGAM_SHARE_BASE_URL",
+  ]);
+  const lines = readFileSync(envFile, "utf8")
+    .split(/\r?\n/)
+    .filter((line) => {
+      const key = line.split("=")[0]?.trim();
+      return key && allowed.has(key);
+    });
+  if (lines.length === 0) return;
+  writeFileSync(pwaEnvFile, `${lines.join("\n")}\n`, "utf8");
+}
+
+writePwaBuildEnvFile();
+
+const defineArgs = existsSync(pwaEnvFile)
+  ? ["--dart-define-from-file=.env.pwa.build"]
+  : existsSync(envFile)
+    ? ["--dart-define-from-file=.env"]
+    : [];
 
 const build = spawnSync(
   flutterBin,

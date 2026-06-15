@@ -59,3 +59,46 @@ export const MAGAM_SHARE_PAGE_TITLE = MAGAM_PRODUCT_NAME;
 export const MAGAM_SHARE_LINK_CTA = "접수상태 확인";
 /** 카카오 공유 문구용 (대괄호 포함) */
 export const MAGAM_SHARE_LINK_CTA_BRACKET = "[접수상태 확인]";
+export const MAGAM_SHARE_LINK_ARROWS = "👇👇👇👇👇";
+
+export const MAGAM_KAKAO_SHARE_INCLUDE_PHONE = "공유·복사에 연락처 포함";
+export const MAGAM_KAKAO_SHARE_INCLUDE_PHONE_HINT =
+  "켜면 카톡·카페 복사 문구에 연락처가 들어갑니다";
+export const MAGAM_NAVER_CAFE_COPY_LABEL = "네이버 카페용 복사";
+export const MAGAM_NAVER_CAFE_COPY_DONE = "카페에 붙여넣을 내용이 복사됐어요.";
+
+/** 공고 상세 — 공유 블록 섹션 */
+export const MAGAM_SHARE_LISTING_SECTION = "이 공고 공유";
+export const MAGAM_SHARE_REFERRAL_SECTION = "마감링크 알리기";
+export const MAGAM_SHARE_REFERRAL_HINT = "이 공고가 아니라, 마감링크 서비스를 동료에게 소개합니다.";
+export const MAGAM_REFERRAL_KAKAO_LABEL = "카톡으로 마감링크 알리기";
+export const MAGAM_REFERRAL_KAKAO_AFTER_CLOSE = "카톡으로 동료에게 소개";
+
+/** 소유자 → /p/ 공개 화면 (받는 사람이 링크로 보는 화면) */
+export const MAGAM_SHARE_PREVIEW_LABEL = "받는 사람 화면";
+
+export const MAGAM_TERMS_CONSENT_REQUIRED = "이용약관에 동의해야 글을 올릴 수 있습니다.";
+export const MAGAM_TERMS_CONSENT_HINT =
+  "허위·불법 구인, 연락처 도용 등 부적절한 공고는 금지됩니다.";
+export const MAGAM_CLOSE_CONFIRM_BODY =
+  "마감하면 공유 링크에서 연락처가 더 이상 보이지 않습니다.";
+export const MAGAM_SYNC_CONSENT_ALREADY_GRANTED =
+  "모집 안내 노출에 동의한 상태입니다. 설정에서 철회할 수 있습니다.";
+
+export const MAGAM_WEB_BETA_TITLE = "스토어 출시 전 · 웹으로 이용";
+export const MAGAM_WEB_BETA_BODY =
+  "지금은 브라우저에서 바로 쓸 수 있어요. 바탕화면에 넣으면 앱처럼 편합니다.";
+export const MAGAM_INSTALL_GUIDE_TITLE = "바탕화면에 추가";
+export const MAGAM_INSTALL_GUIDE_STEPS = [
+  "브라우저 아래쪽 또는 위쪽 메뉴(⋯)를 누르세요.",
+  "「홈 화면에 추가」 또는 「바탕화면에 추가」를 선택하세요.",
+  "이름을 확인한 뒤 추가를 누르세요.",
+  "홈 화면에 생긴 아이콘으로 다시 들어오면 됩니다.",
+] as const;
+
+export const MAGAM_DELETE_ACCOUNT_TITLE = "회원 탈퇴";
+export const MAGAM_DELETE_ACCOUNT_BODY =
+  "탈퇴하면 등록한 공고와 계정 정보가 삭제됩니다. 동일 계정으로 웹·앱을 쓰는 경우 모두 종료됩니다. 이 작업은 되돌릴 수 없습니다.";
+
+export const MAGAM_HIRING_PHONE_HELPER =
+  "구직자가 전화·문자할 번호 · 다음 글쓰기 때 자동 입력";

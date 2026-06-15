@@ -175,7 +175,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           MagamErrorBanner(message: _error!),
                           const SizedBox(height: 16),
                         ],
-                        if (kIsWeb) ...[
+                        if (kIsWeb &&
+                            (Uri.base.host == 'localhost' ||
+                                Uri.base.host == '127.0.0.1')) ...[
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(

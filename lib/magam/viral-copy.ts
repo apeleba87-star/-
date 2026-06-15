@@ -2,12 +2,12 @@ import {
   MAGAM_APP_NAME,
   MAGAM_APP_HIGHLIGHTS,
   MAGAM_APP_TAGLINE,
-  MAGAM_WEB_APP_PATH,
 } from "@/lib/magam/brand";
+import { MAGAM_ME_PATH } from "@/lib/magam/nav-links";
 
 export function magamWebAppUrl(siteBase = "https://cleanidex.co.kr"): string {
   const base = siteBase.replace(/\/+$/, "");
-  return `${base}${MAGAM_WEB_APP_PATH}/`;
+  return `${base}${MAGAM_ME_PATH}`;
 }
 
 /** 동료·단톡에 붙여넣을 서비스 소개 */

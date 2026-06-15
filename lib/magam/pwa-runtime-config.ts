@@ -4,6 +4,7 @@ export type MagamPwaRuntimeConfig = {
   supabaseUrl: string;
   supabaseAnonKey: string;
   shareBaseUrl: string;
+  oauthRedirectUrl: string;
 };
 
 export function readMagamPwaRuntimeConfig(): MagamPwaRuntimeConfig | null {
@@ -23,7 +24,12 @@ export function readMagamPwaRuntimeConfig(): MagamPwaRuntimeConfig | null {
 
   if (!supabaseUrl || !supabaseAnonKey) return null;
 
-  return { supabaseUrl, supabaseAnonKey, shareBaseUrl };
+  return {
+    supabaseUrl,
+    supabaseAnonKey,
+    shareBaseUrl,
+    oauthRedirectUrl: `${shareBaseUrl}/magam/app/`,
+  };
 }
 
 export function buildMagamPwaRuntimeScript(config: MagamPwaRuntimeConfig): string {
@@ -31,6 +37,7 @@ export function buildMagamPwaRuntimeScript(config: MagamPwaRuntimeConfig): strin
     supabaseUrl: config.supabaseUrl,
     supabaseAnonKey: config.supabaseAnonKey,
     shareBaseUrl: config.shareBaseUrl,
+    oauthRedirectUrl: config.oauthRedirectUrl,
   });
   return `<script>window.__MAGAM_CONFIG__=${payload};</script>`;
 }

@@ -15,14 +15,14 @@ export default function MagamPosterCta() {
       <MagamAppPitch className="mt-1" />
       <div className="mt-4">
         <Link
-          href="/magam/app/"
+          href="/magam/write"
           className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
         >
           나도 공고 올리기
         </Link>
       </div>
       <p className="mt-3 text-xs text-slate-400">
-        앱스토어 출시 전 · 로그인 후 바로 글쓰기가 가능합니다.
+        로그인 후 바로 글쓰기 · 앱 설치 없이 웹에서 이용
       </p>
       <div className="mt-3">
         <MagamReferralCopyButton />

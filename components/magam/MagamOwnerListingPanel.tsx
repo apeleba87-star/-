@@ -1,0 +1,245 @@
+"use client";
+
+
+
+import Link from "next/link";
+
+import { useRouter } from "next/navigation";
+
+import { useState } from "react";
+
+
+
+import { closeMagamListing } from "@/app/magam/actions";
+
+import MagamCloseListingButton from "@/components/magam/MagamCloseListingButton";
+
+import MagamListingDisplayRows from "@/components/magam/MagamListingDisplayRows";
+
+import {
+
+  MagamRadarNationalBanner,
+
+  MagamRadarRegionalBanner,
+
+} from "@/components/magam/MagamRadarAdBanner";
+
+import MagamShareBlock from "@/components/magam/MagamShareBlock";
+
+import {
+
+  MagamErrorBanner,
+
+  MagamSectionCard,
+
+  MagamStatusBadge,
+
+  MagamSuccessBanner,
+
+  magamOutlineBtnClass,
+
+} from "@/components/magam/ui/MagamUi";
+
+import {
+
+  MAGAM_CLOSE_CONFIRM_BODY,
+
+  MAGAM_LISTING_TYPE_LABEL,
+
+  MAGAM_SHARE_PREVIEW_LABEL,
+
+  MAGAM_STATUS_LABEL,
+
+} from "@/lib/magam/copy";
+
+import { formatKrMobilePhone } from "@/lib/format/kr-mobile-phone";
+
+import { getMagamListingDisplayRows } from "@/lib/magam/format-listing";
+
+import { magamRegionalAdKeysForListing } from "@/lib/magam/region-ad-keys";
+
+import type { MagamListingRow } from "@/lib/magam/types";
+
+
+
+type Props = {
+
+  listing: MagamListingRow;
+
+  shareUrl: string;
+
+  isNew?: boolean;
+
+};
+
+
+
+export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Props) {
+
+  const router = useRouter();
+
+  const [closing, setClosing] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const isOpen = listing.status === "open";
+
+  const rows = getMagamListingDisplayRows(listing);
+
+  const regionalKeys = magamRegionalAdKeysForListing(listing);
+
+  const pagePath = `magam:listing/${listing.id}`;
+
+
+
+  async function handleClose() {
+
+    if (!window.confirm(MAGAM_CLOSE_CONFIRM_BODY)) return;
+
+    setClosing(true);
+
+    setError(null);
+
+    const result = await closeMagamListing(listing.id);
+
+    setClosing(false);
+
+    if (!result.ok) {
+
+      setError(result.error);
+
+      return;
+
+    }
+
+    router.refresh();
+
+  }
+
+
+
+  return (
+
+    <div className="space-y-3">
+
+      {regionalKeys.length > 0 ? (
+
+        <MagamRadarRegionalBanner regionKeys={regionalKeys} pagePath={pagePath} compact />
+
+      ) : null}
+
+
+
+      {isNew ? (
+
+        <MagamSuccessBanner
+
+          title="등록 완료!"
+
+          body="내용 확인 후 카톡·카페에 붙여넣으세요."
+
+        />
+
+      ) : null}
+
+
+
+      <MagamSectionCard>
+
+        <div className="mb-6 flex items-center gap-2">
+
+          <MagamStatusBadge label={MAGAM_STATUS_LABEL[listing.status]} isOpen={isOpen} />
+
+          <span className="ml-auto rounded-md bg-[#141824] px-2 py-1 text-[11px] font-semibold text-white">
+
+            {MAGAM_LISTING_TYPE_LABEL[listing.listing_type]}
+
+          </span>
+
+        </div>
+
+        <MagamListingDisplayRows rows={rows} compact />
+
+        {isOpen && listing.contact_phone ? (
+
+          <div className="mt-4 rounded-[14px] bg-[#F2F3F6] px-3.5 py-3">
+
+            <p className="text-[13px] font-semibold text-[#5B6472]">연락처</p>
+
+            <p className="mt-1 text-[15px] font-semibold text-[#141824]">
+
+              {formatKrMobilePhone(listing.contact_phone)}
+
+            </p>
+
+          </div>
+
+        ) : null}
+
+        {!isOpen ? (
+
+          <p className="mt-4 text-[13px] font-semibold text-[#5B6472]">마감됨 — 연락처 숨김</p>
+
+        ) : null}
+
+      </MagamSectionCard>
+
+
+
+      {isOpen ? (
+
+        <MagamCloseListingButton onClick={handleClose} loading={closing} />
+
+      ) : null}
+
+
+
+      <MagamRadarNationalBanner pagePath={pagePath} />
+
+
+
+      <MagamShareBlock listing={listing} shareUrl={shareUrl} highlightShare={isNew} />
+
+
+
+      <Link href={`/p/${listing.share_slug}`} className={`${magamOutlineBtnClass} block text-center`}>
+
+        {MAGAM_SHARE_PREVIEW_LABEL}
+
+      </Link>
+
+
+
+      {isNew ? (
+
+        <Link href="/magam/me" className="block text-center text-sm font-semibold text-[#2563EB]">
+
+          내 공고로 가기
+
+        </Link>
+
+      ) : null}
+
+
+
+      {!isOpen && !isNew ? (
+
+        <p className="text-center text-[13px] text-[#5B6472]">
+
+          마감된 공고입니다. 공유 링크에서 연락처가 숨겨집니다.
+
+        </p>
+
+      ) : null}
+
+
+
+      {error ? <MagamErrorBanner message={error} /> : null}
+
+    </div>
+
+  );
+
+}
+
+

@@ -79,12 +79,14 @@ Future<void> _ensureWebRuntimeConfig() async {
     final url = json['supabaseUrl']?.toString().trim() ?? '';
     final key = json['supabaseAnonKey']?.toString().trim() ?? '';
     final share = json['shareBaseUrl']?.toString().trim();
+    final oauth = json['oauthRedirectUrl']?.toString().trim();
     if (url.isEmpty || key.isEmpty) return;
     AppConfig.useRuntimeConfig(
       MagamRuntimeValues(
         supabaseUrl: url,
         supabaseAnonKey: key,
         shareBaseUrl: share != null && share.isNotEmpty ? share : null,
+        oauthRedirectUrl: oauth != null && oauth.isNotEmpty ? oauth : null,
       ),
     );
   } catch (_) {

@@ -70,9 +70,21 @@ class AppConfig {
 
   static String get webDevOrigin => 'http://localhost:$webDevPort/';
 
+  static bool get _isLocalWebHost {
+    if (!kIsWeb) return false;
+    final host = Uri.base.host;
+    return host == 'localhost' || host == '127.0.0.1';
+  }
+
   /// 카카오 OAuth redirectTo. 웹 전용 — 네이티브(APK)는 [AuthRedirect.androidCallback].
   static String? get oauthRedirectUrl {
     if (!kIsWeb) return null;
+
+    final runtime = _runtime?.oauthRedirectUrl;
+    if (runtime != null && runtime.isNotEmpty) return runtime;
+
+    // 프로덕션: 빌드에 박힌 localhost dart-define 무시 → [AuthRedirect]가 현재 도메인 사용
+    if (!_isLocalWebHost) return null;
 
     const fromDefine = String.fromEnvironment('MAGAM_OAUTH_REDIRECT_URL');
     if (fromDefine.isNotEmpty) return fromDefine;
