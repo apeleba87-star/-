@@ -40,6 +40,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      { source: "/magam/app", destination: "/magam/app/index.html" },
+      { source: "/magam/app/:path*", destination: "/magam/app/index.html" },
+    ];
+  },
 };
 
 const withPWA = withPWAInit({

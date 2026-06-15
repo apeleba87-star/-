@@ -4,6 +4,8 @@ export const MAGAM_PRODUCT_NAME = "모집 안내";
 export const MAGAM_APP_NAME = "마감링크";
 /** Play Store 부제 · 로그인 화면 한 줄 */
 export const MAGAM_APP_TAGLINE = "링크 공유 · 마감하면 연락처 비공개";
+/** Flutter 웹 PWA 배포 경로 */
+export const MAGAM_WEB_APP_PATH = "/magam/app";
 export const MAGAM_FROM_QUERY = "magam";
 
 export function isMagamFromQuery(from: string | null | undefined): boolean {

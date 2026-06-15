@@ -1,7 +1,7 @@
 name: magam_app
 description: 마감링크 — 구인·도급 공고 링크 공유 · 마감하면 연락처 비공개
 publish_to: "none"
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.12.0
@@ -24,8 +24,22 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icon/app_icon.png
+  adaptive_icon_background: "#1A234E"
+  adaptive_icon_foreground: assets/icon/app_icon.png
+  web:
+    generate: true
+    image_path: assets/icon/app_icon.png
+    background_color: "#1A234E"
+    theme_color: "#1A234E"
 
 flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/icon/app_icon.png

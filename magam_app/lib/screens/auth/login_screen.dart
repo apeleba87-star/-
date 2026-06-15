@@ -8,6 +8,7 @@ import '../../config/app_config.dart';
 import '../../config/auth_redirect.dart';
 import '../../theme/magam_theme.dart';
 import '../../widgets/magam_section_card.dart';
+import '../../widgets/magam_web_beta_banner.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -99,6 +100,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _openUrl(String path) async {
+    final uri = Uri.parse('${AppConfig.shareBaseUrl}$path');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
+      setState(() => _error = '페이지를 열 수 없습니다.');
+    }
+  }
+
   Future<void> _openSignup() async {
     final uri = Uri.parse(AuthRedirect.signupUrl(AppConfig.shareBaseUrl));
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -132,14 +141,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 24),
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: MagamColors.ink,
-                      borderRadius: BorderRadius.circular(16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.asset(
+                      'assets/icon/app_icon.png',
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
                     ),
-                    child: const Icon(Icons.check_circle_outline, color: Colors.white, size: 28),
                   ),
                   const SizedBox(height: 20),
                   Text(magamAppName, style: Theme.of(context).textTheme.headlineMedium),
@@ -159,6 +168,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
+                  if (kIsWeb &&
+                      Uri.base.host != 'localhost' &&
+                      Uri.base.host != '127.0.0.1')
+                    const MagamWebBetaBanner(),
                   MagamSectionCard(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -246,6 +259,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextButton(
                         onPressed: busy ? null : _openSignup,
                         child: const Text('회원가입'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    magamLoginLegalNotice,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: MagamColors.inkMuted,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 4,
+                    children: [
+                      TextButton(
+                        onPressed: busy ? null : () => _openUrl('/terms'),
+                        child: const Text('이용약관'),
+                      ),
+                      Text(
+                        '·',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: MagamColors.inkFaint,
+                            ),
+                      ),
+                      TextButton(
+                        onPressed: busy ? null : () => _openUrl('/privacy'),
+                        child: const Text('개인정보 처리방침'),
                       ),
                     ],
                   ),

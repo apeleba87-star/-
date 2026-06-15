@@ -1,0 +1,7 @@
+# Play Store 업로드용 서명 키 (이 파일은 git에 올리지 마세요)
+# 생성: keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=../upload-keystore.jks

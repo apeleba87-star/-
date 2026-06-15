@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "마감 앱 (Chrome :54222)",
+      "cwd": "${workspaceFolder}/magam_app",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "args": [
+        "--web-hostname=localhost",
+        "--web-port=54222"
+      ]
+    }
+  ]
+}

@@ -13,10 +13,12 @@ class RadarAdNationalBanner extends StatefulWidget {
     super.key,
     required this.pagePath,
     this.service,
+    this.compact = false,
   });
 
   final String pagePath;
   final RadarAdService? service;
+  final bool compact;
 
   @override
   State<RadarAdNationalBanner> createState() => _RadarAdNationalBannerState();
@@ -49,6 +51,7 @@ class _RadarAdNationalBannerState extends State<RadarAdNationalBanner> {
       banner: _banner!,
       pagePath: widget.pagePath,
       service: _service,
+      compact: widget.compact,
     );
   }
 }
@@ -59,11 +62,13 @@ class RadarAdRegionalBanner extends StatefulWidget {
     required this.regionKeys,
     required this.pagePath,
     this.service,
+    this.compact = false,
   });
 
   final List<String> regionKeys;
   final String pagePath;
   final RadarAdService? service;
+  final bool compact;
 
   @override
   State<RadarAdRegionalBanner> createState() => _RadarAdRegionalBannerState();
@@ -116,6 +121,7 @@ class _RadarAdRegionalBannerState extends State<RadarAdRegionalBanner> {
       banner: _banner!,
       pagePath: widget.pagePath,
       service: _service,
+      compact: widget.compact,
     );
   }
 }
@@ -126,11 +132,13 @@ class RadarAdCarousel extends StatefulWidget {
     required this.banner,
     required this.pagePath,
     required this.service,
+    this.compact = false,
   });
 
   final RadarAdBanner banner;
   final String pagePath;
   final RadarAdService service;
+  final bool compact;
 
   @override
   State<RadarAdCarousel> createState() => _RadarAdCarouselState();
@@ -224,9 +232,10 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
   Widget build(BuildContext context) {
     final slot = widget.banner.slots[_activeIndex];
     final count = widget.banner.slots.length;
+    final compact = widget.compact;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: compact ? 4 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -234,7 +243,7 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
             color: MagamColors.surface,
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(MagamColors.radiusLg),
+              borderRadius: BorderRadius.circular(compact ? MagamColors.radiusMd : MagamColors.radiusLg),
               side: const BorderSide(color: MagamColors.border),
             ),
             clipBehavior: Clip.antiAlias,
@@ -244,11 +253,14 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                    padding: EdgeInsets.fromLTRB(compact ? 10 : 12, compact ? 6 : 10, compact ? 10 : 12, 0),
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: compact ? 6 : 8,
+                            vertical: compact ? 2 : 3,
+                          ),
                           decoration: BoxDecoration(
                             color: MagamColors.accentSoft,
                             borderRadius: BorderRadius.circular(MagamColors.radiusSm),
@@ -258,6 +270,7 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   color: MagamColors.accent,
                                   fontWeight: FontWeight.w600,
+                                  fontSize: compact ? 10 : null,
                                 ),
                           ),
                         ),
@@ -266,6 +279,7 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
                           '광고',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 color: MagamColors.inkFaint,
+                                fontSize: compact ? 10 : null,
                               ),
                         ),
                       ],
@@ -273,22 +287,22 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
                   ),
                   if (slot.imageUrl != null && slot.imageUrl!.isNotEmpty)
                     AspectRatio(
-                      aspectRatio: 3,
+                      aspectRatio: compact ? 5.2 : 3,
                       child: Image.network(
                         slot.imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _textBody(slot),
+                        errorBuilder: (_, __, ___) => _textBody(slot, compact: compact),
                       ),
                     )
                   else
-                    _textBody(slot),
+                    _textBody(slot, compact: compact),
                 ],
               ),
             ),
           ),
           if (count > 1)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: EdgeInsets.only(top: compact ? 4 : 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(count, (i) {
@@ -301,8 +315,8 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: active ? 16 : 6,
-                      height: 6,
+                      width: active ? (compact ? 12 : 16) : 6,
+                      height: compact ? 5 : 6,
                       decoration: BoxDecoration(
                         color: active ? MagamColors.ink : MagamColors.border,
                         borderRadius: BorderRadius.circular(99),
@@ -317,9 +331,9 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
     );
   }
 
-  Widget _textBody(RadarAdSlot slot) {
+  Widget _textBody(RadarAdSlot slot, {bool compact = false}) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 10 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -330,14 +344,16 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          const SizedBox(height: 4),
+          SizedBox(height: compact ? 2 : 4),
           Text(
             slot.title,
-            style: Theme.of(context).textTheme.titleSmall,
-            maxLines: 2,
+            style: compact
+                ? Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)
+                : Theme.of(context).textTheme.titleSmall,
+            maxLines: compact ? 1 : 2,
             overflow: TextOverflow.ellipsis,
           ),
-          if (slot.description != null && slot.description!.isNotEmpty) ...[
+          if (!compact && slot.description != null && slot.description!.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               slot.description!,
@@ -346,16 +362,22 @@ class _RadarAdCarouselState extends State<RadarAdCarousel> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-          const SizedBox(height: 10),
+          SizedBox(height: compact ? 6 : 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 12,
+              vertical: compact ? 5 : 8,
+            ),
             decoration: BoxDecoration(
               color: MagamColors.ink,
               borderRadius: BorderRadius.circular(MagamColors.radiusSm),
             ),
             child: Text(
               slot.ctaText,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white,
+                    fontSize: compact ? 11 : null,
+                  ),
             ),
           ),
         ],

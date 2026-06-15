@@ -169,6 +169,7 @@ class MagamShareFormat {
       magamShareLinkCta,
       magamShareLinkArrows,
       link,
+      magamShareBrandAttribution,
     ].join('\n');
 
     return message.isEmpty ? footer : '$message\n\n$footer';
@@ -225,7 +226,12 @@ class MagamShareFormat {
     final uri = Uri.tryParse(normalizeShareUrl(url));
     final link = uri != null ? '${uri.host}${uri.path}' : url;
     if (lines.isNotEmpty) lines.add('');
-    lines.addAll([magamShareLinkCta, magamShareLinkArrows, link]);
+    lines.addAll([
+      magamShareLinkCta,
+      magamShareLinkArrows,
+      link,
+      magamShareBrandAttribution,
+    ]);
 
     return lines.join('\n');
   }

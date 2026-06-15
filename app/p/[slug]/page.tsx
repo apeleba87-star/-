@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MagamOpenListings from "@/components/magam/MagamOpenListings";
+import MagamPosterCta from "@/components/magam/MagamPosterCta";
 import MagamShareCard from "@/components/magam/MagamShareCard";
 import { MAGAM_SHARE_PAGE_TITLE, MAGAM_SHARE_LINK_CTA } from "@/lib/magam/copy";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
@@ -55,6 +56,8 @@ export default async function MagamSharePage({ params }: Props) {
       </header>
 
       <MagamShareCard listing={listing} highlight />
+
+      <MagamPosterCta />
 
       <MagamOpenListings
         listings={openListings}

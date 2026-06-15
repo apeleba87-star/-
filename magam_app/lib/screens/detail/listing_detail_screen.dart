@@ -10,9 +10,12 @@ import '../../services/magam_repository.dart';
 import '../../services/magam_share_prefs.dart';
 import '../../theme/magam_theme.dart';
 import '../../utils/magam_share_format.dart';
+import '../../utils/magam_viral_copy.dart';
 import '../../widgets/kakao_share_button.dart';
 import '../../widgets/kakao_share_phone_option.dart';
+import '../../widgets/magam_close_listing_button.dart';
 import '../../widgets/magam_listing_share_view.dart';
+import '../../widgets/magam_referral_copy_button.dart';
 import '../../widgets/magam_screen_padding.dart';
 import '../../widgets/naver_cafe_copy_button.dart';
 import '../../widgets/radar_ad_banner.dart';
@@ -232,9 +235,14 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(content: Text('마감되었습니다.')),
-
+        SnackBar(
+          content: const Text('마감되었습니다.'),
+          action: SnackBarAction(
+            label: '동료 소개',
+            onPressed: () => _copyReferralAfterClose(),
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
 
     } catch (e) {
@@ -254,6 +262,18 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   }
 
 
+
+  Future<void> _copyReferralAfterClose() async {
+    final text = MagamViralCopy.buildIntroAfterCloseCopy();
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(magamReferralCopyDone),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
 
   Future<void> _copyLink({bool silent = false}) async {
 
@@ -363,6 +383,12 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
           icon: const Icon(Icons.link_rounded, size: 20),
           label: Text(widget.highlightShare ? '공유 링크 복사' : '링크 복사'),
         ),
+        const SizedBox(height: 10),
+        MagamReferralCopyButton(
+          variant: listing.isOpen
+              ? MagamReferralVariant.intro
+              : MagamReferralVariant.afterClose,
+        ),
       ],
     );
   }
@@ -454,7 +480,14 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       body: ListView(
         padding: MagamScreenPadding.list(context, extraBottom: 32),
         children: [
+          if (regionalKeys.isNotEmpty)
+            RadarAdRegionalBanner(
+              regionKeys: regionalKeys,
+              pagePath: 'magam:listing/${listing.id}',
+              compact: true,
+            ),
           if (widget.highlightShare) ...[
+            if (regionalKeys.isNotEmpty) const SizedBox(height: 8),
             _registrationBanner(context),
             const SizedBox(height: 12),
           ],
@@ -463,14 +496,16 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             typeLabel: typeLabel,
             statusLabel: statusLabel,
           ),
-          if (regionalKeys.isNotEmpty)
-            RadarAdRegionalBanner(
-              regionKeys: regionalKeys,
-              pagePath: 'magam:listing/${listing.id}',
+          if (listing.isOpen) ...[
+            const SizedBox(height: 12),
+            MagamCloseListingButton(
+              onPressed: _closing ? null : _closeListing,
+              loading: _closing,
             ),
+          ],
+          RadarAdNationalBanner(pagePath: 'magam:listing/${listing.id}'),
           const SizedBox(height: 16),
           _shareBlock(listing),
-          RadarAdNationalBanner(pagePath: 'magam:listing/${listing.id}'),
           if (widget.highlightShare) ...[
             const SizedBox(height: 8),
             Center(
@@ -478,14 +513,6 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                 onPressed: _goHome,
                 child: const Text('내 공고로 가기'),
               ),
-            ),
-          ],
-          if (listing.isOpen) ...[
-            const SizedBox(height: 20),
-            OutlinedButton(
-              onPressed: _closing ? null : _closeListing,
-              style: OutlinedButton.styleFrom(foregroundColor: MagamColors.danger),
-              child: Text(_closing ? '마감 중…' : '모집 마감하기'),
             ),
           ],
         ],

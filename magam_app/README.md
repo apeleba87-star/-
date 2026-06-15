@@ -92,8 +92,23 @@ flutter run --dart-define-from-file=.env
 - API: `{MAGAM_SHARE_BASE_URL}/api/magam/radar-ads/national` · `…/regional?region=…`
 - Supabase migration `175_magam_radar_ad_settings.sql` 적용 필요
 
+## Play Store 출시
+
+**[PLAY_STORE.md](./PLAY_STORE.md)** — APK·Play Console (나중)
+
+## 웹앱 · PWA (지금 테스트·배포)
+
+**[PWA.md](./PWA.md)** — `https://cleanidex.co.kr/magam/app/`
+
+```powershell
+cd magam_app
+.\build_web_release.bat   # → public/magam/app 복사 후 Vercel 배포
+```
+
+로컬 개발: `.\run_web.ps1` → http://localhost:54222/
+
 ## 다음 단계
 
 - Phone OTP 로그인
-- Play Store 배포
 - 푸시 (FCM)
+- 스토어 아이콘·스크린샷 제작

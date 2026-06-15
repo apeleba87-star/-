@@ -33,4 +33,14 @@ class MagamConsentService {
       'magam_sync_consent_version': magamSyncConsentVersion,
     }).eq('id', userId);
   }
+
+  Future<void> revokeSyncConsent() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _client.from('profiles').update({
+      'magam_sync_consent_at': null,
+      'magam_sync_consent_version': null,
+    }).eq('id', userId);
+  }
 }

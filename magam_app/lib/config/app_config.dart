@@ -65,6 +65,14 @@ class AppConfig {
     return null;
   }
 
+  /// 프로덕션 PWA 경로 (cleanidex.co.kr/magam/app/)
+  static String get webAppOrigin {
+    const fromDefine = String.fromEnvironment('MAGAM_WEB_APP_PATH');
+    final path = fromDefine.isNotEmpty ? fromDefine : '/magam/app';
+    final normalized = path.startsWith('/') ? path : '/$path';
+    return '${normalizeShareBaseUrl(shareBaseUrl)}$normalized/';
+  }
+
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 

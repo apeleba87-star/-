@@ -6,6 +6,10 @@ import '../screens/auth/login_screen.dart';
 import '../screens/compose/compose_screen.dart';
 import '../screens/detail/listing_detail_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/settings/settings_screen.dart';
+import '../widgets/magam_shell.dart';
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class AppRouter {
   AppRouter(this._authListenable);
@@ -13,6 +17,7 @@ class AppRouter {
   final Listenable _authListenable;
 
   late final GoRouter router = GoRouter(
+    navigatorKey: _rootNavigatorKey,
     refreshListenable: _authListenable,
     initialLocation: '/',
     redirect: (context, state) {
@@ -28,16 +33,40 @@ class AppRouter {
         path: '/login',
         builder: (context, state) => const LoginScreen(),
       ),
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/compose',
-        builder: (context, state) => const ComposeScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return MagamShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/compose',
+                builder: (context, state) => const ComposeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (context, state) => const SettingsScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/listing/:id',
+        parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           final justPosted = state.uri.queryParameters['new'] == '1';

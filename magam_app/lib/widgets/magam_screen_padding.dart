@@ -16,6 +16,11 @@ class MagamScreenPadding {
     return list(context, extraBottom: fabClearance);
   }
 
+  /// 하단 탭 내비게이션 위 여유
+  static EdgeInsets listWithBottomNav(BuildContext context, {double navClearance = 72}) {
+    return list(context, extraBottom: navClearance);
+  }
+
   static EdgeInsets fab(BuildContext context, {double extra = 16}) {
     return EdgeInsets.only(bottom: extra + safeBottom(context));
   }

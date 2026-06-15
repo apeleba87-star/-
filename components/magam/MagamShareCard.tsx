@@ -5,19 +5,10 @@ import {
   MAGAM_STATUS_LABEL,
 } from "@/lib/magam/copy";
 import { getMagamListingDisplayRows } from "@/lib/magam/format-listing";
-import { formatKrMobilePhone, telHref } from "@/lib/format/kr-mobile-phone";
+import { formatKrMobilePhone } from "@/lib/format/kr-mobile-phone";
+import { formatMagamWhen } from "@/lib/format/kr-datetime";
+import ContactButtons from "@/components/listings/ContactButtons";
 import MagamListingDisplayRows from "@/components/magam/MagamListingDisplayRows";
-
-function formatWhen(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("ko-KR", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 type Props = {
   listing: MagamListingPublic;
@@ -56,23 +47,23 @@ export default function MagamShareCard({ listing, highlight }: Props) {
             마감된 공고입니다. 연락처는 더 이상 제공되지 않습니다.
           </p>
         ) : listing.contact_phone ? (
-          <p className="text-sm text-slate-700">
-            <span className="font-medium text-slate-500">연락처</span>{" "}
-            <a
-              href={telHref(listing.contact_phone)}
-              className="font-semibold text-slate-900 underline-offset-2 hover:underline"
-            >
-              {formatKrMobilePhone(listing.contact_phone)}
-            </a>
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">
+              <span className="font-medium text-slate-500">연락처</span>{" "}
+              <span className="font-semibold text-slate-900">
+                {formatKrMobilePhone(listing.contact_phone)}
+              </span>
+            </p>
+            <ContactButtons phone={listing.contact_phone} variant="listingDetail" />
+          </div>
         ) : (
           <p className="text-sm text-slate-600">연락처를 확인할 수 없습니다.</p>
         )}
       </div>
 
       <p className="mt-3 text-xs text-slate-400">
-        등록 {formatWhen(listing.created_at)}
-        {listing.closed_at ? ` · 마감 ${formatWhen(listing.closed_at)}` : null}
+        등록 {formatMagamWhen(listing.created_at)}
+        {listing.closed_at ? ` · 마감 ${formatMagamWhen(listing.closed_at)}` : null}
       </p>
     </article>
   );

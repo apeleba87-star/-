@@ -101,7 +101,22 @@ export default function PrivacyPage() {
           서비스는 개인정보 처리에 관한 업무를 총괄하는 개인정보 보호책임자를 두고 있습니다. 개인정보와 관련한 문의·불만·권리 행사는 서비스 내 문의 채널 또는 아래 연락처로 요청하실 수 있습니다.
         </p>
         <p className="mt-2 text-sm text-slate-600">
-          (담당자·연락처는 서비스 운영 정책에 따라 공지 후 기재합니다.)
+          개인정보와 관련한 문의·불만·권리 행사는{" "}
+          <a href="/magam/support" className="font-medium text-slate-800 underline-offset-2 hover:underline">
+            마감링크 고객지원
+          </a>
+          또는 아래 연락처로 요청하실 수 있습니다.
+        </p>
+        <p className="mt-2 text-sm text-slate-600">
+          이메일:{" "}
+          <a
+            href={`mailto:${process.env.MAGAM_SUPPORT_EMAIL ?? process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL ?? "help@cleanidex.co.kr"}`}
+            className="font-medium text-slate-800 underline-offset-2 hover:underline"
+          >
+            {process.env.MAGAM_SUPPORT_EMAIL ??
+              process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL ??
+              "help@cleanidex.co.kr"}
+          </a>
         </p>
       </section>
 

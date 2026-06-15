@@ -12,7 +12,11 @@ class AuthRedirect {
     if (kIsWeb) {
       final override = AppConfig.oauthRedirectUrl;
       if (override != null && override.isNotEmpty) return override;
-      return AppConfig.webDevOrigin;
+      final host = Uri.base.host;
+      if (host == 'localhost' || host == '127.0.0.1') {
+        return AppConfig.webDevOrigin;
+      }
+      return AppConfig.webAppOrigin;
     }
     return androidCallback;
   }

@@ -37,6 +37,7 @@ import '../../widgets/magam_screen_padding.dart';
 import '../../widgets/radar_ad_banner.dart';
 import '../../utils/magam_region_key.dart';
 import '../../widgets/magam_sync_consent_tile.dart';
+import '../../widgets/magam_terms_consent_tile.dart';
 
 import '../../widgets/schedule_date_field.dart';
 
@@ -89,6 +90,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
   Set<String> _acTypes = {};
 
   bool _disclosed = false;
+  bool _termsAccepted = false;
 
   bool _alreadyConsented = false;
 
@@ -332,6 +334,10 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
     }
 
+    if (!_termsAccepted) {
+      return magamTermsConsentRequired;
+    }
+
     if (!_disclosed) {
 
       return '「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다.';
@@ -478,7 +484,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('글쓰기')),
       body: ListView(
-        padding: MagamScreenPadding.list(context, extraBottom: 32),
+        padding: MagamScreenPadding.listWithBottomNav(context, navClearance: 32),
         children: [
           const RadarAdNationalBanner(pagePath: 'magam:compose'),
           ComposeSection(
@@ -605,6 +611,12 @@ class _ComposeScreenState extends State<ComposeScreen> {
           ),
           if (preview != null && preview.isNotEmpty)
             MagamPreviewCard(text: preview),
+          MagamTermsConsentTile(
+            checked: _termsAccepted,
+            enabled: !_loading,
+            onChanged: (v) => setState(() => _termsAccepted = v),
+          ),
+          const SizedBox(height: 10),
           if (_consentLoading)
             const Center(
               child: Padding(
