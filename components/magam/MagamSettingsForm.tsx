@@ -19,8 +19,6 @@ import {
 } from "@/components/magam/ui/MagamUi";
 import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 import {
-  MAGAM_DELETE_ACCOUNT_BODY,
-  MAGAM_DELETE_ACCOUNT_TITLE,
   MAGAM_HIRING_PHONE_HELPER,
   MAGAM_SYNC_CONSENT_DETAILS,
   MAGAM_SYNC_CONSENT_TITLE,
@@ -39,7 +37,6 @@ export default function MagamSettingsForm({ bootstrap }: Props) {
   const [consentGranted, setConsentGranted] = useState(bootstrap.consentGranted);
   const [savingPhone, setSavingPhone] = useState(false);
   const [consentBusy, setConsentBusy] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConsentDetails, setShowConsentDetails] = useState(false);
 
@@ -74,25 +71,6 @@ export default function MagamSettingsForm({ bootstrap }: Props) {
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/login?from=magam";
-  }
-
-  async function handleDeleteAccount() {
-    if (!window.confirm(MAGAM_DELETE_ACCOUNT_BODY)) return;
-    setDeleting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/magam/delete-account", { method: "POST" });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? "탈퇴에 실패했습니다.");
-      }
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      window.location.href = "/login?from=magam";
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "탈퇴에 실패했습니다.");
-      setDeleting(false);
-    }
   }
 
   return (
@@ -183,14 +161,6 @@ export default function MagamSettingsForm({ bootstrap }: Props) {
         </div>
       </MagamSectionCard>
 
-      <button
-        type="button"
-        onClick={handleDeleteAccount}
-        disabled={deleting}
-        className={`${magamOutlineBtnClass} !text-[#DC2626]`}
-      >
-        {deleting ? "탈퇴 처리 중…" : MAGAM_DELETE_ACCOUNT_TITLE}
-      </button>
       <button
         type="button"
         onClick={handleSignOut}

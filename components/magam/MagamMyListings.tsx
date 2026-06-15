@@ -7,11 +7,15 @@ import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import MagamMyListingCard from "@/components/magam/MagamMyListingCard";
 import { MagamRadarNationalBanner } from "@/components/magam/MagamRadarAdBanner";
 import { magamPrimaryBtnClass } from "@/components/magam/ui/MagamUi";
+import { MAGAM_MY_LISTINGS_LIMIT } from "@/lib/magam/my-listings";
 import type { MagamListingRow } from "@/lib/magam/types";
 
-type Props = { listings: MagamListingRow[] };
+type Props = {
+  listings: MagamListingRow[];
+  hasMore?: boolean;
+};
 
-export default function MagamMyListings({ listings }: Props) {
+export default function MagamMyListings({ listings, hasMore = false }: Props) {
   const router = useRouter();
 
   return (
@@ -34,16 +38,29 @@ export default function MagamMyListings({ listings }: Props) {
         </div>
       ) : (
         <ul className="space-y-2.5">
-          {listings.map((listing) => (
-            <li key={listing.id}>
-              <MagamMyListingCard
-                listing={listing}
-                href={`/magam/listing/${listing.id}`}
-              />
-            </li>
-          ))}
+          {listings.map((listing, index) => {
+            const showClosedDivider =
+              listing.status === "closed" &&
+              (index === 0 || listings[index - 1]?.status === "open");
+
+            return (
+              <li key={listing.id}>
+                {showClosedDivider ? (
+                  <p className="mb-2.5 pt-1 text-[13px] font-semibold text-[#8B93A1]">마감된 공고</p>
+                ) : null}
+                <MagamMyListingCard listing={listing} href={`/magam/listing/${listing.id}`} />
+              </li>
+            );
+          })}
         </ul>
       )}
+
+      {hasMore ? (
+        <p className="mt-3 text-center text-[12px] text-[#8B93A1]">
+          최근 {MAGAM_MY_LISTINGS_LIMIT}건만 표시합니다
+        </p>
+      ) : null}
+
       <button
         type="button"
         className="sr-only"

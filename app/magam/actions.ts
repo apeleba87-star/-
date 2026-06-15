@@ -10,9 +10,10 @@ import {
 } from "@/lib/magam/listing-draft";
 import { normalizeMagamPhone } from "@/lib/magam/phone";
 import { magamRegionDisplayLabel } from "@/lib/magam/regions";
+import { MAGAM_MY_LISTINGS_LIMIT } from "@/lib/magam/my-listings";
 import { MAGAM_SYNC_CONSENT_VERSION } from "@/lib/magam/copy";
 import type { MagamListingRow } from "@/lib/magam/types";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 
 const LISTING_SELECT =
   "id, user_id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, linked_service_disclosed, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit";
@@ -55,17 +56,28 @@ export async function getMagamWriteBootstrap(): Promise<MagamWriteBootstrap> {
   };
 }
 
-export async function getMyMagamListings(): Promise<MagamListingRow[]> {
+export async function getMyMagamListings(): Promise<{
+  listings: MagamListingRow[];
+  hasMore: boolean;
+}> {
   const { supabase, user } = await requireUser();
-  if (!user) return [];
+  if (!user) return { listings: [], hasMore: false };
 
   const { data } = await supabase
     .from("magam_listings")
     .select(LISTING_SELECT)
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("status", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(MAGAM_MY_LISTINGS_LIMIT + 1);
 
-  return (data as MagamListingRow[] | null) ?? [];
+  const rows = (data as MagamListingRow[] | null) ?? [];
+  const hasMore = rows.length > MAGAM_MY_LISTINGS_LIMIT;
+
+  return {
+    listings: rows.slice(0, MAGAM_MY_LISTINGS_LIMIT),
+    hasMore,
+  };
 }
 
 export async function getMagamListingForOwner(id: string): Promise<MagamListingRow | null> {
@@ -261,5 +273,16 @@ export async function setMagamSyncConsent(granted: boolean): Promise<MagamAction
   if (error) return { ok: false, error: error.message };
   revalidatePath("/magam/settings");
   revalidatePath("/magam/write");
+  return { ok: true };
+}
+
+export async function deleteMagamAccount(): Promise<MagamActionResult> {
+  const { user } = await requireUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const service = createServiceSupabase();
+  const { error } = await service.auth.admin.deleteUser(user.id);
+  if (error) return { ok: false, error: error.message };
+
   return { ok: true };
 }

@@ -184,7 +184,14 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
 
       </MagamSectionCard>
 
-
+      <Link
+        href={`/p/${listing.share_slug}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${magamOutlineBtnClass} block text-center text-[15px]`}
+      >
+        {MAGAM_SHARE_PREVIEW_LABEL}
+      </Link>
 
       {isOpen ? (
 
@@ -198,15 +205,11 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
 
 
 
-      <MagamShareBlock listing={listing} shareUrl={shareUrl} highlightShare={isNew} />
-
-
-
-      <Link href={`/p/${listing.share_slug}`} className={`${magamOutlineBtnClass} block text-center`}>
-
-        {MAGAM_SHARE_PREVIEW_LABEL}
-
-      </Link>
+      <MagamShareBlock
+        listing={listing}
+        shareUrl={shareUrl}
+        highlightShare={isNew}
+      />
 
 
 

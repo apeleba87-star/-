@@ -74,8 +74,8 @@ export const MAGAM_SHARE_REFERRAL_HINT = "이 공고가 아니라, 마감링크 
 export const MAGAM_REFERRAL_KAKAO_LABEL = "카톡으로 마감링크 알리기";
 export const MAGAM_REFERRAL_KAKAO_AFTER_CLOSE = "카톡으로 동료에게 소개";
 
-/** 소유자 → /p/ 공개 화면 (받는 사람이 링크로 보는 화면) */
-export const MAGAM_SHARE_PREVIEW_LABEL = "받는 사람 화면";
+/** 소유자 → /p/ 공개 화면 미리보기 */
+export const MAGAM_SHARE_PREVIEW_LABEL = "공고 미리보기";
 
 export const MAGAM_TERMS_CONSENT_REQUIRED = "이용약관에 동의해야 글을 올릴 수 있습니다.";
 export const MAGAM_TERMS_CONSENT_HINT =
