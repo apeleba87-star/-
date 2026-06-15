@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { injectMagamPwaRuntimeConfig } from "@/lib/magam/pwa-runtime-config";
+
 const PWA_ROOT = path.join(process.cwd(), "public", "magam", "app");
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -43,9 +45,13 @@ export async function serveMagamPwa(segments: string[] | undefined): Promise<Res
     return null;
   }
 
-  const body = await readFile(filePath);
+  const raw = await readFile(filePath);
   const ext = path.extname(filePath).toLowerCase();
   const isHtml = ext === ".html";
+
+  const body = isHtml
+    ? Buffer.from(injectMagamPwaRuntimeConfig(raw.toString("utf8")), "utf8")
+    : raw;
 
   return new Response(body, {
     headers: {

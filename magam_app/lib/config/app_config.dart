@@ -1,13 +1,23 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'runtime_config.dart';
+
 class AppConfig {
+  static MagamRuntimeValues? _runtime;
+
+  static void useRuntimeConfig(MagamRuntimeValues? values) {
+    _runtime = values;
+  }
+
   static String _fromDotenv(String key) {
     if (!dotenv.isInitialized) return '';
     return dotenv.env[key] ?? '';
   }
 
   static String get supabaseUrl {
+    final runtime = _runtime?.supabaseUrl;
+    if (runtime != null && runtime.isNotEmpty) return runtime;
     const fromDefine = String.fromEnvironment('SUPABASE_URL');
     if (fromDefine.isNotEmpty) return fromDefine;
     final direct = _fromDotenv('SUPABASE_URL');
@@ -17,6 +27,8 @@ class AppConfig {
   }
 
   static String get supabaseAnonKey {
+    final runtime = _runtime?.supabaseAnonKey;
+    if (runtime != null && runtime.isNotEmpty) return runtime;
     const fromDefine = String.fromEnvironment('SUPABASE_ANON_KEY');
     if (fromDefine.isNotEmpty) return fromDefine;
     final direct = _fromDotenv('SUPABASE_ANON_KEY');
@@ -25,6 +37,10 @@ class AppConfig {
   }
 
   static String get shareBaseUrl {
+    final runtimeShare = _runtime?.shareBaseUrl;
+    if (runtimeShare != null && runtimeShare.isNotEmpty) {
+      return normalizeShareBaseUrl(runtimeShare);
+    }
     const fromDefine = String.fromEnvironment('MAGAM_SHARE_BASE_URL');
     if (fromDefine.isNotEmpty) {
       return normalizeShareBaseUrl(fromDefine);

@@ -6,7 +6,7 @@
  * 필요: Flutter SDK (PATH), magam_app/.env
  */
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +14,33 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const magamDir = path.join(root, "magam_app");
 const outDir = path.join(root, "public", "magam", "app");
 const buildDir = path.join(magamDir, "build", "web");
+
+function ensureMagamEnvFile() {
+  const target = path.join(magamDir, ".env");
+  if (existsSync(target)) return;
+
+  const sources = [path.join(root, ".env.local"), path.join(root, ".env")];
+  for (const source of sources) {
+    if (!existsSync(source)) continue;
+    const lines = readFileSync(source, "utf8").split(/\r?\n/);
+    const picked = lines.filter((line) =>
+      /^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_URL|SUPABASE_ANON_KEY|MAGAM_SHARE_BASE_URL)=/.test(
+        line
+      )
+    );
+    if (picked.length === 0) continue;
+    writeFileSync(target, `${picked.join("\n")}\n`, "utf8");
+    console.log(`✓ magam_app/.env 생성 (${path.basename(source)} 에서 복사)`);
+    return;
+  }
+
+  console.warn(
+    "⚠ magam_app/.env 없음 — 루트 .env.local 에 Supabase 키가 있으면 자동 복사됩니다.\n" +
+      "  프로덕션(Vercel)은 서버가 index.html 에 런타임 설정을 주입합니다."
+  );
+}
+
+ensureMagamEnvFile();
 
 const flutterBin =
   process.env.FLUTTER_ROOT != null

@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
+import 'config/runtime_config.dart';
 import 'constants/magam_copy.dart';
 import 'router/app_router.dart';
 import 'theme/magam_theme.dart';
@@ -67,7 +68,11 @@ Future<void> main() async {
   try {
     await dotenv.load(fileName: '.env');
   } catch (_) {
-    // .env 없으면 --dart-define 사용
+    // .env 없으면 --dart-define 또는 웹 런타임 설정 사용
+  }
+
+  if (kIsWeb) {
+    AppConfig.useRuntimeConfig(readMagamRuntimeConfig());
   }
 
   if (!AppConfig.isConfigured) {
