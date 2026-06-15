@@ -8,7 +8,7 @@ import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 export default function MagamPosterCta() {
   return (
     <section
-      className="mt-6 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5 shadow-sm"
+      className="mt-8 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5 shadow-sm"
       aria-label="공고 올리기 안내"
     >
       <p className="text-sm font-semibold text-slate-900">{MAGAM_APP_NAME}</p>

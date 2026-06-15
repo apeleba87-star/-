@@ -2,10 +2,20 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MagamOpenListings from "@/components/magam/MagamOpenListings";
 import MagamPosterCta from "@/components/magam/MagamPosterCta";
+import {
+  MagamRadarNationalBanner,
+  MagamRadarRegionalBanner,
+} from "@/components/magam/MagamRadarAdBanner";
 import MagamShareCard from "@/components/magam/MagamShareCard";
-import { MAGAM_SHARE_PAGE_TITLE, MAGAM_SHARE_LINK_CTA } from "@/lib/magam/copy";
+import {
+  MAGAM_LISTING_TYPE_LABEL,
+  MAGAM_OTHER_OPEN_LISTINGS_LIMIT,
+  MAGAM_OTHER_OPEN_LISTINGS_TITLE,
+  MAGAM_SHARE_LINK_CTA,
+  MAGAM_SHARE_PAGE_TITLE,
+} from "@/lib/magam/copy";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
-import { MAGAM_LISTING_TYPE_LABEL } from "@/lib/magam/copy";
+import { magamRegionalAdKeysForListing } from "@/lib/magam/region-ad-keys";
 
 export const revalidate = 30;
 
@@ -41,13 +51,13 @@ export default async function MagamSharePage({ params }: Props) {
   const listing = await getMagamListingBySlug(slug);
   if (!listing) notFound();
 
-  const typeLabel = MAGAM_LISTING_TYPE_LABEL[listing.listing_type];
-
   const openListings = await getMagamOpenListings({
-    listingType: listing.listing_type,
     excludeSlug: slug,
-    limit: 8,
+    limit: MAGAM_OTHER_OPEN_LISTINGS_LIMIT,
   });
+
+  const regionalKeys = magamRegionalAdKeysForListing(listing);
+  const pagePath = `magam:share/${slug}`;
 
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-6 sm:py-8">
@@ -57,12 +67,19 @@ export default async function MagamSharePage({ params }: Props) {
 
       <MagamShareCard listing={listing} highlight />
 
+      {regionalKeys.length > 0 ? (
+        <MagamRadarRegionalBanner
+          regionKeys={regionalKeys}
+          pagePath={pagePath}
+          className="mt-6"
+        />
+      ) : null}
+
+      <MagamOpenListings listings={openListings} title={MAGAM_OTHER_OPEN_LISTINGS_TITLE} />
+
       <MagamPosterCta />
 
-      <MagamOpenListings
-        listings={openListings}
-        title={`전국 · ${typeLabel} 모집`}
-      />
+      <MagamRadarNationalBanner pagePath={pagePath} className="mt-6" />
     </div>
   );
 }

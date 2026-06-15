@@ -10,6 +10,8 @@ export type MagamNavLink = {
 export const MAGAM_HUB_PATH = "/magam";
 export const MAGAM_WRITE_PATH = "/magam/write";
 export const MAGAM_ME_PATH = "/magam/me";
+/** 카톡·추천 공유용 공개 소개 (로그인 리다이렉트 없음 → OG 미리보기) */
+export const MAGAM_INTRO_PATH = "/magam/intro";
 export const MAGAM_LIVE_PATH = "/magam/live";
 
 /** 마감링크 웹 네비 */

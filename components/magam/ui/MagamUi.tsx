@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 
 import { cn } from "@/lib/utils";
+import { magamListingTypeAccent } from "@/lib/magam/listing-type-style";
 
 export function MagamSectionCard({
   children,
@@ -123,14 +124,15 @@ export function MagamTypeBadge({
   muted?: boolean;
 }) {
   const label = listingType === "hiring" ? "구인" : listingType === "subcontract" ? "도급" : listingType;
-  const bg = muted
-    ? "bg-[#5B6472]"
-    : listingType === "hiring"
-      ? "bg-[#EA580C]"
-      : "bg-[#2563EB]";
+  const accent = magamListingTypeAccent(listingType);
 
   return (
-    <span className={cn("inline-flex rounded-md px-2 py-1 text-[11px] font-semibold text-white", bg)}>
+    <span
+      className={cn(
+        "inline-flex shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-white",
+        muted ? accent.badgeBgMuted : accent.badgeBg
+      )}
+    >
       {label}
     </span>
   );

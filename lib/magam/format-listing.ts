@@ -145,6 +145,55 @@ export function formatMagamWorkSummary(listing: MagamListingPublic): string | nu
   return formatMagamWorkSummaryLine(listing);
 }
 
+/** 목록 한 줄 — 도급 · 동작구 · 18평 · 24만 · 6/15 */
+export function formatMagamScheduleShort(listing: MagamListingPublic): string | null {
+  if (listing.schedule_date) {
+    const d = new Date(`${listing.schedule_date}T12:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+  }
+
+  const scheduleText = listing.schedule_text?.trim();
+  if (!scheduleText) return null;
+
+  const datePart = scheduleText.includes(" · ")
+    ? scheduleText.split(" · ")[0]?.trim()
+    : scheduleText;
+  if (!datePart) return null;
+
+  const m = datePart.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  if (m) return `${m[1]}/${m[2]}`;
+
+  return datePart.length <= 12 ? datePart : null;
+}
+
+export function formatMagamListingPeekBody(listing: MagamListingPublic): string {
+  const parts: string[] = [];
+
+  const region = listing.region_gu.trim();
+  if (region) parts.push(region);
+
+  let work = formatMagamWorkSummaryLine(listing);
+  if (work) {
+    if (listing.listing_type === "subcontract") {
+      work = work.replace(/^도급\s*\/\s*/, "");
+    }
+    if (work) parts.push(work);
+  }
+
+  const schedule = formatMagamScheduleShort(listing);
+  if (schedule) parts.push(schedule);
+
+  return parts.join(" · ");
+}
+
+export function formatMagamListingPeekLine(listing: MagamListingPublic): string {
+  const type = MAGAM_LISTING_TYPE_LABEL[listing.listing_type];
+  const body = formatMagamListingPeekBody(listing);
+  return body ? `${type} · ${body}` : type;
+}
+
 /** 카카오 공유와 동일한 필드 순서 */
 export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDisplayRow[] {
   const rows: MagamDisplayRow[] = [];

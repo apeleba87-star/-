@@ -37,13 +37,13 @@ import {
 
   MagamSuccessBanner,
 
+  MagamTypeBadge,
+
   magamOutlineBtnClass,
 
 } from "@/components/magam/ui/MagamUi";
 
 import {
-
-  MAGAM_LISTING_TYPE_LABEL,
 
   MAGAM_SHARE_PREVIEW_LABEL,
 
@@ -142,10 +142,8 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
 
           <MagamStatusBadge label={MAGAM_STATUS_LABEL[listing.status]} isOpen={isOpen} />
 
-          <span className="ml-auto rounded-md bg-[#141824] px-2 py-1 text-[11px] font-semibold text-white">
-
-            {MAGAM_LISTING_TYPE_LABEL[listing.listing_type]}
-
+          <span className="ml-auto">
+            <MagamTypeBadge listingType={listing.listing_type} muted={!isOpen} />
           </span>
 
         </div>
