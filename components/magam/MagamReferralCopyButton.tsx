@@ -8,6 +8,7 @@ import {
   MAGAM_REFERRAL_KAKAO_LABEL,
 } from "@/lib/magam/copy";
 import { magamKakaoShareToast, shareToKakaoTalk } from "@/lib/magam/kakao-share";
+import { getMagamShareBaseUrl } from "@/lib/magam/share-url";
 import {
   buildMagamIntroAfterCloseCopy,
   buildMagamIntroCopy,
@@ -52,8 +53,7 @@ export default function MagamReferralCopyButton({
 
   const onShare = useCallback(async () => {
     setLoading(true);
-    const siteBase =
-      typeof window !== "undefined" ? window.location.origin : "https://cleanidex.co.kr";
+    const siteBase = getMagamShareBaseUrl();
     const text =
       variant === "afterClose"
         ? buildMagamIntroAfterCloseCopy(siteBase)

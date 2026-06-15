@@ -52,6 +52,12 @@ function isMobileUa(): boolean {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+/** 카카오톡 채팅 링크 → 인앱 브라우저 (여기서 kakaotalk:// 호출 시 Play 스토어 등으로 튐) */
+function isKakaoInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /KAKAOTALK|KAKAO/i.test(navigator.userAgent);
+}
+
 function isAndroidUa(): boolean {
   if (typeof navigator === "undefined") return false;
   return /Android/i.test(navigator.userAgent);
@@ -94,29 +100,28 @@ function openDeepLinkWithAnchor(url: string): void {
 /** 모바일에서 카카오톡 공유 화면 열기 시도 */
 function openKakaoSendDeepLink(text: string): void {
   const encoded = encodeURIComponent(text);
+  // Android Chrome: intent:// 실패 시 Play 스토어(com.kakao.talk)로 넘어가는 경우가 많음 → kakaotalk:// 우선
   const urls = isAndroidUa()
     ? [
-        `intent://send?text=${encoded}#Intent;scheme=kakaotalk;package=com.kakao.talk;end`,
         `kakaotalk://send?text=${encoded}`,
         `kakaolink://send?text=${encoded}`,
+        `intent://send?text=${encoded}#Intent;scheme=kakaotalk;package=com.kakao.talk;end`,
       ]
     : [`kakaotalk://send?text=${encoded}`, `kakaolink://send?text=${encoded}`];
 
-  try {
-    window.location.assign(urls[0]);
-  } catch {
-    openDeepLinkWithAnchor(urls[0]);
-  }
+  openDeepLinkWithAnchor(urls[0]);
+}
 
-  // 일부 브라우저는 첫 스킴 실패 시 보조 스킴 시도
-  if (urls.length > 1) {
-    window.setTimeout(() => {
-      try {
-        openDeepLinkWithAnchor(urls[1]);
-      } catch {
-        /* ignore */
-      }
-    }, 400);
+async function tryNativeShare(text: string): Promise<"shared" | "cancelled" | "unavailable"> {
+  if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+    return "unavailable";
+  }
+  try {
+    await navigator.share({ text });
+    return "shared";
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") return "cancelled";
+    return "unavailable";
   }
 }
 
@@ -133,8 +138,22 @@ export async function shareToKakaoTalk(fullText: string): Promise<MagamKakaoShar
   const { text: deepText, truncated } = textForKakaoDeepLink(fullText);
 
   if (isMobileUa()) {
+    const copied = await copyToClipboard(fullText);
+
+    // 카톡 인앱 브라우저: 이미 카톡 안이라 딥링크·공유 시트가 깨짐 → 복사만
+    if (isKakaoInAppBrowser()) {
+      return copied ? { outcome: "copied", truncated } : { outcome: "failed", truncated };
+    }
+
+    const native = await tryNativeShare(fullText);
+    if (native === "shared") {
+      return { outcome: "opened", truncated };
+    }
+    if (native === "cancelled" && copied) {
+      return { outcome: "copied", truncated };
+    }
+
     openKakaoSendDeepLink(deepText);
-    void copyToClipboard(fullText);
     return { outcome: "opened", truncated };
   }
 
@@ -152,10 +171,12 @@ export function magamKakaoShareToast(
   switch (outcome) {
     case "opened":
       return truncated
-        ? "카카오톡에서 채팅방을 선택하세요. 전체 내용은 붙여넣기로 넣을 수 있어요."
-        : "카카오톡에서 공유할 채팅방을 선택하세요.";
+        ? "공유 메뉴 또는 카카오톡에서 채팅방을 선택하세요. 전체 내용은 붙여넣기로 넣을 수 있어요."
+        : "공유 메뉴에서 카카오톡을 선택하거나, 카카오톡에서 채팅방을 선택하세요.";
     case "copied":
-      return "PC에서는 카톡이 자동으로 열리지 않아요. 내용이 복사됐으니 카톡에 붙여넣어 주세요.";
+      return isKakaoInAppBrowser()
+        ? "내용이 복사됐어요. 뒤로 가서 붙여넣을 채팅방을 선택해 주세요."
+        : "내용이 복사됐어요. 카톡에 붙여넣어 주세요.";
     default:
       return "복사에 실패했습니다. 링크 복사 후 카톡에 붙여넣어 주세요.";
   }
