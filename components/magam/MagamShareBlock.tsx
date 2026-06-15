@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import MagamReferralCopyButton from "@/components/magam/MagamReferralCopyButton";
 import { magamOutlineBtnClass } from "@/components/magam/ui/MagamUi";
 import {
+  MAGAM_GROUP_CHAT_COPY_LABEL,
+  MAGAM_GROUP_CHAT_COPY_LOADING,
   MAGAM_KAKAO_SHARE_INCLUDE_PHONE,
   MAGAM_KAKAO_SHARE_INCLUDE_PHONE_HINT,
   MAGAM_NAVER_CAFE_COPY_DONE,
@@ -13,8 +15,7 @@ import {
   MAGAM_SHARE_REFERRAL_HINT,
   MAGAM_SHARE_REFERRAL_SECTION,
 } from "@/lib/magam/copy";
-import { magamKakaoShareToast, shareMagamListingToKakaoTalk } from "@/lib/magam/kakao-share";
-import { ensureKakaoShareReady } from "@/lib/kakao/sdk";
+import { copyMagamListingMessage, magamListingCopyToast } from "@/lib/magam/kakao-share";
 import { buildMagamNaverCafeMessage, buildMagamShareMessage } from "@/lib/magam/share-format";
 import {
   loadMagamShareIncludePhone,
@@ -44,13 +45,12 @@ export default function MagamShareBlock({
 }: Props) {
   const isOpen = listing.status === "open";
   const [includePhone, setIncludePhone] = useState(false);
-  const [kakaoLoading, setKakaoLoading] = useState(false);
+  const [copyLoading, setCopyLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     setIncludePhone(loadMagamShareIncludePhone());
-    void ensureKakaoShareReady();
   }, []);
 
   useEffect(() => {
@@ -69,13 +69,13 @@ export default function MagamShareBlock({
     saveMagamShareIncludePhone(value);
   };
 
-  const handleKakao = async () => {
-    setKakaoLoading(true);
-    const { outcome } = await shareMagamListingToKakaoTalk(listing, shareUrl, includePhone);
-    setKakaoLoading(false);
-    notify(magamKakaoShareToast(outcome));
+  const handleGroupChatCopy = async () => {
+    setCopyLoading(true);
+    const text = buildMagamShareMessage(listing, shareUrl, includePhone);
+    const { outcome } = await copyMagamListingMessage(text);
+    setCopyLoading(false);
+    notify(magamListingCopyToast(outcome));
     if (outcome === "failed") {
-      const text = buildMagamShareMessage(listing, shareUrl, includePhone);
       window.prompt("아래 내용을 복사해 카톡에 붙여넣으세요.", text);
     }
   };
@@ -116,7 +116,7 @@ export default function MagamShareBlock({
                 type="checkbox"
                 className="mt-1 accent-[#2563EB]"
                 checked={includePhone}
-                disabled={kakaoLoading}
+                disabled={copyLoading}
                 onChange={(e) => onIncludePhoneChange(e.target.checked)}
               />
               <span>
@@ -132,11 +132,11 @@ export default function MagamShareBlock({
 
           <button
             type="button"
-            onClick={handleKakao}
-            disabled={kakaoLoading}
+            onClick={handleGroupChatCopy}
+            disabled={copyLoading}
             className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#FEE500] text-base font-bold text-[#191919] disabled:opacity-50"
           >
-            {kakaoLoading ? "공유 중…" : "카톡 단톡방 공유"}
+            {copyLoading ? MAGAM_GROUP_CHAT_COPY_LOADING : MAGAM_GROUP_CHAT_COPY_LABEL}
           </button>
 
           <button
@@ -175,4 +175,3 @@ export default function MagamShareBlock({
     </div>
   );
 }
-

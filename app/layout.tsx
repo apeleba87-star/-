@@ -4,7 +4,6 @@ import { Black_Han_Sans, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import SiteShell from "@/components/layout/SiteShell";
 import SiteBrandingScripts from "@/components/layout/SiteBrandingScripts";
-import KakaoShareBootstrap from "@/components/kakao/KakaoShareBootstrap";
 import RadarAdPlacementPreviewBoot from "@/components/advertise/RadarAdPlacementPreviewBoot";
 import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
 import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME, seoKeywords } from "@/lib/seo";
@@ -105,7 +104,6 @@ gtag('js', new Date());
 gtag('config', 'G-JXV9GMLMEZ');`}
         </Script>
         <SiteBrandingScripts />
-        <KakaoShareBootstrap />
         <SupabaseSessionRefresh />
         <RadarAdPlacementPreviewBoot />
         <SiteShell>{children}</SiteShell>

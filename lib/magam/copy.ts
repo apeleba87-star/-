@@ -67,6 +67,8 @@ export const MAGAM_SHARE_LINK_ARROWS = "👇👇👇👇👇";
 export const MAGAM_KAKAO_SHARE_INCLUDE_PHONE = "공유·복사에 연락처 포함";
 export const MAGAM_KAKAO_SHARE_INCLUDE_PHONE_HINT =
   "켜면 카톡·카페 복사 문구에 연락처가 들어갑니다";
+export const MAGAM_GROUP_CHAT_COPY_LABEL = "단톡방 모집 글 복사";
+export const MAGAM_GROUP_CHAT_COPY_LOADING = "복사 중…";
 export const MAGAM_NAVER_CAFE_COPY_LABEL = "네이버 카페용 복사";
 export const MAGAM_NAVER_CAFE_COPY_DONE = "카페에 붙여넣을 내용이 복사됐어요.";
 

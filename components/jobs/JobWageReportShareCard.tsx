@@ -9,7 +9,6 @@ import {
   jobWageShareClipboardText,
   type JobWageSharePreview,
 } from "@/lib/report/job-wage-share-copy";
-import { shareContent } from "@/lib/kakao/share";
 import { cn } from "@/lib/utils";
 
 const GRANT_DELAY_MS = 400;
@@ -80,23 +79,35 @@ export default function JobWageReportShareCard({
     if (!isLoggedIn) return;
     setPhase("working");
     const url = resolvedShareUrl();
+    const clipboard = jobWageShareClipboardText(copy, url);
     try {
-      const outcome = await shareContent({ title: copy.title, text: copy.message, url });
-      if (outcome === "cancelled") {
-        setPhase("idle");
-        return;
-      }
-      if (outcome === "opened") {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: copy.title, text: copy.message, url });
         await afterShareAction("shared");
         return;
       }
-      if (outcome === "copied") {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(clipboard);
         await afterShareAction("copied");
         return;
       }
       setPhase("error");
-    } catch {
-      setPhase("error");
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setPhase("idle");
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(clipboard);
+          await afterShareAction("copied");
+          return;
+        } catch {
+          setPhase("error");
+        }
+      } else {
+        setPhase("error");
+      }
     }
   }
 

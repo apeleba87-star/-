@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { Share2 } from "lucide-react";
 import {
   buildJobWageShareCopy,
+  jobWageShareClipboardText,
   type JobWageSharePreview,
 } from "@/lib/report/job-wage-share-copy";
-import { shareContent } from "@/lib/kakao/share";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -23,12 +23,27 @@ export default function JobWageReportShareButton({ preview, className }: Props) 
     setPending(true);
     setCopied(false);
     const url = typeof window !== "undefined" ? window.location.href.split("#")[0]! : "";
+    const clipboard = jobWageShareClipboardText(copy, url);
 
     try {
-      const outcome = await shareContent({ title: copy.title, text: copy.message, url });
-      if (outcome === "cancelled") return;
-      if (outcome === "copied") {
+      let didCopy = false;
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          await navigator.share({ title: copy.title, text: copy.message, url });
+        } catch (err) {
+          if ((err as Error)?.name === "AbortError") return;
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(clipboard);
+            didCopy = true;
+            setCopied(true);
+          }
+        }
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(clipboard);
+        didCopy = true;
         setCopied(true);
+      }
+      if (didCopy) {
         window.setTimeout(() => setCopied(false), 2500);
       }
     } finally {

@@ -1,20 +1,3 @@
-import { isKakaoInAppBrowser } from "@/lib/kakao/detect";
-import {
-  ensureKakaoShareReady,
-  getKakaoJavascriptKey,
-  kakaoShareFeed,
-  kakaoShareFeedSync,
-  kakaoShareScrapSync,
-} from "@/lib/kakao/sdk";
-import { shareContent } from "@/lib/kakao/share";
-import {
-  MAGAM_LISTING_TYPE_LABEL,
-  MAGAM_SHARE_LINK_CTA,
-  MAGAM_SHARE_LINK_CTA_BRACKET,
-} from "@/lib/magam/copy";
-import { buildMagamShareMessage } from "@/lib/magam/share-format";
-import type { MagamListingRow } from "@/lib/magam/types";
-
 export type MagamKakaoShareOutcome = "opened" | "copied" | "failed";
 
 export type MagamKakaoShareResult = {
@@ -28,74 +11,70 @@ function extractShareUrl(text: string): string | undefined {
   return match[0].replace(/[)\]}>.,;]+$/, "");
 }
 
-function magamFeedTitle(listing: MagamListingRow): string {
-  const type = MAGAM_LISTING_TYPE_LABEL[listing.listing_type] ?? listing.listing_type;
-  const region = listing.region_gu.trim();
-  return region ? `${type} · ${region}` : type;
-}
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (typeof document === "undefined") return false;
 
-function magamFeedDescription(listing: MagamListingRow, includePhone: boolean, shareUrl: string): string {
-  const full = buildMagamShareMessage(listing, shareUrl, includePhone);
-  const marker = `\n\n${MAGAM_SHARE_LINK_CTA_BRACKET}`;
-  const idx = full.indexOf(marker);
-  return (idx >= 0 ? full.slice(0, idx) : full).trim() || full;
-}
-
-/** 카카오 인앱 — SDK 피커(상단 노란 버튼과 동일 UI). 그 외 navigator.share → 복사 */
-export async function shareMagamListingToKakaoTalk(
-  listing: MagamListingRow,
-  shareUrl: string,
-  includePhone = false
-): Promise<MagamKakaoShareResult> {
-  const fullText = buildMagamShareMessage(listing, shareUrl, includePhone);
-
-  if (isKakaoInAppBrowser() && getKakaoJavascriptKey()) {
-    const feedInput = {
-      title: magamFeedTitle(listing),
-      description: magamFeedDescription(listing, includePhone, shareUrl),
-      url: shareUrl,
-      buttonTitle: MAGAM_SHARE_LINK_CTA,
-    };
-
-    if (kakaoShareFeedSync(feedInput)) {
-      return { outcome: "opened", truncated: false };
-    }
-
-    await ensureKakaoShareReady();
-
-    if (kakaoShareFeedSync(feedInput)) {
-      return { outcome: "opened", truncated: false };
-    }
-
-    if (kakaoShareScrapSync(shareUrl)) {
-      return { outcome: "opened", truncated: false };
-    }
-
-    const shared = await kakaoShareFeed(feedInput);
-    if (shared) {
-      return { outcome: "opened", truncated: false };
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
     }
   }
-
-  return shareToKakaoTalk(fullText);
 }
 
-/** 카카오 인앱 → SDK 채팅방 피커, 그 외 → navigator.share → 복사 */
+/** 단톡방 모집 글 복사 — 클립보드에 전체 문구 복사 */
+export async function copyMagamListingMessage(fullText: string): Promise<MagamKakaoShareResult> {
+  const copied = await copyToClipboard(fullText);
+  return copied ? { outcome: "copied", truncated: false } : { outcome: "failed", truncated: false };
+}
+
+/** 마감링크 소개 등 — navigator.share → 복사 */
 export async function shareToKakaoTalk(fullText: string): Promise<MagamKakaoShareResult> {
-  const url = extractShareUrl(fullText);
-  const text = url ? fullText.replace(url, "").trim() : fullText;
-  const shareUrl = url ?? (typeof window !== "undefined" ? window.location.href : "");
-
-  const outcome = await shareContent({
-    text: text || fullText,
-    url: shareUrl,
-  });
-
-  if (outcome === "cancelled") {
+  if (typeof window === "undefined") {
     return { outcome: "failed", truncated: false };
   }
 
-  return { outcome, truncated: false };
+  const url = extractShareUrl(fullText);
+  const text = url ? fullText.replace(url, "").trim() : fullText;
+
+  try {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      await navigator.share(url ? { text, url } : { text });
+      return { outcome: "opened", truncated: false };
+    }
+
+    const copied = await copyToClipboard(fullText);
+    return copied ? { outcome: "copied", truncated: false } : { outcome: "failed", truncated: false };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { outcome: "failed", truncated: false };
+    }
+
+    const copied = await copyToClipboard(fullText);
+    return copied ? { outcome: "copied", truncated: false } : { outcome: "failed", truncated: false };
+  }
+}
+
+export function magamListingCopyToast(outcome: MagamKakaoShareOutcome): string {
+  switch (outcome) {
+    case "copied":
+      return "모집 글을 복사했어요. 카톡 단톡방에 붙여넣으세요.";
+    default:
+      return "복사에 실패했습니다.";
+  }
 }
 
 export function magamKakaoShareToast(outcome: MagamKakaoShareOutcome): string {

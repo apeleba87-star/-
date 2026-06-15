@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Copy, Share2 } from "lucide-react";
-import { shareContent } from "@/lib/kakao/share";
 
 type Props = {
   listingId: string;
@@ -36,9 +35,13 @@ export default function ListingShareActions({ listingId, title, regionLabel, cla
     setError(null);
     const url = buildShareUrl(listingId, "native");
     try {
-      const outcome = await shareContent({ title, text: LISTING_SHARE_CTA, url });
-      if (outcome === "cancelled") return;
-      setMessage(outcome === "copied" ? "공유 링크를 복사했습니다." : "공유가 완료되었습니다.");
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title, text: LISTING_SHARE_CTA, url });
+        setMessage("공유가 완료되었습니다.");
+        return;
+      }
+      await navigator.clipboard.writeText(`${clipboardBlock}\n${url}`);
+      setMessage("공유 링크를 복사했습니다.");
     } catch {
       setError("공유를 완료하지 못했습니다.");
     }
