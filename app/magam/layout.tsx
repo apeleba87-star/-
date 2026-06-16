@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import MagamKakaoSdkWarmup from "@/components/magam/MagamKakaoSdkWarmup";
 import MagamShell from "@/components/magam/MagamShell";
 import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 import { magamSiteMetadata } from "@/lib/magam/metadata";
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
 export default function MagamLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full bg-[#F2F3F6] text-[#141824] antialiased">
+      <MagamKakaoSdkWarmup />
       <MagamShell>{children}</MagamShell>
     </div>
   );

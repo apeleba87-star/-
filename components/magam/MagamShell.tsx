@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import MagamTabHints from "@/components/magam/onboarding/MagamTabHints";
+import { MagamNavTab } from "@/components/magam/ui/MagamTouchNav";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/magam/me", label: "내 공고", icon: "📥", activeIcon: "📥" },
-  { href: "/magam/write", label: "글쓰기", icon: "✏️", activeIcon: "✏️" },
-  { href: "/magam/settings", label: "설정", icon: "⚙️", activeIcon: "⚙️" },
+  { href: "/magam/me", label: "내 공고", icon: "📥" },
+  { href: "/magam/write", label: "글쓰기", icon: "✏️" },
+  { href: "/magam/settings", label: "설정", icon: "⚙️" },
 ] as const;
 
 function hideBottomNav(pathname: string): boolean {
@@ -37,23 +38,17 @@ export default function MagamShell({ children }: { children: ReactNode }) {
           className="fixed inset-x-0 bottom-0 z-20 border-t border-[#E3E6EC] bg-white pb-[env(safe-area-inset-bottom,0px)]"
           aria-label="마감링크"
         >
-          <div className="mx-auto flex max-w-lg">
+          <div className="mx-auto flex max-w-lg gap-1 px-1 pt-1">
             {TABS.map((tab) => {
               const active = isTabActive(pathname, tab.href);
               return (
-                <Link
+                <MagamNavTab
                   key={tab.href}
                   href={tab.href}
-                  className={cn(
-                    "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition",
-                    active ? "text-[#2563EB]" : "text-[#5B6472]"
-                  )}
-                >
-                  <span className="text-lg leading-none" aria-hidden>
-                    {active ? tab.activeIcon : tab.icon}
-                  </span>
-                  {tab.label}
-                </Link>
+                  active={active}
+                  label={tab.label}
+                  icon={tab.icon}
+                />
               );
             })}
           </div>

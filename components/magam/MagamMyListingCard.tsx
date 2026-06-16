@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import {
   MAGAM_LISTING_TYPE_LABEL,
   MAGAM_STATUS_LABEL,
@@ -12,6 +10,8 @@ import {
 } from "@/lib/magam/format-listing";
 import type { MagamListingRow } from "@/lib/magam/types";
 import { MagamStatusBadge, MagamTypeBadge } from "@/components/magam/ui/MagamUi";
+import { MagamTapLink } from "@/components/magam/ui/MagamTouchNav";
+import { cn } from "@/lib/utils";
 
 type Props = {
   listing: MagamListingRow;
@@ -34,13 +34,14 @@ export default function MagamMyListingCard({ listing, href }: Props) {
     : `등록 ${shortDate(listing.created_at)}`;
 
   return (
-    <Link
+    <MagamTapLink
       href={href}
-      className={`block rounded-[18px] border p-4 transition hover:shadow-sm ${
+      className={cn(
+        "rounded-[18px] border p-4",
         isOpen
-          ? "border-[#E3E6EC] bg-white hover:bg-white"
-          : "border-[#E5E7EB] bg-[#F3F4F6]"
-      }`}
+          ? "border-[#E3E6EC] bg-white active:bg-[#F8F9FB]"
+          : "border-[#E5E7EB] bg-[#F3F4F6] active:bg-[#E8EAED]"
+      )}
     >
       <div className="flex items-center gap-2">
         <MagamTypeBadge listingType={listing.listing_type} muted={!isOpen} />
@@ -73,6 +74,6 @@ export default function MagamMyListingCard({ listing, href }: Props) {
       <p className="mt-1 text-[11px] text-[#8B93A1]">
         {MAGAM_LISTING_TYPE_LABEL[listing.listing_type]} · {meta}
       </p>
-    </Link>
+    </MagamTapLink>
   );
 }

@@ -10,7 +10,10 @@ import {
 } from "@/lib/magam/listing-draft";
 import { normalizeMagamPhone } from "@/lib/magam/phone";
 import { magamRegionDisplayLabel } from "@/lib/magam/regions";
-import { MAGAM_MY_LISTINGS_LIMIT } from "@/lib/magam/my-listings";
+import {
+  MAGAM_MY_CLOSED_PAGE_SIZE,
+  MAGAM_MY_OPEN_LISTINGS_LIMIT,
+} from "@/lib/magam/my-listings";
 import { MAGAM_SYNC_CONSENT_VERSION } from "@/lib/magam/copy";
 import type { MagamListingRow } from "@/lib/magam/types";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
@@ -57,26 +60,72 @@ export async function getMagamWriteBootstrap(): Promise<MagamWriteBootstrap> {
 }
 
 export async function getMyMagamListings(): Promise<{
-  listings: MagamListingRow[];
-  hasMore: boolean;
+  openListings: MagamListingRow[];
+  openHasMore: boolean;
+  closedTotal: number;
 }> {
   const { supabase, user } = await requireUser();
-  if (!user) return { listings: [], hasMore: false };
+  if (!user) return { openListings: [], openHasMore: false, closedTotal: 0 };
 
-  const { data } = await supabase
-    .from("magam_listings")
-    .select(LISTING_SELECT)
-    .eq("user_id", user.id)
-    .order("status", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(MAGAM_MY_LISTINGS_LIMIT + 1);
+  const [openResult, closedCountResult] = await Promise.all([
+    supabase
+      .from("magam_listings")
+      .select(LISTING_SELECT)
+      .eq("user_id", user.id)
+      .eq("status", "open")
+      .order("created_at", { ascending: false })
+      .limit(MAGAM_MY_OPEN_LISTINGS_LIMIT + 1),
+    supabase
+      .from("magam_listings")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("status", "closed"),
+  ]);
 
-  const rows = (data as MagamListingRow[] | null) ?? [];
-  const hasMore = rows.length > MAGAM_MY_LISTINGS_LIMIT;
+  const openRows = (openResult.data as MagamListingRow[] | null) ?? [];
+  const openHasMore = openRows.length > MAGAM_MY_OPEN_LISTINGS_LIMIT;
 
   return {
-    listings: rows.slice(0, MAGAM_MY_LISTINGS_LIMIT),
-    hasMore,
+    openListings: openRows.slice(0, MAGAM_MY_OPEN_LISTINGS_LIMIT),
+    openHasMore,
+    closedTotal: closedCountResult.count ?? 0,
+  };
+}
+
+export async function getMyMagamClosedListingsPage(page: number): Promise<
+  | {
+      ok: true;
+      listings: MagamListingRow[];
+      total: number;
+      page: number;
+      pageSize: number;
+    }
+  | { ok: false; error: string }
+> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const safePage = Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0;
+  const from = safePage * MAGAM_MY_CLOSED_PAGE_SIZE;
+  const to = from + MAGAM_MY_CLOSED_PAGE_SIZE - 1;
+
+  const { data, count, error } = await supabase
+    .from("magam_listings")
+    .select(LISTING_SELECT, { count: "exact" })
+    .eq("user_id", user.id)
+    .eq("status", "closed")
+    .order("closed_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) return { ok: false, error: "마감 공고를 불러오지 못했습니다." };
+
+  return {
+    ok: true,
+    listings: (data as MagamListingRow[] | null) ?? [],
+    total: count ?? 0,
+    page: safePage,
+    pageSize: MAGAM_MY_CLOSED_PAGE_SIZE,
   };
 }
 

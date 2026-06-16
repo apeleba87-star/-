@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { magamOutlineBtnClass } from "@/components/magam/ui/MagamUi";
 import {
@@ -8,6 +8,7 @@ import {
   MAGAM_REFERRAL_KAKAO_LABEL,
 } from "@/lib/magam/copy";
 import { magamKakaoShareToast, shareToKakaoTalk } from "@/lib/magam/kakao-share";
+import { ensureKakaoShareReady } from "@/lib/kakao/sdk";
 import { getMagamShareBaseUrl } from "@/lib/magam/share-url";
 import {
   buildMagamIntroAfterCloseCopy,
@@ -34,6 +35,10 @@ export default function MagamReferralCopyButton({
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    void ensureKakaoShareReady();
+  }, []);
 
   const label =
     variant === "afterClose" ? MAGAM_REFERRAL_KAKAO_AFTER_CLOSE : MAGAM_REFERRAL_KAKAO_LABEL;

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import MagamReferralCopyButton from "@/components/magam/MagamReferralCopyButton";
 import MagamShareNudge from "@/components/magam/onboarding/MagamShareNudge";
 import { magamOutlineBtnClass } from "@/components/magam/ui/MagamUi";
+import { magamTapClass } from "@/components/magam/ui/MagamTouchNav";
 import {
   MAGAM_GROUP_CHAT_COPY_LABEL,
   MAGAM_GROUP_CHAT_COPY_LOADING,
@@ -16,7 +17,11 @@ import {
   MAGAM_SHARE_REFERRAL_HINT,
   MAGAM_SHARE_REFERRAL_SECTION,
 } from "@/lib/magam/copy";
-import { copyMagamListingMessage, magamListingCopyToast } from "@/lib/magam/kakao-share";
+import {
+  ensureKakaoShareReady,
+  magamListingShareToast,
+  shareMagamListingToKakaoTalk,
+} from "@/lib/magam/kakao-share";
 import { buildMagamNaverCafeMessage, buildMagamShareMessage } from "@/lib/magam/share-format";
 import {
   loadMagamShareIncludePhone,
@@ -66,6 +71,7 @@ export default function MagamShareBlock({
 
   useEffect(() => {
     setIncludePhone(loadMagamShareIncludePhone());
+    void ensureKakaoShareReady();
   }, []);
 
   useEffect(() => {
@@ -86,14 +92,14 @@ export default function MagamShareBlock({
 
   const handleGroupChatCopy = async () => {
     setCopyLoading(true);
-    const text = buildMagamShareMessage(listing, shareUrl, includePhone);
-    const { outcome } = await copyMagamListingMessage(text);
+    const { outcome } = await shareMagamListingToKakaoTalk(listing, shareUrl, includePhone);
     setCopyLoading(false);
-    notify(magamListingCopyToast(outcome));
+    notify(magamListingShareToast(outcome));
     if (outcome === "copied") {
       dismissShareNudge();
     }
     if (outcome === "failed") {
+      const text = buildMagamShareMessage(listing, shareUrl, includePhone);
       window.prompt("아래 내용을 복사해 카톡에 붙여넣으세요.", text);
     }
   };
@@ -154,7 +160,8 @@ export default function MagamShareBlock({
             onClick={handleGroupChatCopy}
             disabled={copyLoading}
             className={cn(
-              "flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#FEE500] text-base font-bold text-[#191919] disabled:opacity-50",
+              magamTapClass,
+              "flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#FEE500] text-base font-bold text-[#191919] disabled:pointer-events-none disabled:opacity-50",
               showShareNudge && "animate-pulse ring-4 ring-[#2563EB]/40 ring-offset-2"
             )}
           >
@@ -164,7 +171,7 @@ export default function MagamShareBlock({
           <button
             type="button"
             onClick={handleNaverCafe}
-            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#03C75A] text-base font-bold text-white"
+            className={`${magamTapClass} flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#03C75A] text-base font-bold text-white`}
           >
             {MAGAM_NAVER_CAFE_COPY_LABEL}
           </button>

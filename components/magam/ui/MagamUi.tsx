@@ -64,10 +64,10 @@ export const magamInputClass =
   "w-full rounded-[14px] border border-[#E3E6EC] bg-white px-4 py-3.5 text-[15px] text-[#141824] outline-none transition placeholder:text-[#8B93A1] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:opacity-50";
 
 export const magamPrimaryBtnClass =
-  "inline-flex min-h-[52px] w-full items-center justify-center rounded-[14px] bg-[#141824] px-5 text-base font-semibold tracking-[-0.2px] text-white transition hover:bg-[#1f2638] disabled:opacity-50";
+  "inline-flex min-h-[52px] w-full touch-manipulation select-none items-center justify-center rounded-[14px] bg-[#141824] px-5 text-base font-semibold tracking-[-0.2px] text-white transition duration-75 hover:bg-[#1f2638] active:scale-[0.98] active:opacity-90 disabled:pointer-events-none disabled:opacity-50";
 
 export const magamOutlineBtnClass =
-  "inline-flex min-h-12 w-full items-center justify-center rounded-[14px] border border-[#E3E6EC] bg-white px-4 text-sm font-semibold text-[#141824] transition hover:bg-[#F2F3F6] disabled:opacity-50";
+  "inline-flex min-h-12 w-full touch-manipulation select-none items-center justify-center rounded-[14px] border border-[#E3E6EC] bg-white px-4 text-sm font-semibold text-[#141824] transition duration-75 hover:bg-[#F2F3F6] active:scale-[0.98] active:bg-[#E8EAED] active:opacity-90 disabled:pointer-events-none disabled:opacity-50";
 
 export function MagamErrorBanner({ message }: { message: string }) {
   return (
@@ -155,11 +155,11 @@ export function MagamChoiceChip({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "rounded-[10px] border px-3.5 py-2 text-sm font-medium transition",
+        "rounded-[10px] border px-3.5 py-2 text-sm font-medium transition duration-75 touch-manipulation select-none active:scale-[0.97]",
         selected
           ? "border-[#2563EB] bg-[#EEF3FF] text-[#2563EB]"
-          : "border-[#E3E6EC] bg-white text-[#141824] hover:bg-[#F2F3F6]",
-        disabled && "opacity-50"
+          : "border-[#E3E6EC] bg-white text-[#141824] hover:bg-[#F2F3F6] active:bg-[#E8EAED]",
+        disabled && "pointer-events-none opacity-50"
       )}
     >
       {children}
@@ -183,7 +183,7 @@ export function MagamPageHeader({
         {backHref ? (
           <a
             href={backHref}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#141824] hover:bg-white/80"
+            className="flex h-9 w-9 shrink-0 touch-manipulation select-none items-center justify-center rounded-full text-[#141824] transition duration-75 hover:bg-white/80 active:scale-95 active:bg-[#E8EAED]"
             aria-label="뒤로"
           >
             ←

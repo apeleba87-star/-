@@ -16,12 +16,16 @@ export default async function MagamMePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?from=magam&next=/magam/me");
 
-  const { listings, hasMore } = await getMyMagamListings();
+  const { openListings, openHasMore, closedTotal } = await getMyMagamListings();
 
   return (
     <>
       <MagamPageHeader title={MAGAM_APP_NAME} iconSrc="/magam/app/icons/Icon-192.png" />
-      <MagamMyListings listings={listings} hasMore={hasMore} />
+      <MagamMyListings
+        openListings={openListings}
+        openHasMore={openHasMore}
+        closedTotal={closedTotal}
+      />
     </>
   );
 }
