@@ -235,28 +235,35 @@ export async function closeMagamListing(id: string): Promise<MagamActionResult> 
   const { supabase, user } = await requireUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
 
-  const { data: existing } = await supabase
-    .from("magam_listings")
-    .select("share_slug, status")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!existing) return { ok: false, error: "공고를 찾을 수 없습니다." };
-  if (existing.status === "closed") return { ok: true };
-
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("magam_listings")
     .update({ status: "closed" })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "open")
+    .select("share_slug")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+
+  if (!data) {
+    const { data: existing } = await supabase
+      .from("magam_listings")
+      .select("share_slug, status")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!existing) return { ok: false, error: "공고를 찾을 수 없습니다." };
+    if (existing.status === "closed") return { ok: true };
+
+    return { ok: false, error: "공고를 찾을 수 없습니다." };
+  }
 
   revalidatePath("/magam/live");
   revalidatePath("/magam/me");
   revalidatePath(`/magam/listing/${id}`);
-  revalidatePath(`/p/${existing.share_slug}`);
+  revalidatePath(`/p/${data.share_slug}`);
 
   return { ok: true };
 }

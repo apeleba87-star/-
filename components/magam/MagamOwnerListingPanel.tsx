@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { useRouter } from "next/navigation";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 
 
@@ -47,10 +47,11 @@ import {
 import {
 
   MAGAM_SHARE_PREVIEW_LABEL,
-
   MAGAM_STATUS_LABEL,
-
+  MAGAM_CLOSE_SUCCESS_BODY,
+  MAGAM_CLOSE_SUCCESS_TITLE,
 } from "@/lib/magam/copy";
+import { markMagamListingClosedLocally } from "@/lib/magam/listing-close-sync";
 
 import {
   MAGAM_SHARE_FROM_LISTING,
@@ -74,9 +75,10 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
   const router = useRouter();
 
   const [listing, setListing] = useState(initialListing);
-  const [closing, setClosing] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [closeJustDone, setCloseJustDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, startRefresh] = useTransition();
 
   const isOpen = listing.status === "open";
 
@@ -89,21 +91,29 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
 
 
   async function handleCloseConfirm() {
-    setClosing(true);
+    const snapshot = listing;
+    setCloseDialogOpen(false);
     setError(null);
+    setCloseJustDone(true);
+    setListing((prev) => ({
+      ...prev,
+      status: "closed",
+      closed_at: prev.closed_at ?? new Date().toISOString(),
+    }));
+    markMagamListingClosedLocally(listing.id);
 
     const result = await closeMagamListing(listing.id);
 
-    setClosing(false);
-
     if (!result.ok) {
+      setListing(snapshot);
+      setCloseJustDone(false);
       setError(result.error);
       return;
     }
 
-    setListing((prev) => ({ ...prev, status: "closed" }));
-    setCloseDialogOpen(false);
-    router.refresh();
+    startRefresh(() => {
+      router.refresh();
+    });
   }
 
 
@@ -130,6 +140,13 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
 
         />
 
+      ) : null}
+
+      {closeJustDone && !isOpen ? (
+        <MagamSuccessBanner
+          title={MAGAM_CLOSE_SUCCESS_TITLE}
+          body={MAGAM_CLOSE_SUCCESS_BODY}
+        />
       ) : null}
 
 
@@ -184,7 +201,7 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
 
       {isOpen ? (
 
-        <MagamCloseListingButton onClick={() => setCloseDialogOpen(true)} loading={closing} />
+        <MagamCloseListingButton onClick={() => setCloseDialogOpen(true)} />
 
       ) : null}
 
@@ -230,7 +247,6 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
 
       <MagamCloseListingDialog
         open={closeDialogOpen}
-        loading={closing}
         onClose={() => setCloseDialogOpen(false)}
         onConfirm={handleCloseConfirm}
       />

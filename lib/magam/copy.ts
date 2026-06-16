@@ -96,6 +96,8 @@ export const MAGAM_CLOSE_CONFIRM_BODY =
 export const MAGAM_CLOSE_CONFIRM_HINT = "한 번 마감하면 되돌릴 수 없습니다.";
 export const MAGAM_CLOSE_CONFIRM_CANCEL = "취소";
 export const MAGAM_CLOSE_CONFIRM_ACTION = "마감";
+export const MAGAM_CLOSE_SUCCESS_TITLE = "마감 완료";
+export const MAGAM_CLOSE_SUCCESS_BODY = "공유 링크에서 연락처가 숨겨졌습니다.";
 export const MAGAM_SYNC_CONSENT_ALREADY_GRANTED =
   "모집 안내 노출에 동의한 상태입니다. 설정에서 철회할 수 있습니다.";
 

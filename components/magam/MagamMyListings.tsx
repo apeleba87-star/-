@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getMyMagamClosedListingsPage } from "@/app/magam/actions";
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
@@ -20,6 +20,7 @@ import {
   magamMyClosedSectionToggleLabel,
 } from "@/lib/magam/copy";
 import { MAGAM_MY_CLOSED_PAGE_SIZE, MAGAM_MY_OPEN_LISTINGS_LIMIT } from "@/lib/magam/my-listings";
+import { readMagamLocallyClosedIds } from "@/lib/magam/listing-close-sync";
 import type { MagamListingRow } from "@/lib/magam/types";
 import { cn } from "@/lib/utils";
 
@@ -30,17 +31,36 @@ type Props = {
 };
 
 export default function MagamMyListings({
-  openListings,
+  openListings: openListingsProp,
   openHasMore = false,
-  closedTotal,
+  closedTotal: closedTotalProp,
 }: Props) {
   const router = useRouter();
+  const [openListings, setOpenListings] = useState(openListingsProp);
+  const [closedTotal, setClosedTotal] = useState(closedTotalProp);
   const [closedExpanded, setClosedExpanded] = useState(false);
   const [closedPage, setClosedPage] = useState(0);
   const [closedListings, setClosedListings] = useState<MagamListingRow[]>([]);
   const [closedLoading, setClosedLoading] = useState(false);
   const [closedError, setClosedError] = useState<string | null>(null);
   const [closedLoadedPage, setClosedLoadedPage] = useState<number | null>(null);
+
+  useEffect(() => {
+    setOpenListings(openListingsProp);
+    setClosedTotal(closedTotalProp);
+  }, [openListingsProp, closedTotalProp]);
+
+  useEffect(() => {
+    const locallyClosed = readMagamLocallyClosedIds();
+    if (locallyClosed.size === 0) return;
+
+    setOpenListings((prev) => {
+      const removed = prev.filter((row) => locallyClosed.has(row.id));
+      if (removed.length === 0) return prev;
+      setClosedTotal((total) => total + removed.length);
+      return prev.filter((row) => !locallyClosed.has(row.id));
+    });
+  }, []);
 
   const hasAny = openListings.length > 0 || closedTotal > 0;
   const closedPageCount =
