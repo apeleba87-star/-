@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -7,13 +8,7 @@ import {
   createMagamListing,
   type MagamWriteBootstrap,
 } from "@/app/magam/actions";
-import MagamRegionPicker from "@/components/magam/MagamRegionPicker";
 import MagamScheduleDateField from "@/components/magam/MagamScheduleDateField";
-import MagamWriteCoachmarks from "@/components/magam/onboarding/MagamWriteCoachmarks";
-import {
-  MagamRadarNationalBanner,
-  MagamRadarRegionalBanner,
-} from "@/components/magam/MagamRadarAdBanner";
 import {
   MagamChoiceChip,
   MagamComposeSection,
@@ -46,6 +41,33 @@ import { formatMagamPhoneInput, normalizeMagamPhone } from "@/lib/magam/phone";
 import { MAGAM_DEFAULT_CITY_ID, magamDefaultDistrictSlug } from "@/lib/magam/regions";
 import { magamRegionalAdCandidateKeys } from "@/lib/magam/region-ad-keys";
 import { pushMagamRecentRegion } from "@/lib/magam/recent-regions";
+
+const MagamRegionPicker = dynamic(() => import("@/components/magam/MagamRegionPicker"), {
+  loading: () => (
+    <div
+      className="h-28 animate-pulse rounded-[14px] bg-[#F2F3F6]"
+      aria-hidden
+    />
+  ),
+});
+const MagamWriteCoachmarks = dynamic(
+  () => import("@/components/magam/onboarding/MagamWriteCoachmarks"),
+  { loading: () => null }
+);
+const MagamRadarNationalBanner = dynamic(
+  () =>
+    import("@/components/magam/MagamRadarAdBanner").then((m) => ({
+      default: m.MagamRadarNationalBanner,
+    })),
+  { loading: () => null }
+);
+const MagamRadarRegionalBanner = dynamic(
+  () =>
+    import("@/components/magam/MagamRadarAdBanner").then((m) => ({
+      default: m.MagamRadarRegionalBanner,
+    })),
+  { loading: () => null }
+);
 
 const WORK_KINDS = ["move_in_new", "move_out", "ac", "other"] as const;
 const AC_TYPES = ["wall", "stand", "two_in_one", "one_two_way", "four_way", "other"] as const;

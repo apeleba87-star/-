@@ -13,7 +13,8 @@ export default async function MagamMePage() {
   const { user } = await getMagamSession();
   if (!user) redirect("/login?from=magam&next=/magam/me");
 
-  const { openListings, openHasMore, closedTotal } = await getMyMagamListings();
+  const { openListings, openHasMore, closedTotal, closedListingsFirstPage } =
+    await getMyMagamListings();
 
   return (
     <>
@@ -22,6 +23,7 @@ export default async function MagamMePage() {
         openListings={openListings}
         openHasMore={openHasMore}
         closedTotal={closedTotal}
+        closedListingsFirstPage={closedListingsFirstPage}
       />
     </>
   );

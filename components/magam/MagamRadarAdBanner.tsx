@@ -16,7 +16,7 @@ export function MagamRadarNationalBanner({ pagePath, compact, className }: Natio
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/magam/radar-ads/national", { cache: "no-store" })
+    void fetch("/api/magam/radar-ads/national")
       .then((r) => r.json())
       .then((data: { banner: RadarAdBannerPayload | null }) => {
         if (!cancelled && data.banner?.slots?.length) setBanner(data.banner);
@@ -52,20 +52,21 @@ export function MagamRadarRegionalBanner({ regionKeys, pagePath, className }: Re
     setBanner(null);
 
     async function load() {
-      let found: RadarAdBannerPayload | null = null;
-      for (const key of regionKeys) {
-        const res = await fetch(
-          `/api/magam/radar-ads/regional?region=${encodeURIComponent(key)}`,
-          { cache: "no-store" }
-        );
-        const data = (await res.json()) as { banner: RadarAdBannerPayload | null };
-        if (cancelled) return;
-        if (data.banner?.slots?.length) {
-          found = data.banner;
-          break;
-        }
-      }
-      if (!cancelled) setBanner(found);
+      const results = await Promise.all(
+        regionKeys.map(async (key) => {
+          try {
+            const res = await fetch(
+              `/api/magam/radar-ads/regional?region=${encodeURIComponent(key)}`
+            );
+            const data = (await res.json()) as { banner: RadarAdBannerPayload | null };
+            return data.banner?.slots?.length ? data.banner : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      if (cancelled) return;
+      setBanner(results.find((banner) => banner !== null) ?? null);
     }
 
     void load();

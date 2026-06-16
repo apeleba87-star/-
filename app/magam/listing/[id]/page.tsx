@@ -5,7 +5,7 @@ import { getMagamListingForOwner } from "@/app/magam/actions";
 import MagamOwnerListingPanel from "@/components/magam/MagamOwnerListingPanel";
 import { MagamPageHeader } from "@/components/magam/ui/MagamUi";
 import { buildMagamShareUrl } from "@/lib/magam/share-url";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { getMagamSession } from "@/lib/magam/session";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -23,13 +23,11 @@ export default async function MagamOwnerListingPage({ params, searchParams }: Pr
   const { id } = await params;
   const { new: isNew } = await searchParams;
 
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [{ user }, listing] = await Promise.all([
+    getMagamSession(),
+    getMagamListingForOwner(id),
+  ]);
   if (!user) redirect(`/login?from=magam&next=/magam/listing/${id}`);
-
-  const listing = await getMagamListingForOwner(id);
   if (!listing) notFound();
 
   const shareUrl = buildMagamShareUrl(listing.share_slug);

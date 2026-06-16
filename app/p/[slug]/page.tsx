@@ -52,13 +52,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MagamSharePage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { from, listingId } = await searchParams;
-  const listing = await getMagamListingBySlug(slug);
-  if (!listing) notFound();
 
-  const openListings = await getMagamOpenListings({
-    excludeSlug: slug,
-    limit: MAGAM_OTHER_OPEN_LISTINGS_LIMIT,
-  });
+  const [listing, openListings] = await Promise.all([
+    getMagamListingBySlug(slug),
+    getMagamOpenListings({
+      excludeSlug: slug,
+      limit: MAGAM_OTHER_OPEN_LISTINGS_LIMIT,
+    }),
+  ]);
+
+  if (!listing) notFound();
 
   const regionalKeys = magamRegionalAdKeysForListing(listing);
   const pagePath = `magam:share/${slug}`;

@@ -14,13 +14,14 @@ import {
   MAGAM_MY_CLOSED_PAGE_SIZE,
   MAGAM_MY_OPEN_LISTINGS_LIMIT,
 } from "@/lib/magam/my-listings";
+import {
+  MAGAM_LISTING_CARD_SELECT,
+  MAGAM_LISTING_OWNER_SELECT,
+} from "@/lib/magam/listing-select";
 import { MAGAM_SYNC_CONSENT_VERSION } from "@/lib/magam/copy";
 import type { MagamListingRow } from "@/lib/magam/types";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 import { getMagamSession } from "@/lib/magam/session";
-
-const LISTING_SELECT =
-  "id, user_id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, linked_service_disclosed, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit";
 
 export type MagamWriteBootstrap = {
   contactPhone: string | null;
@@ -61,23 +62,29 @@ export async function getMyMagamListings(): Promise<{
   openListings: MagamListingRow[];
   openHasMore: boolean;
   closedTotal: number;
+  closedListingsFirstPage: MagamListingRow[];
 }> {
   const { supabase, user } = await requireUser();
-  if (!user) return { openListings: [], openHasMore: false, closedTotal: 0 };
+  if (!user) {
+    return { openListings: [], openHasMore: false, closedTotal: 0, closedListingsFirstPage: [] };
+  }
 
-  const [openResult, closedCountResult] = await Promise.all([
+  const [openResult, closedResult] = await Promise.all([
     supabase
       .from("magam_listings")
-      .select(LISTING_SELECT)
+      .select(MAGAM_LISTING_CARD_SELECT)
       .eq("user_id", user.id)
       .eq("status", "open")
       .order("created_at", { ascending: false })
       .limit(MAGAM_MY_OPEN_LISTINGS_LIMIT + 1),
     supabase
       .from("magam_listings")
-      .select("id", { count: "exact", head: true })
+      .select(MAGAM_LISTING_CARD_SELECT, { count: "exact" })
       .eq("user_id", user.id)
-      .eq("status", "closed"),
+      .eq("status", "closed")
+      .order("closed_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .range(0, MAGAM_MY_CLOSED_PAGE_SIZE - 1),
   ]);
 
   const openRows = (openResult.data as MagamListingRow[] | null) ?? [];
@@ -86,7 +93,8 @@ export async function getMyMagamListings(): Promise<{
   return {
     openListings: openRows.slice(0, MAGAM_MY_OPEN_LISTINGS_LIMIT),
     openHasMore,
-    closedTotal: closedCountResult.count ?? 0,
+    closedTotal: closedResult.count ?? 0,
+    closedListingsFirstPage: (closedResult.data as MagamListingRow[] | null) ?? [],
   };
 }
 
@@ -107,9 +115,9 @@ export async function getMyMagamClosedListingsPage(page: number): Promise<
   const from = safePage * MAGAM_MY_CLOSED_PAGE_SIZE;
   const to = from + MAGAM_MY_CLOSED_PAGE_SIZE - 1;
 
-  const { data, count, error } = await supabase
+  const { data, error } = await supabase
     .from("magam_listings")
-    .select(LISTING_SELECT, { count: "exact" })
+    .select(MAGAM_LISTING_CARD_SELECT)
     .eq("user_id", user.id)
     .eq("status", "closed")
     .order("closed_at", { ascending: false, nullsFirst: false })
@@ -121,7 +129,7 @@ export async function getMyMagamClosedListingsPage(page: number): Promise<
   return {
     ok: true,
     listings: (data as MagamListingRow[] | null) ?? [],
-    total: count ?? 0,
+    total: 0,
     page: safePage,
     pageSize: MAGAM_MY_CLOSED_PAGE_SIZE,
   };
@@ -133,7 +141,7 @@ export async function getMagamListingForOwner(id: string): Promise<MagamListingR
 
   const { data } = await supabase
     .from("magam_listings")
-    .select(LISTING_SELECT)
+    .select(MAGAM_LISTING_OWNER_SELECT)
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -182,20 +190,23 @@ export async function createMagamListing(
     return { ok: false, error: "마감링크 이용이 정지된 계정입니다. 고객지원으로 문의해 주세요." };
   }
 
+  const profilePatch: {
+    magam_contact_phone: string;
+    magam_sync_consent_at?: string;
+    magam_sync_consent_version?: string;
+  } = { magam_contact_phone: phone };
+
   if (!profile?.magam_sync_consent_at) {
-    await supabase
-      .from("profiles")
-      .update({
-        magam_sync_consent_at: new Date().toISOString(),
-        magam_sync_consent_version: MAGAM_SYNC_CONSENT_VERSION,
-      })
-      .eq("id", user.id);
+    profilePatch.magam_sync_consent_at = new Date().toISOString();
+    profilePatch.magam_sync_consent_version = MAGAM_SYNC_CONSENT_VERSION;
   }
 
-  await supabase
+  const { error: profileError } = await supabase
     .from("profiles")
-    .update({ magam_contact_phone: phone })
+    .update(profilePatch)
     .eq("id", user.id);
+
+  if (profileError) return { ok: false, error: profileError.message };
 
   const { data, error } = await supabase
     .from("magam_listings")

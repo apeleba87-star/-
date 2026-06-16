@@ -9,10 +9,11 @@ import { getMagamSession } from "@/lib/magam/session";
 export const metadata: Metadata = { title: "글쓰기" };
 
 export default async function MagamWritePage() {
-  const { user } = await getMagamSession();
+  const [{ user }, bootstrap] = await Promise.all([
+    getMagamSession(),
+    getMagamWriteBootstrap(),
+  ]);
   if (!user) redirect("/login?from=magam&next=/magam/write");
-
-  const bootstrap = await getMagamWriteBootstrap();
 
   return (
     <>
