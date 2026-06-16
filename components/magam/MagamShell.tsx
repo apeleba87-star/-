@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import MagamTabHints from "@/components/magam/onboarding/MagamTabHints";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -25,10 +26,12 @@ function isTabActive(pathname: string, href: string): boolean {
 export default function MagamShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const showNav = !hideBottomNav(pathname);
+  const showTabHints = showNav && (pathname === "/magam/me" || pathname.startsWith("/magam/listing/"));
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col">
       <div className={cn("flex-1 px-4 pt-3", showNav ? "pb-24" : "pb-6")}>{children}</div>
+      {showTabHints ? <MagamTabHints /> : null}
       {showNav ? (
         <nav
           className="fixed inset-x-0 bottom-0 z-20 border-t border-[#E3E6EC] bg-white pb-[env(safe-area-inset-bottom,0px)]"

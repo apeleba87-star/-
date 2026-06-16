@@ -19,7 +19,7 @@ export default async function MagamWritePage() {
 
   return (
     <>
-      <MagamPageHeader title="글쓰기" />
+      <MagamPageHeader title="글쓰기" backHref="/magam/me" />
       <MagamWriteForm bootstrap={bootstrap} />
     </>
   );

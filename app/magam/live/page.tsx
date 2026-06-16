@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import MagamLiveFeed from "@/components/magam/MagamLiveFeed";
 import { MagamPageHeader } from "@/components/magam/ui/MagamUi";
+import { MAGAM_SHARE_FROM_LIVE } from "@/lib/magam/back-href";
 import { isMagamLiveSiteEntry, magamLiveBackHref } from "@/lib/magam/live-entry";
 import { getMagamOpenListings } from "@/lib/magam/queries";
 
@@ -27,7 +28,10 @@ export default async function MagamLivePage({ searchParams }: { searchParams: Se
           ? "클린아이덱스에 등록된 현재 모집 중인 도급·구인 공고입니다."
           : "현재 모집 중인 도급·구인 공고입니다."}
       </p>
-      <MagamLiveFeed initialListings={listings} />
+      <MagamLiveFeed
+        initialListings={listings}
+        shareFrom={fromSite ? "cleanidex" : MAGAM_SHARE_FROM_LIVE}
+      />
     </>
   );
 }

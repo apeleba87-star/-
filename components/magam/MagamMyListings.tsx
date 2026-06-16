@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import MagamMyListingCard from "@/components/magam/MagamMyListingCard";
+import MagamOnboardingCarousel from "@/components/magam/onboarding/MagamOnboardingCarousel";
 import { MagamRadarNationalBanner } from "@/components/magam/MagamRadarAdBanner";
 import { magamPrimaryBtnClass } from "@/components/magam/ui/MagamUi";
 import { MAGAM_MY_LISTINGS_LIMIT } from "@/lib/magam/my-listings";
@@ -20,6 +21,7 @@ export default function MagamMyListings({ listings, hasMore = false }: Props) {
 
   return (
     <div>
+      <MagamOnboardingCarousel />
       <MagamAppPitch textAlign="center" dense taglineOnly className="mb-4" />
       <MagamRadarNationalBanner pagePath="magam:home" className="mb-4" />
 

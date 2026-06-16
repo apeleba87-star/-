@@ -1,5 +1,21 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+import { isMagamFromQuery } from "@/lib/magam/brand";
+import { magamAuthPageMetadata } from "@/lib/magam/metadata";
 import LoginClient from "./LoginClient";
+
+type Props = {
+  searchParams: Promise<{ from?: string }>;
+};
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { from } = await searchParams;
+  if (isMagamFromQuery(from)) {
+    return magamAuthPageMetadata("/login");
+  }
+  return { title: "로그인" };
+}
 
 export default function LoginPage() {
   return (

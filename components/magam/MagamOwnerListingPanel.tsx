@@ -51,6 +51,10 @@ import {
 
 } from "@/lib/magam/copy";
 
+import {
+  MAGAM_SHARE_FROM_LISTING,
+  magamPublicListingHref,
+} from "@/lib/magam/back-href";
 import { formatKrMobilePhone } from "@/lib/format/kr-mobile-phone";
 
 import { getMagamListingDisplayRows } from "@/lib/magam/format-listing";
@@ -168,9 +172,10 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
       </MagamSectionCard>
 
       <Link
-        href={`/p/${listing.share_slug}`}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={magamPublicListingHref(listing.share_slug, {
+          from: MAGAM_SHARE_FROM_LISTING,
+          listingId: listing.id,
+        })}
         className={`${magamOutlineBtnClass} block text-center text-[15px]`}
       >
         {MAGAM_SHARE_PREVIEW_LABEL}

@@ -11,6 +11,7 @@ import ContactButtons from "@/components/listings/ContactButtons";
 import MagamListingDisplayRows from "@/components/magam/MagamListingDisplayRows";
 import MagamReportListingButton from "@/components/magam/MagamReportListingButton";
 import { MagamTypeBadge } from "@/components/magam/ui/MagamUi";
+import { magamPublicListingHref } from "@/lib/magam/back-href";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -78,13 +79,20 @@ export default function MagamShareCard({ listing, highlight }: Props) {
 }
 
 /** 공유 페이지 하단 — 한 줄 요약 */
-export function MagamListingPeekItem({ listing }: { listing: MagamListingPublic }) {
+export function MagamListingPeekItem({
+  listing,
+  shareFrom,
+}: {
+  listing: MagamListingPublic;
+  shareFrom?: string;
+}) {
   const body = formatMagamListingPeekBody(listing);
   const accent = magamListingTypeAccent(listing.listing_type);
+  const href = magamPublicListingHref(listing.share_slug, shareFrom ? { from: shareFrom } : undefined);
 
   return (
     <Link
-      href={`/p/${listing.share_slug}`}
+      href={href}
       className={cn(
         "block rounded-lg px-3 py-2.5 transition",
         accent.peek
@@ -99,10 +107,17 @@ export function MagamListingPeekItem({ listing }: { listing: MagamListingPublic 
 }
 
 /** 목록용 축약 카드 — 실시간 모집 등 */
-export function MagamListingListItem({ listing }: { listing: MagamListingPublic }) {
+export function MagamListingListItem({
+  listing,
+  shareFrom = "live",
+}: {
+  listing: MagamListingPublic;
+  shareFrom?: string;
+}) {
   const isClosed = listing.status === "closed";
   const rows = getMagamListingDisplayRows(listing);
   const accent = magamListingTypeAccent(listing.listing_type);
+  const href = magamPublicListingHref(listing.share_slug, { from: shareFrom });
 
   return (
     <div
@@ -111,7 +126,7 @@ export function MagamListingListItem({ listing }: { listing: MagamListingPublic 
         isClosed ? "border border-slate-200 bg-white" : accent.card
       )}
     >
-      <Link href={`/p/${listing.share_slug}`} className="block px-4 py-3 pr-14">
+      <Link href={href} className="block px-4 py-3 pr-14">
         <div className="flex items-center gap-2">
           <MagamTypeBadge listingType={listing.listing_type} muted={isClosed} />
           <span

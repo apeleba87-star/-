@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import MagamReferralCopyButton from "@/components/magam/MagamReferralCopyButton";
+import MagamShareNudge from "@/components/magam/onboarding/MagamShareNudge";
 import { magamOutlineBtnClass } from "@/components/magam/ui/MagamUi";
 import {
   MAGAM_GROUP_CHAT_COPY_LABEL,
@@ -15,13 +16,15 @@ import {
   MAGAM_SHARE_REFERRAL_HINT,
   MAGAM_SHARE_REFERRAL_SECTION,
 } from "@/lib/magam/copy";
-import { magamKakaoShareToast, shareToKakaoTalk } from "@/lib/magam/kakao-share";
+import { copyMagamListingMessage, magamListingCopyToast } from "@/lib/magam/kakao-share";
 import { buildMagamNaverCafeMessage, buildMagamShareMessage } from "@/lib/magam/share-format";
 import {
   loadMagamShareIncludePhone,
   saveMagamShareIncludePhone,
 } from "@/lib/magam/share-prefs";
+import { markMagamOnboardingDone, shouldShowMagamOnboarding } from "@/lib/magam/onboarding";
 import type { MagamListingRow } from "@/lib/magam/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   listing: MagamListingRow;
@@ -48,6 +51,18 @@ export default function MagamShareBlock({
   const [copyLoading, setCopyLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showShareNudge, setShowShareNudge] = useState(false);
+
+  useEffect(() => {
+    if (highlightShare && shouldShowMagamOnboarding("share")) {
+      setShowShareNudge(true);
+    }
+  }, [highlightShare]);
+
+  const dismissShareNudge = useCallback(() => {
+    markMagamOnboardingDone("share");
+    setShowShareNudge(false);
+  }, []);
 
   useEffect(() => {
     setIncludePhone(loadMagamShareIncludePhone());
@@ -72,9 +87,12 @@ export default function MagamShareBlock({
   const handleGroupChatCopy = async () => {
     setCopyLoading(true);
     const text = buildMagamShareMessage(listing, shareUrl, includePhone);
-    const { outcome } = await shareToKakaoTalk(text);
+    const { outcome } = await copyMagamListingMessage(text);
     setCopyLoading(false);
-    notify(magamKakaoShareToast(outcome));
+    notify(magamListingCopyToast(outcome));
+    if (outcome === "copied") {
+      dismissShareNudge();
+    }
     if (outcome === "failed") {
       window.prompt("아래 내용을 복사해 카톡에 붙여넣으세요.", text);
     }
@@ -109,6 +127,7 @@ export default function MagamShareBlock({
     <div className="space-y-4">
       <section>
         <ShareSectionHeader title={MAGAM_SHARE_LISTING_SECTION} />
+        {showShareNudge ? <MagamShareNudge onDismiss={dismissShareNudge} /> : null}
         <div className="space-y-2.5">
           {isOpen ? (
             <label className="flex cursor-pointer gap-3 rounded-[14px] border-2 border-[#141824] bg-white p-3">
@@ -134,7 +153,10 @@ export default function MagamShareBlock({
             type="button"
             onClick={handleGroupChatCopy}
             disabled={copyLoading}
-            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#FEE500] text-base font-bold text-[#191919] disabled:opacity-50"
+            className={cn(
+              "flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#FEE500] text-base font-bold text-[#191919] disabled:opacity-50",
+              showShareNudge && "animate-pulse ring-4 ring-[#2563EB]/40 ring-offset-2"
+            )}
           >
             {copyLoading ? MAGAM_GROUP_CHAT_COPY_LOADING : MAGAM_GROUP_CHAT_COPY_LABEL}
           </button>

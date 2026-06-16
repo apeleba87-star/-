@@ -20,14 +20,17 @@ const TYPE_FILTERS: { value: "all" | MagamLiveListingType; label: string }[] = [
 
 type Props = {
   initialListings: MagamListingPublic[];
+  shareFrom?: string;
 };
 
 function ListingSection({
   title,
   listings,
+  shareFrom,
 }: {
   title: string;
   listings: MagamListingPublic[];
+  shareFrom: string;
 }) {
   if (listings.length === 0) return null;
 
@@ -40,7 +43,7 @@ function ListingSection({
       <ul className="flex flex-col gap-2">
         {listings.map((item) => (
           <li key={item.id}>
-            <MagamListingListItem listing={item} />
+            <MagamListingListItem listing={item} shareFrom={shareFrom} />
           </li>
         ))}
       </ul>
@@ -51,7 +54,7 @@ function ListingSection({
 const selectClass =
   "w-full min-h-[44px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20";
 
-export default function MagamLiveFeed({ initialListings }: Props) {
+export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: Props) {
   const [typeFilter, setTypeFilter] = useState<"all" | MagamLiveListingType>("all");
   const [regionFilter, setRegionFilter] = useState("");
   const [priceFilter, setPriceFilter] = useState<MagamPriceBucket>("all");
@@ -151,14 +154,14 @@ export default function MagamLiveFeed({ initialListings }: Props) {
         <p className="mt-6 text-sm text-slate-500">조건에 맞는 모집 공고가 없습니다.</p>
       ) : typeFilter === "all" ? (
         <>
-          <ListingSection title="도급" listings={subcontractListings} />
-          <ListingSection title="구인" listings={hiringListings} />
+          <ListingSection title="도급" listings={subcontractListings} shareFrom={shareFrom} />
+          <ListingSection title="구인" listings={hiringListings} shareFrom={shareFrom} />
         </>
       ) : (
         <ul className="mt-4 flex flex-col gap-2">
           {filtered.map((item) => (
             <li key={item.id}>
-              <MagamListingListItem listing={item} />
+              <MagamListingListItem listing={item} shareFrom={shareFrom} />
             </li>
           ))}
         </ul>

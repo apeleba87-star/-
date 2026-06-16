@@ -1,17 +1,21 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 
-export const metadata = {
+import MagamLegalPageShell from "@/components/magam/MagamLegalPageShell";
+import { isMagamFromQuery } from "@/lib/magam/brand";
+
+export const metadata: Metadata = {
   title: "개인정보 처리방침",
   description: "클린아이덱스 개인정보 처리방침",
 };
 
-export default function PrivacyPage() {
+type Props = {
+  searchParams: Promise<{ from?: string }>;
+};
+
+function PrivacyBody() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <Link href="/" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
-        ← 홈
-      </Link>
-      <h1 className="mb-8 text-2xl font-bold text-slate-900">개인정보 처리방침</h1>
+    <>
       <p className="mb-8 text-sm text-slate-500">
         클린아이덱스(이하 &quot;서비스&quot;)는 개인정보 보호법에 따라 이용자의 개인정보 보호 및 권익을 보장하고자 다음과 같이 개인정보 처리방침을 수립·공개합니다.
       </p>
@@ -130,6 +134,29 @@ export default function PrivacyPage() {
       <p className="text-xs text-slate-500">
         시행일: {new Date().toLocaleDateString("ko-KR")}
       </p>
+    </>
+  );
+}
+
+export default async function PrivacyPage({ searchParams }: Props) {
+  const { from } = await searchParams;
+  const fromMagam = isMagamFromQuery(from);
+
+  if (fromMagam) {
+    return (
+      <MagamLegalPageShell title="개인정보 처리방침">
+        <PrivacyBody />
+      </MagamLegalPageShell>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-10">
+      <Link href="/" className="mb-6 inline-block text-sm text-blue-600 hover:underline">
+        ← 홈
+      </Link>
+      <h1 className="mb-8 text-2xl font-bold text-slate-900">개인정보 처리방침</h1>
+      <PrivacyBody />
     </div>
   );
 }

@@ -1,3 +1,8 @@
+import {
+  MAGAM_GROUP_CHAT_COPY_DONE,
+  MAGAM_GROUP_CHAT_COPY_FAILED,
+} from "@/lib/magam/copy";
+
 export type MagamKakaoShareOutcome = "opened" | "copied" | "failed";
 
 export type MagamKakaoShareResult = {
@@ -35,9 +40,14 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** 단톡방 모집 글 — 클린아이덱스 공유하기와 동일: navigator.share → 복사 */
+/** 단톡방 모집 글 — 클립보드 복사만 (카카오 인앱 등 navigator.share 미지원) */
 export async function copyMagamListingMessage(fullText: string): Promise<MagamKakaoShareResult> {
-  return shareToKakaoTalk(fullText);
+  if (typeof window === "undefined") {
+    return { outcome: "failed", truncated: false };
+  }
+
+  const copied = await copyToClipboard(fullText);
+  return copied ? { outcome: "copied", truncated: false } : { outcome: "failed", truncated: false };
 }
 
 /** 마감링크 소개 등 — navigator.share → 복사 */
@@ -68,7 +78,12 @@ export async function shareToKakaoTalk(fullText: string): Promise<MagamKakaoShar
 }
 
 export function magamListingCopyToast(outcome: MagamKakaoShareOutcome): string {
-  return magamKakaoShareToast(outcome);
+  switch (outcome) {
+    case "copied":
+      return MAGAM_GROUP_CHAT_COPY_DONE;
+    default:
+      return MAGAM_GROUP_CHAT_COPY_FAILED;
+  }
 }
 
 export function magamKakaoShareToast(outcome: MagamKakaoShareOutcome): string {

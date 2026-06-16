@@ -9,6 +9,7 @@ import {
 } from "@/app/magam/actions";
 import MagamRegionPicker from "@/components/magam/MagamRegionPicker";
 import MagamScheduleDateField from "@/components/magam/MagamScheduleDateField";
+import MagamWriteCoachmarks from "@/components/magam/onboarding/MagamWriteCoachmarks";
 import {
   MagamRadarNationalBanner,
   MagamRadarRegionalBanner,
@@ -168,6 +169,7 @@ export default function MagamWriteForm({ bootstrap }: Props) {
 
   return (
     <form onSubmit={handleSubmit}>
+      <MagamWriteCoachmarks />
       <MagamRadarNationalBanner pagePath="magam:compose" className="mb-4" />
       <MagamComposeSection step="1" title="도급 / 구인">
         <div className="flex flex-wrap gap-2">
