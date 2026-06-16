@@ -15,7 +15,7 @@ import {
   MAGAM_SHARE_LINK_CTA,
   MAGAM_SHARE_PAGE_TITLE,
 } from "@/lib/magam/copy";
-import { magamShareBackHref } from "@/lib/magam/back-href";
+import { MAGAM_SHARE_FROM_LISTING, magamShareBackHref } from "@/lib/magam/back-href";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
 import { magamRegionalAdKeysForListing } from "@/lib/magam/region-ad-keys";
 
@@ -65,7 +65,8 @@ export default async function MagamSharePage({ params, searchParams }: Props) {
 
   const regionalKeys = magamRegionalAdKeysForListing(listing);
   const pagePath = `magam:share/${slug}`;
-  const backHref = magamShareBackHref(from, listingId);
+  const isOwnerPreview = from?.trim() === MAGAM_SHARE_FROM_LISTING;
+  const backHref = isOwnerPreview ? undefined : magamShareBackHref(from, listingId);
   const shareFrom = from?.trim() || "live";
 
   return (
