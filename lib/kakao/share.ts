@@ -1,3 +1,4 @@
+import { shareTextIncludesUrl } from "@/lib/magam/share-url";
 import {
   ensureKakaoShareReady,
   getKakaoJavascriptKey,
@@ -36,11 +37,14 @@ export async function shareContent(params: {
   title?: string;
   text: string;
   url: string;
+  /** 본문에 링크가 이미 있으면 url을 다시 붙이지 않음 */
+  skipUrlAppend?: boolean;
 }): Promise<KakaoAwareShareOutcome> {
   if (typeof window === "undefined") return "failed";
 
-  const { title, text, url } = params;
-  const clipboardText = [title, text, url].filter(Boolean).join("\n");
+  const { title, text, url, skipUrlAppend = false } = params;
+  const hasLink = skipUrlAppend || shareTextIncludesUrl(text, url);
+  const clipboardText = hasLink ? text : [text, url].filter(Boolean).join("\n");
   const message = [title, text].filter(Boolean).join("\n") || text;
   const feed = {
     title: title?.trim() || message.split("\n")[0]?.trim() || "공유하기",
@@ -59,7 +63,11 @@ export async function shareContent(params: {
 
   try {
     if (typeof navigator !== "undefined" && navigator.share) {
-      await navigator.share(title ? { title, text, url } : { text, url });
+      if (hasLink) {
+        await navigator.share(title ? { title, text } : { text });
+      } else {
+        await navigator.share(title ? { title, text, url } : { text, url });
+      }
       return "opened";
     }
   } catch (err) {

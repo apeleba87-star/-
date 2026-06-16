@@ -17,6 +17,7 @@ import {
 import { MAGAM_SYNC_CONSENT_VERSION } from "@/lib/magam/copy";
 import type { MagamListingRow } from "@/lib/magam/types";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
+import { getMagamSession } from "@/lib/magam/session";
 
 const LISTING_SELECT =
   "id, user_id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, linked_service_disclosed, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit";
@@ -31,10 +32,7 @@ export type MagamActionResult<T = void> =
   | { ok: false; error: string };
 
 async function requireUser() {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getMagamSession();
   return { supabase, user };
 }
 

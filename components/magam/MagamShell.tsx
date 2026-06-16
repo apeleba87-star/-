@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 
 import MagamTabHints from "@/components/magam/onboarding/MagamTabHints";
 import MagamInAppBrowserBanner from "@/components/magam/MagamInAppBrowserBanner";
@@ -31,9 +32,16 @@ function hideInAppBrowserBanner(pathname: string): boolean {
 
 export default function MagamShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
   const showNav = !hideBottomNav(pathname);
   const showTabHints = showNav && (pathname === "/magam/me" || pathname.startsWith("/magam/listing/"));
   const showInAppBanner = !hideInAppBrowserBanner(pathname);
+
+  useEffect(() => {
+    for (const tab of TABS) {
+      router.prefetch(tab.href);
+    }
+  }, [router]);
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col">

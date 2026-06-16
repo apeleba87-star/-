@@ -5,15 +5,12 @@ import { getMyMagamListings } from "@/app/magam/actions";
 import MagamMyListings from "@/components/magam/MagamMyListings";
 import { MagamPageHeader } from "@/components/magam/ui/MagamUi";
 import { MAGAM_APP_NAME } from "@/lib/magam/brand";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { getMagamSession } from "@/lib/magam/session";
 
 export const metadata: Metadata = { title: MAGAM_APP_NAME };
 
 export default async function MagamMePage() {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await getMagamSession();
   if (!user) redirect("/login?from=magam&next=/magam/me");
 
   const { openListings, openHasMore, closedTotal } = await getMyMagamListings();

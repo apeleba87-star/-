@@ -14,6 +14,7 @@ import {
   MAGAM_SHARE_LINK_CTA_BRACKET,
 } from "@/lib/magam/copy";
 import { buildMagamShareMessage } from "@/lib/magam/share-format";
+import { extractUrlFromShareText, shareTextIncludesUrl } from "@/lib/magam/share-url";
 import type { MagamListingRow } from "@/lib/magam/types";
 
 export type MagamKakaoShareOutcome = "opened" | "copied" | "failed";
@@ -23,10 +24,9 @@ export type MagamKakaoShareResult = {
   truncated: boolean;
 };
 
-function extractShareUrl(text: string): string | undefined {
-  const match = text.match(/https?:\/\/[^\s]+/);
-  if (!match) return undefined;
-  return match[0].replace(/[)\]}>.,;]+$/, "");
+function resolveShareUrl(fullText: string, preferredUrl?: string): string {
+  if (preferredUrl) return preferredUrl;
+  return extractUrlFromShareText(fullText) ?? (typeof window !== "undefined" ? window.location.href : "");
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -106,7 +106,7 @@ export async function shareMagamListingToKakaoTalk(
     return { outcome: "opened", truncated: false };
   }
 
-  return shareToKakaoTalk(fullText);
+  return shareToKakaoTalk(fullText, shareUrl);
 }
 
 /** 단톡방 모집 글 — SDK 실패 시 클립보드만 */
@@ -120,18 +120,21 @@ export async function copyMagamListingMessage(fullText: string): Promise<MagamKa
 }
 
 /** 마감링크 소개 등 — 카카오 SDK → navigator.share → 복사 */
-export async function shareToKakaoTalk(fullText: string): Promise<MagamKakaoShareResult> {
+export async function shareToKakaoTalk(
+  fullText: string,
+  preferredUrl?: string
+): Promise<MagamKakaoShareResult> {
   if (typeof window === "undefined") {
     return { outcome: "failed", truncated: false };
   }
 
-  const url = extractShareUrl(fullText);
-  const text = url ? fullText.replace(url, "").trim() : fullText;
-  const shareUrl = url ?? window.location.href;
+  const shareUrl = resolveShareUrl(fullText, preferredUrl);
+  const hasLinkInText = shareTextIncludesUrl(fullText, shareUrl);
 
   const outcome = await shareContent({
-    text: text || fullText,
+    text: fullText,
     url: shareUrl,
+    skipUrlAppend: hasLinkInText,
   });
 
   if (outcome === "cancelled") {

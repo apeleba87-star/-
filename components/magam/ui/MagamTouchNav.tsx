@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { MouseEvent, ReactNode } from "react";
-import { useEffect, useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -39,44 +39,33 @@ type NavTabProps = {
 };
 
 export function MagamNavTab({ href, active, label, icon }: NavTabProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [pressed, setPressed] = useState(false);
+  const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const showActive = active || pendingHref === href;
 
   useEffect(() => {
-    setPressed(false);
-  }, [active]);
-
-  function handleClick() {
-    if (active || isPending) return;
-    setPressed(true);
-    startTransition(() => {
-      router.push(href);
-    });
-  }
-
-  const showPending = isPending && pressed;
+    setPendingHref(null);
+  }, [pathname]);
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isPending}
-      aria-current={active ? "page" : undefined}
+    <Link
+      href={href}
+      prefetch
+      onClick={() => {
+        if (!active) setPendingHref(href);
+      }}
+      aria-current={showActive ? "page" : undefined}
       className={cn(
         magamTapClass,
-        "flex flex-1 flex-col items-center gap-0.5 rounded-[12px] py-2.5 text-[11px] font-semibold disabled:pointer-events-none",
-        active
-          ? "bg-[#EEF3FF] text-[#2563EB]"
-          : "text-[#5B6472] active:bg-[#F2F3F6]",
-        showPending && "opacity-80"
+        "flex flex-1 flex-col items-center gap-0.5 rounded-[12px] py-2.5 text-[11px] font-semibold",
+        showActive ? "bg-[#EEF3FF] text-[#2563EB]" : "text-[#5B6472] active:bg-[#F2F3F6]"
       )}
     >
-      <span className="relative flex h-6 items-center justify-center text-lg leading-none" aria-hidden>
-        {showPending ? <MagamTouchSpinner /> : icon}
+      <span className="flex h-6 items-center justify-center text-lg leading-none" aria-hidden>
+        {icon}
       </span>
       {label}
-    </button>
+    </Link>
   );
 }
 
@@ -88,41 +77,8 @@ type TapLinkProps = {
 };
 
 export function MagamTapLink({ href, className, children, prefetch = true }: TapLinkProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [armed, setArmed] = useState(false);
-
-  function handleClick(e: MouseEvent<HTMLAnchorElement>) {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    e.preventDefault();
-    if (isPending) return;
-    setArmed(true);
-    startTransition(() => {
-      router.push(href);
-    });
-  }
-
   return (
-    <Link
-      href={href}
-      prefetch={prefetch}
-      onClick={handleClick}
-      aria-busy={isPending || undefined}
-      className={cn(
-        magamTapClass,
-        "relative block",
-        isPending && armed && "pointer-events-none opacity-75",
-        className
-      )}
-    >
-      {isPending && armed ? (
-        <span
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-white/55"
-          aria-hidden
-        >
-          <MagamTouchSpinner size="md" />
-        </span>
-      ) : null}
+    <Link href={href} prefetch={prefetch} className={cn(magamTapClass, "block", className)}>
       {children}
     </Link>
   );
