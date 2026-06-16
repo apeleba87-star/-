@@ -59,24 +59,16 @@ import { magamRegionalAdKeysForListing } from "@/lib/magam/region-ad-keys";
 
 import type { MagamListingRow } from "@/lib/magam/types";
 
-
-
 type Props = {
-
   listing: MagamListingRow;
-
   shareUrl: string;
-
   isNew?: boolean;
-
 };
 
-
-
-export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Props) {
-
+export default function MagamOwnerListingPanel({ listing: initialListing, shareUrl, isNew }: Props) {
   const router = useRouter();
 
+  const [listing, setListing] = useState(initialListing);
   const [closing, setClosing] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +96,7 @@ export default function MagamOwnerListingPanel({ listing, shareUrl, isNew }: Pro
       return;
     }
 
+    setListing((prev) => ({ ...prev, status: "closed" }));
     setCloseDialogOpen(false);
     router.refresh();
   }

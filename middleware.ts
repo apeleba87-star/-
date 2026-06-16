@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { checkRateLimit } from "@/lib/rate-limit-edge";
 import { isDemandAdminOnlyPath } from "@/lib/demand/nav-links";
+import {
+  MAGAM_AUTH_NEXT_COOKIE,
+  MAGAM_DEFAULT_AUTH_NEXT,
+  resolveMagamAuthNext,
+} from "@/lib/magam/auth-cookie";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -87,15 +92,26 @@ function rateLimitResponse(retryAfterSec: number): NextResponse {
   });
 }
 
+function isMagamPwaStaticAsset(pathname: string): boolean {
+  if (!pathname.startsWith("/magam/app/")) return false;
+  return /\.(?:js|wasm|json|bin|frag|symbols|otf|ttf|woff2?|map)$/i.test(pathname);
+}
+
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+
+  if (isMagamPwaStaticAsset(pathname)) {
+    return NextResponse.next();
+  }
 
   // OAuth PKCE — Site URL(/) 로 떨어진 code 를 /auth/callback 으로 넘김 (마감앱 등 misredirect 대비)
   if (pathname === "/" && req.nextUrl.searchParams.has("code")) {
     const url = req.nextUrl.clone();
     url.pathname = "/auth/callback";
     if (!url.searchParams.has("next")) {
-      url.searchParams.set("next", "/onboarding");
+      const cookieNext = req.cookies.get(MAGAM_AUTH_NEXT_COOKIE)?.value;
+      const magamNext = resolveMagamAuthNext(null, cookieNext);
+      url.searchParams.set("next", magamNext ?? "/onboarding");
     }
     return NextResponse.redirect(url);
   }

@@ -8,6 +8,7 @@ import Button from "@/components/Button";
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 import { isMagamFromQuery } from "@/lib/magam/brand";
+import { MAGAM_DEFAULT_AUTH_NEXT, magamAuthCallbackUrl, setMagamAuthNextCookie } from "@/lib/magam/auth-cookie";
 import { checkEmailAvailable, checkNicknameAvailable } from "./actions";
 
 /** 휴대폰 입력: 숫자만 남기고 010-XXXX-XXXX 형식으로 포맷 */
@@ -29,7 +30,9 @@ export default function SignupPage() {
 function SignupPageInner() {
   const searchParams = useSearchParams();
   const fromMagam = isMagamFromQuery(searchParams?.get("from"));
-  const loginHref = fromMagam ? "/login?from=magam" : "/login";
+  const loginHref = fromMagam
+    ? `/login?from=magam&next=${encodeURIComponent(MAGAM_DEFAULT_AUTH_NEXT)}`
+    : "/login";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -98,7 +101,16 @@ function SignupPageInner() {
     }
 
     setLoading(true);
+    if (fromMagam && typeof window !== "undefined") {
+      setMagamAuthNextCookie(MAGAM_DEFAULT_AUTH_NEXT);
+    }
     const supabase = createClient();
+    const emailRedirectTo =
+      typeof window !== "undefined"
+        ? fromMagam
+          ? magamAuthCallbackUrl(window.location.origin, MAGAM_DEFAULT_AUTH_NEXT)
+          : `${window.location.origin}/auth/callback`
+        : undefined;
     const { error: err } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -107,7 +119,7 @@ function SignupPageInner() {
           display_name: nickname.trim() || undefined,
           phone: phone.trim() || undefined,
         },
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
+        emailRedirectTo,
       },
     });
     if (err) {

@@ -1,12 +1,14 @@
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase-server";
 import type { MagamListingPublic } from "@/lib/magam/types";
 
 const PUBLIC_SELECT =
-  "id, user_id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit";
+  "id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit";
 
 const LIVE_LISTING_TYPES = ["subcontract", "hiring"] as const;
 
-export async function getMagamListingBySlug(slug: string): Promise<MagamListingPublic | null> {
+export const getMagamListingBySlug = cache(async (slug: string): Promise<MagamListingPublic | null> => {
   const supabase = createClient();
   const { data } = await supabase
     .from("magam_listings_public")
@@ -14,7 +16,7 @@ export async function getMagamListingBySlug(slug: string): Promise<MagamListingP
     .eq("share_slug", slug)
     .maybeSingle();
   return (data as MagamListingPublic | null) ?? null;
-}
+});
 
 export async function getMagamOpenListings(options?: {
   regionGu?: string;

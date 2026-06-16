@@ -16,6 +16,14 @@ const magamAppHighlights = [
 const magamPwaOgDescription =
     '도급·구인 모집, 이제 마감도 쉽게. 링크 등록 후 마감 버튼 한 번이면 연락처가 자동 비공개됩니다.';
 
+const magamLoginHook = '도급·구인 올리고';
+const magamLoginForbidden = 'ㅁㄱ';
+const magamLoginForbiddenHint = '댓글 달지 마세요.';
+const magamLoginPayoff = '마감 버튼 한 번이면 끝.';
+
+const magamLoginKakaoCta = '카카오로 시작하기';
+const magamLoginKakaoLoading = '연결 중…';
+
 const magamLoginPrompt = '카카오 또는 이메일로 로그인하세요';
 
 const magamLoginLegalNotice =

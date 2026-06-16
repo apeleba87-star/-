@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import MagamAppPitch from "@/components/magam/MagamAppPitch";
-import MagamWebBetaBanner from "@/components/magam/MagamWebBetaBanner";
+import MagamLoginPitch from "@/components/magam/MagamLoginPitch";
 import {
   MagamDividerOr,
   MagamErrorBanner,
@@ -16,6 +15,8 @@ import {
   magamPrimaryBtnClass,
 } from "@/components/magam/ui/MagamUi";
 import { MAGAM_APP_NAME, isMagamFromQuery } from "@/lib/magam/brand";
+import { MAGAM_DEFAULT_AUTH_NEXT, setMagamAuthNextCookie } from "@/lib/magam/auth-cookie";
+import { MAGAM_LOGIN_KAKAO_CTA, MAGAM_LOGIN_KAKAO_LOADING } from "@/lib/magam/copy";
 import { createClient } from "@/lib/supabase";
 
 function isValidNext(path: string | null): path is string {
@@ -68,6 +69,9 @@ export default function LoginClient() {
     setOauthLoading(provider);
     const supabase = createClient();
     const next = isValidNext(nextUrl) ? nextUrl : defaultNext;
+    if (fromMagam) {
+      setMagamAuthNextCookie(next);
+    }
     const redirectTo =
       typeof window !== "undefined"
         ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
@@ -99,13 +103,10 @@ export default function LoginClient() {
             <h1 className="mt-5 text-[26px] font-extrabold tracking-[-0.6px] text-[#141824]">
               {MAGAM_APP_NAME}
             </h1>
-            <MagamAppPitch textAlign="center" className="mt-2" />
-            <p className="mt-1.5 text-[13px] text-[#5B6472]">카카오 또는 이메일로 로그인하세요</p>
+            <MagamLoginPitch />
           </div>
 
-          <MagamWebBetaBanner />
-
-          <MagamSectionCard className="mt-8" padding="p-5">
+          <MagamSectionCard className="mt-6" padding="p-5">
             {error ? <MagamErrorBanner message={error} /> : null}
             <button
               type="button"
@@ -113,7 +114,7 @@ export default function LoginClient() {
               disabled={busy}
               className="flex min-h-[52px] w-full items-center justify-center rounded-[14px] bg-[#FEE500] text-base font-semibold text-[#191919] disabled:opacity-50"
             >
-              {oauthLoading === "kakao" ? "연결 중…" : "카카오로 로그인"}
+              {oauthLoading === "kakao" ? MAGAM_LOGIN_KAKAO_LOADING : MAGAM_LOGIN_KAKAO_CTA}
             </button>
 
             <MagamDividerOr />
@@ -155,8 +156,6 @@ export default function LoginClient() {
               </Link>
             </p>
           </MagamSectionCard>
-
-          <p className="mt-6 text-center text-xs text-[#8B93A1]">{MAGAM_APP_NAME}</p>
         </div>
       </div>
     );

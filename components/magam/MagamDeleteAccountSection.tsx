@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { deleteMagamAccount } from "@/app/magam/actions";
 import { MagamErrorBanner, magamOutlineBtnClass } from "@/components/magam/ui/MagamUi";
+import { MAGAM_DEFAULT_AUTH_NEXT } from "@/lib/magam/auth-cookie";
 import { MAGAM_DELETE_ACCOUNT_BODY, MAGAM_DELETE_ACCOUNT_TITLE } from "@/lib/magam/copy";
 import { createClient } from "@/lib/supabase";
 
@@ -25,7 +26,7 @@ export default function MagamDeleteAccountSection() {
 
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.href = "/login?from=magam";
+    window.location.href = `/login?from=magam&next=${encodeURIComponent(MAGAM_DEFAULT_AUTH_NEXT)}`;
   }
 
   return (

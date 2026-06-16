@@ -97,16 +97,22 @@ export const MAGAM_CLOSE_CONFIRM_ACTION = "마감";
 export const MAGAM_SYNC_CONSENT_ALREADY_GRANTED =
   "모집 안내 노출에 동의한 상태입니다. 설정에서 철회할 수 있습니다.";
 
-export const MAGAM_WEB_BETA_TITLE = "스토어 출시 전 · 웹으로 이용";
-export const MAGAM_WEB_BETA_BODY =
-  "지금은 브라우저에서 바로 쓸 수 있어요. 바탕화면에 넣으면 앱처럼 편합니다.";
-export const MAGAM_INSTALL_GUIDE_TITLE = "바탕화면에 추가";
-export const MAGAM_INSTALL_GUIDE_STEPS = [
-  "브라우저 아래쪽 또는 위쪽 메뉴(⋯)를 누르세요.",
-  "「홈 화면에 추가」 또는 「바탕화면에 추가」를 선택하세요.",
-  "이름을 확인한 뒤 추가를 누르세요.",
-  "홈 화면에 생긴 아이콘으로 다시 들어오면 됩니다.",
-] as const;
+/** 마감링크 로그인 — 단톡방 목업 카피 */
+export const MAGAM_LOGIN_CHAT_ROOM_TITLE = "도급·구인 단톡방";
+export const MAGAM_LOGIN_CHAT_MEMBER_COUNT = "24";
+export const MAGAM_LOGIN_CHAT_SAMPLE_NAME = "홍길동";
+export const MAGAM_LOGIN_CHAT_SAMPLE_POST =
+  "내일 구인 / 성북구 27평 잔24 / 010-XXXX-XXXX";
+export const MAGAM_LOGIN_CHAT_SAMPLE_REPLY = "ㅁㄱ";
+export const MAGAM_LOGIN_CHAT_READ_MARKER = "여기까지 읽으셨습니다.";
+export const MAGAM_LOGIN_CHAT_TIME_BEFORE = "오후 9:07";
+export const MAGAM_LOGIN_MAGAM_BUBBLE_INTRO = "이제 ㅁㄱ 댓글 달 필요가 없어요";
+export const MAGAM_LOGIN_MAGAM_BUBBLE = "[마감] 버튼 한번이면 끝";
+export const MAGAM_LOGIN_CHAT_TIME_AFTER = "오후 9:08";
+export const MAGAM_LOGIN_TYPING_TEXT = "마감 되면 연락처는 자동으로 숨겨져요";
+
+export const MAGAM_LOGIN_KAKAO_CTA = "카카오로 시작하기";
+export const MAGAM_LOGIN_KAKAO_LOADING = "연결 중…";
 
 export const MAGAM_DELETE_ACCOUNT_TITLE = "회원 탈퇴";
 export const MAGAM_DELETE_ACCOUNT_BODY =

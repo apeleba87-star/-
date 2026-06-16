@@ -12,7 +12,6 @@ import '../../theme/magam_theme.dart';
 import '../../utils/kr_phone_format.dart';
 import '../../widgets/magam_app_pitch.dart';
 import '../../widgets/magam_screen_padding.dart';
-import '../../widgets/magam_install_guide_dialog.dart';
 import '../../widgets/magam_section_card.dart';
 import '../../widgets/magam_sync_consent_tile.dart';
 
@@ -314,11 +313,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           label: '고객지원',
                           onTap: () => _openUrl('$base/magam/support'),
                         ),
-                        if (kIsWeb)
-                          _LinkTile(
-                            label: magamInstallGuideTitle,
-                            onTap: () => MagamInstallGuideDialog.show(context),
-                          ),
                       ],
                     ),
                   ),

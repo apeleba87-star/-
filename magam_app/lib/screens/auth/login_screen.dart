@@ -7,9 +7,7 @@ import '../../constants/magam_copy.dart';
 import '../../config/app_config.dart';
 import '../../config/auth_redirect.dart';
 import '../../theme/magam_theme.dart';
-import '../../widgets/magam_app_pitch.dart';
 import '../../widgets/magam_section_card.dart';
-import '../../widgets/magam_web_beta_banner.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -153,19 +151,73 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(magamAppName, style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 8),
-                  const MagamAppPitch(textAlign: TextAlign.center),
-                  const SizedBox(height: 6),
-                  Text(
-                    magamLoginPrompt,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
+                  const SizedBox(height: 12),
+                  MagamSectionCard(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      children: [
+                        Text(
+                          magamLoginHook,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: MagamColors.ink,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: MagamColors.dangerSoft,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: MagamColors.dangerBorder),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                "'$magamLoginForbidden'",
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: MagamColors.danger,
+                                      letterSpacing: 2,
+                                    ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                magamLoginForbiddenHint,
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF991B1B),
+                                    ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Text(
+                            magamLoginPayoff,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1D4ED8),
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 32),
-                  if (kIsWeb &&
-                      Uri.base.host != 'localhost' &&
-                      Uri.base.host != '127.0.0.1')
-                    const MagamWebBetaBanner(),
+                  const SizedBox(height: 20),
                   MagamSectionCard(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -207,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               backgroundColor: const Color(0xFFFEE500),
                               foregroundColor: const Color(0xFF191919),
                             ),
-                            child: Text(_kakaoLoading ? '연결 중…' : '카카오로 로그인'),
+                            child: Text(_kakaoLoading ? magamLoginKakaoLoading : magamLoginKakaoCta),
                           ),
                         ),
                         const SizedBox(height: 24),

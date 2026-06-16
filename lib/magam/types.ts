@@ -6,7 +6,6 @@ export type MagamListingStatus = (typeof MAGAM_LISTING_STATUSES)[number];
 
 export type MagamListingPublic = {
   id: string;
-  user_id: string;
   listing_type: MagamListingType;
   region_gu: string;
   body_text: string;
@@ -31,6 +30,7 @@ export type MagamListingPublic = {
 };
 
 export type MagamListingRow = MagamListingPublic & {
+  user_id: string;
   contact_phone: string;
   linked_service_disclosed: boolean;
 };
