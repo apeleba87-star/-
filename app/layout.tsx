@@ -7,6 +7,7 @@ import SiteBrandingScripts from "@/components/layout/SiteBrandingScripts";
 import RadarAdPlacementPreviewBoot from "@/components/advertise/RadarAdPlacementPreviewBoot";
 import SupabaseSessionRefresh from "@/components/auth/SupabaseSessionRefresh";
 import { getBaseUrl, defaultTitle, defaultDescription, SITE_NAME, seoKeywords } from "@/lib/seo";
+import { sitePwaMetadata } from "@/lib/site/pwa-manifest";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
@@ -62,6 +63,7 @@ export const metadata: Metadata = {
       "naver-site-verification": "65362145d76a61658a74462be699cdab2ea9d1d6",
     },
   },
+  ...sitePwaMetadata(),
 };
 
 export const viewport: Viewport = {

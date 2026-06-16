@@ -12,7 +12,8 @@
     "backfill:job-wage-daily-series": "node scripts/backfill-job-wage-daily-series.mjs",
     "generate:demand-regions": "node scripts/generate-demand-regions.mjs",
     "g2b:ping": "node scripts/g2b-ping.mjs",
-    "build:magam-pwa": "node scripts/build-magam-pwa.mjs"
+    "build:magam-pwa": "node scripts/build-magam-pwa.mjs",
+    "generate:magam-icons": "node scripts/generate-magam-icons.mjs"
   },
   "dependencies": {
     "@bootpay/backend-js": "^2.4.1",
