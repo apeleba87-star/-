@@ -10,6 +10,7 @@ import {
   type MagamSettingsBootstrap,
 } from "@/app/magam/actions";
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
+import MagamOpenExternalDevPanel from "@/components/magam/MagamOpenExternalDevPanel";
 import {
   MagamErrorBanner,
   MagamSectionCard,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/magam/copy";
 import { formatMagamPhoneInput } from "@/lib/magam/phone";
 import { MAGAM_DEFAULT_AUTH_NEXT } from "@/lib/magam/auth-cookie";
+import { showMagamDevTools } from "@/lib/magam/dev-tools";
 import { magamLegalHref } from "@/lib/magam/surface";
 import { magamKakaoFeedbackUrl } from "@/lib/magam/support";
 import { createClient } from "@/lib/supabase";
@@ -170,6 +172,8 @@ export default function MagamSettingsForm({ bootstrap }: Props) {
           </Link>
         </div>
       </MagamSectionCard>
+
+      {showMagamDevTools() ? <MagamOpenExternalDevPanel /> : null}
 
       <button
         type="button"
