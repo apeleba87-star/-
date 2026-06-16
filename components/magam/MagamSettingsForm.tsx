@@ -11,6 +11,7 @@ import {
 } from "@/app/magam/actions";
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import MagamOpenExternalDevPanel from "@/components/magam/MagamOpenExternalDevPanel";
+import MagamPwaInstallSection from "@/components/magam/MagamPwaInstallSection";
 import {
   MagamErrorBanner,
   MagamSectionCard,
@@ -153,6 +154,7 @@ export default function MagamSettingsForm({ bootstrap }: Props) {
       <MagamSectionCard>
         <p className="text-[15px] font-semibold text-[#141824]">도움말</p>
         <div className="mt-2 divide-y divide-[#E3E6EC]">
+          <MagamPwaInstallSection />
           <a
             href={magamKakaoFeedbackUrl()}
             target="_blank"

@@ -177,6 +177,30 @@ export const MAGAM_ONBOARDING_SHARE_NUDGE_TITLE = "첫 공고 등록 완료!";
 export const MAGAM_ONBOARDING_SHARE_NUDGE_BODY =
   "아래 노란 「단톡방 모집 글 복사」를 눌러 카톡에 붙여넣으세요";
 
+/** 카톡·인앱 브라우저 → Safari/Chrome 안내 */
+export const MAGAM_INAPP_BROWSER_TITLE = "카톡에서는 일부 기능이 제한될 수 있어요";
+export const MAGAM_INAPP_BROWSER_BODY =
+  "Safari 또는 Chrome에서 열면 로그인·글쓰기·마감이 더 안정적으로 됩니다.";
+export const MAGAM_INAPP_BROWSER_CONTINUE = "그대로 이용하기";
+export const MAGAM_INAPP_BROWSER_COPY_FALLBACK =
+  "자동으로 열리지 않으면 주소를 복사해 Safari·Chrome 주소창에 붙여넣으세요.";
+export const MAGAM_INAPP_BROWSER_COPY_DONE = "주소를 복사했습니다.";
+
+/** PWA · 바탕화면 추가 */
+export const MAGAM_PWA_INSTALL_BANNER_TITLE = "바탕화면에 넣으면 앱처럼 쓸 수 있어요";
+export const MAGAM_PWA_INSTALL_BANNER_BODY = "링크 찾지 않고 마감링크로 바로 들어옵니다.";
+export const MAGAM_PWA_INSTALL_CTA = "바탕화면에 추가";
+export const MAGAM_PWA_INSTALL_NATIVE_CTA = "앱 설치";
+export const MAGAM_PWA_INSTALL_LATER = "나중에";
+export const MAGAM_PWA_INSTALL_GUIDE_TITLE = "바탕화면에 추가";
+export const MAGAM_PWA_INSTALL_GUIDE_STEPS = [
+  "브라우저 아래쪽 또는 위쪽 메뉴(⋯)를 누르세요.",
+  "「홈 화면에 추가」 또는 「바탕화면에 추가」를 선택하세요.",
+  "이름이 마감링크인지 확인한 뒤 추가를 누르세요.",
+  "홈 화면에 생긴 아이콘으로 다시 들어오면 됩니다.",
+] as const;
+export const MAGAM_PWA_INSTALL_GUIDE_CONFIRM = "확인";
+
 export const MAGAM_MY_CLOSED_SECTION_LABEL = "마감된 공고";
 export function magamMyClosedSectionToggleLabel(total: number, expanded: boolean): string {
   const suffix = total > 0 ? ` ${total}건` : "";

@@ -1,12 +1,14 @@
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
-import { magamLoginRedirectPath } from "@/lib/magam/surface";
+import type { EmailOtpType } from "@supabase/supabase-js";
+
 import {
   MAGAM_AUTH_NEXT_COOKIE,
   isValidMagamAuthNext,
   resolveMagamAuthNext,
 } from "@/lib/magam/auth-cookie";
-import { createServerClient } from "@supabase/ssr";
-import type { EmailOtpType } from "@supabase/supabase-js";
+import { magamLoginRedirectPath } from "@/lib/magam/surface";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -26,6 +28,25 @@ function clearMagamAuthCookie(response: NextResponse): void {
   response.cookies.set(MAGAM_AUTH_NEXT_COOKIE, "", { path: "/", maxAge: 0 });
 }
 
+function redirectAfterAuth(request: NextRequest, next: string): NextResponse {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
+  const { origin } = new URL(request.url);
+
+  if (forwardedHost) {
+    return NextResponse.redirect(`${forwardedProto}://${forwardedHost}${next}`);
+  }
+  return NextResponse.redirect(new URL(next, origin));
+}
+
+function authFailureRedirect(request: NextRequest, next: string, message: string): NextResponse {
+  const response = NextResponse.redirect(
+    new URL(magamLoginRedirectPath(next, encodeURIComponent(message)), request.url)
+  );
+  clearMagamAuthCookie(response);
+  return response;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
@@ -36,20 +57,31 @@ export async function GET(request: NextRequest) {
   const next = resolveCallbackNext(request, searchParams.get("next"));
 
   if (errorParam) {
-    const msg = errorDescription ? `${errorParam}: ${decodeURIComponent(errorDescription)}` : errorParam;
-    return NextResponse.redirect(
-      new URL(magamLoginRedirectPath(next, msg), request.url)
-    );
+    const msg = errorDescription
+      ? `${errorParam}: ${decodeURIComponent(errorDescription)}`
+      : errorParam;
+    return authFailureRedirect(request, next, msg);
   }
 
-  let response = NextResponse.redirect(new URL(next, request.url));
+  if (!code && !(token_hash && type)) {
+    return authFailureRedirect(request, next, "auth");
+  }
+
+  const response = redirectAfterAuth(request, next);
+  const cookieStore = await cookies();
+
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
-        return request.cookies.getAll();
+        return cookieStore.getAll();
       },
-      setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+      setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
+          try {
+            cookieStore.set(name, value, options);
+          } catch {
+            /* Route Handler — cookieStore.set 허용 */
+          }
           response.cookies.set(name, value, options);
         });
       },
@@ -58,22 +90,19 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      // 쿠키 스토리지에 세션이 완전히 반영되도록 한 번 더 읽기 (OAuth 직후 RSC/middleware와 타이밍 맞춤)
-      await supabase.auth.getUser();
-      clearMagamAuthCookie(response);
-      return response;
+    if (error) {
+      return authFailureRedirect(request, next, error.message || "auth");
     }
-  } else if (token_hash && type) {
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
-    if (!error) {
-      await supabase.auth.getUser();
-      clearMagamAuthCookie(response);
-      return response;
-    }
+    await supabase.auth.getUser();
+    clearMagamAuthCookie(response);
+    return response;
   }
 
-  const failure = NextResponse.redirect(new URL(magamLoginRedirectPath(next, "auth"), request.url));
-  clearMagamAuthCookie(failure);
-  return failure;
+  const { error } = await supabase.auth.verifyOtp({ type: type!, token_hash: token_hash! });
+  if (error) {
+    return authFailureRedirect(request, next, error.message || "auth");
+  }
+  await supabase.auth.getUser();
+  clearMagamAuthCookie(response);
+  return response;
 }

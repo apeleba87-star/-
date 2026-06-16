@@ -5,6 +5,8 @@ export const MAGAM_ONBOARDING_KEYS = {
   tabs: `${PREFIX}tabs_v1`,
   write: `${PREFIX}write_v1`,
   share: `${PREFIX}share_v1`,
+  inAppBanner: `${PREFIX}inapp_banner_v1`,
+  pwaInstallBanner: `${PREFIX}pwa_install_banner_v1`,
 } as const;
 
 export type MagamOnboardingKey = keyof typeof MAGAM_ONBOARDING_KEYS;

@@ -17,6 +17,7 @@ import {
 import { MAGAM_APP_NAME, isMagamFromQuery } from "@/lib/magam/brand";
 import { MAGAM_DEFAULT_AUTH_NEXT, setMagamAuthNextCookie } from "@/lib/magam/auth-cookie";
 import { MAGAM_LOGIN_KAKAO_CTA, MAGAM_LOGIN_KAKAO_LOADING } from "@/lib/magam/copy";
+import { oauthLoginErrorMessage } from "@/lib/auth/oauth-error-message";
 import { createClient } from "@/lib/supabase";
 
 function isValidNext(path: string | null): path is string {
@@ -26,12 +27,7 @@ function isValidNext(path: string | null): path is string {
 }
 
 function loginErrorMessage(raw: string | null): string | null {
-  if (!raw) return null;
-  const decoded = decodeURIComponent(raw);
-  if (decoded === "auth") {
-    return "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
-  }
-  return decoded;
+  return oauthLoginErrorMessage(raw);
 }
 
 type SocialProvider = "kakao";

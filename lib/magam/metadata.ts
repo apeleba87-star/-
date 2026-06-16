@@ -5,6 +5,7 @@ import {
   MAGAM_APP_TAGLINE,
   MAGAM_PWA_OG_DESCRIPTION,
 } from "@/lib/magam/brand";
+import { magamPwaMetadata } from "@/lib/magam/pwa-manifest";
 import { getMagamShareBaseUrl } from "@/lib/magam/share-url";
 
 export const MAGAM_OG_ALT = `${MAGAM_APP_NAME} — ${MAGAM_APP_TAGLINE}`;
@@ -25,7 +26,7 @@ export function magamSiteMetadata(
   return {
     title: { absolute: MAGAM_APP_NAME },
     description: MAGAM_PWA_OG_DESCRIPTION,
-    applicationName: MAGAM_APP_NAME,
+    ...magamPwaMetadata(),
     openGraph: {
       type: "website",
       locale: "ko_KR",

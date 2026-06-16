@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import MagamKakaoSdkWarmup from "@/components/magam/MagamKakaoSdkWarmup";
 import MagamShell from "@/components/magam/MagamShell";
 import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 import { magamSiteMetadata } from "@/lib/magam/metadata";
+import { MAGAM_PWA_BG_COLOR, MAGAM_PWA_THEME_COLOR, magamPwaMetadata } from "@/lib/magam/pwa-manifest";
 
 const magamRootMeta = magamSiteMetadata("/magam");
 
@@ -14,9 +15,16 @@ export const metadata: Metadata = {
     template: `%s | ${MAGAM_APP_NAME}`,
   },
   description: magamRootMeta.description,
-  applicationName: MAGAM_APP_NAME,
   openGraph: magamRootMeta.openGraph,
   twitter: magamRootMeta.twitter,
+  ...magamPwaMetadata(),
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: MAGAM_PWA_BG_COLOR },
+    { media: "(prefers-color-scheme: dark)", color: MAGAM_PWA_THEME_COLOR },
+  ],
 };
 
 export default function MagamLayout({ children }: { children: React.ReactNode }) {

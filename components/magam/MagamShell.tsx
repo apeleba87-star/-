@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import MagamTabHints from "@/components/magam/onboarding/MagamTabHints";
+import MagamInAppBrowserBanner from "@/components/magam/MagamInAppBrowserBanner";
 import { MagamNavTab } from "@/components/magam/ui/MagamTouchNav";
 import { cn } from "@/lib/utils";
 
@@ -24,14 +25,22 @@ function isTabActive(pathname: string, href: string): boolean {
   return false;
 }
 
+function hideInAppBrowserBanner(pathname: string): boolean {
+  return pathname.startsWith("/magam/listing/");
+}
+
 export default function MagamShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const showNav = !hideBottomNav(pathname);
   const showTabHints = showNav && (pathname === "/magam/me" || pathname.startsWith("/magam/listing/"));
+  const showInAppBanner = !hideInAppBrowserBanner(pathname);
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col">
-      <div className={cn("flex-1 px-4 pt-3", showNav ? "pb-24" : "pb-6")}>{children}</div>
+      <div className={cn("flex-1 px-4 pt-3", showNav ? "pb-24" : "pb-6")}>
+        {showInAppBanner ? <MagamInAppBrowserBanner /> : null}
+        {children}
+      </div>
       {showTabHints ? <MagamTabHints /> : null}
       {showNav ? (
         <nav

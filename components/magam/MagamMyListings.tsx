@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { getMyMagamClosedListingsPage } from "@/app/magam/actions";
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import MagamMyListingCard from "@/components/magam/MagamMyListingCard";
+import MagamPwaInstallBanner from "@/components/magam/MagamPwaInstallBanner";
 import MagamOnboardingCarousel from "@/components/magam/onboarding/MagamOnboardingCarousel";
 import { MagamRadarNationalBanner } from "@/components/magam/MagamRadarAdBanner";
 import { magamOutlineBtnClass, magamPrimaryBtnClass } from "@/components/magam/ui/MagamUi";
@@ -80,6 +81,7 @@ export default function MagamMyListings({
   return (
     <div>
       <MagamOnboardingCarousel />
+      <MagamPwaInstallBanner />
       <MagamAppPitch textAlign="center" dense taglineOnly className="mb-4" />
       <MagamRadarNationalBanner pagePath="magam:home" className="mb-4" />
 

@@ -104,6 +104,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // OAuth code 교환 전 middleware 세션 갱신이 PKCE 쿠키·교환 타이밍을 건드리지 않도록
+  if (pathname === "/auth/callback") {
+    return NextResponse.next();
+  }
+
   // OAuth PKCE — Site URL(/) 로 떨어진 code 를 /auth/callback 으로 넘김 (마감앱 등 misredirect 대비)
   if (pathname === "/" && req.nextUrl.searchParams.has("code")) {
     const url = req.nextUrl.clone();

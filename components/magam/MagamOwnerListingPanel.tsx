@@ -26,6 +26,7 @@ import {
 } from "@/components/magam/MagamRadarAdBanner";
 
 import MagamShareBlock from "@/components/magam/MagamShareBlock";
+import MagamInAppBrowserBanner from "@/components/magam/MagamInAppBrowserBanner";
 
 import {
 
@@ -191,7 +192,7 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
 
       <MagamRadarNationalBanner pagePath={pagePath} />
 
-
+      <MagamInAppBrowserBanner />
 
       <MagamShareBlock
         listing={listing}
