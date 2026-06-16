@@ -1,4 +1,3 @@
-import { MAGAM_PRODUCT_NAME } from "@/lib/magam/brand";
 import {
   MAGAM_HIRING_WORK_LABEL,
   MAGAM_LISTING_TYPE_LABEL,
@@ -13,8 +12,6 @@ import {
 } from "@/lib/magam/format-listing";
 import { formatKrMobilePhone } from "@/lib/format/kr-mobile-phone";
 import type { MagamListingRow } from "@/lib/magam/types";
-
-export const MAGAM_SHARE_BRAND_FOOTER = `(공고 관리: ${MAGAM_PRODUCT_NAME})`;
 
 function workRowLabel(listing: MagamListingRow): string {
   return listing.listing_type === "hiring" ? MAGAM_HIRING_WORK_LABEL : MAGAM_SHARE_WORK_LABEL;
@@ -32,9 +29,7 @@ function shareLinkFooter(url: string): string {
   } catch {
     /* keep raw */
   }
-  return [MAGAM_SHARE_LINK_CTA_BRACKET, MAGAM_SHARE_LINK_ARROWS, link, MAGAM_SHARE_BRAND_FOOTER].join(
-    "\n"
-  );
+  return [MAGAM_SHARE_LINK_CTA_BRACKET, MAGAM_SHARE_LINK_ARROWS, link].join("\n");
 }
 
 /** 카카오·링크 공유용 문구 */
