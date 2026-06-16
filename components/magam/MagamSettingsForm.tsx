@@ -26,6 +26,7 @@ import {
 import { formatMagamPhoneInput } from "@/lib/magam/phone";
 import { MAGAM_DEFAULT_AUTH_NEXT } from "@/lib/magam/auth-cookie";
 import { magamLegalHref } from "@/lib/magam/surface";
+import { magamKakaoFeedbackUrl } from "@/lib/magam/support";
 import { createClient } from "@/lib/supabase";
 
 type Props = { bootstrap: MagamSettingsBootstrap };
@@ -150,6 +151,14 @@ export default function MagamSettingsForm({ bootstrap }: Props) {
       <MagamSectionCard>
         <p className="text-[15px] font-semibold text-[#141824]">도움말</p>
         <div className="mt-2 divide-y divide-[#E3E6EC]">
+          <a
+            href={magamKakaoFeedbackUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex py-3 text-[15px] text-[#141824]"
+          >
+            버그/건의 하기 <span className="ml-auto text-[#8B93A1]">↗</span>
+          </a>
           <Link href={magamLegalHref("/terms")} className="flex py-3 text-[15px] text-[#141824]">
             이용약관 <span className="ml-auto text-[#8B93A1]">↗</span>
           </Link>

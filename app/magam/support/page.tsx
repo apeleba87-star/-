@@ -3,10 +3,9 @@ import Link from "next/link";
 
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import MagamDeleteAccountSection from "@/components/magam/MagamDeleteAccountSection";
-import { MagamPageHeader, MagamSectionCard, magamPrimaryBtnClass } from "@/components/magam/ui/MagamUi";
+import { MagamPageHeader, MagamSectionCard } from "@/components/magam/ui/MagamUi";
 import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 import { magamLegalHref } from "@/lib/magam/surface";
-import { magamSupportEmail } from "@/lib/magam/support";
 
 export const metadata: Metadata = {
   title: "고객지원",
@@ -14,9 +13,6 @@ export const metadata: Metadata = {
 };
 
 export default function MagamSupportPage() {
-  const email = magamSupportEmail();
-  const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${MAGAM_APP_NAME}] 문의`)}`;
-
   return (
     <>
       <MagamPageHeader title="고객지원" backHref="/magam/settings" />
@@ -39,20 +35,9 @@ export default function MagamSupportPage() {
           </div>
           <div>
             <dt className="font-semibold text-[#141824]">계정을 삭제하려면?</dt>
-            <dd className="mt-1 leading-relaxed">아래 「회원 탈퇴」에서 바로 처리하거나 이메일로 요청해 주세요.</dd>
+            <dd className="mt-1 leading-relaxed">아래 「회원 탈퇴」에서 바로 처리할 수 있습니다.</dd>
           </div>
         </dl>
-      </MagamSectionCard>
-
-      <MagamSectionCard className="mt-3">
-        <h2 className="text-[15px] font-semibold text-[#141824]">문의하기</h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">
-          앱 오류, 계정·개인정보, 공고 신고 등은 이메일 앱으로 보내 주세요. (버튼을 누르면 메일 작성
-          화면이 열립니다.)
-        </p>
-        <a href={mailto} className={`${magamPrimaryBtnClass} mt-4`}>
-          {email} 로 문의
-        </a>
       </MagamSectionCard>
 
       <MagamSectionCard className="mt-3">
