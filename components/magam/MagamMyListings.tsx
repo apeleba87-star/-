@@ -250,23 +250,31 @@ export default function MagamMyListings({
                   )}
 
                   {showClosedPager ? (
-                    <div className="mt-3 flex items-center justify-center gap-3">
+                    <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                       <button
                         type="button"
                         disabled={closedLoading || closedPage <= 0}
                         onClick={() => goClosedPage(closedPage - 1)}
-                        className={`${magamOutlineBtnClass} !min-h-0 !px-3 !py-2 text-[13px]`}
+                        className={cn(
+                          magamOutlineBtnClass,
+                          "!w-full !min-h-[44px] !px-3 !py-2.5 text-[13px]"
+                        )}
                       >
                         {MAGAM_MY_CLOSED_PAGE_PREV}
                       </button>
-                      <span className="text-[13px] font-semibold text-[#5B6472]">
-                        {closedPage + 1} / {closedPageCount}
+                      <span className="shrink-0 whitespace-nowrap px-1 text-[13px] font-semibold tabular-nums text-[#5B6472]">
+                        <span className="text-[#141824]">{closedPage + 1}</span>
+                        <span className="mx-0.5 font-normal text-[#8B93A1]">/</span>
+                        <span>{closedPageCount}</span>
                       </span>
                       <button
                         type="button"
                         disabled={closedLoading || closedPage >= closedPageCount - 1}
                         onClick={() => goClosedPage(closedPage + 1)}
-                        className={`${magamOutlineBtnClass} !min-h-0 !px-3 !py-2 text-[13px]`}
+                        className={cn(
+                          magamOutlineBtnClass,
+                          "!w-full !min-h-[44px] !px-3 !py-2.5 text-[13px]"
+                        )}
                       >
                         {MAGAM_MY_CLOSED_PAGE_NEXT}
                       </button>
