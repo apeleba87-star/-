@@ -1,8 +1,7 @@
 import {
   MAGAM_HIRING_WORK_LABEL,
   MAGAM_LISTING_TYPE_LABEL,
-  MAGAM_SHARE_LINK_ARROWS,
-  MAGAM_SHARE_LINK_CTA_BRACKET,
+  MAGAM_SHARE_LINK_FOOTER_LINE,
   MAGAM_SHARE_WORK_LABEL,
   MAGAM_WORK_KIND_LABEL,
 } from "@/lib/magam/copy";
@@ -22,14 +21,13 @@ function shareLinkFooter(url: string): string {
   try {
     const uri = new URL(url);
     if (uri.host === "cleanidex.com") {
-      link = url.replace("cleanidex.com", "cleanidex.co.kr");
-    } else {
-      link = `${uri.host}${uri.pathname}`;
+      uri.host = "cleanidex.co.kr";
     }
+    link = uri.toString();
   } catch {
     /* keep raw */
   }
-  return [MAGAM_SHARE_LINK_CTA_BRACKET, MAGAM_SHARE_LINK_ARROWS, link].join("\n");
+  return `${MAGAM_SHARE_LINK_FOOTER_LINE}\n${link}`;
 }
 
 /** 카카오·링크 공유용 문구 */

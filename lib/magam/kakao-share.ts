@@ -11,7 +11,7 @@ import {
   MAGAM_GROUP_CHAT_COPY_FAILED,
   MAGAM_LISTING_TYPE_LABEL,
   MAGAM_SHARE_LINK_CTA,
-  MAGAM_SHARE_LINK_CTA_BRACKET,
+  MAGAM_SHARE_LINK_FOOTER_LINE,
 } from "@/lib/magam/copy";
 import { buildMagamShareMessage } from "@/lib/magam/share-format";
 import { extractUrlFromShareText, shareTextIncludesUrl } from "@/lib/magam/share-url";
@@ -65,7 +65,7 @@ function magamFeedDescription(
   shareUrl: string
 ): string {
   const full = buildMagamShareMessage(listing, shareUrl, includePhone);
-  const marker = `\n\n${MAGAM_SHARE_LINK_CTA_BRACKET}`;
+  const marker = `\n\n${MAGAM_SHARE_LINK_FOOTER_LINE}`;
   const idx = full.indexOf(marker);
   return (idx >= 0 ? full.slice(0, idx) : full).trim() || full;
 }

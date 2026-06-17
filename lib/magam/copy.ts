@@ -58,11 +58,12 @@ import { MAGAM_PRODUCT_NAME } from "@/lib/magam/brand";
 
 export const MAGAM_SHARE_PAGE_TITLE = MAGAM_PRODUCT_NAME;
 
-/** 카카오·공유 링크 CTA (URL 대신 안내 문구) */
-export const MAGAM_SHARE_LINK_CTA = "마감 상태 확인";
-/** 카카오 공유 문구용 (대괄호 포함) */
-export const MAGAM_SHARE_LINK_CTA_BRACKET = "[마감 상태 확인]";
-export const MAGAM_SHARE_LINK_ARROWS = "👇👇👇👇👇";
+/** 카카오 피드 버튼·공유 CTA */
+export const MAGAM_SHARE_LINK_CTA = "마감확인";
+/** 카톡·복사 본문 링크 안내 (👇·대괄호 없음) */
+export const MAGAM_SHARE_LINK_FOOTER_LINE = "마감확인 (마감완료 시 연락처는 비공개)";
+export const MAGAM_SHARE_CLOSED_CONTACT_HIDDEN =
+  "마감완료되어 연락처는 비공개입니다.";
 
 export const MAGAM_KAKAO_SHARE_INCLUDE_PHONE = "공유·복사에 연락처 포함";
 export const MAGAM_KAKAO_SHARE_INCLUDE_PHONE_HINT =

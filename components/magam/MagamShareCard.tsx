@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { MagamListingPublic } from "@/lib/magam/types";
 import {
   MAGAM_STATUS_LABEL,
+  MAGAM_SHARE_CLOSED_CONTACT_HIDDEN,
 } from "@/lib/magam/copy";
+import { formatMagamClosedAgo, formatMagamPostedAgo } from "@/lib/format/magam-relative-time";
 import { formatMagamListingPeekBody, getMagamListingDisplayRows } from "@/lib/magam/format-listing";
 import { magamListingTypeAccent } from "@/lib/magam/listing-type-style";
 import { formatKrMobilePhone } from "@/lib/format/kr-mobile-phone";
@@ -22,6 +24,10 @@ type Props = {
 export default function MagamShareCard({ listing, highlight }: Props) {
   const isClosed = listing.status === "closed";
   const rows = getMagamListingDisplayRows(listing);
+  const closedAgo = isClosed
+    ? formatMagamClosedAgo(listing.closed_at ?? listing.updated_at)
+    : null;
+  const postedAgo = !isClosed ? formatMagamPostedAgo(listing.created_at) : null;
 
   return (
     <article
@@ -37,6 +43,9 @@ export default function MagamShareCard({ listing, highlight }: Props) {
         >
           {MAGAM_STATUS_LABEL[listing.status]}
         </span>
+        {postedAgo ? (
+          <span className="text-xs font-medium text-emerald-800">{postedAgo}</span>
+        ) : null}
         <span className="ml-auto">
           <MagamTypeBadge listingType={listing.listing_type} muted={isClosed} />
         </span>
@@ -46,9 +55,14 @@ export default function MagamShareCard({ listing, highlight }: Props) {
 
       <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
         {isClosed ? (
-          <p className="text-sm font-medium text-slate-600">
-            마감된 공고입니다. 연락처는 더 이상 제공되지 않습니다.
-          </p>
+          <div className="space-y-1.5 text-center">
+            {closedAgo ? (
+              <p className="text-sm font-semibold text-slate-800">{closedAgo}</p>
+            ) : (
+              <p className="text-sm font-semibold text-slate-800">모집이 마감되었습니다</p>
+            )}
+            <p className="text-sm text-slate-600">{MAGAM_SHARE_CLOSED_CONTACT_HIDDEN}</p>
+          </div>
         ) : listing.contact_phone ? (
           <div className="space-y-3">
             <p className="text-center text-sm text-slate-700">
