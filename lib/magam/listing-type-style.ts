@@ -19,6 +19,14 @@ export function magamListingTypeAccent(listingType: MagamListingTypeKey) {
       card: "border border-[#BFDBFE] border-l-4 border-l-[#2563EB] bg-[#EFF6FF] hover:bg-[#DBEAFE]",
     };
   }
+  if (listingType === "trade") {
+    return {
+      badgeBg: "bg-[#7C3AED]",
+      badgeBgMuted: "bg-[#5B6472]",
+      peek: "border border-[#DDD6FE] border-l-4 border-l-[#7C3AED] bg-[#F5F3FF] hover:bg-[#EDE9FE]",
+      card: "border border-[#DDD6FE] border-l-4 border-l-[#7C3AED] bg-[#F5F3FF] hover:bg-[#EDE9FE]",
+    };
+  }
   return {
     badgeBg: "bg-[#141824]",
     badgeBgMuted: "bg-[#5B6472]",

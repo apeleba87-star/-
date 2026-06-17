@@ -5,11 +5,19 @@ import {
   MAGAM_WORK_KIND_LABEL,
 } from "@/lib/magam/copy";
 import { magamRegionDisplayLabel } from "@/lib/magam/regions";
+import { MAGAM_TRADE_REGION_DETAIL_REF } from "@/lib/magam/copy";
+import {
+  formatMagamTradeClientCount,
+  formatMagamTradeSalePrice,
+  formatMagamTradeTotalRevenue,
+  MAGAM_TRADE_SIDE_LABEL,
+  type MagamTradeSide,
+} from "@/lib/magam/trade";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 export type MagamListingDraft = {
-  listingType: "subcontract" | "hiring";
+  listingType: "subcontract" | "hiring" | "trade";
   cityId: string;
   districtSlug: string;
   workKind?: string | null;
@@ -22,6 +30,11 @@ export type MagamListingDraft = {
   specialNotes?: string | null;
   priceAmount?: number | null;
   priceUnit?: "man" | "jan";
+  priceNegotiable?: boolean;
+  tradeSide?: MagamTradeSide | null;
+  tradeClientCount?: number | null;
+  tradeTotalRevenue?: number | null;
+  tradeRegionsInDetail?: boolean;
 };
 
 export function parseMagamPriceManInput(text: string): number | null {
@@ -50,6 +63,9 @@ function scheduleLabel(draft: MagamListingDraft): string | null {
 }
 
 function priceLabel(draft: MagamListingDraft): string | null {
+  if (draft.listingType === "trade") {
+    return formatMagamTradeSalePrice(draft.priceAmount, draft.priceNegotiable);
+  }
   if (draft.priceAmount == null || draft.priceAmount <= 0) return null;
   if (draft.priceUnit === "jan") {
     return `잔 ${Math.floor(draft.priceAmount / 10_000)}`;
@@ -59,7 +75,35 @@ function priceLabel(draft: MagamListingDraft): string | null {
   return `${man}만원`;
 }
 
+function buildMagamTradeBodyText(draft: MagamListingDraft): string {
+  const parts: string[] = [];
+
+  if (draft.tradeSide) {
+    parts.push(MAGAM_TRADE_SIDE_LABEL[draft.tradeSide]);
+  } else {
+    parts.push(MAGAM_LISTING_TYPE_LABEL.trade);
+  }
+
+  const clients = formatMagamTradeClientCount(draft.tradeClientCount);
+  if (clients) parts.push(clients);
+
+  const revenue = formatMagamTradeTotalRevenue(draft.tradeTotalRevenue);
+  if (revenue) parts.push(revenue);
+
+  const price = priceLabel(draft);
+  if (price) parts.push(price);
+
+  let text = parts.join(" · ");
+  const regionLabel = magamRegionDisplayLabel(draft.cityId, draft.districtSlug);
+  if (text.length < 4) text = `${text} · ${regionLabel}`;
+  return text;
+}
+
 export function buildMagamBodyText(draft: MagamListingDraft): string {
+  if (draft.listingType === "trade") {
+    return buildMagamTradeBodyText(draft);
+  }
+
   const regionLabel = magamRegionDisplayLabel(draft.cityId, draft.districtSlug);
   const type = MAGAM_LISTING_TYPE_LABEL[draft.listingType] ?? draft.listingType;
 
@@ -94,6 +138,22 @@ export function buildMagamBodyText(draft: MagamListingDraft): string {
 
 export function buildMagamPreviewLine(draft: MagamListingDraft): string {
   const regionLabel = magamRegionDisplayLabel(draft.cityId, draft.districtSlug);
+
+  if (draft.listingType === "trade") {
+    const chunks: string[] = [];
+    if (draft.tradeSide) chunks.push(MAGAM_TRADE_SIDE_LABEL[draft.tradeSide]);
+    chunks.push(regionLabel);
+    const clients = formatMagamTradeClientCount(draft.tradeClientCount);
+    if (clients) chunks.push(clients);
+    const revenue = formatMagamTradeTotalRevenue(draft.tradeTotalRevenue);
+    if (revenue) chunks.push(revenue);
+    const price = priceLabel(draft);
+    if (price) chunks.push(price);
+    if (draft.specialNotes?.trim()) chunks.push("상세 있음");
+    else if (draft.tradeRegionsInDetail) chunks.push(MAGAM_TRADE_REGION_DETAIL_REF);
+    return chunks.join(" · ");
+  }
+
   const sched = scheduleLabel(draft);
   const price = priceLabel(draft);
 
@@ -121,6 +181,7 @@ export function buildMagamPreviewLine(draft: MagamListingDraft): string {
 }
 
 export function magamScheduleText(draft: MagamListingDraft): string | null {
+  if (draft.listingType === "trade") return null;
   return scheduleLabel(draft);
 }
 

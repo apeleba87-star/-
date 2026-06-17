@@ -32,10 +32,11 @@ function Chip({ children, active }: { children: ReactNode; active?: boolean }) {
 function WriteTypeMock() {
   return (
     <div className="space-y-2 p-3">
-      <MiniLabel n="1" text="도급 / 구인" />
+      <MiniLabel n="1" text="도급 / 구인 / 매매" />
       <div className="flex gap-1.5">
         <Chip active>도급</Chip>
         <Chip>구인</Chip>
+        <Chip>매매</Chip>
       </div>
       <div className="mt-2 rounded-[10px] border border-dashed border-[#D1D5DB] bg-[#F8F9FB] px-2 py-3 text-center text-[9px] text-[#8B93A1]">
         일정 · 지역 · 금액…

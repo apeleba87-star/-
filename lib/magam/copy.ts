@@ -134,6 +134,16 @@ export const MAGAM_HIRING_SPECIAL_NOTES_HINT =
 export const MAGAM_SUBCONTRACT_SPECIAL_NOTES_HINT =
   "예) 엘리베이터 없음, 주차 가능, 반려동물 있음";
 
+export const MAGAM_TRADE_PHONE_HELPER = "관심 있는 분이 연락할 번호 · 다음 글쓰기 때 자동 입력";
+export const MAGAM_TRADE_REGION_HELPER =
+  "대표 활동 지역을 선택하세요. 여러 지역이면 「상세 설명 참조」를 체크하고 상세 설명에 적어 주세요.";
+export const MAGAM_TRADE_REGION_DETAIL_REF = "상세 설명 참조";
+export const MAGAM_TRADE_SPECIAL_NOTES_HINT =
+  "예) 활동 지역(복수), 양도 사유, 인수인계, 분할 가능 여부";
+export const MAGAM_TRADE_SALE_PRICE_HELPER = "사업 양도·양수 희망 판매가 (만원 단위)";
+export const MAGAM_TRADE_CLIENT_COUNT_LABEL = "거래처 수";
+export const MAGAM_TRADE_TOTAL_REVENUE_LABEL = "총 매출";
+
 /** 첫 사용자 온보딩 */
 export const MAGAM_ONBOARDING_SKIP = "건너뛰기";
 export const MAGAM_ONBOARDING_NEXT = "다음";
@@ -145,7 +155,7 @@ export const MAGAM_ONBOARDING_SLIDES = [
   {
     emoji: "✏️",
     title: "글쓰기",
-    body: "도급·구인 공고를 1분 만에 올려요",
+    body: "도급·구인·매매 공고를 1분 만에 올려요",
     visual: "write" as const,
   },
   {

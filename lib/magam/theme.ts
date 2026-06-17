@@ -19,6 +19,8 @@ export const magamColors = {
   subcontractSoft: "#EEF3FF",
   hiring: "#EA580C",
   hiringSoft: "#FFF7ED",
+  trade: "#7C3AED",
+  tradeSoft: "#F5F3FF",
   closedSurface: "#F3F4F6",
   closedBorder: "#E5E7EB",
   kakao: "#FEE500",

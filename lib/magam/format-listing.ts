@@ -5,10 +5,23 @@ import {
   MAGAM_LISTING_TYPE_LABEL,
   MAGAM_SHARE_WORK_LABEL,
   MAGAM_TIME_SLOT_LABEL,
+  MAGAM_TRADE_REGION_DETAIL_REF,
   MAGAM_WORK_KIND_LABEL,
 } from "@/lib/magam/copy";
+import {
+  formatMagamTradeClientCount,
+  formatMagamTradeSalePrice,
+  formatMagamTradeTotalRevenue,
+  MAGAM_TRADE_SIDE_LABEL,
+} from "@/lib/magam/trade";
 
-export type MagamDisplayRow = { label: string; value: string };
+export const MAGAM_TRADE_DETAIL_ANCHOR = "magam-trade-detail";
+
+export type MagamDisplayRow = {
+  label: string;
+  value: string;
+  detailAnchor?: string;
+};
 
 /** price_amount — 원 단위 (만원·잔 입력 × 10000) */
 export function getMagamPriceWon(listing: MagamListingPublic): number | null {
@@ -19,6 +32,10 @@ export function getMagamPriceWon(listing: MagamListingPublic): number | null {
 }
 
 function formatMagamPriceShareLabel(listing: MagamListingPublic): string | null {
+  if (listing.listing_type === "trade") {
+    return formatMagamTradeSalePrice(getMagamPriceWon(listing), listing.price_negotiable);
+  }
+
   const text = listing.price_text?.trim();
   if (text) return text;
 
@@ -103,6 +120,27 @@ function parseHiringWorkDescription(listing: MagamListingPublic): string | null 
 
 /** 카카오 공유·상세 — 작업 한 줄 (금액 포함) */
 export function formatMagamWorkSummaryLine(listing: MagamListingPublic): string | null {
+  if (listing.listing_type === "trade") {
+    const parts: string[] = [];
+    if (listing.trade_side) {
+      parts.push(
+        MAGAM_TRADE_SIDE_LABEL[listing.trade_side as keyof typeof MAGAM_TRADE_SIDE_LABEL] ??
+          listing.trade_side
+      );
+    }
+    const clients = formatMagamTradeClientCount(listing.trade_client_count);
+    if (clients) parts.push(clients);
+    const revenue = formatMagamTradeTotalRevenue(listing.trade_total_revenue);
+    if (revenue) parts.push(revenue);
+    const price = formatMagamPriceShareLabel(listing);
+    if (price) parts.push(price);
+    if (parts.length === 0) {
+      const body = listing.body_text.trim();
+      return body || null;
+    }
+    return parts.join(" / ");
+  }
+
   if (listing.listing_type === "hiring") {
     const parts: string[] = [];
     const desc = parseHiringWorkDescription(listing);
@@ -179,11 +217,17 @@ export function formatMagamListingPeekBody(listing: MagamListingPublic): string 
     if (listing.listing_type === "subcontract") {
       work = work.replace(/^도급\s*\/\s*/, "");
     }
+    if (listing.listing_type === "trade") {
+      work = work.replace(/^양도\(팝니다\)\s*\/\s*/, "");
+      work = work.replace(/^양수\(삽니다\)\s*\/\s*/, "");
+    }
     if (work) parts.push(work);
   }
 
-  const schedule = formatMagamScheduleShort(listing);
-  if (schedule) parts.push(schedule);
+  if (listing.listing_type !== "trade") {
+    const schedule = formatMagamScheduleShort(listing);
+    if (schedule) parts.push(schedule);
+  }
 
   return parts.join(" · ");
 }
@@ -197,6 +241,57 @@ export function formatMagamListingPeekLine(listing: MagamListingPublic): string 
 /** 카카오 공유와 동일한 필드 순서 */
 export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDisplayRow[] {
   const rows: MagamDisplayRow[] = [];
+
+  if (listing.listing_type === "trade") {
+    if (listing.trade_side) {
+      rows.push({
+        label: "매매",
+        value:
+          MAGAM_TRADE_SIDE_LABEL[listing.trade_side as keyof typeof MAGAM_TRADE_SIDE_LABEL] ??
+          listing.trade_side,
+      });
+    }
+
+    const location = listing.region_gu.trim();
+    const notes = listing.special_notes?.trim();
+    if (location) {
+      const regionValue = listing.trade_regions_in_detail
+        ? `${location} · ${MAGAM_TRADE_REGION_DETAIL_REF}`
+        : location;
+      rows.push({ label: "활동 지역", value: regionValue });
+    }
+
+    const clients =
+      listing.trade_client_count != null && listing.trade_client_count > 0
+        ? `${listing.trade_client_count}곳`
+        : null;
+    if (clients) rows.push({ label: "거래처 수", value: clients });
+
+    if (listing.trade_total_revenue != null && listing.trade_total_revenue > 0) {
+      const man = Math.floor(listing.trade_total_revenue / 10_000);
+      rows.push({ label: "총 매출", value: `${man.toLocaleString("ko-KR")}만` });
+    }
+
+    const price = formatMagamPriceShareLabel(listing);
+    if (price) {
+      const saleValue = listing.price_negotiable
+        ? "협의"
+        : listing.price_amount != null && listing.price_amount > 0
+          ? `${Math.floor(listing.price_amount / 10_000).toLocaleString("ko-KR")}만`
+          : price.replace(/^희망판매\s*/, "");
+      rows.push({ label: "희망 판매가", value: saleValue });
+    }
+
+    if (notes) {
+      rows.push({
+        label: "상세 설명",
+        value: notes,
+        detailAnchor: MAGAM_TRADE_DETAIL_ANCHOR,
+      });
+    }
+
+    return rows;
+  }
 
   const schedule = formatMagamScheduleWithTime(listing);
   if (schedule) rows.push({ label: "일정", value: schedule });
@@ -250,11 +345,15 @@ export function matchesMagamPriceBucket(won: number | null, bucket: MagamPriceBu
   }
 }
 
-export const MAGAM_LIVE_TYPES = ["subcontract", "hiring"] as const;
+export const MAGAM_LIVE_TYPES = ["subcontract", "hiring", "trade"] as const;
 export type MagamLiveListingType = (typeof MAGAM_LIVE_TYPES)[number];
 
 export function isMagamLiveListing(listing: MagamListingPublic): boolean {
-  return listing.listing_type === "subcontract" || listing.listing_type === "hiring";
+  return (
+    listing.listing_type === "subcontract" ||
+    listing.listing_type === "hiring" ||
+    listing.listing_type === "trade"
+  );
 }
 
 export function collectMagamRegions(listings: MagamListingPublic[]): string[] {
@@ -265,21 +364,69 @@ export function collectMagamRegions(listings: MagamListingPublic[]): string[] {
   return [...set].sort((a, b) => a.localeCompare(b, "ko"));
 }
 
+export type MagamTradePriceBucket =
+  | "all"
+  | "under_1000"
+  | "1000_3000"
+  | "over_3000"
+  | "negotiable"
+  | "unset";
+
+export const MAGAM_TRADE_PRICE_BUCKETS: { value: MagamTradePriceBucket; label: string }[] = [
+  { value: "all", label: "희망 판매가 전체" },
+  { value: "under_1000", label: "1천만 이하" },
+  { value: "1000_3000", label: "1천~3천만" },
+  { value: "over_3000", label: "3천만 이상" },
+  { value: "negotiable", label: "협의" },
+  { value: "unset", label: "미입력" },
+];
+
+const WON_1000_MAN = 10_000_000;
+const WON_3000_MAN = 30_000_000;
+
+export function matchesMagamTradePriceBucket(
+  listing: MagamListingPublic,
+  bucket: MagamTradePriceBucket
+): boolean {
+  if (bucket === "all") return true;
+  if (bucket === "negotiable") return Boolean(listing.price_negotiable);
+  if (bucket === "unset") {
+    return !listing.price_negotiable && getMagamPriceWon(listing) === null;
+  }
+  const won = getMagamPriceWon(listing);
+  if (won === null || listing.price_negotiable) return false;
+  switch (bucket) {
+    case "under_1000":
+      return won <= WON_1000_MAN;
+    case "1000_3000":
+      return won > WON_1000_MAN && won <= WON_3000_MAN;
+    case "over_3000":
+      return won > WON_3000_MAN;
+    default:
+      return true;
+  }
+}
+
 export function filterMagamLiveListings(
   listings: MagamListingPublic[],
   options: {
     type?: "all" | MagamLiveListingType;
     region?: string;
     priceBucket?: MagamPriceBucket;
+    tradePriceBucket?: MagamTradePriceBucket;
   }
 ): MagamListingPublic[] {
-  const { type = "all", region = "", priceBucket = "all" } = options;
+  const { type = "all", region = "", priceBucket = "all", tradePriceBucket = "all" } = options;
 
   return listings.filter((listing) => {
     if (!isMagamLiveListing(listing)) return false;
     if (type !== "all" && listing.listing_type !== type) return false;
     if (region && listing.region_gu !== region) return false;
-    if (!matchesMagamPriceBucket(getMagamPriceWon(listing), priceBucket)) return false;
+    if (listing.listing_type === "trade") {
+      if (!matchesMagamTradePriceBucket(listing, tradePriceBucket)) return false;
+    } else if (!matchesMagamPriceBucket(getMagamPriceWon(listing), priceBucket)) {
+      return false;
+    }
     return true;
   });
 }

@@ -9,6 +9,7 @@ import {
   type MagamWriteBootstrap,
 } from "@/app/magam/actions";
 import MagamScheduleDateField from "@/components/magam/MagamScheduleDateField";
+import MagamTradeComposeFields from "@/components/magam/MagamTradeComposeFields";
 import {
   MagamChoiceChip,
   MagamComposeSection,
@@ -28,6 +29,9 @@ import {
   MAGAM_OTHER_WORK_HINT,
   MAGAM_SUBCONTRACT_PHONE_HELPER,
   MAGAM_SUBCONTRACT_SPECIAL_NOTES_HINT,
+  MAGAM_TRADE_PHONE_HELPER,
+  MAGAM_TRADE_REGION_DETAIL_REF,
+  MAGAM_TRADE_REGION_HELPER,
   MAGAM_SYNC_CONSENT_DETAILS,
   MAGAM_SYNC_CONSENT_TITLE,
   MAGAM_TIME_SLOT_LABEL,
@@ -41,6 +45,7 @@ import { formatMagamPhoneInput, normalizeMagamPhone } from "@/lib/magam/phone";
 import { MAGAM_DEFAULT_CITY_ID, magamDefaultDistrictSlug } from "@/lib/magam/regions";
 import { magamRegionalAdCandidateKeys } from "@/lib/magam/region-ad-keys";
 import { pushMagamRecentRegion } from "@/lib/magam/recent-regions";
+import type { MagamTradeSide } from "@/lib/magam/trade";
 
 const MagamRegionPicker = dynamic(() => import("@/components/magam/MagamRegionPicker"), {
   loading: () => (
@@ -91,7 +96,7 @@ type Props = { bootstrap: MagamWriteBootstrap };
 
 export default function MagamWriteForm({ bootstrap }: Props) {
   const router = useRouter();
-  const [listingType, setListingType] = useState<"subcontract" | "hiring">("subcontract");
+  const [listingType, setListingType] = useState<"subcontract" | "hiring" | "trade">("subcontract");
   const [cityId, setCityId] = useState(MAGAM_DEFAULT_CITY_ID);
   const [districtSlug, setDistrictSlug] = useState(magamDefaultDistrictSlug(MAGAM_DEFAULT_CITY_ID));
   const [scheduleDate, setScheduleDate] = useState("");
@@ -102,6 +107,12 @@ export default function MagamWriteForm({ bootstrap }: Props) {
   const [otherDetail, setOtherDetail] = useState("");
   const [workDescription, setWorkDescription] = useState("");
   const [priceMan, setPriceMan] = useState("");
+  const [priceNegotiable, setPriceNegotiable] = useState(false);
+  const [tradeSide, setTradeSide] = useState<MagamTradeSide | "">("");
+  const [tradeClientCount, setTradeClientCount] = useState("");
+  const [tradeTotalRevenueMan, setTradeTotalRevenueMan] = useState("");
+  const [salePriceMan, setSalePriceMan] = useState("");
+  const [tradeRegionsInDetail, setTradeRegionsInDetail] = useState(false);
   const [specialNotes, setSpecialNotes] = useState("");
   const [contactPhone, setContactPhone] = useState(
     bootstrap.contactPhone ? formatMagamPhoneInput(bootstrap.contactPhone) : ""
@@ -112,6 +123,21 @@ export default function MagamWriteForm({ bootstrap }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const preview = useMemo(() => {
+    if (listingType === "trade") {
+      if (!tradeSide) return null;
+      return buildMagamPreviewLine({
+        listingType,
+        cityId,
+        districtSlug,
+        tradeSide,
+        tradeClientCount: tradeClientCount ? Number.parseInt(tradeClientCount, 10) : null,
+        tradeTotalRevenue: parseMagamPriceManInput(tradeTotalRevenueMan),
+        tradeRegionsInDetail,
+        specialNotes,
+        priceAmount: priceNegotiable ? null : parseMagamPriceManInput(salePriceMan),
+        priceNegotiable,
+      });
+    }
     if (listingType === "hiring" && !workDescription.trim()) return null;
     if (listingType === "subcontract" && !workKind) return null;
     return buildMagamPreviewLine({
@@ -131,11 +157,36 @@ export default function MagamWriteForm({ bootstrap }: Props) {
     });
   }, [
     listingType, cityId, districtSlug, workKind, workDescription, scheduleDate, timeSlot,
-    pyeong, acTypes, otherDetail, specialNotes, priceMan,
+    pyeong, acTypes, otherDetail, specialNotes, priceMan, priceNegotiable, tradeSide,
+    tradeClientCount, tradeTotalRevenueMan, salePriceMan, tradeRegionsInDetail,
   ]);
 
+  function resetTradeFields() {
+    setTradeSide("");
+    setTradeClientCount("");
+    setTradeTotalRevenueMan("");
+    setSalePriceMan("");
+    setPriceNegotiable(false);
+    setTradeRegionsInDetail(false);
+  }
+
   function validate(): string | null {
-    if (listingType === "hiring") {
+    if (listingType === "trade") {
+      if (!tradeSide) return "양도·양수를 선택해 주세요.";
+      const clientCount = tradeClientCount ? Number.parseInt(tradeClientCount, 10) : 0;
+      if (!Number.isFinite(clientCount) || clientCount <= 0) {
+        return "거래처 수를 입력해 주세요.";
+      }
+      if (!parseMagamPriceManInput(tradeTotalRevenueMan)) {
+        return "총 매출을 입력해 주세요.";
+      }
+      if (!priceNegotiable && !parseMagamPriceManInput(salePriceMan)) {
+        return "희망 판매가를 입력하거나 협의를 선택해 주세요.";
+      }
+      if (tradeRegionsInDetail && specialNotes.trim().length < 4) {
+        return "「상세 설명 참조」를 체크했으면 상세 설명을 4자 이상 적어 주세요.";
+      }
+    } else if (listingType === "hiring") {
       if (workDescription.trim().length < 2) return "작업내용을 2자 이상 입력해 주세요.";
     } else {
       if (!workKind) return "작업 종류를 선택해 주세요.";
@@ -161,23 +212,40 @@ export default function MagamWriteForm({ bootstrap }: Props) {
     }
     setLoading(true);
     setError(null);
-    const result = await createMagamListing({
-      listingType,
-      cityId,
-      districtSlug,
-      workKind: listingType === "hiring" ? null : workKind,
-      workDescription: listingType === "hiring" ? workDescription.trim() : null,
-      scheduleDate: scheduleDate || null,
-      timeSlot: timeSlot || null,
-      pyeong: pyeong ? Number.parseInt(pyeong, 10) : null,
-      acTypes,
-      otherDetail: otherDetail.trim() || null,
-      specialNotes: specialNotes.trim() || null,
-      priceAmount: parseMagamPriceManInput(priceMan),
-      priceUnit: "man",
-      contactPhone,
-      linkedServiceDisclosed: disclosed,
-    });
+    const result = await createMagamListing(
+      listingType === "trade"
+        ? {
+            listingType,
+            cityId,
+            districtSlug,
+            tradeSide: tradeSide as MagamTradeSide,
+            tradeClientCount: Number.parseInt(tradeClientCount, 10),
+            tradeTotalRevenue: parseMagamPriceManInput(tradeTotalRevenueMan),
+            tradeRegionsInDetail,
+            specialNotes: specialNotes.trim() || null,
+            priceAmount: priceNegotiable ? null : parseMagamPriceManInput(salePriceMan),
+            priceNegotiable,
+            contactPhone,
+            linkedServiceDisclosed: disclosed,
+          }
+        : {
+            listingType,
+            cityId,
+            districtSlug,
+            workKind: listingType === "hiring" ? null : workKind,
+            workDescription: listingType === "hiring" ? workDescription.trim() : null,
+            scheduleDate: scheduleDate || null,
+            timeSlot: timeSlot || null,
+            pyeong: pyeong ? Number.parseInt(pyeong, 10) : null,
+            acTypes,
+            otherDetail: otherDetail.trim() || null,
+            specialNotes: specialNotes.trim() || null,
+            priceAmount: parseMagamPriceManInput(priceMan),
+            priceUnit: "man",
+            contactPhone,
+            linkedServiceDisclosed: disclosed,
+          }
+    );
     setLoading(false);
     if (!result.ok) {
       setError(result.error);
@@ -193,9 +261,9 @@ export default function MagamWriteForm({ bootstrap }: Props) {
     <form onSubmit={handleSubmit}>
       <MagamWriteCoachmarks />
       <MagamRadarNationalBanner pagePath="magam:compose" className="mb-4" />
-      <MagamComposeSection step="1" title="도급 / 구인">
+      <MagamComposeSection step="1" title="도급 / 구인 / 매매">
         <div className="flex flex-wrap gap-2">
-          {(["subcontract", "hiring"] as const).map((type) => (
+          {(["subcontract", "hiring", "trade"] as const).map((type) => (
             <MagamChoiceChip
               key={type}
               selected={listingType === type}
@@ -207,19 +275,31 @@ export default function MagamWriteForm({ bootstrap }: Props) {
                   setAcTypes([]);
                   setPyeong("");
                   setOtherDetail("");
+                  resetTradeFields();
                   if (timeSlot === "flexible") setTimeSlot("");
                   setScheduleDate((prev) => clearHiringQuickDates(prev));
-                } else {
+                } else if (type === "subcontract") {
                   setWorkDescription("");
+                  resetTradeFields();
+                } else {
+                  setWorkKind("");
+                  setAcTypes([]);
+                  setPyeong("");
+                  setOtherDetail("");
+                  setWorkDescription("");
+                  setScheduleDate("");
+                  setTimeSlot("");
+                  setSalePriceMan("");
                 }
               }}
             >
-              {type === "subcontract" ? "도급" : "구인"}
+              {type === "subcontract" ? "도급" : type === "hiring" ? "구인" : "매매"}
             </MagamChoiceChip>
           ))}
         </div>
       </MagamComposeSection>
 
+      {listingType !== "trade" ? (
       <MagamComposeSection step="2" title="언제">
         <div>
           <MagamScheduleDateField
@@ -245,8 +325,9 @@ export default function MagamWriteForm({ bootstrap }: Props) {
           </div>
         </div>
       </MagamComposeSection>
+      ) : null}
 
-      <MagamComposeSection step="3" title="어디">
+      <MagamComposeSection step={listingType === "trade" ? "2" : "3"} title="어디">
         <MagamRegionPicker
           cityId={cityId}
           districtSlug={districtSlug}
@@ -254,6 +335,23 @@ export default function MagamWriteForm({ bootstrap }: Props) {
           onCityChange={setCityId}
           onDistrictChange={setDistrictSlug}
         />
+        {listingType === "trade" ? (
+          <div className="mt-3 space-y-2">
+            <p className="text-[13px] text-[#5B6472]">{MAGAM_TRADE_REGION_HELPER}</p>
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                className="accent-[#7C3AED]"
+                checked={tradeRegionsInDetail}
+                disabled={loading}
+                onChange={(e) => setTradeRegionsInDetail(e.target.checked)}
+              />
+              <span className="text-sm font-medium text-[#141824]">
+                {MAGAM_TRADE_REGION_DETAIL_REF}
+              </span>
+            </label>
+          </div>
+        ) : null}
       </MagamComposeSection>
 
       <MagamRadarRegionalBanner
@@ -262,8 +360,33 @@ export default function MagamWriteForm({ bootstrap }: Props) {
         className="mb-4"
       />
 
-      <MagamComposeSection step="4" title={listingType === "hiring" ? "작업내용" : "어떤 일"}>
-        {listingType === "hiring" ? (
+      <MagamComposeSection
+        step={listingType === "trade" ? "3" : "4"}
+        title={
+          listingType === "trade"
+            ? "매매 정보"
+            : listingType === "hiring"
+              ? "작업내용"
+              : "어떤 일"
+        }
+      >
+        {listingType === "trade" ? (
+          <MagamTradeComposeFields
+            disabled={loading}
+            tradeSide={tradeSide}
+            onTradeSideChange={setTradeSide}
+            tradeClientCount={tradeClientCount}
+            onTradeClientCountChange={setTradeClientCount}
+            tradeTotalRevenueMan={tradeTotalRevenueMan}
+            onTradeTotalRevenueManChange={setTradeTotalRevenueMan}
+            salePriceMan={salePriceMan}
+            onSalePriceManChange={setSalePriceMan}
+            priceNegotiable={priceNegotiable}
+            onPriceNegotiableChange={setPriceNegotiable}
+            specialNotes={specialNotes}
+            onSpecialNotesChange={setSpecialNotes}
+          />
+        ) : listingType === "hiring" ? (
           <div>
             <textarea
               className={`${magamInputClass} min-h-[88px]`}
@@ -355,6 +478,7 @@ export default function MagamWriteForm({ bootstrap }: Props) {
         )}
       </MagamComposeSection>
 
+      {listingType !== "trade" ? (
       <MagamComposeSection step="5" title={listingType === "hiring" ? "일당" : "얼마"}>
         <div className="flex items-center gap-2">
           <input
@@ -370,7 +494,9 @@ export default function MagamWriteForm({ bootstrap }: Props) {
           <span className="text-sm font-medium text-[#5B6472]">만원</span>
         </div>
       </MagamComposeSection>
+      ) : null}
 
+      {listingType !== "trade" ? (
       <MagamComposeSection step="6" title="특이사항">
         <MagamSubLabel>특이사항 (선택)</MagamSubLabel>
         <textarea
@@ -385,8 +511,9 @@ export default function MagamWriteForm({ bootstrap }: Props) {
           onChange={(e) => setSpecialNotes(e.target.value)}
         />
       </MagamComposeSection>
+      ) : null}
 
-      <MagamComposeSection step="7" title="연락처">
+      <MagamComposeSection step={listingType === "trade" ? "4" : "7"} title="연락처">
         <input
           type="tel"
           className={magamInputClass}
@@ -396,7 +523,11 @@ export default function MagamWriteForm({ bootstrap }: Props) {
           onChange={(e) => setContactPhone(formatMagamPhoneInput(e.target.value))}
         />
         <p className="mt-1.5 text-[13px] text-[#5B6472]">
-          {listingType === "hiring" ? MAGAM_HIRING_PHONE_HELPER : MAGAM_SUBCONTRACT_PHONE_HELPER}
+          {listingType === "hiring"
+            ? MAGAM_HIRING_PHONE_HELPER
+            : listingType === "trade"
+              ? MAGAM_TRADE_PHONE_HELPER
+              : MAGAM_SUBCONTRACT_PHONE_HELPER}
         </p>
       </MagamComposeSection>
 

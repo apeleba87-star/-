@@ -123,7 +123,14 @@ export function MagamTypeBadge({
   listingType: string;
   muted?: boolean;
 }) {
-  const label = listingType === "hiring" ? "구인" : listingType === "subcontract" ? "도급" : listingType;
+  const label =
+    listingType === "hiring"
+      ? "구인"
+      : listingType === "subcontract"
+        ? "도급"
+        : listingType === "trade"
+          ? "매매"
+          : listingType;
   const accent = magamListingTypeAccent(listingType);
 
   return (

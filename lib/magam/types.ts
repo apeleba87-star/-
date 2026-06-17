@@ -27,6 +27,11 @@ export type MagamListingPublic = {
   ac_types?: string[] | null;
   price_amount?: number | null;
   price_unit?: string | null;
+  price_negotiable?: boolean | null;
+  trade_side?: string | null;
+  trade_client_count?: number | null;
+  trade_total_revenue?: number | null;
+  trade_regions_in_detail?: boolean | null;
 };
 
 export type MagamListingRow = MagamListingPublic & {

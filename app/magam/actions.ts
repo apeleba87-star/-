@@ -218,16 +218,29 @@ export async function createMagamListing(
       district_slug: input.districtSlug,
       body_text: bodyText.trim(),
       contact_phone: phone,
-      work_kind: input.workKind || null,
-      schedule_date: input.scheduleDate || null,
-      time_slot: input.timeSlot || null,
-      pyeong: input.listingType === "hiring" ? null : input.pyeong ?? null,
-      ac_types: input.listingType === "hiring" ? [] : input.acTypes ?? [],
-      price_amount: input.priceAmount ?? null,
-      price_unit: input.priceAmount != null ? input.priceUnit ?? "man" : null,
+      work_kind: input.listingType === "trade" ? null : input.workKind || null,
+      schedule_date: input.listingType === "trade" ? null : input.scheduleDate || null,
+      time_slot: input.listingType === "trade" ? null : input.timeSlot || null,
+      pyeong:
+        input.listingType === "hiring" || input.listingType === "trade"
+          ? null
+          : input.pyeong ?? null,
+      ac_types:
+        input.listingType === "hiring" || input.listingType === "trade" ? [] : input.acTypes ?? [],
+      price_amount: input.priceNegotiable ? null : input.priceAmount ?? null,
+      price_unit:
+        input.priceNegotiable || input.priceAmount == null ? null : input.priceUnit ?? "man",
+      price_negotiable: input.listingType === "trade" ? Boolean(input.priceNegotiable) : false,
       price_text: magamPriceText(draft),
       schedule_text: magamScheduleText(draft),
       special_notes: input.specialNotes?.trim() || null,
+      trade_side: input.listingType === "trade" ? input.tradeSide ?? null : null,
+      trade_client_count:
+        input.listingType === "trade" ? input.tradeClientCount ?? null : null,
+      trade_total_revenue:
+        input.listingType === "trade" ? input.tradeTotalRevenue ?? null : null,
+      trade_regions_in_detail:
+        input.listingType === "trade" ? Boolean(input.tradeRegionsInDetail) : false,
       linked_service_disclosed: input.linkedServiceDisclosed,
     })
     .select("id, share_slug")

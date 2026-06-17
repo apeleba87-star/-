@@ -6,16 +6,19 @@ import { MagamListingListItem } from "@/components/magam/MagamShareCard";
 import {
   MAGAM_LIVE_TYPES,
   MAGAM_PRICE_BUCKETS,
+  MAGAM_TRADE_PRICE_BUCKETS,
   collectMagamRegions,
   filterMagamLiveListings,
   type MagamLiveListingType,
   type MagamPriceBucket,
+  type MagamTradePriceBucket,
 } from "@/lib/magam/format-listing";
 
 const TYPE_FILTERS: { value: "all" | MagamLiveListingType; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "subcontract", label: "도급" },
   { value: "hiring", label: "구인" },
+  { value: "trade", label: "매매" },
 ];
 
 type Props = {
@@ -58,6 +61,7 @@ export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: P
   const [typeFilter, setTypeFilter] = useState<"all" | MagamLiveListingType>("all");
   const [regionFilter, setRegionFilter] = useState("");
   const [priceFilter, setPriceFilter] = useState<MagamPriceBucket>("all");
+  const [tradePriceFilter, setTradePriceFilter] = useState<MagamTradePriceBucket>("all");
 
   const liveListings = useMemo(
     () => initialListings.filter((l) => MAGAM_LIVE_TYPES.includes(l.listing_type as MagamLiveListingType)),
@@ -72,8 +76,9 @@ export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: P
         type: typeFilter,
         region: regionFilter,
         priceBucket: priceFilter,
+        tradePriceBucket: tradePriceFilter,
       }),
-    [liveListings, typeFilter, regionFilter, priceFilter]
+    [liveListings, typeFilter, regionFilter, priceFilter, tradePriceFilter]
   );
 
   const subcontractListings = useMemo(
@@ -84,8 +89,19 @@ export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: P
     () => filtered.filter((l) => l.listing_type === "hiring"),
     [filtered]
   );
+  const tradeListings = useMemo(
+    () => filtered.filter((l) => l.listing_type === "trade"),
+    [filtered]
+  );
 
-  const hasActiveFilter = typeFilter !== "all" || regionFilter !== "" || priceFilter !== "all";
+  const priceBuckets =
+    typeFilter === "trade" ? MAGAM_TRADE_PRICE_BUCKETS : MAGAM_PRICE_BUCKETS;
+  const activePriceFilter = typeFilter === "trade" ? tradePriceFilter : priceFilter;
+
+  const hasActiveFilter =
+    typeFilter !== "all" ||
+    regionFilter !== "" ||
+    activePriceFilter !== "all";
 
   return (
     <div>
@@ -94,7 +110,11 @@ export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: P
           <button
             key={f.value}
             type="button"
-            onClick={() => setTypeFilter(f.value)}
+            onClick={() => {
+              setTypeFilter(f.value);
+              setPriceFilter("all");
+              setTradePriceFilter("all");
+            }}
             className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
               typeFilter === f.value
                 ? "bg-slate-900 text-white"
@@ -124,14 +144,22 @@ export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: P
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">금액</span>
+          <span className="mb-1 block text-xs font-medium text-slate-500">
+            {typeFilter === "trade" ? "희망 판매가" : "금액"}
+          </span>
           <select
             className={selectClass}
-            value={priceFilter}
-            onChange={(e) => setPriceFilter(e.target.value as MagamPriceBucket)}
+            value={activePriceFilter}
+            onChange={(e) => {
+              if (typeFilter === "trade") {
+                setTradePriceFilter(e.target.value as MagamTradePriceBucket);
+              } else {
+                setPriceFilter(e.target.value as MagamPriceBucket);
+              }
+            }}
             aria-label="금액 필터"
           >
-            {MAGAM_PRICE_BUCKETS.map((bucket) => (
+            {priceBuckets.map((bucket) => (
               <option key={bucket.value} value={bucket.value}>
                 {bucket.label}
               </option>
@@ -144,8 +172,8 @@ export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: P
         <p className="mt-3 text-xs text-slate-500">
           {filtered.length}건 표시
           {regionFilter ? ` · ${regionFilter}` : ""}
-          {priceFilter !== "all"
-            ? ` · ${MAGAM_PRICE_BUCKETS.find((b) => b.value === priceFilter)?.label}`
+          {activePriceFilter !== "all"
+            ? ` · ${priceBuckets.find((b) => b.value === activePriceFilter)?.label}`
             : ""}
         </p>
       )}
@@ -156,6 +184,7 @@ export default function MagamLiveFeed({ initialListings, shareFrom = "live" }: P
         <>
           <ListingSection title="도급" listings={subcontractListings} shareFrom={shareFrom} />
           <ListingSection title="구인" listings={hiringListings} shareFrom={shareFrom} />
+          <ListingSection title="매매" listings={tradeListings} shareFrom={shareFrom} />
         </>
       ) : (
         <ul className="mt-4 flex flex-col gap-2">
