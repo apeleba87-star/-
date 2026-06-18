@@ -17,7 +17,11 @@ import {
   MAGAM_SHARE_PAGE_TITLE,
 } from "@/lib/magam/copy";
 import { formatMagamClosedAgo } from "@/lib/format/magam-relative-time";
-import { MAGAM_SHARE_FROM_LISTING, magamShareBackHref } from "@/lib/magam/back-href";
+import {
+  MAGAM_SHARE_FROM_LISTING,
+  MAGAM_SHARE_FROM_PUBLIC_LIST,
+  magamShareBackHref,
+} from "@/lib/magam/back-href";
 import { MAGAM_OG_ALT } from "@/lib/magam/metadata";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
 import { magamRegionalAdKeysForListing } from "@/lib/magam/region-ad-keys";
@@ -92,7 +96,6 @@ export default async function MagamSharePage({ params, searchParams }: Props) {
   const pagePath = `magam:share/${slug}`;
   const isOwnerPreview = from?.trim() === MAGAM_SHARE_FROM_LISTING;
   const backHref = isOwnerPreview ? undefined : magamShareBackHref(from, listingId);
-  const shareFrom = from?.trim() || "live";
 
   return (
     <div className="min-h-[100dvh] bg-[#F2F3F6] text-[#141824] antialiased">
@@ -112,7 +115,8 @@ export default async function MagamSharePage({ params, searchParams }: Props) {
         <MagamOpenListings
           listings={openListings}
           title={MAGAM_OTHER_OPEN_LISTINGS_TITLE}
-          shareFrom={shareFrom}
+          shareFrom={MAGAM_SHARE_FROM_PUBLIC_LIST}
+          moreHref="/p"
         />
 
         <MagamPosterCta />

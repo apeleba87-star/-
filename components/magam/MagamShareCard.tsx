@@ -108,6 +108,8 @@ export function MagamListingPeekItem({
   const body = formatMagamListingPeekBody(listing);
   const accent = magamListingTypeAccent(listing.listing_type);
   const href = magamPublicListingHref(listing.share_slug, shareFrom ? { from: shareFrom } : undefined);
+  const posted = formatMagamPostedAgo(listing.created_at) ?? formatMagamWhen(listing.created_at);
+  const posterName = listing.poster_name?.trim();
 
   return (
     <Link
@@ -117,14 +119,24 @@ export function MagamListingPeekItem({
         accent.peek
       )}
     >
-      <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[14px] leading-snug">
-        <MagamTypeBadge
-          listingType={listing.listing_type}
-          hiringEmploymentType={listing.hiring_employment_type}
-          tradeSide={listing.trade_side}
-          muted={listing.status === "closed"}
-        />
-        {body ? <span className="text-slate-800">{body}</span> : null}
+      <span className="flex items-start justify-between gap-2">
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[14px] leading-snug">
+            <MagamTypeBadge
+              listingType={listing.listing_type}
+              hiringEmploymentType={listing.hiring_employment_type}
+              tradeSide={listing.trade_side}
+              muted={listing.status === "closed"}
+            />
+            {body ? <span className="text-slate-800">{body}</span> : null}
+          </span>
+          <span className="mt-1 block text-xs font-medium text-slate-500">{posted}</span>
+        </span>
+        {posterName ? (
+          <span className="max-w-[92px] shrink-0 truncate text-right text-xs font-semibold text-slate-500">
+            {posterName}
+          </span>
+        ) : null}
       </span>
     </Link>
   );

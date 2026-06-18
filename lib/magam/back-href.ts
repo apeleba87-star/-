@@ -4,6 +4,7 @@ import { MAGAM_INTRO_PATH, MAGAM_ME_PATH } from "@/lib/magam/nav-links";
 /** 공유 공고(/p/) 진입 출처 — 쿼리 `from` 값 */
 export const MAGAM_SHARE_FROM_LIVE = "live";
 export const MAGAM_SHARE_FROM_LISTING = "listing";
+export const MAGAM_SHARE_FROM_PUBLIC_LIST = "public";
 
 export const MAGAM_SETTINGS_PATH = "/magam/settings";
 
@@ -24,6 +25,7 @@ export function magamShareBackHref(from?: string | null, listingId?: string | nu
   if (f === MAGAM_LIVE_FROM_CLEANIDEX || f === "cleanidex") {
     return magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX);
   }
+  if (f === MAGAM_SHARE_FROM_PUBLIC_LIST) return "/p";
   if (f === MAGAM_SHARE_FROM_LIVE) return magamLiveHref();
   if (f === MAGAM_SHARE_FROM_LISTING) {
     return listingId ? `/magam/listing/${listingId}` : MAGAM_ME_PATH;
