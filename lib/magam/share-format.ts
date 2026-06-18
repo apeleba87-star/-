@@ -1,13 +1,13 @@
 import {
-  MAGAM_HIRING_WORK_LABEL,
   MAGAM_LISTING_TYPE_LABEL,
   MAGAM_SHARE_LINK_FOOTER_LINE,
-  MAGAM_SHARE_WORK_LABEL,
   MAGAM_WORK_KIND_LABEL,
 } from "@/lib/magam/copy";
 import {
+  formatMagamFullTimeSalary,
   formatMagamScheduleWithTime,
   formatMagamWorkSummaryLine,
+  magamWorkRowLabel,
 } from "@/lib/magam/format-listing";
 import { formatKrMobilePhone } from "@/lib/format/kr-mobile-phone";
 import {
@@ -20,9 +20,8 @@ import {
 import type { MagamListingRow } from "@/lib/magam/types";
 
 function workRowLabel(listing: MagamListingRow): string {
-  if (listing.listing_type === "hiring") return MAGAM_HIRING_WORK_LABEL;
   if (listing.listing_type === "trade") return "요약";
-  return MAGAM_SHARE_WORK_LABEL;
+  return magamWorkRowLabel(listing);
 }
 
 function shareLinkFooter(url: string): string {
@@ -104,8 +103,17 @@ export function buildMagamShareMessage(
   const location = listing.region_gu.trim();
   if (location) blocks.push(`위치: ${location}`);
 
+  const fullTimeSalary = formatMagamFullTimeSalary(listing);
+  if (fullTimeSalary) blocks.push(`월급: ${fullTimeSalary}`);
+
   const work = formatMagamWorkSummaryLine(listing);
-  if (work) blocks.push(`${workRowLabel(listing)}: ${work}`);
+  if (work) {
+    blocks.push(
+      listing.listing_type === "hiring" && listing.hiring_employment_type === "full_time"
+        ? `${workRowLabel(listing)}\n${work}`
+        : `${workRowLabel(listing)}: ${work}`
+    );
+  }
 
   const notes = listing.special_notes?.trim();
   if (notes) blocks.push(`특이사항: ${notes}`);
@@ -132,7 +140,7 @@ function naverCafeTitle(listing: MagamListingRow): string | null {
     parts.push(tokens.length > 1 ? tokens[tokens.length - 1]! : location);
   }
 
-  if (listing.listing_type === "hiring") {
+  if (listing.listing_type === "hiring" && listing.hiring_employment_type !== "full_time") {
     const body = listing.body_text.trim();
     let rest = body;
     if (rest.startsWith("구인 · ")) rest = rest.slice("구인 · ".length);
@@ -193,6 +201,9 @@ export function buildMagamNaverCafeMessage(
 
   const location = listing.region_gu.trim();
   if (location) addBullet("위치", location);
+
+  const fullTimeSalary = formatMagamFullTimeSalary(listing);
+  if (fullTimeSalary) addBullet("월급", fullTimeSalary);
 
   const work = formatMagamWorkSummaryLine(listing);
   if (work) addBullet(workRowLabel(listing), work);

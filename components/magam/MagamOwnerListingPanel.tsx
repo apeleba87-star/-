@@ -158,12 +158,17 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
           <MagamStatusBadge label={MAGAM_STATUS_LABEL[listing.status]} isOpen={isOpen} />
 
           <span className="ml-auto">
-            <MagamTypeBadge listingType={listing.listing_type} muted={!isOpen} />
+            <MagamTypeBadge
+              listingType={listing.listing_type}
+              hiringEmploymentType={listing.hiring_employment_type}
+              tradeSide={listing.trade_side}
+              muted={!isOpen}
+            />
           </span>
 
         </div>
 
-        <MagamListingDisplayRows rows={rows} compact />
+        <MagamListingDisplayRows rows={rows} compact truncate={false} />
 
         {isOpen && listing.contact_phone ? (
 

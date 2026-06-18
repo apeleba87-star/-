@@ -60,6 +60,16 @@ export function formatMagamPrice(listing: MagamListingPublic): string | null {
   return null;
 }
 
+export function formatMagamFullTimeSalary(listing: MagamListingPublic): string | null {
+  if (listing.listing_type !== "hiring" || listing.hiring_employment_type !== "full_time") {
+    return null;
+  }
+
+  const price = formatMagamPriceShareLabel(listing);
+  if (!price) return null;
+  return price.replace(/^월급\s*/, "");
+}
+
 function formatMagamTimeSlot(listing: MagamListingPublic): string | null {
   if (listing.time_slot) {
     return MAGAM_TIME_SLOT_LABEL[listing.time_slot] ?? listing.time_slot;
@@ -154,8 +164,10 @@ export function formatMagamWorkSummaryLine(listing: MagamListingPublic): string 
     else parts.push("일당");
     const desc = parseHiringWorkDescription(listing);
     if (desc) parts.push(desc);
-    const price = formatMagamPriceShareLabel(listing);
-    if (price) parts.push(price);
+    if (listing.hiring_employment_type !== "full_time") {
+      const price = formatMagamPriceShareLabel(listing);
+      if (price) parts.push(price);
+    }
     if (parts.length === 0) return null;
     return parts.join(" / ");
   }
@@ -190,6 +202,14 @@ export function formatMagamWorkSummaryLine(listing: MagamListingPublic): string 
 
 export function formatMagamWorkSummary(listing: MagamListingPublic): string | null {
   return formatMagamWorkSummaryLine(listing);
+}
+
+export function magamWorkRowLabel(listing: MagamListingPublic): string {
+  if (listing.listing_type === "hiring") {
+    return listing.hiring_employment_type === "full_time" ? "상세 설명" : MAGAM_HIRING_WORK_LABEL;
+  }
+
+  return MAGAM_SHARE_WORK_LABEL;
 }
 
 /** 목록 한 줄 — 도급 · 동작구 · 18평 · 24만 · 6/15 */
@@ -319,11 +339,12 @@ export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDi
     });
   }
 
+  const fullTimeSalary = formatMagamFullTimeSalary(listing);
+  if (fullTimeSalary) rows.push({ label: "월급", value: fullTimeSalary });
+
   const work = formatMagamWorkSummaryLine(listing);
   if (work) {
-    const workLabel =
-      listing.listing_type === "hiring" ? MAGAM_HIRING_WORK_LABEL : MAGAM_SHARE_WORK_LABEL;
-    rows.push({ label: workLabel, value: work });
+    rows.push({ label: magamWorkRowLabel(listing), value: work });
   }
 
   const notes = listing.special_notes?.trim();

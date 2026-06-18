@@ -47,7 +47,12 @@ export default function MagamShareCard({ listing, highlight }: Props) {
           <span className="text-xs font-medium text-emerald-800">{postedAgo}</span>
         ) : null}
         <span className="ml-auto">
-          <MagamTypeBadge listingType={listing.listing_type} muted={isClosed} />
+          <MagamTypeBadge
+            listingType={listing.listing_type}
+            hiringEmploymentType={listing.hiring_employment_type}
+            tradeSide={listing.trade_side}
+            muted={isClosed}
+          />
         </span>
       </div>
 
@@ -113,7 +118,12 @@ export function MagamListingPeekItem({
       )}
     >
       <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[14px] leading-snug">
-        <MagamTypeBadge listingType={listing.listing_type} muted={listing.status === "closed"} />
+        <MagamTypeBadge
+          listingType={listing.listing_type}
+          hiringEmploymentType={listing.hiring_employment_type}
+          tradeSide={listing.trade_side}
+          muted={listing.status === "closed"}
+        />
         {body ? <span className="text-slate-800">{body}</span> : null}
       </span>
     </Link>
@@ -142,7 +152,12 @@ export function MagamListingListItem({
     >
       <Link href={href} className="block px-4 py-3 pr-14">
         <div className="flex items-center gap-2">
-          <MagamTypeBadge listingType={listing.listing_type} muted={isClosed} />
+          <MagamTypeBadge
+            listingType={listing.listing_type}
+            hiringEmploymentType={listing.hiring_employment_type}
+            tradeSide={listing.trade_side}
+            muted={isClosed}
+          />
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
               isClosed ? "bg-slate-200 text-slate-600" : "bg-emerald-100 text-emerald-800"

@@ -51,7 +51,12 @@ export default function MagamMyListingCard({ listing, href }: Props) {
       )}
     >
       <div className="flex items-center gap-2">
-        <MagamTypeBadge listingType={listing.listing_type} muted={!isOpen} />
+        <MagamTypeBadge
+          listingType={listing.listing_type}
+          hiringEmploymentType={listing.hiring_employment_type}
+          tradeSide={listing.trade_side}
+          muted={!isOpen}
+        />
         <span className="ml-auto">
           <MagamStatusBadge
             label={MAGAM_STATUS_LABEL[listing.status]}

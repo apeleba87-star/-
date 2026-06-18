@@ -118,18 +118,26 @@ export function MagamStatusBadge({ label, isOpen }: { label: string; isOpen: boo
 
 export function MagamTypeBadge({
   listingType,
+  hiringEmploymentType,
+  tradeSide,
   muted = false,
 }: {
   listingType: string;
+  hiringEmploymentType?: string | null;
+  tradeSide?: string | null;
   muted?: boolean;
 }) {
   const label =
     listingType === "hiring"
-      ? "구인"
+      ? `구인 · ${hiringEmploymentType === "full_time" ? "정규직" : "일당"}`
       : listingType === "subcontract"
         ? "도급"
         : listingType === "trade"
-          ? "매매"
+          ? tradeSide === "buy"
+            ? "매매 · 구매"
+            : tradeSide === "sell"
+              ? "매매 · 판매"
+              : "매매"
           : listingType;
   const accent = magamListingTypeAccent(listingType);
 

@@ -23,7 +23,7 @@ import {
 } from "@/components/magam/ui/MagamUi";
 import {
   MAGAM_AC_TYPE_LABEL,
-  MAGAM_HIRING_FULL_TIME_SPECIAL_NOTES_HINT,
+  MAGAM_HIRING_FULL_TIME_WORK_HELPER,
   MAGAM_HIRING_FULL_TIME_WORK_HINT,
   MAGAM_HIRING_PHONE_HELPER,
   MAGAM_HIRING_SPECIAL_NOTES_HINT,
@@ -134,7 +134,10 @@ function parseHiringWorkFromBody(listing?: MagamListingRow): string {
     if (seg === "일당" || seg === "정규직") continue;
     parts.push(seg);
   }
-  return parts.join(" · ");
+  const parsed = parts.join(" · ");
+  const notes = listing.hiring_employment_type === "full_time" ? listing.special_notes?.trim() : "";
+  if (!notes) return parsed;
+  return parsed ? `${parsed}\n${notes}` : notes;
 }
 
 function parseOtherDetailFromBody(listing?: MagamListingRow): string {
@@ -203,6 +206,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
   const [showConsentDetails, setShowConsentDetails] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isFullTimeHiring = listingType === "hiring" && hiringEmploymentType === "full_time";
 
   const preview = useMemo(() => {
     if (listingType === "trade") {
@@ -229,25 +233,24 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
       workKind: listingType === "hiring" ? null : workKind,
       workDescription: listingType === "hiring" ? workDescription : null,
       hiringEmploymentType: listingType === "hiring" ? hiringEmploymentType : undefined,
-      scheduleDate:
-        listingType === "hiring" && hiringEmploymentType === "full_time" ? null : scheduleDate || null,
-      timeSlot:
-        listingType === "hiring" && hiringEmploymentType === "full_time" ? null : timeSlot || null,
+      scheduleDate: isFullTimeHiring ? null : scheduleDate || null,
+      timeSlot: isFullTimeHiring ? null : timeSlot || null,
       pyeong: pyeong ? Number.parseInt(pyeong, 10) : null,
       acTypes,
       otherDetail,
-      specialNotes,
+      specialNotes: isFullTimeHiring ? null : specialNotes,
       priceAmount:
-        listingType === "hiring" && hiringEmploymentType === "full_time" && priceNegotiable
+        isFullTimeHiring && priceNegotiable
           ? null
           : parseMagamPriceManInput(priceMan),
       priceUnit: "man",
-      priceNegotiable: listingType === "hiring" && hiringEmploymentType === "full_time" ? priceNegotiable : false,
+      priceNegotiable: isFullTimeHiring ? priceNegotiable : false,
     });
   }, [
     listingType, cityId, districtSlug, workKind, workDescription, scheduleDate, timeSlot,
     pyeong, acTypes, otherDetail, specialNotes, priceMan, priceNegotiable, tradeSide,
     tradeClientCount, tradeTotalRevenueMan, salePriceMan, tradeRegionsInDetail, hiringEmploymentType,
+    isFullTimeHiring,
   ]);
 
   function resetTradeFields() {
@@ -276,8 +279,12 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
         return "「상세 설명 참조」를 체크했으면 상세 설명을 4자 이상 적어 주세요.";
       }
     } else if (listingType === "hiring") {
-      if (workDescription.trim().length < 2) return "작업내용을 2자 이상 입력해 주세요.";
-      if (hiringEmploymentType === "full_time" && !priceNegotiable && !parseMagamPriceManInput(priceMan)) {
+      if (workDescription.trim().length < 2) {
+        return hiringEmploymentType === "full_time"
+          ? "상세 설명을 2자 이상 입력해 주세요."
+          : "작업내용을 2자 이상 입력해 주세요.";
+      }
+      if (isFullTimeHiring && !priceNegotiable && !parseMagamPriceManInput(priceMan)) {
         return "월급을 입력하거나 급여 협의를 선택해 주세요.";
       }
     } else {
@@ -327,27 +334,18 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
             workKind: listingType === "hiring" ? null : workKind,
             workDescription: listingType === "hiring" ? workDescription.trim() : null,
             hiringEmploymentType: listingType === "hiring" ? hiringEmploymentType : undefined,
-            scheduleDate:
-              listingType === "hiring" && hiringEmploymentType === "full_time"
-                ? null
-                : scheduleDate || null,
-            timeSlot:
-              listingType === "hiring" && hiringEmploymentType === "full_time"
-                ? null
-                : timeSlot || null,
+            scheduleDate: isFullTimeHiring ? null : scheduleDate || null,
+            timeSlot: isFullTimeHiring ? null : timeSlot || null,
             pyeong: pyeong ? Number.parseInt(pyeong, 10) : null,
             acTypes,
             otherDetail: otherDetail.trim() || null,
-            specialNotes: specialNotes.trim() || null,
+            specialNotes: isFullTimeHiring ? null : specialNotes.trim() || null,
             priceAmount:
-              listingType === "hiring" && hiringEmploymentType === "full_time" && priceNegotiable
+              isFullTimeHiring && priceNegotiable
                 ? null
                 : parseMagamPriceManInput(priceMan),
             priceUnit: "man" as const,
-            priceNegotiable:
-              listingType === "hiring" && hiringEmploymentType === "full_time"
-                ? priceNegotiable
-                : false,
+            priceNegotiable: isFullTimeHiring ? priceNegotiable : false,
             contactPhone,
             linkedServiceDisclosed: disclosed,
           };
@@ -435,7 +433,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
         </MagamComposeSection>
       ) : null}
 
-      {listingType !== "trade" && !(listingType === "hiring" && hiringEmploymentType === "full_time") ? (
+      {listingType !== "trade" && !isFullTimeHiring ? (
       <MagamComposeSection step={listingType === "hiring" ? "3" : "2"} title="언제">
         <div>
           <MagamScheduleDateField
@@ -502,7 +500,9 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
           listingType === "trade"
             ? "매매 정보"
             : listingType === "hiring"
-              ? "작업내용"
+              ? hiringEmploymentType === "full_time"
+                ? "상세 설명"
+                : "작업내용"
               : "어떤 일"
         }
       >
@@ -525,7 +525,9 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
         ) : listingType === "hiring" ? (
           <div>
             <textarea
-              className={`${magamInputClass} min-h-[88px]`}
+              className={`${magamInputClass} ${
+                isFullTimeHiring ? "min-h-[240px]" : "min-h-[88px]"
+              }`}
               disabled={loading}
               placeholder={
                 hiringEmploymentType === "full_time"
@@ -535,7 +537,9 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
               value={workDescription}
               onChange={(e) => setWorkDescription(e.target.value)}
             />
-            <p className="mt-1.5 text-[13px] text-[#5B6472]">{MAGAM_HIRING_WORK_HELPER}</p>
+            <p className="mt-1.5 text-[13px] text-[#5B6472]">
+              {isFullTimeHiring ? MAGAM_HIRING_FULL_TIME_WORK_HELPER : MAGAM_HIRING_WORK_HELPER}
+            </p>
           </div>
         ) : (
           <>
@@ -636,16 +640,16 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
               min={1}
               inputMode="numeric"
               className={`${magamInputClass} max-w-[140px]`}
-              disabled={loading || (listingType === "hiring" && hiringEmploymentType === "full_time" && priceNegotiable)}
+              disabled={loading || (isFullTimeHiring && priceNegotiable)}
               placeholder={
-                listingType === "hiring" && hiringEmploymentType === "full_time" ? "300" : "13"
+                isFullTimeHiring ? "300" : "13"
               }
               value={priceMan}
               onChange={(e) => setPriceMan(e.target.value.replace(/\D/g, ""))}
             />
             <span className="text-sm font-medium text-[#5B6472]">만원</span>
           </div>
-          {listingType === "hiring" && hiringEmploymentType === "full_time" ? (
+          {isFullTimeHiring ? (
             <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[#141824]">
               <input
                 type="checkbox"
@@ -664,7 +668,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
       </MagamComposeSection>
       ) : null}
 
-      {listingType !== "trade" ? (
+      {listingType !== "trade" && !isFullTimeHiring ? (
       <MagamComposeSection step="6" title="특이사항">
         <MagamSubLabel>특이사항 (선택)</MagamSubLabel>
         <textarea
@@ -672,9 +676,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
           disabled={loading}
           placeholder={
             listingType === "hiring"
-              ? hiringEmploymentType === "full_time"
-                ? MAGAM_HIRING_FULL_TIME_SPECIAL_NOTES_HINT
-                : MAGAM_HIRING_SPECIAL_NOTES_HINT
+              ? MAGAM_HIRING_SPECIAL_NOTES_HINT
               : MAGAM_SUBCONTRACT_SPECIAL_NOTES_HINT
           }
           value={specialNotes}
@@ -683,7 +685,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
       </MagamComposeSection>
       ) : null}
 
-      <MagamComposeSection step={listingType === "trade" ? "4" : "7"} title="연락처">
+      <MagamComposeSection step={listingType === "trade" ? "4" : isFullTimeHiring ? "6" : "7"} title="연락처">
         <input
           type="tel"
           className={magamInputClass}
