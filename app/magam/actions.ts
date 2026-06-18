@@ -25,6 +25,9 @@ import { getMagamSession } from "@/lib/magam/session";
 
 export type MagamWriteBootstrap = {
   contactPhone: string | null;
+  displayName: string | null;
+  displayNameLockedUntil: string | null;
+  isOperator: boolean;
   alreadyConsented: boolean;
 };
 
@@ -37,23 +40,80 @@ async function requireUser() {
   return { supabase, user };
 }
 
+function isMagamOperatorEmail(email: string | null | undefined): boolean {
+  const normalized = (email ?? "").trim().toLowerCase();
+  return normalized === "apeleba2@naver.com";
+}
+
+function fallbackMagamDisplayName(user: { email?: string | null; user_metadata?: Record<string, unknown> }) {
+  return (
+    (typeof user.user_metadata?.name === "string" ? user.user_metadata.name.trim() : "") ||
+    (typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name.trim() : "") ||
+    (user.email ? user.email.split("@")[0] ?? "" : "")
+  );
+}
+
+function isUniqueViolation(error: { code?: string; message?: string } | null | undefined): boolean {
+  return error?.code === "23505" || /duplicate key value/i.test(error?.message ?? "");
+}
+
+function magamDisplayNameLockedUntil(updatedAt: string | null | undefined): string | null {
+  if (!updatedAt) return null;
+  const changedAt = new Date(updatedAt);
+  if (Number.isNaN(changedAt.getTime())) return null;
+  const unlockAt = new Date(changedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+  return unlockAt > new Date() ? unlockAt.toISOString() : null;
+}
+
 export async function getMagamWriteBootstrap(): Promise<MagamWriteBootstrap> {
   const { supabase, user } = await requireUser();
   if (!user) {
-    return { contactPhone: null, alreadyConsented: false };
+    return {
+      contactPhone: null,
+      displayName: null,
+      displayNameLockedUntil: null,
+      isOperator: false,
+      alreadyConsented: false,
+    };
   }
 
   const { data } = await supabase
     .from("profiles")
-    .select("magam_contact_phone, magam_sync_consent_at")
+    .select("magam_contact_phone, magam_sync_consent_at, magam_display_name, magam_display_name_updated_at, display_name, email")
     .eq("id", user.id)
     .maybeSingle();
 
-  const phone = (data?.magam_contact_phone as string | null)?.trim() || null;
   const consented = Boolean(data?.magam_sync_consent_at);
+  const email = (user.email ?? (data?.email as string | null) ?? "").trim().toLowerCase();
+  const isOperator = isMagamOperatorEmail(email);
+  const latestOperatorListing = isOperator
+    ? await supabase
+        .from("magam_listings")
+        .select("poster_name, contact_phone")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : null;
+  const latestPosterName = latestOperatorListing?.data?.poster_name?.trim() || null;
+  const latestContactPhone = latestOperatorListing?.data?.contact_phone?.trim() || null;
+  const phone = latestContactPhone || (data?.magam_contact_phone as string | null)?.trim() || null;
+  const storedDisplayName = (data?.magam_display_name as string | null)?.trim() || null;
+  const displayName = isOperator
+    ? latestPosterName ||
+      storedDisplayName ||
+      (data?.display_name as string | null)?.trim() ||
+      fallbackMagamDisplayName(user) ||
+      null
+    : storedDisplayName;
 
   return {
     contactPhone: phone,
+    displayName,
+    displayNameLockedUntil: isOperator
+      ? null
+      : magamDisplayNameLockedUntil(data?.magam_display_name_updated_at as string | null),
+    isOperator,
     alreadyConsented: consented,
   };
 }
@@ -151,12 +211,13 @@ export async function getMagamListingForOwner(id: string): Promise<MagamListingR
 
 export type CreateMagamListingInput = MagamListingDraft & {
   contactPhone: string;
+  posterName: string;
   linkedServiceDisclosed: boolean;
 };
 
 export type UpdateMagamListingInput = CreateMagamListingInput;
 
-function buildMagamListingMutation(input: MagamListingDraft, phone: string, regionGu: string) {
+function buildMagamListingMutation(input: CreateMagamListingInput, phone: string, regionGu: string) {
   const draft: MagamListingDraft = input;
   const acceptsNegotiablePrice =
     input.listingType === "trade" ||
@@ -172,6 +233,7 @@ function buildMagamListingMutation(input: MagamListingDraft, phone: string, regi
     district_slug: input.districtSlug,
     body_text: buildMagamBodyText(draft).trim(),
     contact_phone: phone,
+    poster_name: input.posterName.trim(),
     work_kind: input.listingType === "trade" ? null : input.workKind || null,
     schedule_date:
       input.listingType === "trade" ||
@@ -246,6 +308,72 @@ function validateMagamListingDraft(input: MagamListingDraft): string | null {
   return null;
 }
 
+function validatePosterName(name: string): string | null {
+  const trimmed = name.trim();
+  if (trimmed.length < 2) return "업체명(닉네임)을 2자 이상 입력해 주세요.";
+  if (trimmed.length > 40) return "업체명(닉네임)은 40자 이하로 입력해 주세요.";
+  return null;
+}
+
+export async function checkMagamDisplayNameAvailable(
+  name: string
+): Promise<MagamActionResult<{ available: boolean }>> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const validation = validatePosterName(name);
+  if (validation) return { ok: false, error: validation };
+
+  const { data, error } = await supabase.rpc("check_magam_display_name_available", {
+    name_input: name.trim(),
+  });
+
+  if (error) return { ok: false, error: "중복 확인에 실패했습니다. 다시 시도해 주세요." };
+  return { ok: true, data: { available: Boolean(data) } };
+}
+
+type MagamPosterProfile = {
+  magam_display_name?: string | null;
+  magam_display_name_updated_at?: string | null;
+  display_name?: string | null;
+};
+
+function resolveMagamPosterName(
+  requestedName: string,
+  profile: MagamPosterProfile | null,
+  user: { email?: string | null; user_metadata?: Record<string, unknown> },
+  isOperator: boolean
+): { ok: true; posterName: string; profilePatch?: Record<string, string> } | { ok: false; error: string } {
+  const requested = requestedName.trim();
+  const validation = validatePosterName(requested);
+  if (validation) return { ok: false, error: validation };
+
+  if (isOperator) {
+    return { ok: true, posterName: requested };
+  }
+
+  const storedName = profile?.magam_display_name?.trim() || "";
+  const currentName = storedName;
+  const lockedUntil = magamDisplayNameLockedUntil(profile?.magam_display_name_updated_at);
+
+  if (storedName && requested !== storedName && lockedUntil) {
+    return { ok: false, error: "업체명은 마지막 변경 후 30일이 지나야 다시 바꿀 수 있습니다." };
+  }
+
+  if (requested !== storedName) {
+    return {
+      ok: true,
+      posterName: requested,
+      profilePatch: {
+        magam_display_name: requested,
+        magam_display_name_updated_at: new Date().toISOString(),
+      },
+    };
+  }
+
+  return { ok: true, posterName: currentName || requested };
+}
+
 export async function createMagamListing(
   input: CreateMagamListingInput
 ): Promise<MagamActionResult<{ id: string; shareSlug: string }>> {
@@ -255,10 +383,6 @@ export async function createMagamListing(
   const phone = normalizeMagamPhone(input.contactPhone);
   if (phone.length < 10) {
     return { ok: false, error: "연락처를 입력해 주세요." };
-  }
-
-  if (!input.linkedServiceDisclosed) {
-    return { ok: false, error: "「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다." };
   }
 
   const draft: MagamListingDraft = input;
@@ -277,7 +401,7 @@ export async function createMagamListing(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("magam_sync_consent_at, magam_suspended_at")
+    .select("magam_sync_consent_at, magam_suspended_at, magam_display_name, magam_display_name_updated_at, display_name, email")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -285,13 +409,28 @@ export async function createMagamListing(
     return { ok: false, error: "마감링크 이용이 정지된 계정입니다. 고객지원으로 문의해 주세요." };
   }
 
+  const consented = Boolean(profile?.magam_sync_consent_at);
+  if (!consented && !input.linkedServiceDisclosed) {
+    return { ok: false, error: "「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다." };
+  }
+
+  const poster = resolveMagamPosterName(
+    input.posterName,
+    profile,
+    user,
+    isMagamOperatorEmail(user.email ?? (profile?.email as string | null) ?? null)
+  );
+  if (!poster.ok) return { ok: false, error: poster.error };
+
   const profilePatch: {
     magam_contact_phone: string;
     magam_sync_consent_at?: string;
     magam_sync_consent_version?: string;
-  } = { magam_contact_phone: phone };
+    magam_display_name?: string;
+    magam_display_name_updated_at?: string;
+  } = { magam_contact_phone: phone, ...poster.profilePatch };
 
-  if (!profile?.magam_sync_consent_at) {
+  if (!consented) {
     profilePatch.magam_sync_consent_at = new Date().toISOString();
     profilePatch.magam_sync_consent_version = MAGAM_SYNC_CONSENT_VERSION;
   }
@@ -301,14 +440,21 @@ export async function createMagamListing(
     .update(profilePatch)
     .eq("id", user.id);
 
-  if (profileError) return { ok: false, error: profileError.message };
+  if (profileError) {
+    return {
+      ok: false,
+      error: isUniqueViolation(profileError)
+        ? "이미 사용 중인 업체명(닉네임)입니다. 다른 이름을 입력해 주세요."
+        : profileError.message,
+    };
+  }
 
   const { data, error } = await supabase
     .from("magam_listings")
     .insert({
       user_id: user.id,
-      ...buildMagamListingMutation(input, phone, regionGu),
-      linked_service_disclosed: input.linkedServiceDisclosed,
+      ...buildMagamListingMutation({ ...input, posterName: poster.posterName }, phone, regionGu),
+      linked_service_disclosed: true,
     })
     .select("id, share_slug")
     .single();
@@ -332,10 +478,6 @@ export async function updateMagamListing(
   const phone = normalizeMagamPhone(input.contactPhone);
   if (phone.length < 10) {
     return { ok: false, error: "연락처를 입력해 주세요." };
-  }
-
-  if (!input.linkedServiceDisclosed) {
-    return { ok: false, error: "「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다." };
   }
 
   const draft: MagamListingDraft = input;
@@ -368,7 +510,7 @@ export async function updateMagamListing(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("magam_suspended_at")
+    .select("magam_sync_consent_at, magam_suspended_at, magam_display_name, magam_display_name_updated_at, display_name, email")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -376,16 +518,48 @@ export async function updateMagamListing(
     return { ok: false, error: "마감링크 이용이 정지된 계정입니다. 고객지원으로 문의해 주세요." };
   }
 
+  const consented = Boolean(profile?.magam_sync_consent_at);
+  if (!consented && !input.linkedServiceDisclosed) {
+    return { ok: false, error: "「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다." };
+  }
+
+  const poster = resolveMagamPosterName(
+    input.posterName,
+    profile,
+    user,
+    isMagamOperatorEmail(user.email ?? (profile?.email as string | null) ?? null)
+  );
+  if (!poster.ok) return { ok: false, error: poster.error };
+
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ magam_contact_phone: phone })
+    .update({
+      magam_contact_phone: phone,
+      ...poster.profilePatch,
+      ...(!consented
+        ? {
+            magam_sync_consent_at: new Date().toISOString(),
+            magam_sync_consent_version: MAGAM_SYNC_CONSENT_VERSION,
+          }
+        : {}),
+    })
     .eq("id", user.id);
 
-  if (profileError) return { ok: false, error: profileError.message };
+  if (profileError) {
+    return {
+      ok: false,
+      error: isUniqueViolation(profileError)
+        ? "이미 사용 중인 업체명(닉네임)입니다. 다른 이름을 입력해 주세요."
+        : profileError.message,
+    };
+  }
 
   const { data, error } = await supabase
     .from("magam_listings")
-    .update(buildMagamListingMutation(input, phone, regionGu))
+    .update({
+      ...buildMagamListingMutation({ ...input, posterName: poster.posterName }, phone, regionGu),
+      linked_service_disclosed: true,
+    })
     .eq("id", id)
     .eq("user_id", user.id)
     .eq("status", "open")

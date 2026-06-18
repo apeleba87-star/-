@@ -10,6 +10,7 @@ export type MagamListingPublic = {
   region_gu: string;
   body_text: string;
   contact_phone: string | null;
+  poster_name?: string | null;
   price_text: string | null;
   schedule_text: string | null;
   special_notes: string | null;

@@ -321,6 +321,8 @@ export function formatMagamListingPeekLine(listing: MagamListingPublic): string 
 /** 카카오 공유와 동일한 필드 순서 */
 export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDisplayRow[] {
   const rows: MagamDisplayRow[] = [];
+  const posterName = listing.poster_name?.trim();
+  if (posterName) rows.push({ label: "업체명", value: posterName });
 
   if (listing.listing_type === "trade") {
     if (listing.trade_side) {
@@ -392,17 +394,17 @@ export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDi
   }
 
   if (isRegularSubcontract(listing)) {
-    const frequency = formatMagamRegularFrequency(listing);
-    if (frequency) rows.push({ label: "정기 주기", value: frequency });
-
     const work = formatMagamWorkSummaryLine(listing);
     if (work) rows.push({ label: MAGAM_SHARE_WORK_LABEL, value: work });
 
-    const area = formatMagamRegularArea(listing);
-    if (area) rows.push({ label: "면적", value: area });
+    const frequency = formatMagamRegularFrequency(listing);
+    if (frequency) rows.push({ label: "주기", value: frequency });
 
     const monthly = formatMagamRegularMonthlyPrice(listing);
-    if (monthly) rows.push({ label: "월 도급금", value: monthly });
+    if (monthly) rows.push({ label: "금액", value: monthly });
+
+    const area = formatMagamRegularArea(listing);
+    if (area) rows.push({ label: "면적", value: area === "상세 설명 참조" ? "설명 참조" : area });
 
     const notes = listing.special_notes?.trim();
     if (notes) rows.push({ label: "상세 설명", value: notes });

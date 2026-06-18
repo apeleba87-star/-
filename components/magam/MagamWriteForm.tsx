@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import {
+  checkMagamDisplayNameAvailable,
   createMagamListing,
   updateMagamListing,
   type MagamWriteBootstrap,
@@ -230,6 +231,13 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
     Boolean(initialListing?.regular_area_in_detail)
   );
   const [specialNotes, setSpecialNotes] = useState(initialListing?.special_notes ?? "");
+  const [posterName, setPosterName] = useState(
+    bootstrap.isOperator
+      ? initialListing?.poster_name?.trim() || bootstrap.displayName || ""
+      : bootstrap.displayName || initialListing?.poster_name?.trim() || ""
+  );
+  const [posterNameCheck, setPosterNameCheck] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const [checkedPosterName, setCheckedPosterName] = useState("");
   const [contactPhone, setContactPhone] = useState(
     initialListing?.contact_phone
       ? formatMagamPhoneInput(initialListing.contact_phone)
@@ -238,13 +246,27 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
         : ""
   );
   const [disclosed, setDisclosed] = useState(
-    initialListing?.linked_service_disclosed ?? bootstrap.alreadyConsented
+    Boolean(initialListing?.linked_service_disclosed || bootstrap.alreadyConsented)
   );
   const [showConsentDetails, setShowConsentDetails] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isFullTimeHiring = listingType === "hiring" && hiringEmploymentType === "full_time";
   const isRegularSubcontract = listingType === "subcontract" && subcontractKind === "regular";
+  const isPosterNameLocked = !bootstrap.isOperator && Boolean(bootstrap.displayNameLockedUntil);
+  const posterNameUnlockLabel = bootstrap.displayNameLockedUntil
+    ? new Date(bootstrap.displayNameLockedUntil).toLocaleDateString("ko-KR")
+    : null;
+  const savedPosterName = bootstrap.displayName?.trim() || "";
+  const trimmedPosterName = posterName.trim();
+  const needsPosterNameCheck =
+    !bootstrap.isOperator &&
+    !isPosterNameLocked &&
+    trimmedPosterName.length > 0 &&
+    trimmedPosterName !== savedPosterName;
+  const posterNameCheckPassed =
+    !needsPosterNameCheck ||
+    (posterNameCheck === "available" && checkedPosterName === trimmedPosterName);
 
   const preview = useMemo(() => {
     if (listingType === "trade") {
@@ -355,9 +377,34 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
         }
       }
     }
+    if (trimmedPosterName.length < 2) return "공고에 표시될 업체명(닉네임)을 입력해 주세요.";
+    if (trimmedPosterName.length > 40) return "업체명(닉네임)은 40자 이하로 입력해 주세요.";
+    if (!posterNameCheckPassed) return "업체명(닉네임) 중복확인을 해 주세요.";
     if (normalizeMagamPhone(contactPhone).length < 10) return "연락처를 입력해 주세요.";
     if (!disclosed) return "「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다.";
     return null;
+  }
+
+  async function handleCheckPosterName() {
+    const name = posterName.trim();
+    if (name.length < 2) {
+      setError("업체명(닉네임)을 2자 이상 입력해 주세요.");
+      return;
+    }
+    if (name.length > 40) {
+      setError("업체명(닉네임)은 40자 이하로 입력해 주세요.");
+      return;
+    }
+    setError(null);
+    setPosterNameCheck("checking");
+    const result = await checkMagamDisplayNameAvailable(name);
+    if (!result.ok) {
+      setPosterNameCheck("idle");
+      setError(result.error);
+      return;
+    }
+    setCheckedPosterName(name);
+    setPosterNameCheck(result.data?.available ? "available" : "taken");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -382,6 +429,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
             specialNotes: specialNotes.trim() || null,
             priceAmount: priceNegotiable ? null : parseMagamPriceManInput(salePriceMan),
             priceNegotiable,
+            posterName: posterName.trim(),
             contactPhone,
             linkedServiceDisclosed: disclosed,
           }
@@ -408,6 +456,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
                 : parseMagamPriceManInput(priceMan),
             priceUnit: "man" as const,
             priceNegotiable: isFullTimeHiring || isRegularSubcontract ? priceNegotiable : false,
+            posterName: posterName.trim(),
             contactPhone,
             linkedServiceDisclosed: disclosed,
           };
@@ -426,9 +475,11 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
   }
 
   const timeSlots = listingType === "hiring" ? HIRING_SLOTS : SUBCONTRACT_SLOTS;
-  const regionStep = listingType === "trade" ? "2" : isRegularSubcontract ? "4" : "3";
-  const workStep = listingType === "trade" ? "3" : isRegularSubcontract ? "5" : "4";
-  const priceStep = isRegularSubcontract ? "7" : "5";
+  const regionStep = listingType === "trade" ? "2" : isRegularSubcontract ? "3" : "3";
+  const workStep = listingType === "trade" ? "3" : isRegularSubcontract ? "4" : "4";
+  const frequencyStep = "5";
+  const priceStep = isRegularSubcontract ? "6" : "5";
+  const areaStep = "7";
   const notesStep = isRegularSubcontract ? "8" : "6";
   const contactStep = listingType === "trade" ? "4" : isFullTimeHiring ? "6" : isRegularSubcontract ? "9" : "7";
 
@@ -526,40 +577,6 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
                 {HIRING_EMPLOYMENT_LABEL[type]}
               </MagamChoiceChip>
             ))}
-          </div>
-        </MagamComposeSection>
-      ) : null}
-
-      {isRegularSubcontract ? (
-        <MagamComposeSection step="3" title="정기 주기">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-[#5B6472]">주</span>
-              <input
-                type="number"
-                min={1}
-                inputMode="numeric"
-                className={`${magamInputClass} max-w-[100px]`}
-                disabled={loading || regularFrequencyNegotiable}
-                placeholder="3"
-                value={regularFrequencyCount}
-                onChange={(e) => setRegularFrequencyCount(e.target.value.replace(/\D/g, ""))}
-              />
-              <span className="text-sm font-medium text-[#5B6472]">회</span>
-            </div>
-            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[#141824]">
-              <input
-                type="checkbox"
-                className="accent-[#EA580C]"
-                checked={regularFrequencyNegotiable}
-                disabled={loading}
-                onChange={(e) => {
-                  setRegularFrequencyNegotiable(e.target.checked);
-                  if (e.target.checked) setRegularFrequencyCount("");
-                }}
-              />
-              협의
-            </label>
           </div>
         </MagamComposeSection>
       ) : null}
@@ -788,33 +805,34 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
       </MagamComposeSection>
 
       {isRegularSubcontract ? (
-        <MagamComposeSection step="6" title="면적">
+        <MagamComposeSection step={frequencyStep} title="정기 주기">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-[#5B6472]">주</span>
               <input
-                id="regular-pyeong"
                 type="number"
                 min={1}
                 inputMode="numeric"
-                className={`${magamInputClass} max-w-[140px]`}
-                disabled={loading || regularAreaInDetail}
-                value={pyeong}
-                onChange={(e) => setPyeong(e.target.value.replace(/\D/g, ""))}
+                className={`${magamInputClass} max-w-[100px]`}
+                disabled={loading || regularFrequencyNegotiable}
+                placeholder="3"
+                value={regularFrequencyCount}
+                onChange={(e) => setRegularFrequencyCount(e.target.value.replace(/\D/g, ""))}
               />
-              <span className="text-sm font-medium text-[#5B6472]">평</span>
+              <span className="text-sm font-medium text-[#5B6472]">회</span>
             </div>
             <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[#141824]">
               <input
                 type="checkbox"
                 className="accent-[#EA580C]"
-                checked={regularAreaInDetail}
+                checked={regularFrequencyNegotiable}
                 disabled={loading}
                 onChange={(e) => {
-                  setRegularAreaInDetail(e.target.checked);
-                  if (e.target.checked) setPyeong("");
+                  setRegularFrequencyNegotiable(e.target.checked);
+                  if (e.target.checked) setRegularFrequencyCount("");
                 }}
               />
-              상세 설명 참조
+              협의
             </label>
           </div>
         </MagamComposeSection>
@@ -868,6 +886,39 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
       </MagamComposeSection>
       ) : null}
 
+      {isRegularSubcontract ? (
+        <MagamComposeSection step={areaStep} title="면적">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                id="regular-pyeong"
+                type="number"
+                min={1}
+                inputMode="numeric"
+                className={`${magamInputClass} max-w-[140px]`}
+                disabled={loading || regularAreaInDetail}
+                value={pyeong}
+                onChange={(e) => setPyeong(e.target.value.replace(/\D/g, ""))}
+              />
+              <span className="text-sm font-medium text-[#5B6472]">평</span>
+            </div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[#141824]">
+              <input
+                type="checkbox"
+                className="accent-[#EA580C]"
+                checked={regularAreaInDetail}
+                disabled={loading}
+                onChange={(e) => {
+                  setRegularAreaInDetail(e.target.checked);
+                  if (e.target.checked) setPyeong("");
+                }}
+              />
+              상세 설명 참조
+            </label>
+          </div>
+        </MagamComposeSection>
+      ) : null}
+
       {listingType !== "trade" && !isFullTimeHiring ? (
       <MagamComposeSection step={notesStep} title={isRegularSubcontract ? "상세 설명" : "특이사항"}>
         <MagamSubLabel>{isRegularSubcontract ? "작업 시간, 요일, 포함 범위, 장비·소모품 조건" : "특이사항 (선택)"}</MagamSubLabel>
@@ -888,6 +939,53 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
       ) : null}
 
       <MagamComposeSection step={contactStep} title="연락처">
+        <div className="mb-4">
+          <MagamFieldLabel htmlFor="posterName">업체명(닉네임)</MagamFieldLabel>
+          <div className="mt-2 flex gap-2">
+            <input
+              id="posterName"
+              className={magamInputClass}
+              disabled={loading || isPosterNameLocked}
+              placeholder="예) 홍길동, 깨끗한청소"
+              maxLength={40}
+              value={posterName}
+              onChange={(e) => {
+                setPosterName(e.target.value);
+                setPosterNameCheck("idle");
+                setCheckedPosterName("");
+              }}
+            />
+            {!bootstrap.isOperator && !isPosterNameLocked ? (
+              <button
+                type="button"
+                className="shrink-0 rounded-[14px] border border-[#CBD5E1] px-3 text-sm font-semibold text-[#141824] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={loading || posterNameCheck === "checking" || trimmedPosterName.length < 2}
+                onClick={handleCheckPosterName}
+              >
+                {posterNameCheck === "checking" ? "확인 중" : "중복확인"}
+              </button>
+            ) : null}
+          </div>
+          <p className="mt-1.5 text-[13px] text-[#5B6472]">
+            {bootstrap.isOperator
+              ? "운영자 계정은 공고마다 업체명을 바꿔 저장할 수 있습니다."
+              : isPosterNameLocked
+                ? `공고에 공개되는 이름입니다. 30일에 1번만 바꿀 수 있습니다. 다음 변경 가능일: ${posterNameUnlockLabel}`
+                : savedPosterName
+                  ? "공고에 공개되는 이름입니다. 변경하려면 중복확인이 필요하고, 변경 후 30일 동안 다시 바꿀 수 없습니다."
+                  : "공고에 공개되는 이름입니다. 처음 정한 뒤에는 30일 동안 다시 바꿀 수 없고, 중복확인이 필요합니다."}
+          </p>
+          {!bootstrap.isOperator && posterNameCheck === "available" && checkedPosterName === trimmedPosterName ? (
+            <p className="mt-1.5 text-[13px] font-semibold text-[#047857]">
+              사용할 수 있는 업체명(닉네임)입니다.
+            </p>
+          ) : null}
+          {!bootstrap.isOperator && posterNameCheck === "taken" ? (
+            <p className="mt-1.5 text-[13px] font-semibold text-[#DC2626]">
+              이미 사용 중인 업체명(닉네임)입니다. 다른 이름을 입력해 주세요.
+            </p>
+          ) : null}
+        </div>
         <input
           type="tel"
           className={magamInputClass}
@@ -907,11 +1005,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
 
       {preview ? <MagamPreviewCard text={preview} /> : null}
 
-      {bootstrap.alreadyConsented ? (
-        <p className="mb-3 rounded-[14px] border border-[#D6E4FF] bg-[#EEF3FF] px-4 py-3 text-sm text-[#141824]">
-          모집 안내 노출에 동의한 상태입니다.
-        </p>
-      ) : (
+      {!bootstrap.alreadyConsented ? (
         <MagamSectionCardLike>
           <label className="flex cursor-pointer gap-3">
             <input
@@ -938,7 +1032,7 @@ export default function MagamWriteForm({ bootstrap, initialListing }: Props) {
             </ul>
           ) : null}
         </MagamSectionCardLike>
-      )}
+      ) : null}
 
       {error ? <MagamErrorBanner message={error} /> : null}
 
