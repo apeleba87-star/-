@@ -200,6 +200,15 @@ export default function MagamOwnerListingPanel({ listing: initialListing, shareU
       </Link>
 
       {isOpen ? (
+        <Link
+          href={`/magam/listing/${listing.id}/edit`}
+          className={`${magamOutlineBtnClass} block text-center text-[15px]`}
+        >
+          수정하기
+        </Link>
+      ) : null}
+
+      {isOpen ? (
 
         <MagamCloseListingButton onClick={() => setCloseDialogOpen(true)} />
 

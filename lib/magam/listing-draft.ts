@@ -31,6 +31,7 @@ export type MagamListingDraft = {
   priceAmount?: number | null;
   priceUnit?: "man" | "jan";
   priceNegotiable?: boolean;
+  hiringEmploymentType?: "daily" | "full_time";
   tradeSide?: MagamTradeSide | null;
   tradeClientCount?: number | null;
   tradeTotalRevenue?: number | null;
@@ -65,6 +66,12 @@ function scheduleLabel(draft: MagamListingDraft): string | null {
 function priceLabel(draft: MagamListingDraft): string | null {
   if (draft.listingType === "trade") {
     return formatMagamTradeSalePrice(draft.priceAmount, draft.priceNegotiable);
+  }
+  if (draft.listingType === "hiring" && draft.hiringEmploymentType === "full_time") {
+    if (draft.priceNegotiable) return "급여 협의";
+    if (draft.priceAmount == null || draft.priceAmount <= 0) return null;
+    const man = Math.floor(draft.priceAmount / 10_000);
+    return `월급 ${man.toLocaleString("ko-KR")}만원`;
   }
   if (draft.priceAmount == null || draft.priceAmount <= 0) return null;
   if (draft.priceUnit === "jan") {
@@ -109,7 +116,9 @@ export function buildMagamBodyText(draft: MagamListingDraft): string {
 
   if (draft.listingType === "hiring") {
     const desc = draft.workDescription?.trim() ?? "";
-    const parts: string[] = [type];
+    const parts: string[] = [
+      draft.hiringEmploymentType === "full_time" ? "정규직 구인" : "일당 구인",
+    ];
     if (desc) parts.push(desc);
     const price = priceLabel(draft);
     if (price) parts.push(price);
@@ -159,8 +168,9 @@ export function buildMagamPreviewLine(draft: MagamListingDraft): string {
 
   if (draft.listingType === "hiring") {
     const chunks: string[] = [];
-    if (sched) chunks.push(sched);
+    if (draft.hiringEmploymentType !== "full_time" && sched) chunks.push(sched);
     chunks.push(regionLabel);
+    chunks.push(draft.hiringEmploymentType === "full_time" ? "정규직" : "일당");
     const desc = draft.workDescription?.trim();
     if (desc) chunks.push(desc);
     if (price) chunks.push(price);

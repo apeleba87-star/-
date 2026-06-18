@@ -46,7 +46,11 @@ function formatMagamPriceShareLabel(listing: MagamListingPublic): string | null 
     return `잔 ${Math.floor(won / 10000)}`;
   }
   const man = Math.floor(won / 10000);
-  if (listing.listing_type === "hiring") return `일당 ${man}만원`;
+  if (listing.listing_type === "hiring") {
+    return listing.hiring_employment_type === "full_time"
+      ? `월급 ${man.toLocaleString("ko-KR")}만원`
+      : `일당 ${man}만원`;
+  }
   return `${man}만원`;
 }
 
@@ -108,11 +112,14 @@ function parseHiringWorkDescription(listing: MagamListingPublic): string | null 
   let rest = body;
   if (rest.startsWith("구인 · ")) rest = rest.slice("구인 · ".length);
   else if (rest.startsWith("구인·")) rest = rest.slice("구인·".length).trim();
+  else if (rest.startsWith("일당 구인 · ")) rest = rest.slice("일당 구인 · ".length);
+  else if (rest.startsWith("정규직 구인 · ")) rest = rest.slice("정규직 구인 · ".length);
 
   const segments = rest.split(" · ").map((s) => s.trim()).filter(Boolean);
   const parts: string[] = [];
   for (const seg of segments) {
-    if (/^일당\s/.test(seg) || /^\d+만원$/.test(seg) || /^잔\s/.test(seg)) break;
+    if (/^일당\s/.test(seg) || /^월급\s/.test(seg) || /^급여\s/.test(seg) || /^\d+만원$/.test(seg) || /^잔\s/.test(seg)) break;
+    if (seg === "일당" || seg === "정규직") continue;
     parts.push(seg);
   }
   return parts.length ? parts.join(" · ") : segments[0] ?? null;
@@ -143,6 +150,8 @@ export function formatMagamWorkSummaryLine(listing: MagamListingPublic): string 
 
   if (listing.listing_type === "hiring") {
     const parts: string[] = [];
+    if (listing.hiring_employment_type === "full_time") parts.push("정규직");
+    else parts.push("일당");
     const desc = parseHiringWorkDescription(listing);
     if (desc) parts.push(desc);
     const price = formatMagamPriceShareLabel(listing);
@@ -293,11 +302,22 @@ export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDi
     return rows;
   }
 
-  const schedule = formatMagamScheduleWithTime(listing);
+  const schedule =
+    listing.listing_type === "hiring" && listing.hiring_employment_type === "full_time"
+      ? null
+      : formatMagamScheduleWithTime(listing);
   if (schedule) rows.push({ label: "일정", value: schedule });
 
   const location = listing.region_gu.trim();
-  if (location) rows.push({ label: "위치", value: location });
+  if (location) {
+    rows.push({
+      label:
+        listing.listing_type === "hiring" && listing.hiring_employment_type === "full_time"
+          ? "근무 지역"
+          : "위치",
+      value: location,
+    });
+  }
 
   const work = formatMagamWorkSummaryLine(listing);
   if (work) {

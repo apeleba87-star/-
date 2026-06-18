@@ -154,6 +154,65 @@ export type CreateMagamListingInput = MagamListingDraft & {
   linkedServiceDisclosed: boolean;
 };
 
+export type UpdateMagamListingInput = CreateMagamListingInput;
+
+function buildMagamListingMutation(input: MagamListingDraft, phone: string, regionGu: string) {
+  const draft: MagamListingDraft = input;
+  const acceptsNegotiablePrice =
+    input.listingType === "trade" ||
+    (input.listingType === "hiring" && input.hiringEmploymentType === "full_time");
+  const priceNegotiable = acceptsNegotiablePrice ? Boolean(input.priceNegotiable) : false;
+
+  return {
+    listing_type: input.listingType,
+    region_gu: regionGu,
+    city_id: input.cityId,
+    district_slug: input.districtSlug,
+    body_text: buildMagamBodyText(draft).trim(),
+    contact_phone: phone,
+    work_kind: input.listingType === "trade" ? null : input.workKind || null,
+    schedule_date:
+      input.listingType === "trade" ||
+      (input.listingType === "hiring" && input.hiringEmploymentType === "full_time")
+        ? null
+        : input.scheduleDate || null,
+    time_slot:
+      input.listingType === "trade" ||
+      (input.listingType === "hiring" && input.hiringEmploymentType === "full_time")
+        ? null
+        : input.timeSlot || null,
+    pyeong:
+      input.listingType === "hiring" || input.listingType === "trade" ? null : input.pyeong ?? null,
+    ac_types: input.listingType === "hiring" || input.listingType === "trade" ? [] : input.acTypes ?? [],
+    price_amount: priceNegotiable ? null : input.priceAmount ?? null,
+    price_unit: priceNegotiable || input.priceAmount == null ? null : input.priceUnit ?? "man",
+    price_negotiable: priceNegotiable,
+    hiring_employment_type:
+      input.listingType === "hiring" ? input.hiringEmploymentType ?? "daily" : null,
+    price_text: magamPriceText(draft),
+    schedule_text: magamScheduleText(draft),
+    special_notes: input.specialNotes?.trim() || null,
+    trade_side: input.listingType === "trade" ? input.tradeSide ?? null : null,
+    trade_client_count: input.listingType === "trade" ? input.tradeClientCount ?? null : null,
+    trade_total_revenue: input.listingType === "trade" ? input.tradeTotalRevenue ?? null : null,
+    trade_regions_in_detail:
+      input.listingType === "trade" ? Boolean(input.tradeRegionsInDetail) : false,
+  };
+}
+
+function validateMagamListingDraft(input: MagamListingDraft): string | null {
+  if (
+    input.listingType === "hiring" &&
+    input.hiringEmploymentType === "full_time" &&
+    !input.priceNegotiable &&
+    (input.priceAmount == null || input.priceAmount <= 0)
+  ) {
+    return "월급을 입력하거나 급여 협의를 선택해 주세요.";
+  }
+
+  return null;
+}
+
 export async function createMagamListing(
   input: CreateMagamListingInput
 ): Promise<MagamActionResult<{ id: string; shareSlug: string }>> {
@@ -170,6 +229,9 @@ export async function createMagamListing(
   }
 
   const draft: MagamListingDraft = input;
+  const draftError = validateMagamListingDraft(draft);
+  if (draftError) return { ok: false, error: draftError };
+
   const bodyText = buildMagamBodyText(draft);
   if (bodyText.trim().length < 2) {
     return { ok: false, error: "공고 내용을 확인해 주세요." };
@@ -212,35 +274,7 @@ export async function createMagamListing(
     .from("magam_listings")
     .insert({
       user_id: user.id,
-      listing_type: input.listingType,
-      region_gu: regionGu,
-      city_id: input.cityId,
-      district_slug: input.districtSlug,
-      body_text: bodyText.trim(),
-      contact_phone: phone,
-      work_kind: input.listingType === "trade" ? null : input.workKind || null,
-      schedule_date: input.listingType === "trade" ? null : input.scheduleDate || null,
-      time_slot: input.listingType === "trade" ? null : input.timeSlot || null,
-      pyeong:
-        input.listingType === "hiring" || input.listingType === "trade"
-          ? null
-          : input.pyeong ?? null,
-      ac_types:
-        input.listingType === "hiring" || input.listingType === "trade" ? [] : input.acTypes ?? [],
-      price_amount: input.priceNegotiable ? null : input.priceAmount ?? null,
-      price_unit:
-        input.priceNegotiable || input.priceAmount == null ? null : input.priceUnit ?? "man",
-      price_negotiable: input.listingType === "trade" ? Boolean(input.priceNegotiable) : false,
-      price_text: magamPriceText(draft),
-      schedule_text: magamScheduleText(draft),
-      special_notes: input.specialNotes?.trim() || null,
-      trade_side: input.listingType === "trade" ? input.tradeSide ?? null : null,
-      trade_client_count:
-        input.listingType === "trade" ? input.tradeClientCount ?? null : null,
-      trade_total_revenue:
-        input.listingType === "trade" ? input.tradeTotalRevenue ?? null : null,
-      trade_regions_in_detail:
-        input.listingType === "trade" ? Boolean(input.tradeRegionsInDetail) : false,
+      ...buildMagamListingMutation(input, phone, regionGu),
       linked_service_disclosed: input.linkedServiceDisclosed,
     })
     .select("id, share_slug")
@@ -250,6 +284,88 @@ export async function createMagamListing(
 
   revalidatePath("/magam/live");
   revalidatePath("/magam/me");
+  revalidatePath(`/p/${data.share_slug}`);
+
+  return { ok: true, data: { id: data.id as string, shareSlug: data.share_slug as string } };
+}
+
+export async function updateMagamListing(
+  id: string,
+  input: UpdateMagamListingInput
+): Promise<MagamActionResult<{ id: string; shareSlug: string }>> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const phone = normalizeMagamPhone(input.contactPhone);
+  if (phone.length < 10) {
+    return { ok: false, error: "연락처를 입력해 주세요." };
+  }
+
+  if (!input.linkedServiceDisclosed) {
+    return { ok: false, error: "「모집 안내 노출 동의」에 체크해야 글을 올릴 수 있습니다." };
+  }
+
+  const draft: MagamListingDraft = input;
+  const draftError = validateMagamListingDraft(draft);
+  if (draftError) return { ok: false, error: draftError };
+
+  const bodyText = buildMagamBodyText(draft);
+  if (bodyText.trim().length < 2) {
+    return { ok: false, error: "공고 내용을 확인해 주세요." };
+  }
+
+  const regionGu = magamRegionDisplayLabel(input.cityId, input.districtSlug);
+  if (!regionGu) {
+    return { ok: false, error: "지역을 선택해 주세요." };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("magam_listings")
+    .select("id, listing_type, status, share_slug")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingError) return { ok: false, error: existingError.message };
+  if (!existing) return { ok: false, error: "공고를 찾을 수 없습니다." };
+  if (existing.status !== "open") return { ok: false, error: "마감된 공고는 수정할 수 없습니다." };
+  if (existing.listing_type !== input.listingType) {
+    return { ok: false, error: "공고 종류는 수정할 수 없습니다." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("magam_suspended_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.magam_suspended_at) {
+    return { ok: false, error: "마감링크 이용이 정지된 계정입니다. 고객지원으로 문의해 주세요." };
+  }
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ magam_contact_phone: phone })
+    .eq("id", user.id);
+
+  if (profileError) return { ok: false, error: profileError.message };
+
+  const { data, error } = await supabase
+    .from("magam_listings")
+    .update(buildMagamListingMutation(input, phone, regionGu))
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .eq("status", "open")
+    .select("id, share_slug")
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "공고를 찾을 수 없습니다." };
+
+  revalidatePath("/magam/live");
+  revalidatePath("/magam/me");
+  revalidatePath(`/magam/listing/${id}`);
+  revalidatePath(`/magam/listing/${id}/edit`);
   revalidatePath(`/p/${data.share_slug}`);
 
   return { ok: true, data: { id: data.id as string, shareSlug: data.share_slug as string } };

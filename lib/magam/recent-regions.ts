@@ -1,5 +1,5 @@
 const STORAGE_KEY = "magam_recent_regions_v1";
-const MAX = 3;
+const MAX = 1;
 
 export type MagamRecentRegion = {
   cityId: string;

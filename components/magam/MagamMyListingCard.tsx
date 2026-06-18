@@ -23,6 +23,13 @@ function shortDate(iso: string): string {
   return `${d.getMonth() + 1}.${d.getDate()}`;
 }
 
+function compactRowValue(label: string, value: string): string {
+  if (label !== "상세 설명" && label !== "특이사항") return value;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return value;
+  return normalized.length > 58 ? `${normalized.slice(0, 58).trim()}...` : normalized;
+}
+
 export default function MagamMyListingCard({ listing, href }: Props) {
   const isOpen = listing.status === "open";
   const scheduleHeadline = formatMagamScheduleWithTime(listing);
@@ -62,7 +69,9 @@ export default function MagamMyListingCard({ listing, href }: Props) {
           {rows.map((row) => (
             <div key={row.label} className="text-[13px] leading-relaxed">
               <span className="font-semibold text-[#5B6472]">{row.label}: </span>
-              <span className={isOpen ? "text-[#141824]" : "text-[#5B6472]"}>{row.value}</span>
+              <span className={isOpen ? "text-[#141824]" : "text-[#5B6472]"}>
+                {compactRowValue(row.label, row.value)}
+              </span>
             </div>
           ))}
         </dl>

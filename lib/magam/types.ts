@@ -32,6 +32,7 @@ export type MagamListingPublic = {
   trade_client_count?: number | null;
   trade_total_revenue?: number | null;
   trade_regions_in_detail?: boolean | null;
+  hiring_employment_type?: "daily" | "full_time" | null;
 };
 
 export type MagamListingRow = MagamListingPublic & {

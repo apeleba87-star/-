@@ -3,7 +3,6 @@ import {
   MAGAM_LISTING_TYPE_LABEL,
   MAGAM_SHARE_LINK_FOOTER_LINE,
   MAGAM_SHARE_WORK_LABEL,
-  MAGAM_TRADE_REGION_DETAIL_REF,
   MAGAM_WORK_KIND_LABEL,
 } from "@/lib/magam/copy";
 import {
@@ -40,22 +39,25 @@ function shareLinkFooter(url: string): string {
   return `${MAGAM_SHARE_LINK_FOOTER_LINE}\n${link}`;
 }
 
+function summarizeShareText(text: string, maxLength = 90): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength).trim()}...`;
+}
+
 /** 매매 — 카톡·단톡·복사 본문 (블록 사이 빈 줄) */
 export function buildMagamTradeShareBody(listing: MagamListingRow): string {
   const blocks: string[] = [];
 
-  if (listing.trade_side) {
-    blocks.push(
-      MAGAM_TRADE_SIDE_LABEL[listing.trade_side as MagamTradeSide] ?? listing.trade_side
-    );
-  }
+  const tradeTitle = listing.trade_side === "buy" ? "청소 매매(구매)" : "청소 매매(판매)";
+  blocks.push(tradeTitle);
 
   const location = listing.region_gu.trim();
   if (location) {
     const regionText = listing.trade_regions_in_detail
-      ? `${location} (${MAGAM_TRADE_REGION_DETAIL_REF})`
+      ? `대표지역 ${location} (아래 상세 참조)`
       : location;
-    blocks.push(`활동 지역: ${regionText}`);
+    blocks.push(`매매 지역: ${regionText}`);
   }
 
   const stats: string[] = [];
@@ -66,10 +68,10 @@ export function buildMagamTradeShareBody(listing: MagamListingRow): string {
   if (stats.length > 0) blocks.push(stats.join(" / "));
 
   const salePrice = formatMagamTradeSalePrice(listing.price_amount, listing.price_negotiable);
-  if (salePrice) blocks.push(salePrice);
+  if (salePrice) blocks.push(salePrice.replace(/^희망판매/, "판매가"));
 
   const notes = listing.special_notes?.trim();
-  if (notes) blocks.push(`상세 설명: ${notes}`);
+  if (notes) blocks.push(`상세 요약: ${summarizeShareText(notes)}`);
 
   return blocks.join("\n\n");
 }
@@ -134,6 +136,9 @@ function naverCafeTitle(listing: MagamListingRow): string | null {
     const body = listing.body_text.trim();
     let rest = body;
     if (rest.startsWith("구인 · ")) rest = rest.slice("구인 · ".length);
+    else if (rest.startsWith("구인·")) rest = rest.slice("구인·".length).trim();
+    else if (rest.startsWith("일당 구인 · ")) rest = rest.slice("일당 구인 · ".length);
+    else if (rest.startsWith("정규직 구인 · ")) rest = rest.slice("정규직 구인 · ".length);
     const desc = rest.split(" · ")[0]?.trim();
     if (desc) parts.push(desc);
   } else if (listing.listing_type === "trade") {

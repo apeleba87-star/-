@@ -20,6 +20,7 @@ class RecentRegion {
 
 class RecentRegionsStore {
   static const _prefKey = 'magam_recent_regions_v1';
+  static const _maxRecentRegions = 1;
 
   Future<List<RecentRegion>> load() async {
     try {
@@ -28,7 +29,7 @@ class RecentRegionsStore {
       return raw
           .map(RecentRegion.fromKey)
           .whereType<RecentRegion>()
-          .take(3)
+          .take(_maxRecentRegions)
           .toList();
     } catch (_) {
       return [];
@@ -42,7 +43,7 @@ class RecentRegionsStore {
       final existing = (prefs.getStringList(_prefKey) ?? [])
           .where((k) => k != entry.key)
           .toList();
-      final next = [entry.key, ...existing].take(3).toList();
+      final next = [entry.key, ...existing].take(_maxRecentRegions).toList();
       await prefs.setStringList(_prefKey, next);
     } catch (_) {
       // 웹/플러그인 미지원 시 무시
