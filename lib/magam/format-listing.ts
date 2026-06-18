@@ -241,6 +241,12 @@ export function formatMagamListingPeekBody(listing: MagamListingPublic): string 
   const region = listing.region_gu.trim();
   if (region) parts.push(region);
 
+  if (listing.listing_type === "hiring" && listing.hiring_employment_type === "full_time") {
+    const salary = formatMagamFullTimeSalary(listing);
+    if (salary) parts.push(salary === "급여 협의" ? salary : `월급 ${salary}`);
+    return parts.join(" · ");
+  }
+
   let work = formatMagamWorkSummaryLine(listing);
   if (work) {
     if (listing.listing_type === "subcontract") {

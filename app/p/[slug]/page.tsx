@@ -17,8 +17,10 @@ import {
   MAGAM_SHARE_PAGE_TITLE,
 } from "@/lib/magam/copy";
 import { MAGAM_SHARE_FROM_LISTING, magamShareBackHref } from "@/lib/magam/back-href";
+import { MAGAM_OG_ALT } from "@/lib/magam/metadata";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
 import { magamRegionalAdKeysForListing } from "@/lib/magam/region-ad-keys";
+import { getMagamShareBaseUrl } from "@/lib/magam/share-url";
 
 export const revalidate = 30;
 
@@ -36,13 +38,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const typeLabel = MAGAM_LISTING_TYPE_LABEL[listing.listing_type];
   const ogTitle = MAGAM_SHARE_LINK_CTA;
   const ogDescription = MAGAM_SHARE_CLOSED_CONTACT_HIDDEN;
+  const base = getMagamShareBaseUrl();
+  const url = `${base}/p/${slug}`;
+  const ogImage = `${base}/magam/opengraph-image`;
   return {
     title: { absolute: `${typeLabel} · ${listing.region_gu}` },
     description: ogDescription,
     openGraph: {
+      type: "website",
+      locale: "ko_KR",
+      url,
       title: ogTitle,
       description: ogDescription,
       siteName: MAGAM_SHARE_PAGE_TITLE,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: MAGAM_OG_ALT }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: ogTitle,
+      description: ogDescription,
+      images: [ogImage],
     },
   };
 }
