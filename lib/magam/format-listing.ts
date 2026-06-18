@@ -70,6 +70,33 @@ export function formatMagamFullTimeSalary(listing: MagamListingPublic): string |
   return price.replace(/^월급\s*/, "");
 }
 
+function isRegularSubcontract(listing: MagamListingPublic): boolean {
+  return listing.listing_type === "subcontract" && listing.subcontract_kind === "regular";
+}
+
+export function formatMagamRegularFrequency(listing: MagamListingPublic): string | null {
+  if (!isRegularSubcontract(listing)) return null;
+  if (listing.regular_frequency_negotiable) return "협의";
+  if (listing.regular_frequency_count != null && listing.regular_frequency_count > 0) {
+    return `주 ${listing.regular_frequency_count}회`;
+  }
+  return listing.schedule_text?.trim() || null;
+}
+
+export function formatMagamRegularArea(listing: MagamListingPublic): string | null {
+  if (!isRegularSubcontract(listing)) return null;
+  if (listing.regular_area_in_detail) return "상세 설명 참조";
+  if (listing.pyeong != null && listing.pyeong > 0) return `${listing.pyeong}평`;
+  return null;
+}
+
+export function formatMagamRegularMonthlyPrice(listing: MagamListingPublic): string | null {
+  if (!isRegularSubcontract(listing)) return null;
+  const price = formatMagamPriceShareLabel(listing);
+  if (!price) return null;
+  return price.replace(/^월 도급금\s*/, "");
+}
+
 function formatMagamTimeSlot(listing: MagamListingPublic): string | null {
   if (listing.time_slot) {
     return MAGAM_TIME_SLOT_LABEL[listing.time_slot] ?? listing.time_slot;
@@ -158,6 +185,14 @@ export function formatMagamWorkSummaryLine(listing: MagamListingPublic): string 
     return parts.join(" / ");
   }
 
+  if (isRegularSubcontract(listing)) {
+    const parts = ["정기청소"];
+    if (listing.work_kind) {
+      parts.push(MAGAM_WORK_KIND_LABEL[listing.work_kind] ?? listing.work_kind);
+    }
+    return parts.join(" / ");
+  }
+
   if (listing.listing_type === "hiring") {
     const parts: string[] = [];
     if (listing.hiring_employment_type === "full_time") parts.push("정규직");
@@ -240,6 +275,16 @@ export function formatMagamListingPeekBody(listing: MagamListingPublic): string 
 
   const region = listing.region_gu.trim();
   if (region) parts.push(region);
+
+  if (isRegularSubcontract(listing)) {
+    const frequency = formatMagamRegularFrequency(listing);
+    if (frequency) parts.push(frequency);
+    const work = formatMagamWorkSummaryLine(listing)?.replace(/^정기청소\s*\/\s*/, "");
+    if (work) parts.push(work);
+    const monthly = formatMagamRegularMonthlyPrice(listing);
+    if (monthly) parts.push(monthly === "월 도급금 협의" ? "협의" : monthly);
+    return parts.join(" · ");
+  }
 
   if (listing.listing_type === "hiring" && listing.hiring_employment_type === "full_time") {
     const salary = formatMagamFullTimeSalary(listing);
@@ -329,7 +374,8 @@ export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDi
   }
 
   const schedule =
-    listing.listing_type === "hiring" && listing.hiring_employment_type === "full_time"
+    (listing.listing_type === "hiring" && listing.hiring_employment_type === "full_time") ||
+    isRegularSubcontract(listing)
       ? null
       : formatMagamScheduleWithTime(listing);
   if (schedule) rows.push({ label: "일정", value: schedule });
@@ -343,6 +389,25 @@ export function getMagamListingDisplayRows(listing: MagamListingPublic): MagamDi
           : "위치",
       value: location,
     });
+  }
+
+  if (isRegularSubcontract(listing)) {
+    const frequency = formatMagamRegularFrequency(listing);
+    if (frequency) rows.push({ label: "정기 주기", value: frequency });
+
+    const work = formatMagamWorkSummaryLine(listing);
+    if (work) rows.push({ label: MAGAM_SHARE_WORK_LABEL, value: work });
+
+    const area = formatMagamRegularArea(listing);
+    if (area) rows.push({ label: "면적", value: area });
+
+    const monthly = formatMagamRegularMonthlyPrice(listing);
+    if (monthly) rows.push({ label: "월 도급금", value: monthly });
+
+    const notes = listing.special_notes?.trim();
+    if (notes) rows.push({ label: "상세 설명", value: notes });
+
+    return rows;
   }
 
   const fullTimeSalary = formatMagamFullTimeSalary(listing);

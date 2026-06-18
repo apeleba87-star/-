@@ -5,6 +5,9 @@ import {
 } from "@/lib/magam/copy";
 import {
   formatMagamFullTimeSalary,
+  formatMagamRegularArea,
+  formatMagamRegularFrequency,
+  formatMagamRegularMonthlyPrice,
   formatMagamScheduleWithTime,
   formatMagamWorkSummaryLine,
   magamWorkRowLabel,
@@ -97,11 +100,32 @@ export function buildMagamShareMessage(
 
   const blocks: string[] = [];
 
-  const schedule = formatMagamScheduleWithTime(listing);
-  if (schedule) blocks.push(`일정: ${schedule}`);
-
   const location = listing.region_gu.trim();
   if (location) blocks.push(`위치: ${location}`);
+
+  if (listing.listing_type === "subcontract" && listing.subcontract_kind === "regular") {
+    const frequency = formatMagamRegularFrequency(listing);
+    if (frequency) blocks.push(`정기 주기: ${frequency}`);
+
+    const work = formatMagamWorkSummaryLine(listing);
+    if (work) blocks.push(`${workRowLabel(listing)}: ${work}`);
+
+    const area = formatMagamRegularArea(listing);
+    if (area) blocks.push(`면적: ${area}`);
+
+    const monthly = formatMagamRegularMonthlyPrice(listing);
+    if (monthly) blocks.push(`월 도급금: ${monthly}`);
+
+    const notes = listing.special_notes?.trim();
+    if (notes) blocks.push(`상세 설명\n${notes}`);
+
+    const message = appendSharePhone(blocks.join("\n\n"), listing, includePhone);
+    const footer = shareLinkFooter(url);
+    return message ? `${message}\n\n${footer}` : footer;
+  }
+
+  const schedule = formatMagamScheduleWithTime(listing);
+  if (schedule) blocks.unshift(`일정: ${schedule}`);
 
   const fullTimeSalary = formatMagamFullTimeSalary(listing);
   if (fullTimeSalary) blocks.push(`월급: ${fullTimeSalary}`);
@@ -201,6 +225,37 @@ export function buildMagamNaverCafeMessage(
 
   const location = listing.region_gu.trim();
   if (location) addBullet("위치", location);
+
+  if (listing.listing_type === "subcontract" && listing.subcontract_kind === "regular") {
+    const frequency = formatMagamRegularFrequency(listing);
+    if (frequency) addBullet("정기 주기", frequency);
+
+    const work = formatMagamWorkSummaryLine(listing);
+    if (work) addBullet(workRowLabel(listing), work);
+
+    const area = formatMagamRegularArea(listing);
+    if (area) addBullet("면적", area);
+
+    const monthly = formatMagamRegularMonthlyPrice(listing);
+    if (monthly) addBullet("월 도급금", monthly);
+
+    const notes = listing.special_notes?.trim();
+    if (notes) {
+      lines.push("● 상세 설명");
+      for (const line of notes.split("\n")) {
+        const t = line.trim();
+        if (t) lines.push(`  - ${t}`);
+      }
+    }
+
+    if (includePhone && listing.status === "open" && listing.contact_phone?.trim()) {
+      addBullet("연락", formatKrMobilePhone(listing.contact_phone));
+    }
+
+    if (lines.length > 0) lines.push("");
+    lines.push(shareLinkFooter(url).replace(/\n/g, "\n"));
+    return lines.join("\n");
+  }
 
   const fullTimeSalary = formatMagamFullTimeSalary(listing);
   if (fullTimeSalary) addBullet("월급", fullTimeSalary);

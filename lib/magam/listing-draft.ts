@@ -20,6 +20,7 @@ export type MagamListingDraft = {
   listingType: "subcontract" | "hiring" | "trade";
   cityId: string;
   districtSlug: string;
+  subcontractKind?: "one_time" | "regular";
   workKind?: string | null;
   workDescription?: string | null;
   scheduleDate?: string | null;
@@ -32,6 +33,9 @@ export type MagamListingDraft = {
   priceUnit?: "man" | "jan";
   priceNegotiable?: boolean;
   hiringEmploymentType?: "daily" | "full_time";
+  regularFrequencyCount?: number | null;
+  regularFrequencyNegotiable?: boolean;
+  regularAreaInDetail?: boolean;
   tradeSide?: MagamTradeSide | null;
   tradeClientCount?: number | null;
   tradeTotalRevenue?: number | null;
@@ -67,6 +71,12 @@ function priceLabel(draft: MagamListingDraft): string | null {
   if (draft.listingType === "trade") {
     return formatMagamTradeSalePrice(draft.priceAmount, draft.priceNegotiable);
   }
+  if (draft.listingType === "subcontract" && draft.subcontractKind === "regular") {
+    if (draft.priceNegotiable) return "월 도급금 협의";
+    if (draft.priceAmount == null || draft.priceAmount <= 0) return null;
+    const man = Math.floor(draft.priceAmount / 10_000);
+    return `월 도급금 ${man.toLocaleString("ko-KR")}만원`;
+  }
   if (draft.listingType === "hiring" && draft.hiringEmploymentType === "full_time") {
     if (draft.priceNegotiable) return "급여 협의";
     if (draft.priceAmount == null || draft.priceAmount <= 0) return null;
@@ -80,6 +90,15 @@ function priceLabel(draft: MagamListingDraft): string | null {
   const man = Math.floor(draft.priceAmount / 10_000);
   if (draft.listingType === "hiring") return `일당 ${man}만원`;
   return `${man}만원`;
+}
+
+function regularFrequencyLabel(draft: MagamListingDraft): string | null {
+  if (draft.subcontractKind !== "regular") return null;
+  if (draft.regularFrequencyNegotiable) return "협의";
+  if (draft.regularFrequencyCount != null && draft.regularFrequencyCount > 0) {
+    return `주 ${draft.regularFrequencyCount}회`;
+  }
+  return null;
 }
 
 function buildMagamTradeBodyText(draft: MagamListingDraft): string {
@@ -120,6 +139,24 @@ export function buildMagamBodyText(draft: MagamListingDraft): string {
       draft.hiringEmploymentType === "full_time" ? "정규직 구인" : "일당 구인",
     ];
     if (desc) parts.push(desc);
+    const price = priceLabel(draft);
+    if (price) parts.push(price);
+    let text = parts.join(" · ");
+    if (text.length < 4) text = `${text} · ${regionLabel}`;
+    return text;
+  }
+
+  if (draft.subcontractKind === "regular") {
+    const work =
+      draft.workKind === "other" && draft.otherDetail?.trim()
+        ? draft.otherDetail.trim()
+        : MAGAM_WORK_KIND_LABEL[draft.workKind ?? ""] ?? draft.workKind ?? "";
+    const parts: string[] = [type, "정기청소"];
+    const frequency = regularFrequencyLabel(draft);
+    if (frequency) parts.push(frequency);
+    if (work) parts.push(work);
+    if (draft.regularAreaInDetail) parts.push("면적 상세 설명 참조");
+    else if (draft.pyeong != null) parts.push(`${draft.pyeong}평`);
     const price = priceLabel(draft);
     if (price) parts.push(price);
     let text = parts.join(" · ");
@@ -179,6 +216,23 @@ export function buildMagamPreviewLine(draft: MagamListingDraft): string {
   }
 
   const chunks: string[] = [];
+  if (draft.subcontractKind === "regular") {
+    chunks.push(regionLabel);
+    chunks.push("정기청소");
+    const frequency = regularFrequencyLabel(draft);
+    if (frequency) chunks.push(frequency);
+    if (draft.workKind === "other" && draft.otherDetail?.trim()) {
+      chunks.push(draft.otherDetail.trim());
+    } else if (draft.workKind) {
+      chunks.push(MAGAM_WORK_KIND_LABEL[draft.workKind] ?? draft.workKind);
+    }
+    if (draft.regularAreaInDetail) chunks.push("면적 상세 설명 참조");
+    else if (draft.pyeong != null) chunks.push(`${draft.pyeong}평`);
+    if (price) chunks.push(price);
+    if (draft.specialNotes?.trim()) chunks.push("상세 설명 있음");
+    return chunks.join(" · ");
+  }
+
   if (sched) chunks.push(sched);
   chunks.push(regionLabel);
   if (draft.workKind) {
@@ -192,6 +246,9 @@ export function buildMagamPreviewLine(draft: MagamListingDraft): string {
 
 export function magamScheduleText(draft: MagamListingDraft): string | null {
   if (draft.listingType === "trade") return null;
+  if (draft.listingType === "subcontract" && draft.subcontractKind === "regular") {
+    return regularFrequencyLabel(draft);
+  }
   return scheduleLabel(draft);
 }
 

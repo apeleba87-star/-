@@ -16,6 +16,7 @@ import {
   MAGAM_SHARE_LINK_CTA,
   MAGAM_SHARE_PAGE_TITLE,
 } from "@/lib/magam/copy";
+import { formatMagamClosedAgo } from "@/lib/format/magam-relative-time";
 import { MAGAM_SHARE_FROM_LISTING, magamShareBackHref } from "@/lib/magam/back-href";
 import { MAGAM_OG_ALT } from "@/lib/magam/metadata";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
@@ -36,8 +37,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "글을 찾을 수 없습니다" };
   }
   const typeLabel = MAGAM_LISTING_TYPE_LABEL[listing.listing_type];
-  const ogTitle = MAGAM_SHARE_LINK_CTA;
-  const ogDescription = MAGAM_SHARE_CLOSED_CONTACT_HIDDEN;
+  const preview = listing.body_text.replace(/\s+/g, " ").trim().slice(0, 80);
+  const closedAgo =
+    listing.status === "closed"
+      ? formatMagamClosedAgo(listing.closed_at ?? listing.updated_at)
+      : null;
+  const ogTitle =
+    listing.status === "open"
+      ? `${MAGAM_SHARE_LINK_CTA} · ${listing.region_gu}`
+      : `모집 마감 · ${listing.region_gu}`;
+  const ogDescription =
+    listing.status === "closed" && closedAgo
+      ? `${closedAgo}. ${MAGAM_SHARE_CLOSED_CONTACT_HIDDEN}`
+      : preview;
   const base = getMagamShareBaseUrl();
   const url = `${base}/p/${slug}`;
   const ogImage = `${base}/magam/opengraph-image`;

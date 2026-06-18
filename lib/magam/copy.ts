@@ -19,6 +19,11 @@ export const MAGAM_WORK_KIND_LABEL: Record<string, string> = {
   move_out: "이사 청소",
   ac: "에어컨 청소",
   other: "기타 청소",
+  office: "사무실",
+  store: "상가",
+  clinic_academy: "병원/학원",
+  villa_common: "빌라/공용부",
+  factory_warehouse: "공장/창고",
 };
 
 export const MAGAM_TIME_SLOT_LABEL: Record<string, string> = {
@@ -137,6 +142,8 @@ export const MAGAM_HIRING_FULL_TIME_WORK_HELPER =
   "근무일, 시간, 우대조건, 수습기간 등 정규직 안내를 한 번에 적어 주세요";
 export const MAGAM_SUBCONTRACT_SPECIAL_NOTES_HINT =
   "예) 엘리베이터 없음, 주차 가능, 반려동물 있음";
+export const MAGAM_REGULAR_SUBCONTRACT_DETAIL_HINT =
+  "예) 월·수·금 09:00~12:00\n화장실 2곳, 탕비실 있음\n소모품 별도, 장비 지참 필요";
 
 export const MAGAM_TRADE_PHONE_HELPER = "관심 있는 분이 연락할 번호 · 다음 글쓰기 때 자동 입력";
 export const MAGAM_TRADE_REGION_HELPER =

@@ -33,6 +33,10 @@ export type MagamListingPublic = {
   trade_total_revenue?: number | null;
   trade_regions_in_detail?: boolean | null;
   hiring_employment_type?: "daily" | "full_time" | null;
+  subcontract_kind?: "one_time" | "regular" | null;
+  regular_frequency_count?: number | null;
+  regular_frequency_negotiable?: boolean | null;
+  regular_area_in_detail?: boolean | null;
 };
 
 export type MagamListingRow = MagamListingPublic & {

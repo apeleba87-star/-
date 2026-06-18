@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import type { MagamListingPublic } from "@/lib/magam/types";
 
 const PUBLIC_SELECT =
-  "id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit, price_negotiable, trade_side, trade_client_count, trade_total_revenue, trade_regions_in_detail, hiring_employment_type";
+  "id, listing_type, region_gu, body_text, contact_phone, price_text, schedule_text, special_notes, status, share_slug, created_at, updated_at, closed_at, schedule_date, time_slot, city_id, district_slug, work_kind, pyeong, ac_types, price_amount, price_unit, price_negotiable, trade_side, trade_client_count, trade_total_revenue, trade_regions_in_detail, hiring_employment_type, subcontract_kind, regular_frequency_count, regular_frequency_negotiable, regular_area_in_detail";
 
 const LIVE_LISTING_TYPES = ["subcontract", "hiring", "trade"] as const;
 

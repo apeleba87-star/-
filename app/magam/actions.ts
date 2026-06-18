@@ -160,8 +160,10 @@ function buildMagamListingMutation(input: MagamListingDraft, phone: string, regi
   const draft: MagamListingDraft = input;
   const acceptsNegotiablePrice =
     input.listingType === "trade" ||
-    (input.listingType === "hiring" && input.hiringEmploymentType === "full_time");
+    (input.listingType === "hiring" && input.hiringEmploymentType === "full_time") ||
+    (input.listingType === "subcontract" && input.subcontractKind === "regular");
   const priceNegotiable = acceptsNegotiablePrice ? Boolean(input.priceNegotiable) : false;
+  const isRegularSubcontract = input.listingType === "subcontract" && input.subcontractKind === "regular";
 
   return {
     listing_type: input.listingType,
@@ -173,22 +175,36 @@ function buildMagamListingMutation(input: MagamListingDraft, phone: string, regi
     work_kind: input.listingType === "trade" ? null : input.workKind || null,
     schedule_date:
       input.listingType === "trade" ||
-      (input.listingType === "hiring" && input.hiringEmploymentType === "full_time")
+      (input.listingType === "hiring" && input.hiringEmploymentType === "full_time") ||
+      isRegularSubcontract
         ? null
         : input.scheduleDate || null,
     time_slot:
       input.listingType === "trade" ||
-      (input.listingType === "hiring" && input.hiringEmploymentType === "full_time")
+      (input.listingType === "hiring" && input.hiringEmploymentType === "full_time") ||
+      isRegularSubcontract
         ? null
         : input.timeSlot || null,
     pyeong:
-      input.listingType === "hiring" || input.listingType === "trade" ? null : input.pyeong ?? null,
+      input.listingType === "hiring" || input.listingType === "trade" || input.regularAreaInDetail
+        ? null
+        : input.pyeong ?? null,
     ac_types: input.listingType === "hiring" || input.listingType === "trade" ? [] : input.acTypes ?? [],
     price_amount: priceNegotiable ? null : input.priceAmount ?? null,
     price_unit: priceNegotiable || input.priceAmount == null ? null : input.priceUnit ?? "man",
     price_negotiable: priceNegotiable,
     hiring_employment_type:
       input.listingType === "hiring" ? input.hiringEmploymentType ?? "daily" : null,
+    subcontract_kind:
+      input.listingType === "subcontract" ? input.subcontractKind ?? "one_time" : null,
+    regular_frequency_count:
+      isRegularSubcontract && !input.regularFrequencyNegotiable
+        ? input.regularFrequencyCount ?? null
+        : null,
+    regular_frequency_negotiable:
+      isRegularSubcontract ? Boolean(input.regularFrequencyNegotiable) : false,
+    regular_area_in_detail:
+      isRegularSubcontract ? Boolean(input.regularAreaInDetail) : false,
     price_text: magamPriceText(draft),
     schedule_text: magamScheduleText(draft),
     special_notes: input.specialNotes?.trim() || null,
@@ -201,6 +217,23 @@ function buildMagamListingMutation(input: MagamListingDraft, phone: string, regi
 }
 
 function validateMagamListingDraft(input: MagamListingDraft): string | null {
+  if (input.listingType === "subcontract" && input.subcontractKind === "regular") {
+    if (
+      !input.regularFrequencyNegotiable &&
+      (input.regularFrequencyCount == null || input.regularFrequencyCount <= 0)
+    ) {
+      return "정기 주기를 입력하거나 협의를 선택해 주세요.";
+    }
+    if (!input.workKind) return "청소 대상을 선택해 주세요.";
+    if (!input.regularAreaInDetail && (input.pyeong == null || input.pyeong <= 0)) {
+      return "면적을 입력하거나 상세 설명 참조를 선택해 주세요.";
+    }
+    if (!input.priceNegotiable && (input.priceAmount == null || input.priceAmount <= 0)) {
+      return "월 도급금을 입력하거나 협의를 선택해 주세요.";
+    }
+    if (!input.specialNotes?.trim()) return "상세 설명을 입력해 주세요.";
+  }
+
   if (
     input.listingType === "hiring" &&
     input.hiringEmploymentType === "full_time" &&
