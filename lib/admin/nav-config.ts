@@ -61,7 +61,7 @@ export const ADMIN_HUBS: AdminHub[] = [
       { href: "/admin/g2b-ingest", label: "나라장터 입찰 수집", description: "G2B 입찰 공고 수동·Cron 수집" },
       { href: "/admin/scsbid-award-ingest", label: "낙찰(용역) 원천", description: "조달청 낙찰 데이터 수집" },
       { href: "/admin/tender-keywords", label: "입찰 키워드", description: "입찰 검색 키워드 관리" },
-      { href: "/admin/open-data-ingest", label: "입주·일자리 수집", description: "RTMS·키워드·워크넷 수동 실행" },
+      { href: "/admin/open-data-ingest", label: "데이터 수집", description: "이사검색·RTMS·키워드·워크넷 수동 실행" },
       { href: "/admin/naver-trend-keywords", label: "네이버 트렌드", description: "트렌드 키워드·엑셀 업로드" },
       { href: "/admin/job-wage-report", label: "일당 리포트", description: "일당 리포트 수동 입력" },
     ],

@@ -87,6 +87,10 @@
     {
       "path": "/api/cron/generate-demand-sales-report",
       "schedule": "30 16 1 * *"
+    },
+    {
+      "path": "/api/cron/ingest-demand-rtms-deals",
+      "schedule": "10 16 * * *"
     }
   ]
 }
