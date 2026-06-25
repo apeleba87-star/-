@@ -20,15 +20,26 @@ type SearchFilters = {
   sortBy: "count" | "lowest" | "area" | "recent";
 };
 
+type BudgetCandidatesResponse = {
+  ok?: boolean;
+  candidates?: MoveBudgetCandidate[];
+};
+
 type MoveBudgetResult = {
   candidate: MoveBudgetCandidate;
   dealRows: NonNullable<MoveBudgetCandidate["deals"]>;
   representativeDeal: NonNullable<MoveBudgetCandidate["deals"]>[number];
+  priceBand: {
+    low: NonNullable<MoveBudgetCandidate["deals"]>[number];
+    high: NonNullable<MoveBudgetCandidate["deals"]>[number];
+    minimum: NonNullable<MoveBudgetCandidate["deals"]>[number];
+    hasLowerReference: boolean;
+  };
   hasPriceVariance: boolean;
   hasLowSample: boolean;
 };
 
-type DealListSort = "area" | "recent" | "deposit" | "monthly";
+type DealListSort = "representative" | "area" | "recent" | "deposit" | "monthly";
 type SortDirection = "asc" | "desc";
 type DealListSortState = { key: DealListSort; direction: SortDirection };
 type ResultSort = "recommended" | "price";
@@ -86,115 +97,6 @@ const ORDERED_DEMAND_REGIONS = [...DEMAND_REGION_REGISTRY].sort((a, b) => {
   return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
 });
 
-const DUMMY_CANDIDATES: MoveBudgetCandidate[] = [
-  {
-    id: "yeoksam-villa-jeonse",
-    sido: "서울",
-    sigungu: "강남구",
-    dong: "역삼동",
-    housingType: "villa",
-    dealType: "jeonse",
-    amount: 320_000_000,
-    areaSqm: 42.1,
-    dealCount: 6,
-    recentMonth: "2026-05",
-    buildingHint: "다세대·빌라 소형",
-  },
-  {
-    id: "samsung-apt-jeonse",
-    sido: "서울",
-    sigungu: "강남구",
-    dong: "삼성동",
-    housingType: "apartment",
-    dealType: "jeonse",
-    amount: 340_000_000,
-    areaSqm: 39.4,
-    dealCount: 2,
-    recentMonth: "2026-05",
-    buildingHint: "소형 아파트",
-  },
-  {
-    id: "hanam-apt-jeonse",
-    sido: "경기",
-    sigungu: "하남시",
-    dong: "망월동",
-    housingType: "apartment",
-    dealType: "jeonse",
-    amount: 335_000_000,
-    areaSqm: 51.7,
-    dealCount: 12,
-    recentMonth: "2026-05",
-    buildingHint: "미사권역 아파트",
-  },
-  {
-    id: "namyangju-apt-jeonse",
-    sido: "경기",
-    sigungu: "남양주시",
-    dong: "다산동",
-    housingType: "apartment",
-    dealType: "jeonse",
-    amount: 300_000_000,
-    areaSqm: 59.8,
-    dealCount: 18,
-    recentMonth: "2026-05",
-    buildingHint: "다산신도시 아파트",
-  },
-  {
-    id: "gimpo-apt-jeonse",
-    sido: "경기",
-    sigungu: "김포시",
-    dong: "장기동",
-    housingType: "apartment",
-    dealType: "jeonse",
-    amount: 285_000_000,
-    areaSqm: 59.9,
-    dealCount: 22,
-    recentMonth: "2026-05",
-    buildingHint: "김포한강신도시",
-  },
-  {
-    id: "bupyeong-officetel-monthly",
-    sido: "인천",
-    sigungu: "부평구",
-    dong: "부평동",
-    housingType: "officetel",
-    dealType: "monthly",
-    amount: 30_000_000,
-    monthlyRent: 700_000,
-    areaSqm: 28.6,
-    dealCount: 15,
-    recentMonth: "2026-05",
-    buildingHint: "역세권 오피스텔",
-  },
-  {
-    id: "sillim-detached-monthly",
-    sido: "서울",
-    sigungu: "관악구",
-    dong: "신림동",
-    housingType: "detached_multi",
-    dealType: "monthly",
-    amount: 10_000_000,
-    monthlyRent: 650_000,
-    areaSqm: 19.8,
-    dealCount: 31,
-    recentMonth: "2026-05",
-    buildingHint: "단독/다가구 소형",
-  },
-  {
-    id: "songdo-officetel-sale",
-    sido: "인천",
-    sigungu: "연수구",
-    dong: "송도동",
-    housingType: "officetel",
-    dealType: "sale",
-    amount: 330_000_000,
-    areaSqm: 47.5,
-    dealCount: 7,
-    recentMonth: "2026-05",
-    buildingHint: "송도 오피스텔",
-  },
-];
-
 const AMOUNT_RANGE_MIN = 0;
 const AMOUNT_RANGE_MAX = 3_000_000_000;
 const AMOUNT_RANGE_STEP = 50_000_000;
@@ -206,6 +108,7 @@ const DEALS_PER_PAGE = 10;
 const SEMI_JEONSE_DEPOSIT_THRESHOLD = 100_000_000;
 
 const DEAL_LIST_SORT_LABEL: Record<DealListSort, string> = {
+  representative: "대표가 근처",
   area: "면적순",
   recent: "최근 거래일",
   deposit: "전세금/보증금",
@@ -214,8 +117,9 @@ const DEAL_LIST_SORT_LABEL: Record<DealListSort, string> = {
 
 function formatKrw(value: number): string {
   if (value >= 100_000_000) {
-    const eok = Math.floor(value / 100_000_000);
-    const rest = Math.round((value % 100_000_000) / 10_000_000);
+    const rounded = Math.round(value / 10_000_000) * 10_000_000;
+    const eok = Math.floor(rounded / 100_000_000);
+    const rest = Math.round((rounded % 100_000_000) / 10_000_000);
     return rest > 0 ? `${eok}억${rest}천만` : `${eok}억`;
   }
   return `${Math.round(value / 10_000).toLocaleString("ko-KR")}만`;
@@ -255,6 +159,7 @@ function formatDealPrice(deal: { amount: number; monthlyRent?: number }): string
 }
 
 function dealKindLabel(deal: { amount: number; monthlyRent?: number }, fallback: DealType): string {
+  if (fallback === "sale") return "매매";
   if (deal.monthlyRent && deal.monthlyRent > 0) {
     return deal.amount >= SEMI_JEONSE_DEPOSIT_THRESHOLD ? "반전세" : "월세";
   }
@@ -265,12 +170,50 @@ function compareDealPrice(a: { amount: number; monthlyRent?: number }, b: { amou
   return a.amount - b.amount || (a.monthlyRent ?? 0) - (b.monthlyRent ?? 0);
 }
 
-function chooseRepresentativeDeal(deals: NonNullable<MoveBudgetCandidate["deals"]>): NonNullable<MoveBudgetCandidate["deals"]>[number] {
+function chooseRepresentativeDeal(
+  deals: NonNullable<MoveBudgetCandidate["deals"]>,
+  dealType: DealType
+): NonNullable<MoveBudgetCandidate["deals"]>[number] {
+  if (dealType === "sale") {
+    return [...deals].sort(compareDealPrice)[0] ?? deals[0]!;
+  }
   const preferred = deals.filter((deal) => deal.contractType !== "renewal");
   const pool = preferred.length > 0 ? preferred : deals;
   const sorted = [...pool].sort(compareDealPrice);
   const index = sorted.length >= 6 ? Math.floor((sorted.length - 1) * 0.25) : 0;
   return sorted[index] ?? deals[0]!;
+}
+
+function buildRepresentativePriceBand(
+  deals: NonNullable<MoveBudgetCandidate["deals"]>,
+  dealType: DealType
+): MoveBudgetResult["priceBand"] {
+  const sortedAll = [...deals].sort(compareDealPrice);
+  const minimum = sortedAll[0] ?? deals[0]!;
+  const preferred = dealType === "sale" ? sortedAll : deals.filter((deal) => deal.contractType !== "renewal").sort(compareDealPrice);
+  const pool = preferred.length >= 3 ? preferred : sortedAll;
+  const lowIndex = pool.length >= 6 ? Math.floor((pool.length - 1) * 0.25) : 0;
+  const highIndex = pool.length >= 6 ? Math.floor((pool.length - 1) * 0.5) : Math.min(pool.length - 1, lowIndex + 1);
+  const low = pool[lowIndex] ?? minimum;
+  const high = pool[Math.max(lowIndex, highIndex)] ?? low;
+  const minGap = low.amount - minimum.amount;
+  const hasLowerReference =
+    compareDealPrice(minimum, low) < 0 &&
+    (minimum.contractType === "renewal" || minGap >= 30_000_000 || (low.amount > 0 && minimum.amount / low.amount <= 0.85));
+
+  return { low, high, minimum, hasLowerReference };
+}
+
+function formatPriceBand(priceBand: MoveBudgetResult["priceBand"]): string {
+  if (compareDealPrice(priceBand.low, priceBand.high) === 0) return formatDealPrice(priceBand.low);
+  const sameMonthlyRent = (priceBand.low.monthlyRent ?? 0) === (priceBand.high.monthlyRent ?? 0);
+  if (priceBand.low.monthlyRent || priceBand.high.monthlyRent) {
+    if (sameMonthlyRent) {
+      return `${formatKrw(priceBand.low.amount)}~${formatKrw(priceBand.high.amount)} / 월 ${formatKrw(priceBand.low.monthlyRent ?? 0)}`;
+    }
+    return `${formatDealPrice(priceBand.low)}~${formatDealPrice(priceBand.high)}`;
+  }
+  return `${formatKrw(priceBand.low.amount)}~${formatKrw(priceBand.high.amount)}대`;
 }
 
 function hasLargePriceVariance(deals: NonNullable<MoveBudgetCandidate["deals"]>): boolean {
@@ -284,12 +227,16 @@ function hasLargePriceVariance(deals: NonNullable<MoveBudgetCandidate["deals"]>)
 
 function sortDeals(
   deals: NonNullable<MoveBudgetCandidate["deals"]>,
-  sortState: DealListSortState
+  sortState: DealListSortState,
+  priceBand?: MoveBudgetResult["priceBand"]
 ): NonNullable<MoveBudgetCandidate["deals"]> {
   const direction = sortState.direction === "asc" ? 1 : -1;
   return [...deals].sort((a, b) => {
     let primary = 0;
-    if (sortState.key === "area") primary = a.areaSqm - b.areaSqm;
+    if (sortState.key === "representative" && priceBand) {
+      const target = priceBand.low.amount;
+      primary = Math.abs(a.amount - target) - Math.abs(b.amount - target);
+    } else if (sortState.key === "area") primary = a.areaSqm - b.areaSqm;
     else if (sortState.key === "recent") primary = a.dealDate.localeCompare(b.dealDate);
     else if (sortState.key === "monthly") primary = (a.monthlyRent ?? 0) - (b.monthlyRent ?? 0);
     else primary = a.amount - b.amount;
@@ -298,8 +245,9 @@ function sortDeals(
 }
 
 export default function MoveBudgetExplorer({ initialCandidates = [] }: { initialCandidates?: MoveBudgetCandidate[] }) {
-  const candidates = initialCandidates.length > 0 ? initialCandidates : DUMMY_CANDIDATES;
-  const hasLiveData = initialCandidates.length > 0;
+  const [candidates, setCandidates] = useState<MoveBudgetCandidate[]>(initialCandidates);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [dealTypes, setDealTypes] = useState<DealType[]>(["jeonse"]);
   const [housingTypes, setHousingTypes] = useState<HousingType[]>(["apartment"]);
   const [regionKeys, setRegionKeys] = useState<string[]>([ALL_REGION_KEY]);
@@ -307,7 +255,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
   const [budgetMax, setBudgetMax] = useState(AMOUNT_RANGE_MAX);
   const [monthlyMin, setMonthlyMin] = useState(MONTHLY_RENT_RANGE_MIN);
   const [monthlyMax, setMonthlyMax] = useState(MONTHLY_RENT_RANGE_MAX);
-  const [lookbackMonths] = useState(3);
+  const [lookbackMonths] = useState(2);
   const sortBy = "count" as const;
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
@@ -326,7 +274,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
     budgetMax: AMOUNT_RANGE_MAX,
     monthlyMin: MONTHLY_RENT_RANGE_MIN,
     monthlyMax: MONTHLY_RENT_RANGE_MAX,
-    lookbackMonths: 3,
+    lookbackMonths: 2,
     sortBy: "count",
   });
 
@@ -343,7 +291,10 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
   };
   const hasPendingChanges = JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters);
 
-  function applySearch() {
+  async function applySearch() {
+    const nextFilters = draftFilters;
+    setIsSearching(true);
+    setSearchError("");
     setAppliedFilters(draftFilters);
     setExpandedCandidateId(null);
     setDealPageByCandidate({});
@@ -351,6 +302,21 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
     setResultSort("recommended");
     setResultSortDirection("asc");
     setHasSearched(true);
+    try {
+      const response = await fetch("/api/move/budget-candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextFilters),
+      });
+      const payload = (await response.json()) as BudgetCandidatesResponse;
+      if (!response.ok || !payload.ok) throw new Error("search failed");
+      setCandidates(payload.candidates ?? []);
+    } catch {
+      setCandidates([]);
+      setSearchError("거래 데이터를 불러오지 못했습니다. 잠시 후 다시 검색해 주세요.");
+    } finally {
+      setIsSearching(false);
+    }
   }
 
   function toggleDealType(type: DealType) {
@@ -403,11 +369,13 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
         return true;
       });
       if (dealRows.length === 0) return [];
-      const representativeDeal = chooseRepresentativeDeal(dealRows);
+      const representativeDeal = chooseRepresentativeDeal(dealRows, candidate.dealType);
+      const priceBand = buildRepresentativePriceBand(dealRows, candidate.dealType);
       return [{
         candidate,
         dealRows: [...dealRows].sort(compareDealPrice),
         representativeDeal,
+        priceBand,
         hasPriceVariance: hasLargePriceVariance(dealRows),
         hasLowSample: dealRows.length <= 2,
       }];
@@ -589,7 +557,22 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                 <span className="shrink-0 text-xs text-slate-400">{budgetOpen ? "닫기" : "선택"}</span>
               </button>
               {budgetOpen ? (
-                <div className="absolute left-0 right-0 z-30 mt-2 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                <div className="absolute left-0 right-0 z-30 mt-2 max-w-[calc(100vw-2rem)] space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-base font-black text-slate-950">
+                      {dealTypes.includes("monthly") ? "보증금" : budgetSectionTitle(dealTypes[0] ?? "jeonse").replace(/^4\. /, "")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBudgetMin(AMOUNT_RANGE_MIN);
+                        setBudgetMax(AMOUNT_RANGE_MAX);
+                      }}
+                      className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-500"
+                    >
+                      초기화
+                    </button>
+                  </div>
                   <BudgetRangeSlider
                     min={budgetMin}
                     max={budgetMax}
@@ -602,26 +585,41 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                     }}
                   />
                   {dealTypes.includes("monthly") ? (
-                    <MonthlyRentRangeSlider
-                      min={monthlyMin}
-                      max={monthlyMax}
-                      onChange={(nextMin, nextMax) => {
-                        const min = Math.max(MONTHLY_RENT_RANGE_MIN, Math.min(nextMin, MONTHLY_RENT_RANGE_MAX));
-                        const max = Math.max(MONTHLY_RENT_RANGE_MIN, Math.min(nextMax, MONTHLY_RENT_RANGE_MAX));
-                        if (min > max) {
-                          setMonthlyMin(max);
-                          setMonthlyMax(min);
-                        } else {
-                          setMonthlyMin(min);
-                          setMonthlyMax(max);
-                        }
-                      }}
-                    />
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-base font-black text-slate-950">월세</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMonthlyMin(MONTHLY_RENT_RANGE_MIN);
+                            setMonthlyMax(MONTHLY_RENT_RANGE_MAX);
+                          }}
+                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-500"
+                        >
+                          초기화
+                        </button>
+                      </div>
+                      <MonthlyRentRangeSlider
+                        min={monthlyMin}
+                        max={monthlyMax}
+                        onChange={(nextMin, nextMax) => {
+                          const min = Math.max(MONTHLY_RENT_RANGE_MIN, Math.min(nextMin, MONTHLY_RENT_RANGE_MAX));
+                          const max = Math.max(MONTHLY_RENT_RANGE_MIN, Math.min(nextMax, MONTHLY_RENT_RANGE_MAX));
+                          if (min > max) {
+                            setMonthlyMin(max);
+                            setMonthlyMax(min);
+                          } else {
+                            setMonthlyMin(min);
+                            setMonthlyMax(max);
+                          }
+                        }}
+                      />
+                    </div>
                   ) : null}
                   <button
                     type="button"
                     onClick={() => setBudgetOpen(false)}
-                    className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white"
+                    className="w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-teal-700"
                   >
                     적용
                   </button>
@@ -632,7 +630,9 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
         </div>
         <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-relaxed text-slate-500">
-            {hasPendingChanges
+            {isSearching
+              ? "조건에 맞는 최근 거래를 불러오는 중입니다."
+              : hasPendingChanges
               ? "조건이 변경되었습니다. 검색하기를 누르면 결과가 갱신됩니다."
               : hasSearched
                 ? `현재 결과: ${headline}`
@@ -641,12 +641,14 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
           <button
             type="button"
             onClick={applySearch}
+            disabled={isSearching}
             className={cn(
               "min-h-[46px] rounded-2xl px-5 py-3 text-sm font-black text-white shadow-sm transition",
+              isSearching && "cursor-wait opacity-70",
               hasPendingChanges ? "bg-teal-700 hover:bg-teal-800" : "bg-slate-900 hover:bg-slate-800"
             )}
           >
-            검색하기
+            {isSearching ? "검색 중..." : "검색하기"}
           </button>
         </div>
       </section>
@@ -657,12 +659,12 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
             <h2 className="text-xl font-black text-slate-950">내 예산에 맞는 최근 거래 후보</h2>
             <p className="mt-1 text-sm text-slate-500">
               {hasSearched
-                ? `${headline} · 최근 ${lookbackMonths}개월 ${hasLiveData ? "아파트 실거래 기준" : "더미 데이터 기준"}`
+                ? `${headline} · 최근 ${lookbackMonths}개월 실거래 기준`
                 : "조건을 선택하고 검색하기를 누르면 후보가 표시됩니다."}
             </p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            {hasSearched ? `${results.length}개 후보` : "검색 전"}
+            {isSearching ? "검색 중" : hasSearched ? `${results.length}개 후보` : "검색 전"}
           </span>
         </div>
         {hasSearched ? (
@@ -704,7 +706,19 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
           </div>
         ) : null}
 
-        {!hasSearched ? (
+        {searchError ? (
+          <div className="rounded-3xl border border-rose-100 bg-rose-50 px-5 py-8 text-center">
+            <p className="text-lg font-black text-rose-900">검색 결과를 불러오지 못했습니다</p>
+            <p className="mt-2 text-sm leading-relaxed text-rose-700">{searchError}</p>
+          </div>
+        ) : isSearching ? (
+          <div className="rounded-3xl border border-slate-200 bg-white px-5 py-8 text-center shadow-sm">
+            <p className="text-lg font-black text-slate-950">최근 거래를 불러오는 중입니다</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              선택한 조건에 맞는 거래만 조회하고 있습니다.
+            </p>
+          </div>
+        ) : !hasSearched ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center">
             <p className="text-lg font-black text-slate-950">검색 조건을 먼저 선택하세요</p>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
@@ -713,11 +727,11 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
           </div>
         ) : results.length > 0 ? (
           <div className="grid gap-3">
-            {results.map(({ candidate, dealRows, representativeDeal, hasPriceVariance, hasLowSample }) => {
+            {results.map(({ candidate, dealRows, representativeDeal, priceBand, hasPriceVariance, hasLowSample }) => {
               const isExpanded = expandedCandidateId === candidate.id;
               const currentDealPage = dealPageByCandidate[candidate.id] ?? 1;
-              const currentDealSort = dealSortByCandidate[candidate.id] ?? { key: "deposit", direction: "asc" };
-              const sortedDealRows = sortDeals(dealRows, currentDealSort);
+              const currentDealSort = dealSortByCandidate[candidate.id] ?? { key: "representative", direction: "asc" };
+              const sortedDealRows = sortDeals(dealRows, currentDealSort, priceBand);
               const totalDealPages = Math.max(1, Math.ceil(sortedDealRows.length / DEALS_PER_PAGE));
               const visibleDeals = sortedDealRows.slice((currentDealPage - 1) * DEALS_PER_PAGE, currentDealPage * DEALS_PER_PAGE);
               return (
@@ -729,20 +743,22 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
                         <p className="text-3xl font-black tracking-tight text-slate-950">
-                          {formatKrw(representativeDeal.amount)}
-                          {representativeDeal.monthlyRent
-                            ? <span className="text-xl"> / 월 {formatKrw(representativeDeal.monthlyRent)}</span>
-                            : null}
+                          {formatPriceBand(priceBand)}
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-600">
-                          현재 조건에 맞는 {dealKindLabel(representativeDeal, candidate.dealType)} {dealRows.length}건 기준 낮은 가격대
+                          최근 {appliedFilters.lookbackMonths}개월 기준 많이 보이는 낮은 가격대
                         </p>
+                        {priceBand.hasLowerReference ? (
+                          <p className="mt-1 text-xs font-bold text-slate-500">
+                            최저 거래 {formatDealPrice(priceBand.minimum)} 있음 · 갱신/특수거래 가능성
+                          </p>
+                        ) : null}
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
                             {representativeDeal.buildingName} · {HOUSING_LABEL[candidate.housingType]}
                           </span>
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                            {representativeDeal.contractLabel}
+                            {candidate.dealType === "sale" ? "매매" : representativeDeal.contractLabel}
                           </span>
                           {representativeDeal.monthlyRent ? (
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
@@ -773,10 +789,10 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                       }}
                       className="rounded-xl px-2 py-1 transition hover:bg-slate-50"
                     >
-                      <p className="text-[11px] font-bold text-slate-400">거래건수</p>
+                      <p className="text-[11px] font-bold text-slate-400">거래표본</p>
                       <p className="mt-1 text-sm font-black text-slate-900">{dealRows.length}건</p>
                       <p className="mt-0.5 text-[11px] font-semibold text-teal-700">
-                        {isExpanded ? "접기" : "내역 보기"}
+                        {isExpanded ? "접기" : "참고 거래 보기"}
                       </p>
                     </button>
                     <SimpleMetric label="전용면적" value={`${representativeDeal.areaSqm}㎡`} sub={pyeong(representativeDeal.areaSqm)} />
@@ -785,7 +801,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
 
                   {hasPriceVariance ? (
                     <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold leading-relaxed text-red-700">
-                      같은 지역·유형 안에서 금액 차이가 큽니다. 갱신계약이나 특수 거래가 포함됐을 수 있으니 거래내역을 확인하세요.
+                      같은 지역·유형 안에서 금액 차이가 큽니다. 최저가만 보고 판단하지 말고 대표 가격대와 참고 거래를 함께 확인하세요.
                     </p>
                   ) : null}
 
@@ -793,14 +809,11 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-black text-slate-900">
-                          거래 내역 <span className="text-slate-500">({dealRows.length}건)</span>
-                        </p>
-                        <p className="text-xs font-semibold text-slate-500">
-                          {currentDealPage} / {totalDealPages}페이지
+                          참고 거래 내역 <span className="text-slate-500">({dealRows.length}건)</span>
                         </p>
                       </div>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        현재 검색 조건에 맞는 거래만 표시합니다. 갱신·특수 거래는 실제 시세와 다를 수 있습니다.
+                      <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                        대표 가격대와 가까운 거래를 먼저 보여줍니다. 갱신계약이나 특수거래는 현재 체감 시세보다 낮게 보일 수 있습니다.
                       </p>
                       <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
                         {(Object.keys(DEAL_LIST_SORT_LABEL) as DealListSort[]).map((sort) => (
@@ -811,7 +824,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                               setDealSortByCandidate((prev) => {
                                 const current = prev[candidate.id] ?? { key: "deposit" as DealListSort, direction: "asc" as SortDirection };
                                 const nextDirection: SortDirection =
-                                  current.key === sort && current.direction === "asc" ? "desc" : "asc";
+                                  sort === "representative" ? "asc" : current.key === sort && current.direction === "asc" ? "desc" : "asc";
                                 return { ...prev, [candidate.id]: { key: sort, direction: nextDirection } };
                               });
                               setDealPageByCandidate((prev) => ({ ...prev, [candidate.id]: 1 }));
@@ -824,7 +837,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                             )}
                           >
                             {DEAL_LIST_SORT_LABEL[sort]}
-                            {currentDealSort.key === sort ? (currentDealSort.direction === "asc" ? " ↑" : " ↓") : null}
+                            {currentDealSort.key === sort && sort !== "representative" ? (currentDealSort.direction === "asc" ? " ↑" : " ↓") : null}
                           </button>
                         ))}
                       </div>
@@ -869,7 +882,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                                             : "bg-teal-50 text-teal-700"
                                       )}
                                     >
-                                      {deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
+                                      {candidate.dealType === "sale" ? "매매" : deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
                                     </span>
                                   </div>
                                 </div>
@@ -894,7 +907,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                                           : "bg-teal-50 text-teal-700"
                                     )}
                                   >
-                                    {deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
+                                    {candidate.dealType === "sale" ? "매매" : deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
                                   </span>
                                 </span>
                                 <span className="hidden whitespace-nowrap text-right font-black tabular-nums text-slate-950 sm:block">
@@ -909,36 +922,46 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                           상세 거래 내역은 실제 데이터 수집 후 표시됩니다.
                         </p>
                       )}
-                      {totalDealPages > 1 ? (
-                        <div className="mt-3 flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDealPageByCandidate((prev) => ({
-                                ...prev,
-                                [candidate.id]: Math.max(1, currentDealPage - 1),
-                              }))
-                            }
-                            disabled={currentDealPage <= 1}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
-                          >
-                            이전
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDealPageByCandidate((prev) => ({
-                                ...prev,
-                                [candidate.id]: Math.min(totalDealPages, currentDealPage + 1),
-                              }))
-                            }
-                            disabled={currentDealPage >= totalDealPages}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
-                          >
-                            다음
-                          </button>
+                      <div className="mt-3 rounded-2xl bg-white px-3 py-3 ring-1 ring-slate-100">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs font-black text-slate-500">
+                            {currentDealPage} / {totalDealPages}페이지
+                          </p>
+                          {totalDealPages > 1 ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDealPageByCandidate((prev) => ({
+                                    ...prev,
+                                    [candidate.id]: Math.max(1, currentDealPage - 1),
+                                  }))
+                                }
+                                disabled={currentDealPage <= 1}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
+                              >
+                                이전
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDealPageByCandidate((prev) => ({
+                                    ...prev,
+                                    [candidate.id]: Math.min(totalDealPages, currentDealPage + 1),
+                                  }))
+                                }
+                                disabled={currentDealPage >= totalDealPages}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40"
+                              >
+                                다음
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
-                      ) : null}
+                        <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                          현재 검색 조건에 맞는 거래만 표시합니다. 갱신·특수 거래는 실제 시세와 다를 수 있습니다.
+                        </p>
+                      </div>
                     </div>
                   ) : null}
 
@@ -1020,20 +1043,81 @@ function BudgetRangeSlider({
   const maxPercent = (max / AMOUNT_RANGE_MAX) * 100;
   const displayMin = min === 0 ? "최저 없음" : formatKrw(min);
   const displayMax = max >= AMOUNT_RANGE_MAX ? "30억 이상" : formatKrw(max);
+  const title = minLabel.replace(" 최저", "");
+  const summary = min === AMOUNT_RANGE_MIN && max === AMOUNT_RANGE_MAX ? "전체" : `${displayMin} ~ ${displayMax}`;
+  const [editOpen, setEditOpen] = useState(false);
+  const [draftMin, setDraftMin] = useState("");
+  const [draftMax, setDraftMax] = useState("");
+
+  function openEditor() {
+    setDraftMin(min === AMOUNT_RANGE_MIN ? "" : String(Math.round(min / 10_000)));
+    setDraftMax(max === AMOUNT_RANGE_MAX ? "" : String(Math.round(max / 10_000)));
+    setEditOpen(true);
+  }
+
+  function applyEditor() {
+    const nextMin = draftMin.trim() ? Number(draftMin.replace(/,/g, "")) * 10_000 : AMOUNT_RANGE_MIN;
+    const nextMax = draftMax.trim() ? Number(draftMax.replace(/,/g, "")) * 10_000 : AMOUNT_RANGE_MAX;
+    if (!Number.isFinite(nextMin) || !Number.isFinite(nextMax)) return;
+    onChange(nextMin, nextMax);
+    setEditOpen(false);
+  }
 
   return (
     <div className="space-y-3 rounded-2xl bg-white p-3 ring-1 ring-slate-200">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold text-slate-400">{minLabel}</p>
-          <p className="text-sm font-black text-slate-900">{displayMin}</p>
-        </div>
-        <span className="text-xs font-bold text-slate-300">~</span>
-        <div className="text-right">
-          <p className="text-[11px] font-semibold text-slate-400">{maxLabel}</p>
-          <p className="text-sm font-black text-slate-900">{displayMax}</p>
-        </div>
+        <p className="text-sm font-black text-slate-900">
+          {title} <span className="text-teal-700">{summary}</span>
+        </p>
+        <button
+          type="button"
+          onClick={openEditor}
+          className="rounded-full px-2 py-1 text-sm font-black text-slate-500 hover:bg-slate-100"
+          aria-label={`${title} 직접 설정`}
+        >
+          ✎
+        </button>
       </div>
+      {editOpen ? (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+            <label className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="block text-[11px] font-bold text-slate-400">최소</span>
+              <span className="flex items-center gap-1">
+                <input
+                  value={draftMin}
+                  onChange={(e) => setDraftMin(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="전체"
+                  className="min-w-0 flex-1 bg-transparent text-right text-sm font-black outline-none"
+                />
+                <span className="text-sm font-bold text-slate-700">만</span>
+              </span>
+            </label>
+            <span className="hidden text-sm font-black text-slate-400 sm:block">~</span>
+            <label className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="block text-[11px] font-bold text-slate-400">최대</span>
+              <span className="flex items-center gap-1">
+                <input
+                  value={draftMax}
+                  onChange={(e) => setDraftMax(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="전체"
+                  className="min-w-0 flex-1 bg-transparent text-right text-sm font-black outline-none"
+                />
+                <span className="text-sm font-bold text-slate-700">만</span>
+              </span>
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={applyEditor}
+            className="mt-3 w-full rounded-xl bg-teal-600 px-4 py-2 text-sm font-black text-white"
+          >
+            직접 설정 적용
+          </button>
+        </div>
+      ) : null}
 
       <div className="relative h-9">
         <div className="absolute left-0 right-0 top-4 h-2 rounded-full bg-slate-100" />
@@ -1063,10 +1147,13 @@ function BudgetRangeSlider({
         />
       </div>
 
-      <div className="flex justify-between text-[11px] font-semibold text-slate-400">
-        <span>5천만원 미만</span>
-        <span>1억</span>
-        <span>30억</span>
+      <div className="flex justify-between text-[11px] font-semibold text-slate-500">
+        <span>최소</span>
+        <span>5억</span>
+        <span>10억</span>
+        <span>15억</span>
+        <span>20억</span>
+        <span>최대</span>
       </div>
     </div>
   );
@@ -1087,46 +1174,80 @@ function MonthlyRentRangeSlider({
     ((max - MONTHLY_RENT_RANGE_MIN) / (MONTHLY_RENT_RANGE_MAX - MONTHLY_RENT_RANGE_MIN)) * 100;
   const displayMin = min === 0 ? "최저 없음" : `월 ${formatKrw(min)}`;
   const displayMax = max >= MONTHLY_RENT_RANGE_MAX ? "월 1000만원 이상" : `월 ${formatKrw(max)}`;
+  const summary = min === MONTHLY_RENT_RANGE_MIN && max === MONTHLY_RENT_RANGE_MAX ? "전체" : `${displayMin} ~ ${displayMax}`;
+  const [editOpen, setEditOpen] = useState(false);
+  const [draftMin, setDraftMin] = useState("");
+  const [draftMax, setDraftMax] = useState("");
+
+  function openEditor() {
+    setDraftMin(min === MONTHLY_RENT_RANGE_MIN ? "" : String(Math.round(min / 10_000)));
+    setDraftMax(max === MONTHLY_RENT_RANGE_MAX ? "" : String(Math.round(max / 10_000)));
+    setEditOpen(true);
+  }
+
+  function applyEditor() {
+    const nextMin = draftMin.trim() ? Number(draftMin.replace(/,/g, "")) * 10_000 : MONTHLY_RENT_RANGE_MIN;
+    const nextMax = draftMax.trim() ? Number(draftMax.replace(/,/g, "")) * 10_000 : MONTHLY_RENT_RANGE_MAX;
+    if (!Number.isFinite(nextMin) || !Number.isFinite(nextMax)) return;
+    onChange(nextMin, nextMax);
+    setEditOpen(false);
+  }
 
   return (
     <div className="space-y-3 rounded-2xl bg-white p-3 ring-1 ring-slate-200">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold text-slate-400">월세 최저</p>
-          <p className="text-sm font-black text-slate-900">{displayMin}</p>
-        </div>
-        <span className="text-xs font-bold text-slate-300">~</span>
-        <div className="text-right">
-          <p className="text-[11px] font-semibold text-slate-400">월세 최고</p>
-          <p className="text-sm font-black text-slate-900">{displayMax}</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
+        <p className="text-sm font-black text-slate-900">
+          월세 <span className="text-teal-700">{summary}</span>
+        </p>
         <button
           type="button"
-          onClick={() => onChange(MONTHLY_RENT_RANGE_MIN, 1_900_000)}
-          className={cn(
-            "rounded-xl border px-3 py-2 text-xs font-bold transition",
-            min === MONTHLY_RENT_RANGE_MIN && max === 1_900_000
-              ? "border-teal-500 bg-teal-50 text-teal-800"
-              : "border-slate-200 bg-white text-slate-700 hover:border-teal-200"
-          )}
+          onClick={openEditor}
+          className="rounded-full px-2 py-1 text-sm font-black text-slate-500 hover:bg-slate-100"
+          aria-label="월세 직접 설정"
         >
-          200만원 미만
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(2_000_000, MONTHLY_RENT_RANGE_MAX)}
-          className={cn(
-            "rounded-xl border px-3 py-2 text-xs font-bold transition",
-            min === 2_000_000 && max === MONTHLY_RENT_RANGE_MAX
-              ? "border-teal-500 bg-teal-50 text-teal-800"
-              : "border-slate-200 bg-white text-slate-700 hover:border-teal-200"
-          )}
-        >
-          200만원 이상
+          ✎
         </button>
       </div>
+      {editOpen ? (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+            <label className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="block text-[11px] font-bold text-slate-400">최소</span>
+              <span className="flex items-center gap-1">
+                <input
+                  value={draftMin}
+                  onChange={(e) => setDraftMin(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="전체"
+                  className="min-w-0 flex-1 bg-transparent text-right text-sm font-black outline-none"
+                />
+                <span className="text-sm font-bold text-slate-700">만</span>
+              </span>
+            </label>
+            <span className="hidden text-sm font-black text-slate-400 sm:block">~</span>
+            <label className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span className="block text-[11px] font-bold text-slate-400">최대</span>
+              <span className="flex items-center gap-1">
+                <input
+                  value={draftMax}
+                  onChange={(e) => setDraftMax(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="전체"
+                  className="min-w-0 flex-1 bg-transparent text-right text-sm font-black outline-none"
+                />
+                <span className="text-sm font-bold text-slate-700">만</span>
+              </span>
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={applyEditor}
+            className="mt-3 w-full rounded-xl bg-teal-600 px-4 py-2 text-sm font-black text-white"
+          >
+            직접 설정 적용
+          </button>
+        </div>
+      ) : null}
       <div className="relative h-8">
         <div className="absolute left-0 right-0 top-3 h-2 rounded-full bg-slate-100" />
         <div
@@ -1154,9 +1275,13 @@ function MonthlyRentRangeSlider({
           className="pointer-events-none absolute inset-x-0 top-0 h-8 w-full appearance-none bg-transparent accent-teal-700 [&::-moz-range-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:pointer-events-auto"
         />
       </div>
-      <div className="flex justify-between text-[11px] font-semibold text-slate-400">
-        <span>월 0원</span>
-        <span>월 1000만원</span>
+      <div className="flex justify-between text-[11px] font-semibold text-slate-500">
+        <span>최소</span>
+        <span>100만</span>
+        <span>200만</span>
+        <span>300만</span>
+        <span>400만</span>
+        <span>최대</span>
       </div>
     </div>
   );

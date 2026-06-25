@@ -22,8 +22,8 @@ async function handleRtmsDealsIngest(req: NextRequest): Promise<NextResponse> {
 
   try {
     const cityId = req.nextUrl.searchParams.get("cityId")?.trim() || pickRotatingDemandCityId();
-    const monthsBackRaw = Number(req.nextUrl.searchParams.get("monthsBack") ?? process.env.DEMAND_RTMS_DEALS_MONTHS_BACK ?? 3);
-    const monthsBack = Number.isFinite(monthsBackRaw) ? Math.round(monthsBackRaw) : 3;
+    const monthsBackRaw = Number(req.nextUrl.searchParams.get("monthsBack") ?? process.env.DEMAND_RTMS_DEALS_MONTHS_BACK ?? 2);
+    const monthsBack = Number.isFinite(monthsBackRaw) ? Math.round(monthsBackRaw) : 2;
     const result = await runDemandRtmsDealsIngestJob(createServiceSupabase(), {
       cityId,
       monthsBack,

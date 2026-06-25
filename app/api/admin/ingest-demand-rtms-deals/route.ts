@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  createDemandRtmsDealIngestJobs,
+  getDemandRtmsDealIngestJobStats,
+  processDemandRtmsDealIngestJobs,
+  retryFailedDemandRtmsDealIngestJobs,
+} from "@/lib/demand/rtms-deal-ingest-jobs";
 import { runDemandRtmsDealsIngestJob } from "@/lib/demand/rtms-deals-ingest";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 
@@ -28,7 +34,7 @@ export async function GET() {
 
   try {
     const service = createServiceSupabase();
-    const [countRes, latestRes] = await Promise.all([
+    const [countRes, latestRes, jobStats] = await Promise.all([
       service.from("demand_rtms_deals").select("*", { count: "exact", head: true }),
       service
         .from("demand_rtms_deals")
@@ -36,12 +42,14 @@ export async function GET() {
         .order("deal_yyyymm", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      getDemandRtmsDealIngestJobStats(service),
     ]);
 
     return NextResponse.json({
       ok: true,
       totalRows: countRes.count ?? 0,
       latestMonth: latestRes.data?.deal_yyyymm ?? null,
+      jobStats,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -59,13 +67,18 @@ export async function POST(req: NextRequest) {
     let monthsBack: number | undefined;
     let cityId: string | undefined;
     let districtSlugs: string[] | undefined;
+    let action: "runDirect" | "planJobs" | "processJobs" | "retryFailed" = "runDirect";
+    let maxJobs: number | undefined;
 
     try {
       const body = (await req.json()) as {
+        action?: "runDirect" | "planJobs" | "processJobs" | "retryFailed";
         monthsBack?: number;
         cityId?: string;
         districtSlugs?: string[];
+        maxJobs?: number;
       };
+      if (body?.action) action = body.action;
       if (body?.monthsBack != null && Number.isFinite(body.monthsBack)) {
         monthsBack = Math.round(body.monthsBack);
       }
@@ -73,8 +86,35 @@ export async function POST(req: NextRequest) {
       if (Array.isArray(body?.districtSlugs) && body.districtSlugs.length > 0) {
         districtSlugs = body.districtSlugs.filter((slug) => typeof slug === "string" && slug.trim());
       }
+      if (body?.maxJobs != null && Number.isFinite(body.maxJobs)) {
+        maxJobs = Math.round(body.maxJobs);
+      }
     } catch {
       /* empty body */
+    }
+
+    const service = createServiceSupabase();
+    if (action === "planJobs") {
+      if (!cityId) {
+        return NextResponse.json(
+          { ok: false, error: "Manual backfill requires a cityId. Use the cron planner for nationwide jobs." },
+          { status: 400 }
+        );
+      }
+      const result = await createDemandRtmsDealIngestJobs(service, {
+        monthsBack,
+        cityId,
+        districtSlugs,
+      });
+      return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+    }
+    if (action === "processJobs") {
+      const result = await processDemandRtmsDealIngestJobs(service, { maxJobs });
+      return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+    }
+    if (action === "retryFailed") {
+      const result = await retryFailedDemandRtmsDealIngestJobs(service);
+      return NextResponse.json(result, { status: result.ok ? 200 : 500 });
     }
 
     const result = await runDemandRtmsDealsIngestJob(createServiceSupabase(), {

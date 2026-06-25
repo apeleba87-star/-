@@ -6,6 +6,8 @@ import type {
   MoveDealType,
   MoveHousingType,
 } from "@/lib/move/budget-types";
+import { DEMAND_REGION_REGISTRY } from "@/lib/demand/region-registry.generated";
+import { demandDistrictRegionKey } from "@/lib/demand/regions";
 
 type RtmsDealRecord = {
   id: number;
@@ -27,6 +29,29 @@ type CandidateAccumulator = MoveBudgetCandidate & {
   buildingNames: Set<string>;
   deals: MoveBudgetDeal[];
 };
+
+export type MoveBudgetCandidateFilters = {
+  monthsBack?: number;
+  dealTypes?: MoveDealType[];
+  housingTypes?: MoveHousingType[];
+  regionKeys?: string[];
+  budgetMin?: number;
+  budgetMax?: number;
+  monthlyMin?: number;
+  monthlyMax?: number;
+};
+
+const RTMS_DEALS_PAGE_SIZE = 1000;
+const RTMS_DEALS_MAX_ROWS = 250000;
+const ALL_REGION_KEY = "all";
+const REGION_KEY_TO_DB_KEY = new Map(
+  DEMAND_REGION_REGISTRY.flatMap((city) =>
+    city.districts.map((district) => [
+      `${city.label}:${district.gu}`,
+      demandDistrictRegionKey(city.id, district.slug),
+    ])
+  )
+);
 
 function isMoveDealType(value: string | null): value is MoveDealType {
   return value === "sale" || value === "jeonse" || value === "monthly";
@@ -166,23 +191,51 @@ function toCandidates(rows: RtmsDealRecord[]): MoveBudgetCandidate[] {
       deals: [...candidate.deals].sort(compareDealPrice),
       buildingHint: buildingHint(candidate.housingType, buildingNames),
     }))
-    .sort((a, b) => b.dealCount - a.dealCount || a.amount - b.amount)
-    .slice(0, 1200);
+    .sort((a, b) => b.dealCount - a.dealCount || a.amount - b.amount);
 }
 
 export async function getMoveBudgetCandidates(
   supabase: SupabaseClient,
-  options?: { monthsBack?: number }
+  options?: MoveBudgetCandidateFilters
 ): Promise<MoveBudgetCandidate[]> {
-  const monthsBack = Math.min(Math.max(Math.round(options?.monthsBack ?? 3), 1), 24);
+  const monthsBack = Math.min(Math.max(Math.round(options?.monthsBack ?? 2), 1), 24);
   const cutoff = monthsAgoDate(monthsBack);
-  const { data, error } = await supabase
-    .from("demand_rtms_deals")
-    .select("id, city_label, district_label, dong, building_name, housing_type, deal_type, amount_krw, monthly_rent_krw, area_sqm, deal_yyyymm, deal_date, raw")
-    .gte("deal_date", cutoff)
-    .order("deal_date", { ascending: false })
-    .limit(20000);
+  const rows: RtmsDealRecord[] = [];
+  const dealTypes = (options?.dealTypes ?? []).filter(isMoveDealType);
+  const housingTypes = (options?.housingTypes ?? []).filter(isMoveHousingType);
+  const regionKeys = (options?.regionKeys ?? [])
+    .filter((key) => key !== ALL_REGION_KEY)
+    .map((key) => REGION_KEY_TO_DB_KEY.get(key))
+    .filter((key): key is string => Boolean(key));
+  const budgetMin = Number.isFinite(options?.budgetMin) ? Math.max(0, Math.round(options?.budgetMin ?? 0)) : undefined;
+  const budgetMax = Number.isFinite(options?.budgetMax) ? Math.max(0, Math.round(options?.budgetMax ?? 0)) : undefined;
+  const monthlyMin = Number.isFinite(options?.monthlyMin) ? Math.max(0, Math.round(options?.monthlyMin ?? 0)) : undefined;
+  const monthlyMax = Number.isFinite(options?.monthlyMax) ? Math.max(0, Math.round(options?.monthlyMax ?? 0)) : undefined;
 
-  if (error || !data?.length) return [];
-  return toCandidates(data as RtmsDealRecord[]);
+  for (let from = 0; from < RTMS_DEALS_MAX_ROWS; from += RTMS_DEALS_PAGE_SIZE) {
+    let query = supabase
+      .from("demand_rtms_deals")
+      .select("id, city_label, district_label, dong, building_name, housing_type, deal_type, amount_krw, monthly_rent_krw, area_sqm, deal_yyyymm, deal_date, raw")
+      .gte("deal_date", cutoff)
+      .order("deal_date", { ascending: false });
+
+    if (dealTypes.length > 0) query = query.in("deal_type", dealTypes);
+    if (housingTypes.length > 0) query = query.in("housing_type", housingTypes);
+    if (regionKeys.length > 0) query = query.in("region_key", regionKeys);
+    if (budgetMin != null) query = query.gte("amount_krw", budgetMin);
+    if (budgetMax != null) query = query.lte("amount_krw", budgetMax);
+    if (dealTypes.length === 1 && dealTypes[0] === "monthly") {
+      if (monthlyMin != null) query = query.gte("monthly_rent_krw", monthlyMin);
+      if (monthlyMax != null) query = query.lte("monthly_rent_krw", monthlyMax);
+    }
+
+    const { data, error } = await query.range(from, from + RTMS_DEALS_PAGE_SIZE - 1);
+
+    if (error) return [];
+    rows.push(...(data as RtmsDealRecord[] | null ?? []));
+    if (!data?.length || data.length < RTMS_DEALS_PAGE_SIZE) break;
+  }
+
+  if (!rows.length) return [];
+  return toCandidates(rows);
 }

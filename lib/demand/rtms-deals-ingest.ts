@@ -5,6 +5,15 @@ import { demandDistrictRegionKey } from "@/lib/demand/regions";
 
 type HousingType = "apartment" | "villa" | "officetel" | "detached_multi";
 type DealType = "sale" | "jeonse" | "monthly";
+export type DemandRtmsDealSourceGroup =
+  | "apartment_trade"
+  | "apartment_rent"
+  | "villa_trade"
+  | "villa_rent"
+  | "officetel_trade"
+  | "officetel_rent"
+  | "detached_multi_trade"
+  | "detached_multi_rent";
 
 export type DemandRtmsDealsIngestResult =
   | {
@@ -25,7 +34,7 @@ export type DemandRtmsDealsIngestOptions = {
   districtSlugs?: string[];
 };
 
-type DistrictTarget = {
+export type DemandRtmsDealDistrictTarget = {
   cityId: string;
   cityLabel: string;
   districtSlug: string;
@@ -106,30 +115,35 @@ const DETACHED_MULTI_RENT_ENDPOINT_CANDIDATES = [
 ];
 
 const RENT_SOURCES: Array<{
+  sourceGroup: DemandRtmsDealSourceGroup;
   housingType: HousingType;
   endpointCandidates: string[];
   buildingNameKeys: string[];
   fallbackBuildingName: string;
 }> = [
   {
+    sourceGroup: "apartment_rent",
     housingType: "apartment",
     endpointCandidates: RENT_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["aptNm", "아파트"],
     fallbackBuildingName: "아파트",
   },
   {
+    sourceGroup: "officetel_rent",
     housingType: "officetel",
     endpointCandidates: OFFICETEL_RENT_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["offiNm", "단지", "단지명", "오피스텔"],
     fallbackBuildingName: "오피스텔",
   },
   {
+    sourceGroup: "villa_rent",
     housingType: "villa",
     endpointCandidates: ROWHOUSE_RENT_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["mhouseNm", "연립다세대", "건물명", "주택명"],
     fallbackBuildingName: "빌라/연립",
   },
   {
+    sourceGroup: "detached_multi_rent",
     housingType: "detached_multi",
     endpointCandidates: DETACHED_MULTI_RENT_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["houseType", "주택유형", "buildingName", "건물명"],
@@ -138,30 +152,35 @@ const RENT_SOURCES: Array<{
 ];
 
 const TRADE_SOURCES: Array<{
+  sourceGroup: DemandRtmsDealSourceGroup;
   housingType: HousingType;
   endpointCandidates: string[];
   buildingNameKeys: string[];
   fallbackBuildingName: string;
 }> = [
   {
+    sourceGroup: "apartment_trade",
     housingType: "apartment",
     endpointCandidates: TRADE_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["aptNm", "아파트"],
     fallbackBuildingName: "아파트",
   },
   {
+    sourceGroup: "officetel_trade",
     housingType: "officetel",
     endpointCandidates: OFFICETEL_TRADE_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["offiNm", "단지", "단지명", "오피스텔"],
     fallbackBuildingName: "오피스텔",
   },
   {
+    sourceGroup: "villa_trade",
     housingType: "villa",
     endpointCandidates: ROWHOUSE_TRADE_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["mhouseNm", "연립다세대", "건물명", "주택명"],
     fallbackBuildingName: "빌라/연립",
   },
   {
+    sourceGroup: "detached_multi_trade",
     housingType: "detached_multi",
     endpointCandidates: DETACHED_MULTI_TRADE_ENDPOINT_CANDIDATES,
     buildingNameKeys: ["houseType", "주택유형", "buildingName", "건물명"],
@@ -175,7 +194,7 @@ const XML = new XMLParser({
   trimValues: true,
 });
 
-const DEFAULT_MONTHS_BACK = 3;
+const DEFAULT_MONTHS_BACK = 2;
 const NUM_OF_ROWS = 1000;
 const FETCH_RETRIES = 4;
 const RETRY_BASE_MS = 2000;
@@ -187,7 +206,7 @@ function resolveMonthsBack(override?: number): number {
   return Math.min(Math.max(Math.round(raw), 1), 24);
 }
 
-function monthKeysBackFromPreviousKstMonth(count: number): string[] {
+export function monthKeysBackFromPreviousKstMonth(count: number): string[] {
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   let year = kstNow.getUTCFullYear();
@@ -209,7 +228,7 @@ function monthKeysBackFromPreviousKstMonth(count: number): string[] {
   return keys.sort();
 }
 
-function buildDistrictTargets(cityId?: string, districtSlugs?: string[]): DistrictTarget[] {
+export function buildDistrictTargets(cityId?: string, districtSlugs?: string[]): DemandRtmsDealDistrictTarget[] {
   const slugSet = districtSlugs?.length ? new Set(districtSlugs) : null;
   const cities = cityId
     ? DEMAND_REGION_REGISTRY.filter((city) => city.id === cityId)
@@ -347,7 +366,7 @@ function parseDealDate(item: Record<string, unknown>, yyyymm: string): { dealDat
 
 function mapTradeItem(
   item: Record<string, unknown>,
-  target: DistrictTarget,
+  target: DemandRtmsDealDistrictTarget,
   yyyymm: string,
   updatedAt: string,
   source: (typeof TRADE_SOURCES)[number]
@@ -382,7 +401,7 @@ function mapTradeItem(
 
 function mapRentItem(
   item: Record<string, unknown>,
-  target: DistrictTarget,
+  target: DemandRtmsDealDistrictTarget,
   yyyymm: string,
   updatedAt: string,
   source: (typeof RENT_SOURCES)[number]
@@ -451,14 +470,119 @@ async function upsertRows(supabase: SupabaseClient, rows: RtmsDealRow[]): Promis
   return deduped.length;
 }
 
+export const DEMAND_RTMS_DEAL_SOURCE_GROUPS: DemandRtmsDealSourceGroup[] = [
+  "apartment_trade",
+  "apartment_rent",
+  "villa_trade",
+  "villa_rent",
+  "officetel_trade",
+  "officetel_rent",
+  "detached_multi_trade",
+  "detached_multi_rent",
+];
+
+export type DemandRtmsDealIngestUnitInput = DemandRtmsDealDistrictTarget & {
+  targetYyyymm: string;
+  sourceGroup: DemandRtmsDealSourceGroup;
+};
+
+export type DemandRtmsDealIngestUnitResult =
+  | { ok: true; calls: number; rows: number }
+  | { ok: false; error: string; needsKey?: boolean };
+
+function resolveRtmsServiceKeys(): { tradeServiceKey: string; rentServiceKey: string } | null {
+  const tradeKey = process.env.MOLIT_RTMS_TRADE_SERVICE_KEY?.trim();
+  const rentKey = process.env.MOLIT_RTMS_RENT_SERVICE_KEY?.trim();
+  const sharedKey = process.env.MOLIT_RTMS_SERVICE_KEY?.trim();
+  if (!(tradeKey || sharedKey) || !(rentKey || sharedKey)) return null;
+  return {
+    tradeServiceKey: tradeKey || sharedKey!,
+    rentServiceKey: rentKey || sharedKey!,
+  };
+}
+
+export async function runDemandRtmsDealIngestUnit(
+  supabase: SupabaseClient,
+  input: DemandRtmsDealIngestUnitInput
+): Promise<DemandRtmsDealIngestUnitResult> {
+  const keys = resolveRtmsServiceKeys();
+  if (!keys) {
+    return {
+      ok: false,
+      needsKey: true,
+      error:
+        "RTMS key is missing: set MOLIT_RTMS_TRADE_SERVICE_KEY and MOLIT_RTMS_RENT_SERVICE_KEY (or shared MOLIT_RTMS_SERVICE_KEY)",
+    };
+  }
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.targetYyyymm)) {
+    return { ok: false, error: `Invalid targetYyyymm: ${input.targetYyyymm}` };
+  }
+
+  const updatedAt = new Date().toISOString();
+  const dealYmd = input.targetYyyymm.replace("-", "");
+  let calls = 0;
+  let rows = 0;
+
+  try {
+    const tradeSource = TRADE_SOURCES.find((source) => source.sourceGroup === input.sourceGroup);
+    if (tradeSource) {
+      const first = await fetchRtmsItemsPage(tradeSource.endpointCandidates, keys.tradeServiceKey, input.lawdCd, dealYmd, 1);
+      calls += 1;
+      const pages = Math.max(1, Math.ceil(first.totalCount / NUM_OF_ROWS));
+      rows += await upsertRows(
+        supabase,
+        first.items
+          .map((item) => mapTradeItem(item, input, input.targetYyyymm, updatedAt, tradeSource))
+          .filter((row): row is RtmsDealRow => row != null)
+      );
+      for (let pageNo = 2; pageNo <= pages; pageNo += 1) {
+        const page = await fetchRtmsItemsPage(tradeSource.endpointCandidates, keys.tradeServiceKey, input.lawdCd, dealYmd, pageNo);
+        calls += 1;
+        rows += await upsertRows(
+          supabase,
+          page.items
+            .map((item) => mapTradeItem(item, input, input.targetYyyymm, updatedAt, tradeSource))
+            .filter((row): row is RtmsDealRow => row != null)
+        );
+      }
+      return { ok: true, calls, rows };
+    }
+
+    const rentSource = RENT_SOURCES.find((source) => source.sourceGroup === input.sourceGroup);
+    if (!rentSource) return { ok: false, error: `Unknown RTMS deal source group: ${input.sourceGroup}` };
+
+    const first = await fetchRtmsItemsPage(rentSource.endpointCandidates, keys.rentServiceKey, input.lawdCd, dealYmd, 1);
+    calls += 1;
+    const pages = Math.max(1, Math.ceil(first.totalCount / NUM_OF_ROWS));
+    rows += await upsertRows(
+      supabase,
+      first.items
+        .map((item) => mapRentItem(item, input, input.targetYyyymm, updatedAt, rentSource))
+        .filter((row): row is RtmsDealRow => row != null)
+    );
+    for (let pageNo = 2; pageNo <= pages; pageNo += 1) {
+      const page = await fetchRtmsItemsPage(rentSource.endpointCandidates, keys.rentServiceKey, input.lawdCd, dealYmd, pageNo);
+      calls += 1;
+      rows += await upsertRows(
+        supabase,
+        page.items
+          .map((item) => mapRentItem(item, input, input.targetYyyymm, updatedAt, rentSource))
+          .filter((row): row is RtmsDealRow => row != null)
+      );
+    }
+
+    return { ok: true, calls, rows };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function runDemandRtmsDealsIngestJob(
   supabase: SupabaseClient,
   options?: DemandRtmsDealsIngestOptions
 ): Promise<DemandRtmsDealsIngestResult> {
-  const tradeKey = process.env.MOLIT_RTMS_TRADE_SERVICE_KEY?.trim();
-  const rentKey = process.env.MOLIT_RTMS_RENT_SERVICE_KEY?.trim();
-  const sharedKey = process.env.MOLIT_RTMS_SERVICE_KEY?.trim();
-  if (!(tradeKey || sharedKey) || !(rentKey || sharedKey)) {
+  const keys = resolveRtmsServiceKeys();
+  if (!keys) {
     return {
       ok: false,
       needsKey: true,
@@ -467,8 +591,6 @@ export async function runDemandRtmsDealsIngestJob(
     };
   }
 
-  const tradeServiceKey = tradeKey || sharedKey!;
-  const rentServiceKey = rentKey || sharedKey!;
   const monthsBack = resolveMonthsBack(options?.monthsBack);
   const months = monthKeysBackFromPreviousKstMonth(monthsBack);
   const targets = buildDistrictTargets(options?.cityId, options?.districtSlugs);
@@ -483,7 +605,7 @@ export async function runDemandRtmsDealsIngestJob(
       for (const target of targets) {
         const updatedAt = new Date().toISOString();
         for (const tradeSource of TRADE_SOURCES) {
-          const tradeFirst = await fetchRtmsItemsPage(tradeSource.endpointCandidates, tradeServiceKey, target.lawdCd, dealYmd, 1);
+          const tradeFirst = await fetchRtmsItemsPage(tradeSource.endpointCandidates, keys.tradeServiceKey, target.lawdCd, dealYmd, 1);
           calls += 1;
           const tradePages = Math.max(1, Math.ceil(tradeFirst.totalCount / NUM_OF_ROWS));
           rows += await upsertRows(
@@ -493,7 +615,7 @@ export async function runDemandRtmsDealsIngestJob(
               .filter((row): row is RtmsDealRow => row != null)
           );
           for (let pageNo = 2; pageNo <= tradePages; pageNo += 1) {
-            const page = await fetchRtmsItemsPage(tradeSource.endpointCandidates, tradeServiceKey, target.lawdCd, dealYmd, pageNo);
+            const page = await fetchRtmsItemsPage(tradeSource.endpointCandidates, keys.tradeServiceKey, target.lawdCd, dealYmd, pageNo);
             calls += 1;
             rows += await upsertRows(
               supabase,
@@ -505,7 +627,7 @@ export async function runDemandRtmsDealsIngestJob(
         }
 
         for (const rentSource of RENT_SOURCES) {
-          const rentFirst = await fetchRtmsItemsPage(rentSource.endpointCandidates, rentServiceKey, target.lawdCd, dealYmd, 1);
+          const rentFirst = await fetchRtmsItemsPage(rentSource.endpointCandidates, keys.rentServiceKey, target.lawdCd, dealYmd, 1);
           calls += 1;
           const rentPages = Math.max(1, Math.ceil(rentFirst.totalCount / NUM_OF_ROWS));
           rows += await upsertRows(
@@ -515,7 +637,7 @@ export async function runDemandRtmsDealsIngestJob(
               .filter((row): row is RtmsDealRow => row != null)
           );
           for (let pageNo = 2; pageNo <= rentPages; pageNo += 1) {
-            const page = await fetchRtmsItemsPage(rentSource.endpointCandidates, rentServiceKey, target.lawdCd, dealYmd, pageNo);
+            const page = await fetchRtmsItemsPage(rentSource.endpointCandidates, keys.rentServiceKey, target.lawdCd, dealYmd, pageNo);
             calls += 1;
             rows += await upsertRows(
               supabase,
