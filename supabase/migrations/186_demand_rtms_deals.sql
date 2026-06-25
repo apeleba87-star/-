@@ -4,7 +4,7 @@
 create table if not exists public.demand_rtms_deals (
   id bigserial primary key,
   source text not null default 'rtms',
-  housing_type text not null check (housing_type in ('apartment', 'villa', 'officetel')),
+  housing_type text not null check (housing_type in ('apartment', 'villa', 'officetel', 'detached_multi')),
   deal_type text not null check (deal_type in ('sale', 'jeonse', 'monthly')),
   region_key text not null,
   city_id text not null,

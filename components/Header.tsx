@@ -79,22 +79,27 @@ type MobileDrawerRow =
 
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
-  { kind: "link", href: "/", label: "입주레이더", Icon: Sparkles },
-  { kind: "link", href: "/move", label: "이사검색", Icon: Home },
+  { kind: "link", href: "/", label: "이사검색", Icon: Home },
   { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText, adminOnly: true },
-  { kind: "link", href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간", Icon: Radio },
   {
     kind: "mega",
-    label: "데이터 분석",
-    Icon: BarChart3,
+    label: "청소업체 전용관",
+    Icon: Sparkles,
     columns: [
       {
-        title: "나라장터",
+        title: "주요 기능",
         items: [
-          { href: "/tenders", label: "입찰 공고", Icon: Gavel },
-          { href: "/tender-awards", label: "낙찰 공고", Icon: Trophy },
-          { href: "/jobs/public", label: "채용 공고", Icon: Landmark },
+          { href: "/demand", label: "입주레이더", Icon: BarChart3 },
           { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집", Icon: Radio },
+          { href: "/estimate", label: "견적 계산기", Icon: Calculator },
+        ],
+      },
+      {
+        title: "데이터분석",
+        items: [
+          { href: "/tenders", label: "입찰공고", Icon: Gavel },
+          { href: "/tender-awards", label: "낙찰공고", Icon: Trophy },
+          { href: "/jobs/public", label: "채용 공고", Icon: Landmark },
         ],
       },
       {
@@ -105,10 +110,6 @@ const primaryNavItems: PrimaryNavEntry[] = [
           { href: "/marketing-report", label: "마케팅", Icon: Sparkles },
           { href: "/job-market-report", label: "일당", Icon: Landmark },
         ],
-      },
-      {
-        title: "기타",
-        items: [{ href: "/estimate", label: "견적 계산기", Icon: Calculator }],
       },
     ],
   },

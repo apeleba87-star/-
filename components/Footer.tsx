@@ -9,21 +9,13 @@ type FooterLink = { href: string; label: string };
 const FOOTER_LINK_CLASS =
   "text-slate-400 hover:text-teal-300 transition-colors touch-manipulation py-1 text-xs sm:min-h-[44px] sm:py-2 sm:text-sm";
 
-const PUBLIC_PRIMARY_LINKS: FooterLink[] = [
-  { href: "/", label: "입주레이더" },
-  { href: "/move", label: "이사 예산 검색" },
-  { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집" },
-  { href: "/tenders", label: "입찰 공고" },
-  { href: "/tender-awards", label: "낙찰 공고" },
-  { href: "/jobs/public", label: "채용 공고" },
-  { href: "/estimate", label: "견적 계산기" },
+const MOVE_LINKS: FooterLink[] = [
+  { href: "/", label: "이사검색" },
 ];
 
-const REPORT_LINKS: FooterLink[] = [
-  { href: "/news?section=report&category=report", label: "입찰 리포트" },
-  { href: "/news?section=report&category=award_report", label: "낙찰 리포트" },
-  { href: "/marketing-report", label: "마케팅 리포트" },
-  { href: "/job-market-report", label: "일당 리포트" },
+const CLEANING_BUSINESS_LINKS: FooterLink[] = [
+  { href: "/demand", label: "청소업체 전용관" },
+  { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집" },
 ];
 
 const LEGAL_LINKS: FooterLink[] = [
@@ -41,6 +33,15 @@ function FooterLinkRow({ links }: { links: FooterLink[] }) {
         </Link>
       ))}
     </nav>
+  );
+}
+
+function FooterSection({ title, links }: { title: string; links: FooterLink[] }) {
+  return (
+    <div>
+      <p className="mb-1 text-[11px] font-bold text-slate-500 sm:mb-2 sm:text-xs">{title}</p>
+      <FooterLinkRow links={links} />
+    </div>
   );
 }
 
@@ -65,7 +66,7 @@ export default function Footer() {
             </summary>
             <div className="mt-2 space-y-2">
               <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-                {[...PUBLIC_PRIMARY_LINKS, ...REPORT_LINKS].map((link) => (
+                {[...MOVE_LINKS, ...CLEANING_BUSINESS_LINKS].map((link) => (
                   <Link key={link.href} href={link.href} className={FOOTER_LINK_CLASS}>
                     {link.label}
                   </Link>
@@ -76,8 +77,8 @@ export default function Footer() {
           </details>
 
           <div className="hidden flex-col gap-4 sm:flex sm:gap-5">
-            <FooterLinkRow links={PUBLIC_PRIMARY_LINKS} />
-            <FooterLinkRow links={REPORT_LINKS} />
+            <FooterSection title="이사" links={MOVE_LINKS} />
+            <FooterSection title="청소업체 전용관" links={CLEANING_BUSINESS_LINKS} />
             <FooterAdminLinks />
           </div>
 

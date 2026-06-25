@@ -1,5 +1,6 @@
 export type MoveDealType = "jeonse" | "monthly" | "sale";
-export type MoveHousingType = "apartment" | "villa" | "officetel" | "oneroom";
+export type MoveHousingType = "apartment" | "villa" | "officetel" | "detached_multi";
+export type MoveContractType = "new" | "renewal" | "unknown";
 
 export type MoveBudgetDeal = {
   id: string;
@@ -7,7 +8,10 @@ export type MoveBudgetDeal = {
   monthlyRent?: number;
   areaSqm: number;
   dealMonth: string;
+  dealDate: string;
   buildingName: string;
+  contractType: MoveContractType;
+  contractLabel: string;
 };
 
 export type MoveBudgetCandidate = {

@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { MoveBudgetCandidate, MoveBudgetDeal, MoveDealType, MoveHousingType } from "@/lib/move/budget-types";
+import type {
+  MoveBudgetCandidate,
+  MoveBudgetDeal,
+  MoveContractType,
+  MoveDealType,
+  MoveHousingType,
+} from "@/lib/move/budget-types";
 
 type RtmsDealRecord = {
   id: number;
@@ -14,6 +20,7 @@ type RtmsDealRecord = {
   area_sqm: number | string | null;
   deal_yyyymm: string | null;
   deal_date: string | null;
+  raw: Record<string, unknown> | null;
 };
 
 type CandidateAccumulator = MoveBudgetCandidate & {
@@ -26,7 +33,7 @@ function isMoveDealType(value: string | null): value is MoveDealType {
 }
 
 function isMoveHousingType(value: string | null): value is MoveHousingType {
-  return value === "apartment" || value === "villa" || value === "officetel" || value === "oneroom";
+  return value === "apartment" || value === "villa" || value === "officetel" || value === "detached_multi";
 }
 
 function monthsAgoDate(months: number): string {
@@ -45,10 +52,34 @@ function numberValue(value: number | string | null): number {
   return 0;
 }
 
+function readRawString(raw: Record<string, unknown> | null, keys: string[]): string {
+  if (!raw) return "";
+  for (const key of keys) {
+    const value = raw[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return "";
+}
+
+function normalizeContractType(raw: Record<string, unknown> | null): { type: MoveContractType; label: string } {
+  const value = readRawString(raw, [
+    "contractType",
+    "계약구분",
+    "contractGbn",
+    "cntrctType",
+    "rentContractType",
+  ]);
+  if (value.includes("갱신")) return { type: "renewal", label: "갱신" };
+  if (value.includes("신규")) return { type: "new", label: "신규" };
+  return { type: "unknown", label: "미상" };
+}
+
 function buildingHint(housingType: MoveHousingType, names: Set<string>): string {
   const count = names.size;
   if (housingType === "apartment") return count > 1 ? `아파트 ${count}개 단지` : [...names][0] || "아파트";
   if (housingType === "officetel") return count > 1 ? `오피스텔 ${count}개 건물` : [...names][0] || "오피스텔";
+  if (housingType === "detached_multi") return count > 1 ? `단독/다가구 ${count}개 건물` : [...names][0] || "단독/다가구";
   return count > 1 ? `빌라·다세대 ${count}개 건물` : [...names][0] || "빌라·다세대";
 }
 
@@ -72,13 +103,17 @@ function toCandidates(rows: RtmsDealRecord[]): MoveBudgetCandidate[] {
     const recentMonth = row.deal_yyyymm || row.deal_date?.slice(0, 7) || "";
     const existing = byGroup.get(key);
     const buildingName = row.building_name?.trim();
+    const contract = normalizeContractType(row.raw);
     const deal: MoveBudgetDeal = {
       id: String(row.id),
       amount,
       monthlyRent: row.monthly_rent_krw ?? undefined,
       areaSqm,
       dealMonth: recentMonth,
+      dealDate: row.deal_date ?? `${recentMonth}-01`,
       buildingName: buildingName || "단지명 미상",
+      contractType: contract.type,
+      contractLabel: contract.label,
     };
 
     if (!existing) {
@@ -112,7 +147,10 @@ function toCandidates(rows: RtmsDealRecord[]): MoveBudgetCandidate[] {
       monthlyRent: existing.monthlyRent,
       areaSqm: existing.areaSqm,
       dealMonth: existing.recentMonth,
+      dealDate: `${existing.recentMonth}-01`,
       buildingName: existing.representativeBuildingName || "단지명 미상",
+      contractType: "unknown",
+      contractLabel: "미상",
     };
     if (compareDealPrice(deal, currentRepresentative) < 0) {
       existing.amount = deal.amount;
@@ -136,15 +174,14 @@ export async function getMoveBudgetCandidates(
   supabase: SupabaseClient,
   options?: { monthsBack?: number }
 ): Promise<MoveBudgetCandidate[]> {
-  const monthsBack = Math.min(Math.max(Math.round(options?.monthsBack ?? 12), 1), 24);
+  const monthsBack = Math.min(Math.max(Math.round(options?.monthsBack ?? 3), 1), 24);
   const cutoff = monthsAgoDate(monthsBack);
   const { data, error } = await supabase
     .from("demand_rtms_deals")
-    .select("id, city_label, district_label, dong, building_name, housing_type, deal_type, amount_krw, monthly_rent_krw, area_sqm, deal_yyyymm, deal_date")
-    .eq("housing_type", "apartment")
+    .select("id, city_label, district_label, dong, building_name, housing_type, deal_type, amount_krw, monthly_rent_krw, area_sqm, deal_yyyymm, deal_date, raw")
     .gte("deal_date", cutoff)
     .order("deal_date", { ascending: false })
-    .limit(10000);
+    .limit(20000);
 
   if (error || !data?.length) return [];
   return toCandidates(data as RtmsDealRecord[]);

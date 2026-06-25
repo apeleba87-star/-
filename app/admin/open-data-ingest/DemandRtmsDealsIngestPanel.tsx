@@ -10,7 +10,7 @@ type Stats =
 
 type RunResult = {
   ok: boolean;
-  housingType?: "apartment";
+  housingTypes?: string[];
   period?: string;
   months?: number;
   districts?: number;
@@ -75,7 +75,7 @@ export default function DemandRtmsDealsIngestPanel() {
       <div>
         <h2 className="text-lg font-semibold text-slate-900">이사검색 RTMS 실거래 원자료 수집</h2>
         <p className="mt-2 text-sm text-slate-600">
-          아파트 매매·전월세 실거래 원자료를 최근 12개월 기준으로 수집해{" "}
+          아파트·빌라/연립·오피스텔·단독/다가구 매매·전월세 원자료를 최근 3개월 기준으로 수집해{" "}
           <code className="rounded bg-white px-1 text-xs">demand_rtms_deals</code>에 저장합니다.
           이 데이터가 <code className="text-xs">/move</code> 예산 검색 결과에 사용됩니다.
         </p>
@@ -105,11 +105,11 @@ export default function DemandRtmsDealsIngestPanel() {
         </div>
         <button
           type="button"
-          onClick={() => void runIngest(12)}
+          onClick={() => void runIngest(3)}
           disabled={running}
           className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 disabled:opacity-50"
         >
-          {running ? "수집 중…" : "실거래 원자료 수집 (최근 12개월)"}
+          {running ? "수집 중…" : "실거래 원자료 수집 (최근 3개월)"}
         </button>
         <button
           type="button"

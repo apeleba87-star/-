@@ -6,7 +6,7 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 export const metadata = buildPageMetadata({
   title: "내 예산으로 갈 수 있는 지역 찾기 — 실거래 기반 이사 탐색",
   description:
-    "예산, 지역, 주택 유형, 거래 유형을 선택해 최근 12개월 실거래 기준으로 갈 수 있는 동네 후보를 탐색합니다.",
+    "예산, 지역, 주택 유형, 거래 유형을 선택해 최근 3개월 실거래 기준으로 갈 수 있는 동네 후보를 탐색합니다.",
   path: "/move",
 });
 
@@ -14,7 +14,7 @@ export const revalidate = 3600;
 
 async function loadCandidates() {
   try {
-    return await getMoveBudgetCandidates(createServiceSupabase(), { monthsBack: 12 });
+    return await getMoveBudgetCandidates(createServiceSupabase(), { monthsBack: 3 });
   } catch {
     return [];
   }

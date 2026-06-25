@@ -20,11 +20,24 @@ type SearchFilters = {
   sortBy: "count" | "lowest" | "area" | "recent";
 };
 
+type MoveBudgetResult = {
+  candidate: MoveBudgetCandidate;
+  dealRows: NonNullable<MoveBudgetCandidate["deals"]>;
+  representativeDeal: NonNullable<MoveBudgetCandidate["deals"]>[number];
+  hasPriceVariance: boolean;
+  hasLowSample: boolean;
+};
+
+type DealListSort = "area" | "recent" | "deposit" | "monthly";
+type SortDirection = "asc" | "desc";
+type DealListSortState = { key: DealListSort; direction: SortDirection };
+type ResultSort = "recommended" | "price";
+
 const HOUSING_LABEL: Record<HousingType, string> = {
   apartment: "아파트",
-  villa: "빌라",
+  villa: "빌라/연립",
   officetel: "오피스텔",
-  oneroom: "원룸",
+  detached_multi: "단독/다가구",
 };
 
 const DEAL_LABEL: Record<DealType, string> = {
@@ -34,6 +47,25 @@ const DEAL_LABEL: Record<DealType, string> = {
 };
 
 const ALL_REGION_KEY = "all";
+const CITY_DISPLAY_ORDER = [
+  "seoul",
+  "gyeonggi",
+  "busan",
+  "gyeongnam",
+  "incheon",
+  "gyeongbuk",
+  "daegu",
+  "chungnam",
+  "jeonbuk",
+  "jeonnam",
+  "chungbuk",
+  "gangwon",
+  "daejeon",
+  "gwangju",
+  "ulsan",
+  "jeju",
+  "sejong",
+];
 
 type RegionOption = {
   key: string;
@@ -47,7 +79,12 @@ const REGION_OPTIONS: RegionOption[] = DEMAND_REGION_REGISTRY.flatMap((city) =>
     cityLabel: city.label,
     label: district.gu,
   }))
-);
+).sort((a, b) => a.cityLabel.localeCompare(b.cityLabel, "ko-KR") || a.label.localeCompare(b.label, "ko-KR"));
+const ORDERED_DEMAND_REGIONS = [...DEMAND_REGION_REGISTRY].sort((a, b) => {
+  const aIndex = CITY_DISPLAY_ORDER.indexOf(a.id);
+  const bIndex = CITY_DISPLAY_ORDER.indexOf(b.id);
+  return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+});
 
 const DUMMY_CANDIDATES: MoveBudgetCandidate[] = [
   {
@@ -130,18 +167,18 @@ const DUMMY_CANDIDATES: MoveBudgetCandidate[] = [
     buildingHint: "역세권 오피스텔",
   },
   {
-    id: "sillim-oneroom-monthly",
+    id: "sillim-detached-monthly",
     sido: "서울",
     sigungu: "관악구",
     dong: "신림동",
-    housingType: "oneroom",
+    housingType: "detached_multi",
     dealType: "monthly",
     amount: 10_000_000,
     monthlyRent: 650_000,
     areaSqm: 19.8,
     dealCount: 31,
     recentMonth: "2026-05",
-    buildingHint: "소형 원룸 후보",
+    buildingHint: "단독/다가구 소형",
   },
   {
     id: "songdo-officetel-sale",
@@ -166,6 +203,14 @@ const MONTHLY_RENT_RANGE_MIN = 0;
 const MONTHLY_RENT_RANGE_MAX = 10_000_000;
 const MONTHLY_RENT_RANGE_STEP = 100_000;
 const DEALS_PER_PAGE = 10;
+const SEMI_JEONSE_DEPOSIT_THRESHOLD = 100_000_000;
+
+const DEAL_LIST_SORT_LABEL: Record<DealListSort, string> = {
+  area: "면적순",
+  recent: "최근 거래일",
+  deposit: "전세금/보증금",
+  monthly: "월세",
+};
 
 function formatKrw(value: number): string {
   if (value >= 100_000_000) {
@@ -200,13 +245,56 @@ function pyeong(areaSqm: number): string {
   return `${Math.round((areaSqm / 3.3058) * 10) / 10}평`;
 }
 
+function formatDealDate(date: string, fallbackMonth: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date.slice(2);
+  return fallbackMonth;
+}
+
 function formatDealPrice(deal: { amount: number; monthlyRent?: number }): string {
   return deal.monthlyRent ? `${formatKrw(deal.amount)} / 월 ${formatKrw(deal.monthlyRent)}` : formatKrw(deal.amount);
 }
 
-function externalSearchUrl(candidate: MoveBudgetCandidate): string {
-  const query = `${candidate.sido} ${candidate.sigungu} ${candidate.dong} ${HOUSING_LABEL[candidate.housingType]} ${DEAL_LABEL[candidate.dealType]}`;
-  return `https://new.land.naver.com/search?query=${encodeURIComponent(query)}`;
+function dealKindLabel(deal: { amount: number; monthlyRent?: number }, fallback: DealType): string {
+  if (deal.monthlyRent && deal.monthlyRent > 0) {
+    return deal.amount >= SEMI_JEONSE_DEPOSIT_THRESHOLD ? "반전세" : "월세";
+  }
+  return DEAL_LABEL[fallback];
+}
+
+function compareDealPrice(a: { amount: number; monthlyRent?: number }, b: { amount: number; monthlyRent?: number }): number {
+  return a.amount - b.amount || (a.monthlyRent ?? 0) - (b.monthlyRent ?? 0);
+}
+
+function chooseRepresentativeDeal(deals: NonNullable<MoveBudgetCandidate["deals"]>): NonNullable<MoveBudgetCandidate["deals"]>[number] {
+  const preferred = deals.filter((deal) => deal.contractType !== "renewal");
+  const pool = preferred.length > 0 ? preferred : deals;
+  const sorted = [...pool].sort(compareDealPrice);
+  const index = sorted.length >= 6 ? Math.floor((sorted.length - 1) * 0.25) : 0;
+  return sorted[index] ?? deals[0]!;
+}
+
+function hasLargePriceVariance(deals: NonNullable<MoveBudgetCandidate["deals"]>): boolean {
+  if (deals.length < 2) return false;
+  const prices = deals.map((deal) => deal.amount).filter((amount) => amount > 0).sort((a, b) => a - b);
+  const min = prices[0] ?? 0;
+  const max = prices[prices.length - 1] ?? 0;
+  if (min <= 0 || max <= 0) return false;
+  return max / min >= 1.6 && max - min >= 100_000_000;
+}
+
+function sortDeals(
+  deals: NonNullable<MoveBudgetCandidate["deals"]>,
+  sortState: DealListSortState
+): NonNullable<MoveBudgetCandidate["deals"]> {
+  const direction = sortState.direction === "asc" ? 1 : -1;
+  return [...deals].sort((a, b) => {
+    let primary = 0;
+    if (sortState.key === "area") primary = a.areaSqm - b.areaSqm;
+    else if (sortState.key === "recent") primary = a.dealDate.localeCompare(b.dealDate);
+    else if (sortState.key === "monthly") primary = (a.monthlyRent ?? 0) - (b.monthlyRent ?? 0);
+    else primary = a.amount - b.amount;
+    return primary * direction || compareDealPrice(a, b);
+  });
 }
 
 export default function MoveBudgetExplorer({ initialCandidates = [] }: { initialCandidates?: MoveBudgetCandidate[] }) {
@@ -219,13 +307,17 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
   const [budgetMax, setBudgetMax] = useState(AMOUNT_RANGE_MAX);
   const [monthlyMin, setMonthlyMin] = useState(MONTHLY_RENT_RANGE_MIN);
   const [monthlyMax, setMonthlyMax] = useState(MONTHLY_RENT_RANGE_MAX);
-  const [lookbackMonths] = useState(12);
+  const [lookbackMonths] = useState(3);
   const sortBy = "count" as const;
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
   const [regionCityFilter, setRegionCityFilter] = useState<string>("서울");
   const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
   const [dealPageByCandidate, setDealPageByCandidate] = useState<Record<string, number>>({});
+  const [dealSortByCandidate, setDealSortByCandidate] = useState<Record<string, DealListSortState>>({});
+  const [resultSort, setResultSort] = useState<ResultSort>("recommended");
+  const [resultSortDirection, setResultSortDirection] = useState<SortDirection>("asc");
+  const [hasSearched, setHasSearched] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<SearchFilters>({
     dealTypes: ["jeonse"],
     housingTypes: ["apartment"],
@@ -234,7 +326,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
     budgetMax: AMOUNT_RANGE_MAX,
     monthlyMin: MONTHLY_RENT_RANGE_MIN,
     monthlyMax: MONTHLY_RENT_RANGE_MAX,
-    lookbackMonths: 12,
+    lookbackMonths: 3,
     sortBy: "count",
   });
 
@@ -255,6 +347,10 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
     setAppliedFilters(draftFilters);
     setExpandedCandidateId(null);
     setDealPageByCandidate({});
+    setDealSortByCandidate({});
+    setResultSort("recommended");
+    setResultSortDirection("asc");
+    setHasSearched(true);
   }
 
   function toggleDealType(type: DealType) {
@@ -286,31 +382,47 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
     });
   }
 
-  const results = useMemo(() => {
-    const filtered = candidates.filter((candidate) => {
-      if (!appliedFilters.dealTypes.includes(candidate.dealType)) return false;
-      if (!appliedFilters.housingTypes.includes(candidate.housingType)) return false;
+  const results = useMemo<MoveBudgetResult[]>(() => {
+    if (!hasSearched) return [];
+    const filtered = candidates.flatMap((candidate) => {
+      if (!appliedFilters.dealTypes.includes(candidate.dealType)) return [];
+      if (!appliedFilters.housingTypes.includes(candidate.housingType)) return [];
       const candidateRegionKey = `${candidate.sido}:${candidate.sigungu}`;
       if (!appliedFilters.regionKeys.includes(ALL_REGION_KEY) && !appliedFilters.regionKeys.includes(candidateRegionKey)) {
-        return false;
+        return [];
       }
-      if (candidate.amount < appliedFilters.budgetMin || candidate.amount > appliedFilters.budgetMax) return false;
-      if (
-        candidate.dealType === "monthly" &&
-        ((candidate.monthlyRent ?? 0) < appliedFilters.monthlyMin ||
-          (candidate.monthlyRent ?? 0) > appliedFilters.monthlyMax)
-      ) {
-        return false;
-      }
-      return true;
+      const dealRows = (candidate.deals ?? []).filter((deal) => {
+        if (deal.amount < appliedFilters.budgetMin || deal.amount > appliedFilters.budgetMax) return false;
+        if (
+          candidate.dealType === "monthly" &&
+          ((deal.monthlyRent ?? 0) < appliedFilters.monthlyMin ||
+            (deal.monthlyRent ?? 0) > appliedFilters.monthlyMax)
+        ) {
+          return false;
+        }
+        return true;
+      });
+      if (dealRows.length === 0) return [];
+      const representativeDeal = chooseRepresentativeDeal(dealRows);
+      return [{
+        candidate,
+        dealRows: [...dealRows].sort(compareDealPrice),
+        representativeDeal,
+        hasPriceVariance: hasLargePriceVariance(dealRows),
+        hasLowSample: dealRows.length <= 2,
+      }];
     });
     return [...filtered].sort((a, b) => {
-      if (appliedFilters.sortBy === "lowest") return a.amount - b.amount;
-      if (appliedFilters.sortBy === "area") return b.areaSqm - a.areaSqm;
-      if (appliedFilters.sortBy === "recent") return b.recentMonth.localeCompare(a.recentMonth);
-      return b.dealCount - a.dealCount;
+      if (resultSort === "price") {
+        const direction = resultSortDirection === "asc" ? 1 : -1;
+        return compareDealPrice(a.representativeDeal, b.representativeDeal) * direction || b.dealRows.length - a.dealRows.length;
+      }
+      if (appliedFilters.sortBy === "lowest") return compareDealPrice(a.representativeDeal, b.representativeDeal);
+      if (appliedFilters.sortBy === "area") return b.representativeDeal.areaSqm - a.representativeDeal.areaSqm;
+      if (appliedFilters.sortBy === "recent") return b.candidate.recentMonth.localeCompare(a.candidate.recentMonth);
+      return b.dealRows.length - a.dealRows.length || compareDealPrice(a.representativeDeal, b.representativeDeal);
     });
-  }, [appliedFilters, candidates]);
+  }, [appliedFilters, candidates, hasSearched, resultSort, resultSortDirection]);
 
   const appliedDealLabel = appliedFilters.dealTypes.map((type) => DEAL_LABEL[type]).join("/");
   const appliedHousingLabel = appliedFilters.housingTypes.map((type) => HOUSING_LABEL[type]).join("/");
@@ -318,6 +430,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
     ? "전국"
     : `${appliedFilters.regionKeys.length}개 지역`;
   const headline = `${appliedRegionLabel} ${formatKrw(appliedFilters.budgetMin)}~${formatKrw(appliedFilters.budgetMax)} ${appliedHousingLabel} ${appliedDealLabel}`;
+  const stickySearchSummary = `${appliedDealLabel} · ${appliedHousingLabel} · ${appliedRegionLabel} · ${formatKrw(appliedFilters.budgetMin)}~${appliedFilters.budgetMax >= AMOUNT_RANGE_MAX ? "30억 이상" : formatKrw(appliedFilters.budgetMax)}`;
   const budgetSummary =
     dealTypes.includes("monthly")
       ? `${budgetMin === 0 ? "보증금 최저 없음" : formatKrw(budgetMin)}~${budgetMax >= AMOUNT_RANGE_MAX ? "30억 이상" : formatKrw(budgetMax)} · 월 ${monthlyMin === 0 ? "0원" : formatKrw(monthlyMin)}~${monthlyMax >= MONTHLY_RENT_RANGE_MAX ? "1000만원 이상" : formatKrw(monthlyMax)}`
@@ -332,20 +445,31 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
 
   return (
     <div className="space-y-6">
+      {hasSearched ? (
+        <div className="fixed left-0 right-0 top-[72px] z-40 px-3 sm:top-[76px]">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 rounded-2xl border border-teal-100 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
+            <p className="min-w-0 truncate text-xs font-bold text-slate-600">
+              <span className="text-teal-700">현재 검색</span> · {stickySearchSummary}
+            </p>
+            <a
+              href="#move-search-filters"
+              className="shrink-0 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-black text-white"
+            >
+              조건 수정
+            </a>
+          </div>
+        </div>
+      ) : null}
+
       <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-teal-50/70 px-5 py-6 shadow-sm sm:px-7 sm:py-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Move Finder</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">이사검색</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-          내 예산으로 어디까지 갈 수 있을까?
+          내 예산으로 우리집 찾기
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
-          RTMS 실거래 데이터를 기준으로 예산에 걸린 지역과 주택 유형을 먼저 좁혀보는 탐색 화면입니다.
-          {hasLiveData
-            ? " 현재는 아파트 매매·전세·월세 실거래부터 연결되어 있으며, 실제 매물은 부동산 서비스에서 다시 확인해야 합니다."
-            : " 아직 수집된 실거래 원자료가 없어 UI 확인용 더미 데이터를 표시하고 있습니다."}
-        </p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">최근 실거래 기준으로 예산에 맞는 동네 후보를 찾아보세요.</p>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section id="move-search-filters" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <CompactFilter title="1. 거래 유형">
             {(Object.keys(DEAL_LABEL) as DealType[]).map((type) => (
@@ -391,7 +515,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                     >
                       전국
                     </button>
-                    {DEMAND_REGION_REGISTRY.map((city) => (
+                    {ORDERED_DEMAND_REGIONS.map((city) => (
                       <button
                         key={city.id}
                         type="button"
@@ -510,7 +634,9 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
           <p className="text-xs leading-relaxed text-slate-500">
             {hasPendingChanges
               ? "조건이 변경되었습니다. 검색하기를 누르면 결과가 갱신됩니다."
-              : `현재 결과: ${headline}`}
+              : hasSearched
+                ? `현재 결과: ${headline}`
+                : "조건을 선택한 뒤 검색하기를 누르면 결과가 표시됩니다."}
           </p>
           <button
             type="button"
@@ -530,22 +656,70 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
           <div>
             <h2 className="text-xl font-black text-slate-950">내 예산에 맞는 최근 거래 후보</h2>
             <p className="mt-1 text-sm text-slate-500">
-              {headline} · 최근 {lookbackMonths}개월 {hasLiveData ? "아파트 실거래 기준" : "더미 데이터 기준"}
+              {hasSearched
+                ? `${headline} · 최근 ${lookbackMonths}개월 ${hasLiveData ? "아파트 실거래 기준" : "더미 데이터 기준"}`
+                : "조건을 선택하고 검색하기를 누르면 후보가 표시됩니다."}
             </p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            {results.length}개 후보
+            {hasSearched ? `${results.length}개 후보` : "검색 전"}
           </span>
         </div>
+        {hasSearched ? (
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setResultSort("recommended");
+                setResultSortDirection("asc");
+              }}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition",
+                resultSort === "recommended"
+                  ? "border-teal-500 bg-teal-50 text-teal-800"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+              )}
+            >
+              추천순
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (resultSort === "price") {
+                  setResultSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+                } else {
+                  setResultSort("price");
+                  setResultSortDirection("asc");
+                }
+              }}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition",
+                resultSort === "price"
+                  ? "border-teal-500 bg-teal-50 text-teal-800"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+              )}
+            >
+              금액순{resultSort === "price" ? (resultSortDirection === "asc" ? " ↑" : " ↓") : null}
+            </button>
+          </div>
+        ) : null}
 
-        {results.length > 0 ? (
+        {!hasSearched ? (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center">
+            <p className="text-lg font-black text-slate-950">검색 조건을 먼저 선택하세요</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              거래유형, 주택유형, 지역, 예산을 고른 뒤 검색하기를 누르면 최근 실거래 후보를 보여줍니다.
+            </p>
+          </div>
+        ) : results.length > 0 ? (
           <div className="grid gap-3">
-            {results.map((candidate) => {
-              const dealRows = candidate.deals ?? [];
+            {results.map(({ candidate, dealRows, representativeDeal, hasPriceVariance, hasLowSample }) => {
               const isExpanded = expandedCandidateId === candidate.id;
               const currentDealPage = dealPageByCandidate[candidate.id] ?? 1;
-              const totalDealPages = Math.max(1, Math.ceil(dealRows.length / DEALS_PER_PAGE));
-              const visibleDeals = dealRows.slice((currentDealPage - 1) * DEALS_PER_PAGE, currentDealPage * DEALS_PER_PAGE);
+              const currentDealSort = dealSortByCandidate[candidate.id] ?? { key: "deposit", direction: "asc" };
+              const sortedDealRows = sortDeals(dealRows, currentDealSort);
+              const totalDealPages = Math.max(1, Math.ceil(sortedDealRows.length / DEALS_PER_PAGE));
+              const visibleDeals = sortedDealRows.slice((currentDealPage - 1) * DEALS_PER_PAGE, currentDealPage * DEALS_PER_PAGE);
               return (
                 <article key={candidate.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="space-y-3">
@@ -555,26 +729,38 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
                         <p className="text-3xl font-black tracking-tight text-slate-950">
-                          {formatKrw(candidate.amount)}
-                          {candidate.dealType === "monthly" && candidate.monthlyRent
-                            ? <span className="text-xl"> / 월 {formatKrw(candidate.monthlyRent)}</span>
+                          {formatKrw(representativeDeal.amount)}
+                          {representativeDeal.monthlyRent
+                            ? <span className="text-xl"> / 월 {formatKrw(representativeDeal.monthlyRent)}</span>
                             : null}
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-600">
-                          최근 12개월 {DEAL_LABEL[candidate.dealType]} {candidate.dealCount}건 중 최저 거래
+                          현재 조건에 맞는 {dealKindLabel(representativeDeal, candidate.dealType)} {dealRows.length}건 기준 낮은 가격대
                         </p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">
-                          {candidate.representativeBuildingName ?? candidate.buildingHint} · {HOUSING_LABEL[candidate.housingType]}
-                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                            {representativeDeal.buildingName} · {HOUSING_LABEL[candidate.housingType]}
+                          </span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                            {representativeDeal.contractLabel}
+                          </span>
+                          {representativeDeal.monthlyRent ? (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                              {dealKindLabel(representativeDeal, candidate.dealType)}
+                            </span>
+                          ) : null}
+                          {hasPriceVariance ? (
+                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                              가격 편차 큼
+                            </span>
+                          ) : null}
+                          {hasLowSample ? (
+                            <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[11px] font-bold text-yellow-700">
+                              거래 적음
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                      <a
-                        href={externalSearchUrl(candidate)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:border-teal-200 hover:text-teal-700"
-                      >
-                        매물 확인
-                      </a>
                     </div>
                   </div>
 
@@ -588,34 +774,135 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                       className="rounded-xl px-2 py-1 transition hover:bg-slate-50"
                     >
                       <p className="text-[11px] font-bold text-slate-400">거래건수</p>
-                      <p className="mt-1 text-sm font-black text-slate-900">{candidate.dealCount}건</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{dealRows.length}건</p>
                       <p className="mt-0.5 text-[11px] font-semibold text-teal-700">
                         {isExpanded ? "접기" : "내역 보기"}
                       </p>
                     </button>
-                    <SimpleMetric label="전용면적" value={`${candidate.areaSqm}㎡`} sub={pyeong(candidate.areaSqm)} />
+                    <SimpleMetric label="전용면적" value={`${representativeDeal.areaSqm}㎡`} sub={pyeong(representativeDeal.areaSqm)} />
                     <SimpleMetric label="최근거래" value={candidate.recentMonth} />
                   </div>
+
+                  {hasPriceVariance ? (
+                    <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold leading-relaxed text-red-700">
+                      같은 지역·유형 안에서 금액 차이가 큽니다. 갱신계약이나 특수 거래가 포함됐을 수 있으니 거래내역을 확인하세요.
+                    </p>
+                  ) : null}
 
                   {isExpanded ? (
                     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-black text-slate-900">
-                          거래 내역 <span className="text-slate-500">({candidate.dealCount}건)</span>
+                          거래 내역 <span className="text-slate-500">({dealRows.length}건)</span>
                         </p>
                         <p className="text-xs font-semibold text-slate-500">
                           {currentDealPage} / {totalDealPages}페이지
                         </p>
                       </div>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        현재 검색 조건에 맞는 거래만 표시합니다. 갱신·특수 거래는 실제 시세와 다를 수 있습니다.
+                      </p>
+                      <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                        {(Object.keys(DEAL_LIST_SORT_LABEL) as DealListSort[]).map((sort) => (
+                          <button
+                            key={sort}
+                            type="button"
+                            onClick={() => {
+                              setDealSortByCandidate((prev) => {
+                                const current = prev[candidate.id] ?? { key: "deposit" as DealListSort, direction: "asc" as SortDirection };
+                                const nextDirection: SortDirection =
+                                  current.key === sort && current.direction === "asc" ? "desc" : "asc";
+                                return { ...prev, [candidate.id]: { key: sort, direction: nextDirection } };
+                              });
+                              setDealPageByCandidate((prev) => ({ ...prev, [candidate.id]: 1 }));
+                            }}
+                            className={cn(
+                              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition",
+                              currentDealSort.key === sort
+                                ? "border-teal-500 bg-teal-50 text-teal-800"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+                            )}
+                          >
+                            {DEAL_LIST_SORT_LABEL[sort]}
+                            {currentDealSort.key === sort ? (currentDealSort.direction === "asc" ? " ↑" : " ↓") : null}
+                          </button>
+                        ))}
+                      </div>
                       {visibleDeals.length > 0 ? (
-                        <div className="mt-3 divide-y divide-slate-200 rounded-xl bg-white">
-                          {visibleDeals.map((deal) => (
-                            <div key={deal.id} className="grid grid-cols-[72px_1fr_auto] gap-2 px-3 py-2 text-sm">
-                              <span className="font-semibold text-slate-500">{deal.dealMonth}</span>
-                              <span className="min-w-0 truncate font-bold text-slate-800">{deal.buildingName}</span>
-                              <span className="text-right font-black text-slate-950">{formatDealPrice(deal)}</span>
-                            </div>
-                          ))}
+                        <div className="mt-3 overflow-hidden rounded-xl bg-white">
+                          <div className="hidden grid-cols-[88px_minmax(0,1fr)_96px_72px_128px] items-center gap-2 border-b border-slate-100 px-4 py-2 text-[11px] font-black text-slate-400 sm:grid">
+                            <span>거래일</span>
+                            <span>아파트명</span>
+                            <span className="text-right">전용면적</span>
+                            <span className="text-center">구분</span>
+                            <span className="text-right">금액</span>
+                          </div>
+                          <div className="space-y-2 bg-slate-50 p-2 sm:space-y-0 sm:divide-y sm:divide-slate-100 sm:bg-white sm:p-0">
+                            {visibleDeals.map((deal) => (
+                              <div
+                                key={deal.id}
+                                className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs shadow-sm sm:grid sm:grid-cols-[88px_minmax(0,1fr)_96px_72px_128px] sm:items-center sm:gap-2 sm:rounded-none sm:border-0 sm:px-4 sm:py-2.5 sm:shadow-none sm:text-sm"
+                              >
+                                <div className="grid grid-cols-[1fr_auto] gap-3 sm:hidden">
+                                  <div className="min-w-0">
+                                    <p className="font-semibold tabular-nums text-slate-500">
+                                      {formatDealDate(deal.dealDate, deal.dealMonth)}
+                                    </p>
+                                    <p className="mt-1 break-keep font-black leading-snug text-slate-900">
+                                      {deal.buildingName}
+                                    </p>
+                                    <p className="mt-1 whitespace-nowrap font-semibold tabular-nums text-slate-500">
+                                      {deal.areaSqm ? `${deal.areaSqm}㎡` : "-"}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-2">
+                                    <p className="whitespace-nowrap text-right font-black tabular-nums text-slate-950">
+                                      {formatDealPrice(deal)}
+                                    </p>
+                                    <span
+                                      className={cn(
+                                        "rounded-full px-2 py-1 text-[10px] font-bold",
+                                        deal.monthlyRent
+                                          ? "bg-amber-50 text-amber-700"
+                                          : deal.contractType === "renewal"
+                                            ? "bg-slate-100 text-slate-600"
+                                            : "bg-teal-50 text-teal-700"
+                                      )}
+                                    >
+                                      {deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <span className="hidden font-semibold tabular-nums text-slate-500 sm:block">
+                                  {formatDealDate(deal.dealDate, deal.dealMonth)}
+                                </span>
+                                <span className="hidden min-w-0 truncate font-bold text-slate-800 sm:block">
+                                  {deal.buildingName}
+                                </span>
+                                <span className="hidden whitespace-nowrap text-right font-semibold tabular-nums text-slate-500 sm:block">
+                                  {deal.areaSqm ? `${deal.areaSqm}㎡` : "-"}
+                                </span>
+                                <span className="hidden text-center sm:block">
+                                  <span
+                                    className={cn(
+                                      "rounded-full px-1.5 py-0.5 text-[11px] font-bold",
+                                      deal.monthlyRent
+                                        ? "bg-amber-50 text-amber-700"
+                                        : deal.contractType === "renewal"
+                                          ? "bg-slate-100 text-slate-600"
+                                          : "bg-teal-50 text-teal-700"
+                                    )}
+                                  >
+                                    {deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
+                                  </span>
+                                </span>
+                                <span className="hidden whitespace-nowrap text-right font-black tabular-nums text-slate-950 sm:block">
+                                  {formatDealPrice(deal)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <p className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-500">

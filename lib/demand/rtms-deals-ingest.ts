@@ -3,13 +3,13 @@ import { XMLParser } from "fast-xml-parser";
 import { DEMAND_REGION_REGISTRY } from "@/lib/demand/region-registry.generated";
 import { demandDistrictRegionKey } from "@/lib/demand/regions";
 
-type HousingType = "apartment";
+type HousingType = "apartment" | "villa" | "officetel" | "detached_multi";
 type DealType = "sale" | "jeonse" | "monthly";
 
 export type DemandRtmsDealsIngestResult =
   | {
       ok: true;
-      housingType: HousingType;
+      housingTypes: HousingType[];
       period: string;
       months: number;
       districts: number;
@@ -69,10 +69,104 @@ const TRADE_ENDPOINT_CANDIDATES = [
   "https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade",
 ];
 
+const OFFICETEL_TRADE_ENDPOINT_CANDIDATES = [
+  "https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade",
+  "https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade",
+];
+
+const ROWHOUSE_TRADE_ENDPOINT_CANDIDATES = [
+  "https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade/getRTMSDataSvcRHTrade",
+  "https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade",
+];
+
+const DETACHED_MULTI_TRADE_ENDPOINT_CANDIDATES = [
+  "https://apis.data.go.kr/1613000/RTMSDataSvcSHTrade/getRTMSDataSvcSHTrade",
+  "https://apis.data.go.kr/1613000/RTMSDataSvcSHTrade",
+];
+
 const RENT_ENDPOINT_CANDIDATES = [
   "https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRentDev",
   "https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent",
   "https://apis.data.go.kr/1613000/RTMSDataSvcAptRent",
+];
+
+const OFFICETEL_RENT_ENDPOINT_CANDIDATES = [
+  "https://apis.data.go.kr/1613000/RTMSDataSvcOffiRent/getRTMSDataSvcOffiRent",
+  "https://apis.data.go.kr/1613000/RTMSDataSvcOffiRent",
+];
+
+const ROWHOUSE_RENT_ENDPOINT_CANDIDATES = [
+  "https://apis.data.go.kr/1613000/RTMSDataSvcRHRent/getRTMSDataSvcRHRent",
+  "https://apis.data.go.kr/1613000/RTMSDataSvcRHRent",
+];
+
+const DETACHED_MULTI_RENT_ENDPOINT_CANDIDATES = [
+  "https://apis.data.go.kr/1613000/RTMSDataSvcSHRent/getRTMSDataSvcSHRent",
+  "https://apis.data.go.kr/1613000/RTMSDataSvcSHRent",
+];
+
+const RENT_SOURCES: Array<{
+  housingType: HousingType;
+  endpointCandidates: string[];
+  buildingNameKeys: string[];
+  fallbackBuildingName: string;
+}> = [
+  {
+    housingType: "apartment",
+    endpointCandidates: RENT_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["aptNm", "아파트"],
+    fallbackBuildingName: "아파트",
+  },
+  {
+    housingType: "officetel",
+    endpointCandidates: OFFICETEL_RENT_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["offiNm", "단지", "단지명", "오피스텔"],
+    fallbackBuildingName: "오피스텔",
+  },
+  {
+    housingType: "villa",
+    endpointCandidates: ROWHOUSE_RENT_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["mhouseNm", "연립다세대", "건물명", "주택명"],
+    fallbackBuildingName: "빌라/연립",
+  },
+  {
+    housingType: "detached_multi",
+    endpointCandidates: DETACHED_MULTI_RENT_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["houseType", "주택유형", "buildingName", "건물명"],
+    fallbackBuildingName: "단독/다가구",
+  },
+];
+
+const TRADE_SOURCES: Array<{
+  housingType: HousingType;
+  endpointCandidates: string[];
+  buildingNameKeys: string[];
+  fallbackBuildingName: string;
+}> = [
+  {
+    housingType: "apartment",
+    endpointCandidates: TRADE_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["aptNm", "아파트"],
+    fallbackBuildingName: "아파트",
+  },
+  {
+    housingType: "officetel",
+    endpointCandidates: OFFICETEL_TRADE_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["offiNm", "단지", "단지명", "오피스텔"],
+    fallbackBuildingName: "오피스텔",
+  },
+  {
+    housingType: "villa",
+    endpointCandidates: ROWHOUSE_TRADE_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["mhouseNm", "연립다세대", "건물명", "주택명"],
+    fallbackBuildingName: "빌라/연립",
+  },
+  {
+    housingType: "detached_multi",
+    endpointCandidates: DETACHED_MULTI_TRADE_ENDPOINT_CANDIDATES,
+    buildingNameKeys: ["houseType", "주택유형", "buildingName", "건물명"],
+    fallbackBuildingName: "단독/다가구",
+  },
 ];
 
 const XML = new XMLParser({
@@ -81,7 +175,7 @@ const XML = new XMLParser({
   trimValues: true,
 });
 
-const DEFAULT_MONTHS_BACK = 12;
+const DEFAULT_MONTHS_BACK = 3;
 const NUM_OF_ROWS = 1000;
 const FETCH_RETRIES = 4;
 const RETRY_BASE_MS = 2000;
@@ -251,13 +345,19 @@ function parseDealDate(item: Record<string, unknown>, yyyymm: string): { dealDat
   };
 }
 
-function mapTradeItem(item: Record<string, unknown>, target: DistrictTarget, yyyymm: string, updatedAt: string): RtmsDealRow | null {
+function mapTradeItem(
+  item: Record<string, unknown>,
+  target: DistrictTarget,
+  yyyymm: string,
+  updatedAt: string,
+  source: (typeof TRADE_SOURCES)[number]
+): RtmsDealRow | null {
   const amountKrw = readMoneyKrw(item, ["dealAmount", "거래금액"]);
   if (amountKrw <= 0) return null;
   const { dealDate, day } = parseDealDate(item, yyyymm);
   return {
     source: "rtms",
-    housing_type: "apartment",
+    housing_type: source.housingType,
     deal_type: "sale",
     region_key: target.regionKey,
     city_id: target.cityId,
@@ -266,7 +366,7 @@ function mapTradeItem(item: Record<string, unknown>, target: DistrictTarget, yyy
     district_label: target.districtLabel,
     lawd_cd: target.lawdCd,
     dong: readString(item, ["umdNm", "법정동"]),
-    building_name: readString(item, ["aptNm", "아파트"]),
+    building_name: readString(item, source.buildingNameKeys) || source.fallbackBuildingName,
     deal_yyyymm: yyyymm,
     deal_date: dealDate,
     deal_day: day,
@@ -280,14 +380,20 @@ function mapTradeItem(item: Record<string, unknown>, target: DistrictTarget, yyy
   };
 }
 
-function mapRentItem(item: Record<string, unknown>, target: DistrictTarget, yyyymm: string, updatedAt: string): RtmsDealRow | null {
-  const depositKrw = readMoneyKrw(item, ["deposit", "보증금액"]);
-  const monthlyRentKrw = readMoneyKrw(item, ["monthlyRent", "월세금액"]);
+function mapRentItem(
+  item: Record<string, unknown>,
+  target: DistrictTarget,
+  yyyymm: string,
+  updatedAt: string,
+  source: (typeof RENT_SOURCES)[number]
+): RtmsDealRow | null {
+  const depositKrw = readMoneyKrw(item, ["deposit", "보증금액", "보증금"]);
+  const monthlyRentKrw = readMoneyKrw(item, ["monthlyRent", "월세금액", "월세액", "월세"]);
   if (depositKrw <= 0 && monthlyRentKrw <= 0) return null;
   const { dealDate, day } = parseDealDate(item, yyyymm);
   return {
     source: "rtms",
-    housing_type: "apartment",
+    housing_type: source.housingType,
     deal_type: monthlyRentKrw > 0 ? "monthly" : "jeonse",
     region_key: target.regionKey,
     city_id: target.cityId,
@@ -296,7 +402,7 @@ function mapRentItem(item: Record<string, unknown>, target: DistrictTarget, yyyy
     district_label: target.districtLabel,
     lawd_cd: target.lawdCd,
     dong: readString(item, ["umdNm", "법정동"]),
-    building_name: readString(item, ["aptNm", "아파트"]),
+    building_name: readString(item, source.buildingNameKeys) || source.fallbackBuildingName,
     deal_yyyymm: yyyymm,
     deal_date: dealDate,
     deal_day: day,
@@ -376,44 +482,48 @@ export async function runDemandRtmsDealsIngestJob(
       const dealYmd = yyyymm.replace("-", "");
       for (const target of targets) {
         const updatedAt = new Date().toISOString();
-        const tradeFirst = await fetchRtmsItemsPage(TRADE_ENDPOINT_CANDIDATES, tradeServiceKey, target.lawdCd, dealYmd, 1);
-        calls += 1;
-        const tradePages = Math.max(1, Math.ceil(tradeFirst.totalCount / NUM_OF_ROWS));
-        rows += await upsertRows(
-          supabase,
-          tradeFirst.items
-            .map((item) => mapTradeItem(item, target, yyyymm, updatedAt))
-            .filter((row): row is RtmsDealRow => row != null)
-        );
-        for (let pageNo = 2; pageNo <= tradePages; pageNo += 1) {
-          const page = await fetchRtmsItemsPage(TRADE_ENDPOINT_CANDIDATES, tradeServiceKey, target.lawdCd, dealYmd, pageNo);
+        for (const tradeSource of TRADE_SOURCES) {
+          const tradeFirst = await fetchRtmsItemsPage(tradeSource.endpointCandidates, tradeServiceKey, target.lawdCd, dealYmd, 1);
           calls += 1;
+          const tradePages = Math.max(1, Math.ceil(tradeFirst.totalCount / NUM_OF_ROWS));
           rows += await upsertRows(
             supabase,
-            page.items
-              .map((item) => mapTradeItem(item, target, yyyymm, updatedAt))
+            tradeFirst.items
+              .map((item) => mapTradeItem(item, target, yyyymm, updatedAt, tradeSource))
               .filter((row): row is RtmsDealRow => row != null)
           );
+          for (let pageNo = 2; pageNo <= tradePages; pageNo += 1) {
+            const page = await fetchRtmsItemsPage(tradeSource.endpointCandidates, tradeServiceKey, target.lawdCd, dealYmd, pageNo);
+            calls += 1;
+            rows += await upsertRows(
+              supabase,
+              page.items
+                .map((item) => mapTradeItem(item, target, yyyymm, updatedAt, tradeSource))
+                .filter((row): row is RtmsDealRow => row != null)
+            );
+          }
         }
 
-        const rentFirst = await fetchRtmsItemsPage(RENT_ENDPOINT_CANDIDATES, rentServiceKey, target.lawdCd, dealYmd, 1);
-        calls += 1;
-        const rentPages = Math.max(1, Math.ceil(rentFirst.totalCount / NUM_OF_ROWS));
-        rows += await upsertRows(
-          supabase,
-          rentFirst.items
-            .map((item) => mapRentItem(item, target, yyyymm, updatedAt))
-            .filter((row): row is RtmsDealRow => row != null)
-        );
-        for (let pageNo = 2; pageNo <= rentPages; pageNo += 1) {
-          const page = await fetchRtmsItemsPage(RENT_ENDPOINT_CANDIDATES, rentServiceKey, target.lawdCd, dealYmd, pageNo);
+        for (const rentSource of RENT_SOURCES) {
+          const rentFirst = await fetchRtmsItemsPage(rentSource.endpointCandidates, rentServiceKey, target.lawdCd, dealYmd, 1);
           calls += 1;
+          const rentPages = Math.max(1, Math.ceil(rentFirst.totalCount / NUM_OF_ROWS));
           rows += await upsertRows(
             supabase,
-            page.items
-              .map((item) => mapRentItem(item, target, yyyymm, updatedAt))
+            rentFirst.items
+              .map((item) => mapRentItem(item, target, yyyymm, updatedAt, rentSource))
               .filter((row): row is RtmsDealRow => row != null)
           );
+          for (let pageNo = 2; pageNo <= rentPages; pageNo += 1) {
+            const page = await fetchRtmsItemsPage(rentSource.endpointCandidates, rentServiceKey, target.lawdCd, dealYmd, pageNo);
+            calls += 1;
+            rows += await upsertRows(
+              supabase,
+              page.items
+                .map((item) => mapRentItem(item, target, yyyymm, updatedAt, rentSource))
+                .filter((row): row is RtmsDealRow => row != null)
+            );
+          }
         }
       }
     }
@@ -424,7 +534,7 @@ export async function runDemandRtmsDealsIngestJob(
 
   return {
     ok: true,
-    housingType: "apartment",
+    housingTypes: [...new Set([...TRADE_SOURCES, ...RENT_SOURCES].map((source) => source.housingType))],
     period: `${months[0]}..${months[months.length - 1]}`,
     months: months.length,
     districts: targets.length,
