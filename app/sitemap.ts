@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { listSeoSitemapDistricts } from "@/lib/demand/region-seo-data";
 import { demandRegionSeoPath } from "@/lib/demand/region-seo-path";
+import { listMoveRegionAliasesForDistricts } from "@/lib/demand/move-region-path";
 import { getBaseUrl } from "@/lib/seo";
 import type { MetadataRoute } from "next";
 
@@ -54,6 +55,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: d.lastModified ? new Date(d.lastModified).toISOString() : now,
       changeFrequency: "weekly" as const,
       priority,
+    });
+  }
+  for (const alias of listMoveRegionAliasesForDistricts(seoDistricts)) {
+    entries.push({
+      url: `${base}${alias.path}`,
+      lastModified: alias.lastModified ? new Date(alias.lastModified).toISOString() : now,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
     });
   }
 

@@ -26,6 +26,7 @@ import { MAGAM_OG_ALT } from "@/lib/magam/metadata";
 import { getMagamListingBySlug, getMagamOpenListings } from "@/lib/magam/queries";
 import { magamRegionalAdKeysForListing } from "@/lib/magam/region-ad-keys";
 import { getMagamShareBaseUrl } from "@/lib/magam/share-url";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 export const revalidate = 30;
 
@@ -92,6 +93,21 @@ export default async function MagamSharePage({ params, searchParams }: Props) {
 
   if (!listing) notFound();
 
+  const sessionSupabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await sessionSupabase.auth.getUser();
+  const { data: userReport } = user
+    ? await sessionSupabase
+        .from("magam_listing_reports")
+        .select("status, admin_note, reviewed_at, created_at")
+        .eq("listing_id", listing.id)
+        .eq("reporter_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
   const regionalKeys = magamRegionalAdKeysForListing(listing);
   const pagePath = `magam:share/${slug}`;
   const isOwnerPreview = from?.trim() === MAGAM_SHARE_FROM_LISTING;
@@ -102,7 +118,20 @@ export default async function MagamSharePage({ params, searchParams }: Props) {
       <div className="mx-auto w-full max-w-lg px-4 pt-3 pb-8">
         <MagamPageHeader title={MAGAM_SHARE_PAGE_TITLE} backHref={backHref} />
 
-        <MagamShareCard listing={listing} highlight />
+        <MagamShareCard
+          listing={listing}
+          highlight
+          userReport={
+            userReport
+              ? {
+                  status: userReport.status as "pending" | "dismissed" | "actioned",
+                  admin_note: userReport.admin_note as string | null,
+                  reviewed_at: userReport.reviewed_at as string | null,
+                  created_at: userReport.created_at as string,
+                }
+              : null
+          }
+        />
 
         {regionalKeys.length > 0 ? (
           <MagamRadarRegionalBanner

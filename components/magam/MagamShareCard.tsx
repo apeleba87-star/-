@@ -4,6 +4,7 @@ import {
   MAGAM_STATUS_LABEL,
   MAGAM_SHARE_CLOSED_CONTACT_HIDDEN,
 } from "@/lib/magam/copy";
+import { MAGAM_REPORT_STATUS_LABEL } from "@/lib/magam/report-reasons";
 import { formatMagamClosedAgo, formatMagamPostedAgo } from "@/lib/format/magam-relative-time";
 import { formatMagamListingPeekBody, getMagamListingDisplayRows } from "@/lib/magam/format-listing";
 import { magamListingTypeAccent } from "@/lib/magam/listing-type-style";
@@ -19,9 +20,15 @@ import { cn } from "@/lib/utils";
 type Props = {
   listing: MagamListingPublic;
   highlight?: boolean;
+  userReport?: {
+    status: "pending" | "dismissed" | "actioned";
+    admin_note: string | null;
+    reviewed_at: string | null;
+    created_at: string;
+  } | null;
 };
 
-export default function MagamShareCard({ listing, highlight }: Props) {
+export default function MagamShareCard({ listing, highlight, userReport = null }: Props) {
   const isClosed = listing.status === "closed";
   const rows = getMagamListingDisplayRows(listing);
   const closedAgo = isClosed
@@ -57,6 +64,31 @@ export default function MagamShareCard({ listing, highlight }: Props) {
       </div>
 
       <MagamListingDisplayRows rows={rows} />
+
+      {userReport ? (
+        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-slate-900">내 신고 처리 상태</p>
+            <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-blue-700">
+              {MAGAM_REPORT_STATUS_LABEL[userReport.status]}
+            </span>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            {userReport.status === "pending"
+              ? "신고가 접수되어 운영자가 검토 중입니다."
+              : userReport.status === "actioned"
+                ? "신고 검토 후 운영자 조치가 완료되었습니다."
+                : "신고 검토 결과 조치하지 않기로 처리되었습니다."}
+          </p>
+          {userReport.admin_note ? (
+            <p className="mt-1 text-xs text-slate-500">처리 메모: {userReport.admin_note}</p>
+          ) : null}
+          <p className="mt-1 text-[11px] text-slate-400">
+            신고 {formatMagamWhen(userReport.created_at)}
+            {userReport.reviewed_at ? ` · 처리 ${formatMagamWhen(userReport.reviewed_at)}` : null}
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
         {isClosed ? (

@@ -163,6 +163,9 @@ export default function MagamSettingsForm({ bootstrap }: Props) {
           >
             버그/건의 하기 <span className="ml-auto text-[#8B93A1]">↗</span>
           </a>
+          <Link href="/magam/reports" className="flex py-3 text-[15px] text-[#141824]">
+            내 신고 내역 <span className="ml-auto text-[#8B93A1]">›</span>
+          </Link>
           <Link href={magamLegalHref("/terms")} className="flex py-3 text-[15px] text-[#141824]">
             이용약관 <span className="ml-auto text-[#8B93A1]">↗</span>
           </Link>

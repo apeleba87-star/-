@@ -127,6 +127,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  const decodedPathname = decodeURIComponent(pathname);
+  if (decodedPathname.startsWith("/지역/")) {
+    const regionSlug = decodedPathname.slice("/지역/".length);
+    if (regionSlug) {
+      const url = req.nextUrl.clone();
+      url.pathname = `/move/region/${regionSlug}`;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   const ip = getClientIp(req);
   const limitRule = rateLimitBucket(pathname);
 

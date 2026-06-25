@@ -11,6 +11,7 @@ const FOOTER_LINK_CLASS =
 
 const PUBLIC_PRIMARY_LINKS: FooterLink[] = [
   { href: "/", label: "입주레이더" },
+  { href: "/move", label: "이사 예산 검색" },
   { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집" },
   { href: "/tenders", label: "입찰 공고" },
   { href: "/tender-awards", label: "낙찰 공고" },

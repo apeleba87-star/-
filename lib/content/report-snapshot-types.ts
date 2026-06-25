@@ -17,6 +17,7 @@ export const REPORT_TYPE_REPEAT_ORDERING = "repeat_ordering";
 export const REPORT_TYPE_REGION_INSTITUTION = "region_institution";
 export const REPORT_TYPE_LISTING_MARKET_INTEL = "listing_market_intel";
 export const REPORT_TYPE_AWARD_MARKET_INTEL = "award_market_intel";
+export const REPORT_TYPE_DEMAND_SALES_REGION = "demand_sales_region";
 
 export type ReportType =
   | typeof REPORT_TYPE_WEEKLY_MARKET_SUMMARY
@@ -32,7 +33,8 @@ export type ReportType =
   | typeof REPORT_TYPE_REPEAT_ORDERING
   | typeof REPORT_TYPE_REGION_INSTITUTION
   | typeof REPORT_TYPE_LISTING_MARKET_INTEL
-  | typeof REPORT_TYPE_AWARD_MARKET_INTEL;
+  | typeof REPORT_TYPE_AWARD_MARKET_INTEL
+  | typeof REPORT_TYPE_DEMAND_SALES_REGION;
 
 /** 화면/글 목록에 표시할 리포트 유형 라벨 (입찰리포트가 아닌 유형명) */
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
@@ -50,6 +52,7 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   [REPORT_TYPE_REGION_INSTITUTION]: "지역·기관 결합 리포트",
   [REPORT_TYPE_LISTING_MARKET_INTEL]: "현장거래 시장 인텔리전스",
   [REPORT_TYPE_AWARD_MARKET_INTEL]: "낙찰 시장 인텔리전스",
+  [REPORT_TYPE_DEMAND_SALES_REGION]: "입주청소 영업지역 리포트",
 };
 
 /** posts.source_type 에 저장할 값 (글 발행 시) */
@@ -80,4 +83,36 @@ export type ReportContentBlock = {
     sample_count?: number;
   };
   tags?: string[];
+};
+
+export type DemandSalesRegionReportItem = {
+  rank: number;
+  label: string;
+  cityLabel: string;
+  regionKey: string;
+  score: number;
+  searchVolume: number | null;
+  searchMomPercent: number | null;
+  saleCount: number;
+  saleMomPercent: number | null;
+  jeonseCount: number;
+  jeonseMomPercent: number | null;
+  dataConfidence: "high" | "medium" | "low";
+  recommendation: string;
+};
+
+export type DemandSalesRegionReportContent = ReportContentBlock & {
+  report_kind: typeof REPORT_TYPE_DEMAND_SALES_REGION;
+  period_key: string;
+  base_yyyymm: string | null;
+  base_month_label: string;
+  scope_label: string;
+  generated_at: string;
+  top_regions: DemandSalesRegionReportItem[];
+  rising_regions: DemandSalesRegionReportItem[];
+  caution_regions: DemandSalesRegionReportItem[];
+  scoring_note: string;
+  sales_strategy: string[];
+  faq: { question: string; answer: string }[];
+  cta: string;
 };

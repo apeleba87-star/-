@@ -43,20 +43,21 @@ export async function adminCloseMagamListing(
     .maybeSingle();
 
   if (!listing) return { ok: false, error: "공고를 찾을 수 없습니다." };
-  if (listing.status === "closed") return { ok: true };
-
   const note = reason?.trim() || null;
-  const { error } = await svc.service
-    .from("magam_listings")
-    .update({
-      status: "closed",
-      admin_closed_at: new Date().toISOString(),
-      admin_closed_by: auth.userId,
-      admin_close_reason: note,
-    })
-    .eq("id", listingId);
 
-  if (error) return { ok: false, error: error.message };
+  if (listing.status !== "closed") {
+    const { error } = await svc.service
+      .from("magam_listings")
+      .update({
+        status: "closed",
+        admin_closed_at: new Date().toISOString(),
+        admin_closed_by: auth.userId,
+        admin_close_reason: note,
+      })
+      .eq("id", listingId);
+
+    if (error) return { ok: false, error: error.message };
+  }
 
   await svc.service
     .from("magam_listing_reports")
@@ -70,6 +71,7 @@ export async function adminCloseMagamListing(
     .eq("status", "pending");
 
   revalidateMagamListingPaths(listing);
+  revalidatePath("/magam/reports");
   return { ok: true };
 }
 
@@ -183,6 +185,7 @@ export async function adminDismissMagamReport(reportId: string): Promise<ActionR
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/admin/magam-listings");
+  revalidatePath("/magam/reports");
   return { ok: true };
 }
 

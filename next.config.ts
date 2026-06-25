@@ -12,6 +12,14 @@ function supabaseStorageHostname(): string {
 }
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/지역/:regionSlug",
+        destination: "/move/region/:regionSlug",
+      },
+    ];
+  },
   /** Next 16: dev 기본 Turbopack인데 webpack 설정이 있으면 빈 객체로 의도 표시 필요 */
   turbopack: {},
   /**

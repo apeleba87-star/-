@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import {
@@ -28,6 +29,7 @@ export default function MagamReportListingButton({
   const [reasonText, setReasonText] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [claimToken, setClaimToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
@@ -44,11 +46,12 @@ export default function MagamReportListingButton({
           reasonText: reasonText.trim() || undefined,
         }),
       });
-      const data = (await res.json()) as { ok: boolean; error?: string };
+      const data = (await res.json()) as { ok: boolean; error?: string; claimToken?: string | null };
       if (!data.ok) {
         setError(data.error ?? "신고 접수에 실패했습니다.");
         return;
       }
+      setClaimToken(data.claimToken ?? null);
       setDone(true);
     } catch {
       setError("네트워크 오류가 발생했습니다.");
@@ -63,8 +66,14 @@ export default function MagamReportListingButton({
     onClick?.(e);
     setOpen(true);
     setDone(false);
+    setClaimToken(null);
     setError(null);
   }
+
+  const reportsHref = claimToken
+    ? `/magam/reports?claim=${encodeURIComponent(claimToken)}`
+    : "/magam/reports";
+  const loginHref = `/login?from=magam&next=${encodeURIComponent(reportsHref)}`;
 
   return (
     <>
@@ -101,9 +110,37 @@ export default function MagamReportListingButton({
                 <p className="mt-2 text-sm text-[#5B6472]">
                   검토 후 부적절한 공고는 운영자가 마감·삭제할 수 있습니다.
                 </p>
+                {claimToken ? (
+                  <>
+                    <p className="mt-2 text-xs text-[#8B93A1]">
+                      처리 결과를 확인하려면 간편 로그인해 주세요. 로그인 후 이 신고가 내 계정에
+                      연결됩니다.
+                    </p>
+                    <Link
+                      href={loginHref}
+                      className="mt-4 block rounded-xl bg-[#FEE500] py-3 text-center text-sm font-semibold text-[#191919]"
+                      onClick={() => setOpen(false)}
+                    >
+                      카카오로 로그인하고 내 신고 확인
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-xs text-[#8B93A1]">
+                      설정의 내 신고 내역에서 처리 상태를 확인할 수 있습니다.
+                    </p>
+                    <Link
+                      href={reportsHref}
+                      className="mt-4 block text-center text-sm font-semibold text-[#2563EB]"
+                      onClick={() => setOpen(false)}
+                    >
+                      내 신고 내역 보기
+                    </Link>
+                  </>
+                )}
                 <button
                   type="button"
-                  className="mt-5 w-full rounded-xl bg-[#2563EB] py-3 text-sm font-semibold text-white"
+                  className="mt-4 w-full rounded-xl bg-[#2563EB] py-3 text-sm font-semibold text-white"
                   onClick={() => setOpen(false)}
                 >
                   확인

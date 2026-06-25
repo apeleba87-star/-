@@ -24,6 +24,10 @@ function clientIp(req: NextRequest): string {
   );
 }
 
+function createReportClaimToken(): string {
+  return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+}
+
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
   const limited = await checkRateLimit("magam-report", ip, 8, 3600_000);
@@ -101,16 +105,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { error } = await service.from("magam_listing_reports").insert({
-    listing_id: listing.id,
-    reporter_id: user?.id ?? null,
-    reason_type: reasonType,
-    reason_text: reasonText,
-  });
+  const claimToken = user ? null : createReportClaimToken();
+  const { data: inserted, error } = await service
+    .from("magam_listing_reports")
+    .insert({
+      listing_id: listing.id,
+      reporter_id: user?.id ?? null,
+      claim_token: claimToken,
+      reason_type: reasonType,
+      reason_text: reasonText,
+    })
+    .select("id, claim_token")
+    .single();
 
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    reportId: inserted?.id,
+    claimToken: inserted?.claim_token ?? null,
+  });
 }

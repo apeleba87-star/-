@@ -80,6 +80,7 @@ type MobileDrawerRow =
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "입주레이더", Icon: Sparkles },
+  { kind: "link", href: "/move", label: "이사검색", Icon: Home },
   { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText, adminOnly: true },
   { kind: "link", href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간", Icon: Radio },
   {

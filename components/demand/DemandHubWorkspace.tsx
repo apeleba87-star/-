@@ -72,6 +72,24 @@ import type { JobWageHubTeaser } from "@/lib/report/job-wage-hub-teaser";
 import { useRadarAdPlacementPreview } from "@/components/demand/useRadarAdPlacementPreview";
 import { cn } from "@/lib/utils";
 
+const MOVE_DECISION_QUICK_LINKS = [
+  {
+    href: "/지역/하남",
+    title: "하남 이사 후보 분석",
+    description: "실거래 흐름과 입주 수요 신호 보기",
+  },
+  {
+    href: "/지역/남양주",
+    title: "남양주 이사 후보 분석",
+    description: "주변 지역과 입주 전 체크포인트 보기",
+  },
+  {
+    href: "/지역/성남-분당",
+    title: "성남 분당 이사 후보 분석",
+    description: "전세·매매 움직임과 입주청소 수요 보기",
+  },
+];
+
 function ClickableMetricCell({
   metricId,
   active,
@@ -461,6 +479,48 @@ export default function DemandHubWorkspace({
           </p>
         ) : null}
       </div>
+
+      {!hasSelection ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">이사 후보 지역 바로 보기</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                실거래·입주 수요·입주청소 체크포인트를 지역별로 확인하세요.
+              </p>
+            </div>
+            <Link href="/지역/하남" className="text-xs font-semibold text-teal-700 hover:underline">
+              예시 보기
+            </Link>
+          </div>
+          <Link
+            href="/move"
+            className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 transition hover:bg-teal-100"
+          >
+            <span>
+              <span className="block text-sm font-black text-teal-950">내 예산으로 갈 수 있는 지역 찾기</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-teal-700">
+                예산·지역·주택유형·거래유형을 고르면 최근 실거래 후보를 보여줍니다.
+              </span>
+            </span>
+            <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-bold text-teal-800 ring-1 ring-teal-200">
+              열기
+            </span>
+          </Link>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {MOVE_DECISION_QUICK_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 transition hover:border-teal-200 hover:bg-teal-50"
+              >
+                <p className="text-sm font-bold text-slate-900">{link.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{link.description}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {hasSelection && jobWageTeaser && focusSelection && focusRegionLabel ? (
         <DemandJobWageRegionBridge
