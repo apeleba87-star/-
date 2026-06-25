@@ -20,6 +20,7 @@ import {
   type RelatedReportPostRow,
 } from "@/lib/content/related-report-posts";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
+import MoveSeoBlogPostView from "@/components/move/MoveSeoBlogPostView";
 import {
   guestDailyInsightTeaserLine,
   redactAwardMarketSnapshotForGuest,
@@ -273,6 +274,10 @@ function isSnapshotReport(post: PostForRender): boolean {
   return Array.isArray(o.key_metrics) || typeof o.headline === "string";
 }
 
+function isMoveSeoBlogPost(post: PostForRender): boolean {
+  return post.source_type === "move_rtms_seo";
+}
+
 function renderPost(
   post: PostForRender,
   ads: TenderReportInlineAds,
@@ -284,6 +289,7 @@ function renderPost(
   relatedReports: RelatedReportPostRow[]
 ) {
   const isReport = isReportPost(post);
+  const isMoveSeoBlog = isMoveSeoBlogPost(post);
   const useDashboard = isDailyTenderReportPost(post) && reportData;
   const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
   const reportGuestLayout = guestPreview && isReport;
@@ -325,7 +331,15 @@ function renderPost(
 
   const body = (
     <>
-      {useDashboard ? (
+      {isMoveSeoBlog ? (
+        <MoveSeoBlogPostView
+          title={post.title}
+          excerpt={post.excerpt}
+          body={post.body}
+          publishedAt={post.published_at}
+          content={post.report_snapshot}
+        />
+      ) : useDashboard ? (
         <>
           <DailyTenderReportDashboard
             payload={dailyPayload!}

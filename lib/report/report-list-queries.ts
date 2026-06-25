@@ -21,6 +21,16 @@ export async function countTenderDailyReportPosts(supabase: SupabaseClient): Pro
   return count ?? 0;
 }
 
+export async function countMoveBlogPosts(supabase: SupabaseClient): Promise<number> {
+  const { count } = await supabase
+    .from("posts")
+    .select("id", { count: "exact", head: true })
+    .not("published_at", "is", null)
+    .eq("is_private", false)
+    .eq("source_type", "move_rtms_seo");
+  return count ?? 0;
+}
+
 export async function fetchReportPostsPage(
   supabase: SupabaseClient,
   opts: { isAward: boolean; page: number },
@@ -41,6 +51,18 @@ export async function fetchReportPostsPage(
         .or("source_type.eq.auto_tender_daily,slug.ilike.*daily-tender-digest*");
 
   return base.order("published_at", { ascending: false }).range(from, to);
+}
+
+export async function fetchMoveBlogPostsPage(supabase: SupabaseClient, page: number) {
+  const { from, to } = reportListRange(page);
+  return supabase
+    .from("posts")
+    .select("id, title, excerpt, published_at, slug, source_type, source_ref")
+    .not("published_at", "is", null)
+    .eq("is_private", false)
+    .eq("source_type", "move_rtms_seo")
+    .order("published_at", { ascending: false })
+    .range(from, to);
 }
 
 export async function countPrivatePosts(supabase: SupabaseClient): Promise<number> {

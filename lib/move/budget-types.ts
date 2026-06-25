@@ -1,6 +1,7 @@
 export type MoveDealType = "jeonse" | "monthly" | "sale";
 export type MoveHousingType = "apartment" | "villa" | "officetel" | "detached_multi";
 export type MoveContractType = "new" | "renewal" | "unknown";
+export type MoveDealQuality = "normal" | "caution" | "outlier";
 
 export type MoveBudgetDeal = {
   id: string;
@@ -12,6 +13,10 @@ export type MoveBudgetDeal = {
   buildingName: string;
   contractType: MoveContractType;
   contractLabel: string;
+  quality: MoveDealQuality;
+  qualityReason?: string;
+  representativeExcluded?: boolean;
+  qualityRatio?: number;
 };
 
 export type MoveBudgetCandidate = {

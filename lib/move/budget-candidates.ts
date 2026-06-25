@@ -30,6 +30,30 @@ type CandidateAccumulator = MoveBudgetCandidate & {
   deals: MoveBudgetDeal[];
 };
 
+type PreparedDeal = {
+  sido: string;
+  sigungu: string;
+  dong: string;
+  housingType: MoveHousingType;
+  dealType: MoveDealType;
+  amount: number;
+  monthlyRent?: number;
+  areaSqm: number;
+  recentMonth: string;
+  buildingName: string;
+  contract: { type: MoveContractType; label: string };
+  id: string;
+  dealDate: string;
+};
+
+type DealStats = {
+  count: number;
+  median: number;
+  q1: number;
+  q3: number;
+  lowerFence: number;
+};
+
 export type MoveBudgetCandidateFilters = {
   monthsBack?: number;
   dealTypes?: MoveDealType[];
@@ -44,6 +68,9 @@ export type MoveBudgetCandidateFilters = {
 const RTMS_DEALS_PAGE_SIZE = 1000;
 const RTMS_DEALS_MAX_ROWS = 250000;
 const ALL_REGION_KEY = "all";
+const MIN_QUALITY_SAMPLE_SIZE = 7;
+const OUTLIER_MAX_MEDIAN_RATIO = 0.55;
+const OUTLIER_MIN_ABSOLUTE_GAP = 100_000_000;
 const REGION_KEY_TO_DB_KEY = new Map(
   DEMAND_REGION_REGISTRY.flatMap((city) =>
     city.districts.map((district) => [
@@ -112,60 +139,156 @@ function compareDealPrice(a: MoveBudgetDeal, b: MoveBudgetDeal): number {
   return a.amount - b.amount || (a.monthlyRent ?? 0) - (b.monthlyRent ?? 0);
 }
 
-function toCandidates(rows: RtmsDealRecord[]): MoveBudgetCandidate[] {
-  const byGroup = new Map<string, CandidateAccumulator>();
+function percentile(values: number[], ratio: number): number {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * ratio)));
+  return sorted[index] ?? 0;
+}
 
-  for (const row of rows) {
-    if (!isMoveDealType(row.deal_type) || !isMoveHousingType(row.housing_type)) continue;
+function statsFor(values: number[]): DealStats | null {
+  const valid = values.filter((value) => value > 0 && Number.isFinite(value)).sort((a, b) => a - b);
+  if (valid.length < MIN_QUALITY_SAMPLE_SIZE) return null;
+  const q1 = percentile(valid, 0.25);
+  const q3 = percentile(valid, 0.75);
+  const median = percentile(valid, 0.5);
+  const iqr = q3 - q1;
+  return {
+    count: valid.length,
+    median,
+    q1,
+    q3,
+    lowerFence: iqr > 0 ? q1 - iqr * 1.5 : median * 0.7,
+  };
+}
+
+function areaBand(areaSqm: number): string {
+  if (areaSqm <= 0) return "unknown";
+  if (areaSqm < 40) return "under40";
+  if (areaSqm < 60) return "40to60";
+  if (areaSqm <= 85) return "60to85";
+  if (areaSqm <= 102) return "85to102";
+  return "over102";
+}
+
+function statsKey(deal: PreparedDeal, scope: "building" | "dong"): string {
+  const place = scope === "building" ? deal.buildingName : `${deal.sido}:${deal.sigungu}:${deal.dong}`;
+  return [scope, place, deal.housingType, deal.dealType, areaBand(deal.areaSqm)].join(":");
+}
+
+function buildStatsMap(deals: PreparedDeal[], scope: "building" | "dong"): Map<string, DealStats> {
+  const byKey = new Map<string, number[]>();
+  for (const deal of deals) {
+    if (deal.dealType === "monthly") continue;
+    const key = statsKey(deal, scope);
+    byKey.set(key, [...(byKey.get(key) ?? []), deal.amount]);
+  }
+  const stats = new Map<string, DealStats>();
+  for (const [key, values] of byKey.entries()) {
+    const next = statsFor(values);
+    if (next) stats.set(key, next);
+  }
+  return stats;
+}
+
+function qualityForDeal(
+  deal: PreparedDeal,
+  buildingStats: Map<string, DealStats>,
+  dongStats: Map<string, DealStats>
+): Pick<MoveBudgetDeal, "quality" | "qualityReason" | "representativeExcluded" | "qualityRatio"> {
+  if (deal.dealType === "monthly") return { quality: "normal" };
+  const stats = buildingStats.get(statsKey(deal, "building")) ?? dongStats.get(statsKey(deal, "dong"));
+  if (!stats || stats.median <= 0) return { quality: "normal" };
+  const ratio = deal.amount / stats.median;
+  const gap = stats.median - deal.amount;
+  const belowFence = deal.amount < stats.lowerFence;
+  if (ratio <= OUTLIER_MAX_MEDIAN_RATIO && gap >= OUTLIER_MIN_ABSOLUTE_GAP && belowFence) {
+    return {
+      quality: "outlier",
+      qualityReason: `같은 단지·면적대 중간 가격의 ${Math.round(ratio * 100)}% 수준으로 낮아 대표가격에서 제외했습니다.`,
+      representativeExcluded: true,
+      qualityRatio: ratio,
+    };
+  }
+  return { quality: "normal", qualityRatio: ratio };
+}
+
+function prepareDeals(rows: RtmsDealRecord[]): PreparedDeal[] {
+  return rows.flatMap((row): PreparedDeal[] => {
+    if (!isMoveDealType(row.deal_type) || !isMoveHousingType(row.housing_type)) return [];
     const amount = Number(row.amount_krw ?? 0);
-    if (amount <= 0) continue;
-
+    if (amount <= 0) return [];
     const sido = row.city_label?.trim() || "";
     const sigungu = row.district_label?.trim() || "";
     const dong = row.dong?.trim() || "";
-    const key = `${sido}:${sigungu}:${dong}:${row.housing_type}:${row.deal_type}`;
-    const areaSqm = numberValue(row.area_sqm);
     const recentMonth = row.deal_yyyymm || row.deal_date?.slice(0, 7) || "";
-    const existing = byGroup.get(key);
-    const buildingName = row.building_name?.trim();
-    const contract = normalizeContractType(row.raw);
-    const deal: MoveBudgetDeal = {
-      id: String(row.id),
+    const buildingName = row.building_name?.trim() || "단지명 미상";
+    return [{
+      sido,
+      sigungu,
+      dong,
+      housingType: row.housing_type,
+      dealType: row.deal_type,
       amount,
       monthlyRent: row.monthly_rent_krw ?? undefined,
-      areaSqm,
-      dealMonth: recentMonth,
+      areaSqm: numberValue(row.area_sqm),
+      recentMonth,
+      buildingName,
+      contract: normalizeContractType(row.raw),
+      id: String(row.id),
       dealDate: row.deal_date ?? `${recentMonth}-01`,
-      buildingName: buildingName || "단지명 미상",
-      contractType: contract.type,
-      contractLabel: contract.label,
+    }];
+  });
+}
+
+function toCandidates(rows: RtmsDealRecord[]): MoveBudgetCandidate[] {
+  const byGroup = new Map<string, CandidateAccumulator>();
+  const preparedDeals = prepareDeals(rows);
+  const buildingStats = buildStatsMap(preparedDeals, "building");
+  const dongStats = buildStatsMap(preparedDeals, "dong");
+
+  for (const prepared of preparedDeals) {
+    const key = `${prepared.sido}:${prepared.sigungu}:${prepared.dong}:${prepared.housingType}:${prepared.dealType}`;
+    const existing = byGroup.get(key);
+    const quality = qualityForDeal(prepared, buildingStats, dongStats);
+    const deal: MoveBudgetDeal = {
+      id: prepared.id,
+      amount: prepared.amount,
+      monthlyRent: prepared.monthlyRent,
+      areaSqm: prepared.areaSqm,
+      dealMonth: prepared.recentMonth,
+      dealDate: prepared.dealDate,
+      buildingName: prepared.buildingName,
+      contractType: prepared.contract.type,
+      contractLabel: prepared.contract.label,
+      ...quality,
     };
 
     if (!existing) {
       byGroup.set(key, {
         id: key,
-        sido,
-        sigungu,
-        dong,
-        housingType: row.housing_type,
-        dealType: row.deal_type,
-        amount,
-        monthlyRent: row.monthly_rent_krw ?? undefined,
-        areaSqm,
+        sido: prepared.sido,
+        sigungu: prepared.sigungu,
+        dong: prepared.dong,
+        housingType: prepared.housingType,
+        dealType: prepared.dealType,
+        amount: prepared.amount,
+        monthlyRent: prepared.monthlyRent,
+        areaSqm: prepared.areaSqm,
         dealCount: 1,
-        recentMonth,
+        recentMonth: prepared.recentMonth,
         buildingHint: "",
         representativeBuildingName: deal.buildingName,
         deals: [deal],
-        buildingNames: new Set(buildingName ? [buildingName] : []),
+        buildingNames: new Set(prepared.buildingName ? [prepared.buildingName] : []),
       });
       continue;
     }
 
     existing.dealCount += 1;
     existing.deals.push(deal);
-    if (buildingName) existing.buildingNames.add(buildingName);
-    if (recentMonth > existing.recentMonth) existing.recentMonth = recentMonth;
+    if (prepared.buildingName) existing.buildingNames.add(prepared.buildingName);
+    if (prepared.recentMonth > existing.recentMonth) existing.recentMonth = prepared.recentMonth;
     const currentRepresentative: MoveBudgetDeal = {
       id: existing.id,
       amount: existing.amount,
@@ -176,21 +299,31 @@ function toCandidates(rows: RtmsDealRecord[]): MoveBudgetCandidate[] {
       buildingName: existing.representativeBuildingName || "단지명 미상",
       contractType: "unknown",
       contractLabel: "미상",
+      quality: "normal",
     };
-    if (compareDealPrice(deal, currentRepresentative) < 0) {
+    if (!deal.representativeExcluded && compareDealPrice(deal, currentRepresentative) < 0) {
       existing.amount = deal.amount;
       existing.monthlyRent = deal.monthlyRent;
-      existing.areaSqm = areaSqm || existing.areaSqm;
+      existing.areaSqm = prepared.areaSqm || existing.areaSqm;
       existing.representativeBuildingName = deal.buildingName;
     }
   }
 
   return [...byGroup.values()]
-    .map(({ buildingNames, ...candidate }) => ({
-      ...candidate,
-      deals: [...candidate.deals].sort(compareDealPrice),
-      buildingHint: buildingHint(candidate.housingType, buildingNames),
-    }))
+    .map(({ buildingNames, ...candidate }) => {
+      const sortedDeals = [...candidate.deals].sort(compareDealPrice);
+      const representativePool = sortedDeals.filter((deal) => !deal.representativeExcluded);
+      const representative = representativePool[0] ?? sortedDeals[0];
+      return {
+        ...candidate,
+        amount: representative?.amount ?? candidate.amount,
+        monthlyRent: representative?.monthlyRent,
+        areaSqm: representative?.areaSqm ?? candidate.areaSqm,
+        representativeBuildingName: representative?.buildingName ?? candidate.representativeBuildingName,
+        deals: sortedDeals,
+        buildingHint: buildingHint(candidate.housingType, buildingNames),
+      };
+    })
     .sort((a, b) => b.dealCount - a.dealCount || a.amount - b.amount);
 }
 

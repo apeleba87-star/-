@@ -13,6 +13,8 @@ export type RelatedReportPostRow = {
   source_ref: string | null;
 };
 
+const PUBLIC_AUTO_BLOG_SOURCE_TYPES = new Set(["move_rtms_seo"]);
+
 /** posts 조회용: 일간 입찰·낙찰·스냅샷 리포트 전부 */
 export function buildReportPostsOrFilter(): string {
   const snapshotTypes = Object.keys(REPORT_TYPE_LABELS);
@@ -31,7 +33,7 @@ function isDailyTenderReportPost(post: { source_type?: string | null; slug?: str
 
 /** 글 상세·관련 리포트: 자동 리포트 글 여부 (posts.source_type 또는 일간 디제스트 slug) */
 export function isReportPost(post: { source_type?: string | null; slug?: string | null }): boolean {
-  if (post.source_type) return true;
+  if (post.source_type && !PUBLIC_AUTO_BLOG_SOURCE_TYPES.has(post.source_type)) return true;
   const slug = typeof post.slug === "string" ? post.slug : "";
   return slug.endsWith("-daily-tender-digest") || /-\d{4}-\d{2}-\d{2}-daily-tender-digest$/.test(slug);
 }

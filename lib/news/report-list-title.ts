@@ -14,6 +14,7 @@ export function getReportBadgeLabel(post: {
 }): string {
   if (isDailyTenderPost(post)) return "입찰 리포트";
   if (post.source_type === "award_market_intel") return "낙찰 리포트";
+  if (post.source_type === "move_rtms_seo") return "이사검색";
   if (post.source_type) return getReportTypeLabel(post.source_type);
   return "리포트";
 }

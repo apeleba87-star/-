@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server";
 import GenerateContentButton from "@/components/admin/GenerateContentButton";
 import GenerateAwardReportButton from "@/components/admin/GenerateAwardReportButton";
+import GenerateMoveRtmsSeoButton from "@/components/admin/GenerateMoveRtmsSeoButton";
 
 export default async function AdminContentRunsPage() {
   const supabase = await createServerSupabase();
@@ -39,6 +40,14 @@ export default async function AdminContentRunsPage() {
           버튼을 누르면 그 시점 기준으로 오늘 회차 일간 입찰 리포트를 생성합니다. 이미 생성된 회차가 있으면 건너뜀(재생성 체크 시 덮어쓰기).
         </p>
         <GenerateContentButton />
+        <div className="mt-4 border-t border-slate-200 pt-4">
+          <p className="mb-2 text-sm font-medium text-slate-700">이사검색 SEO 자동 글</p>
+          <p className="mb-2 text-sm text-slate-600">
+            최근 2개월 RTMS 실거래 데이터를 기준으로 지역 시세형, 예산형, 비교형, 주의형 SEO 글을 자동 생성합니다.
+            기본값은 하루 5개 공개 발행입니다.
+          </p>
+          <GenerateMoveRtmsSeoButton />
+        </div>
         <div className="mt-4 border-t border-slate-200 pt-4">
           <p className="mb-2 text-sm font-medium text-slate-700">낙찰 리포트</p>
           <p className="mb-2 text-sm text-slate-600">

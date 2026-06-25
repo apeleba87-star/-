@@ -11,6 +11,7 @@ const FOOTER_LINK_CLASS =
 
 const MOVE_LINKS: FooterLink[] = [
   { href: "/", label: "이사검색" },
+  { href: "/news", label: "이사정보" },
 ];
 
 const CLEANING_BUSINESS_LINKS: FooterLink[] = [

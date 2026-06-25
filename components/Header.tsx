@@ -80,6 +80,7 @@ type MobileDrawerRow =
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "이사검색", Icon: Home },
+  { kind: "link", href: "/news", label: "이사정보", Icon: FileText },
   { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText, adminOnly: true },
   {
     kind: "mega",

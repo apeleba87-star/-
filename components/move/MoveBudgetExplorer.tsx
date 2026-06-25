@@ -37,6 +37,7 @@ type MoveBudgetResult = {
   };
   hasPriceVariance: boolean;
   hasLowSample: boolean;
+  outlierDealCount: number;
 };
 
 type DealListSort = "representative" | "area" | "recent" | "deposit" | "monthly";
@@ -174,11 +175,13 @@ function chooseRepresentativeDeal(
   deals: NonNullable<MoveBudgetCandidate["deals"]>,
   dealType: DealType
 ): NonNullable<MoveBudgetCandidate["deals"]>[number] {
+  const usableDeals = deals.filter((deal) => !deal.representativeExcluded);
+  const baseDeals = usableDeals.length > 0 ? usableDeals : deals;
   if (dealType === "sale") {
-    return [...deals].sort(compareDealPrice)[0] ?? deals[0]!;
+    return [...baseDeals].sort(compareDealPrice)[0] ?? deals[0]!;
   }
-  const preferred = deals.filter((deal) => deal.contractType !== "renewal");
-  const pool = preferred.length > 0 ? preferred : deals;
+  const preferred = baseDeals.filter((deal) => deal.contractType !== "renewal");
+  const pool = preferred.length > 0 ? preferred : baseDeals;
   const sorted = [...pool].sort(compareDealPrice);
   const index = sorted.length >= 6 ? Math.floor((sorted.length - 1) * 0.25) : 0;
   return sorted[index] ?? deals[0]!;
@@ -190,8 +193,10 @@ function buildRepresentativePriceBand(
 ): MoveBudgetResult["priceBand"] {
   const sortedAll = [...deals].sort(compareDealPrice);
   const minimum = sortedAll[0] ?? deals[0]!;
-  const preferred = dealType === "sale" ? sortedAll : deals.filter((deal) => deal.contractType !== "renewal").sort(compareDealPrice);
-  const pool = preferred.length >= 3 ? preferred : sortedAll;
+  const usableDeals = sortedAll.filter((deal) => !deal.representativeExcluded);
+  const baseDeals = usableDeals.length > 0 ? usableDeals : sortedAll;
+  const preferred = dealType === "sale" ? baseDeals : baseDeals.filter((deal) => deal.contractType !== "renewal").sort(compareDealPrice);
+  const pool = preferred.length >= 3 ? preferred : baseDeals;
   const lowIndex = pool.length >= 6 ? Math.floor((pool.length - 1) * 0.25) : 0;
   const highIndex = pool.length >= 6 ? Math.floor((pool.length - 1) * 0.5) : Math.min(pool.length - 1, lowIndex + 1);
   const low = pool[lowIndex] ?? minimum;
@@ -199,7 +204,10 @@ function buildRepresentativePriceBand(
   const minGap = low.amount - minimum.amount;
   const hasLowerReference =
     compareDealPrice(minimum, low) < 0 &&
-    (minimum.contractType === "renewal" || minGap >= 30_000_000 || (low.amount > 0 && minimum.amount / low.amount <= 0.85));
+    (minimum.representativeExcluded === true ||
+      minimum.contractType === "renewal" ||
+      minGap >= 30_000_000 ||
+      (low.amount > 0 && minimum.amount / low.amount <= 0.85));
 
   return { low, high, minimum, hasLowerReference };
 }
@@ -232,6 +240,7 @@ function sortDeals(
 ): NonNullable<MoveBudgetCandidate["deals"]> {
   const direction = sortState.direction === "asc" ? 1 : -1;
   return [...deals].sort((a, b) => {
+    if (a.representativeExcluded !== b.representativeExcluded) return a.representativeExcluded ? 1 : -1;
     let primary = 0;
     if (sortState.key === "representative" && priceBand) {
       const target = priceBand.low.amount;
@@ -371,6 +380,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
       if (dealRows.length === 0) return [];
       const representativeDeal = chooseRepresentativeDeal(dealRows, candidate.dealType);
       const priceBand = buildRepresentativePriceBand(dealRows, candidate.dealType);
+      const outlierDealCount = dealRows.filter((deal) => deal.representativeExcluded).length;
       return [{
         candidate,
         dealRows: [...dealRows].sort(compareDealPrice),
@@ -378,6 +388,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
         priceBand,
         hasPriceVariance: hasLargePriceVariance(dealRows),
         hasLowSample: dealRows.length <= 2,
+        outlierDealCount,
       }];
     });
     return [...filtered].sort((a, b) => {
@@ -727,7 +738,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
           </div>
         ) : results.length > 0 ? (
           <div className="grid gap-3">
-            {results.map(({ candidate, dealRows, representativeDeal, priceBand, hasPriceVariance, hasLowSample }) => {
+            {results.map(({ candidate, dealRows, representativeDeal, priceBand, hasPriceVariance, hasLowSample, outlierDealCount }) => {
               const isExpanded = expandedCandidateId === candidate.id;
               const currentDealPage = dealPageByCandidate[candidate.id] ?? 1;
               const currentDealSort = dealSortByCandidate[candidate.id] ?? { key: "representative", direction: "asc" };
@@ -750,7 +761,9 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                         </p>
                         {priceBand.hasLowerReference ? (
                           <p className="mt-1 text-xs font-bold text-slate-500">
-                            최저 거래 {formatDealPrice(priceBand.minimum)} 있음 · 갱신/특수거래 가능성
+                            {priceBand.minimum.representativeExcluded
+                              ? `대표가격 제외 거래 ${formatDealPrice(priceBand.minimum)} 있음`
+                              : `최저 거래 ${formatDealPrice(priceBand.minimum)} 있음 · 갱신/특수거래 가능성`}
                           </p>
                         ) : null}
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -773,6 +786,11 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                           {hasLowSample ? (
                             <span className="rounded-full bg-yellow-50 px-2 py-0.5 text-[11px] font-bold text-yellow-700">
                               거래 적음
+                            </span>
+                          ) : null}
+                          {outlierDealCount > 0 ? (
+                            <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700">
+                              대표가 제외 {outlierDealCount}건
                             </span>
                           ) : null}
                         </div>
@@ -804,6 +822,11 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                       같은 지역·유형 안에서 금액 차이가 큽니다. 최저가만 보고 판단하지 말고 대표 가격대와 참고 거래를 함께 확인하세요.
                     </p>
                   ) : null}
+                  {outlierDealCount > 0 ? (
+                    <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold leading-relaxed text-rose-700">
+                      같은 단지·면적대 기준에서 크게 벗어난 거래가 있어 대표 가격 계산에서는 제외했습니다. 원본 거래는 참고용으로 남겨둡니다.
+                    </p>
+                  ) : null}
 
                   {isExpanded ? (
                     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
@@ -813,7 +836,7 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                         </p>
                       </div>
                       <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                        대표 가격대와 가까운 거래를 먼저 보여줍니다. 갱신계약이나 특수거래는 현재 체감 시세보다 낮게 보일 수 있습니다.
+                        대표 가격대와 가까운 거래를 먼저 보여줍니다. 갱신·특수 거래는 실제 시세와 다르게 보일 수 있습니다.
                       </p>
                       <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
                         {(Object.keys(DEAL_LIST_SORT_LABEL) as DealListSort[]).map((sort) => (
@@ -864,6 +887,11 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                                     <p className="mt-1 break-keep font-black leading-snug text-slate-900">
                                       {deal.buildingName}
                                     </p>
+                                    {deal.representativeExcluded ? (
+                                      <p className="mt-1 text-[11px] font-bold leading-snug text-rose-600">
+                                        대표가 제외 · {deal.qualityReason ?? "같은 면적대 기준에서 크게 벗어난 거래입니다."}
+                                      </p>
+                                    ) : null}
                                     <p className="mt-1 whitespace-nowrap font-semibold tabular-nums text-slate-500">
                                       {deal.areaSqm ? `${deal.areaSqm}㎡` : "-"}
                                     </p>
@@ -877,12 +905,20 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                                         "rounded-full px-2 py-1 text-[10px] font-bold",
                                         deal.monthlyRent
                                           ? "bg-amber-50 text-amber-700"
+                                          : deal.representativeExcluded
+                                            ? "bg-rose-50 text-rose-700"
                                           : deal.contractType === "renewal"
                                             ? "bg-slate-100 text-slate-600"
                                             : "bg-teal-50 text-teal-700"
                                       )}
                                     >
-                                      {candidate.dealType === "sale" ? "매매" : deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
+                                      {deal.representativeExcluded
+                                        ? "제외"
+                                        : candidate.dealType === "sale"
+                                          ? "매매"
+                                          : deal.monthlyRent
+                                            ? dealKindLabel(deal, candidate.dealType)
+                                            : deal.contractLabel}
                                     </span>
                                   </div>
                                 </div>
@@ -892,6 +928,11 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                                 </span>
                                 <span className="hidden min-w-0 truncate font-bold text-slate-800 sm:block">
                                   {deal.buildingName}
+                                  {deal.representativeExcluded ? (
+                                    <span className="ml-2 text-[11px] font-black text-rose-600" title={deal.qualityReason}>
+                                      대표가 제외
+                                    </span>
+                                  ) : null}
                                 </span>
                                 <span className="hidden whitespace-nowrap text-right font-semibold tabular-nums text-slate-500 sm:block">
                                   {deal.areaSqm ? `${deal.areaSqm}㎡` : "-"}
@@ -902,12 +943,20 @@ export default function MoveBudgetExplorer({ initialCandidates = [] }: { initial
                                       "rounded-full px-1.5 py-0.5 text-[11px] font-bold",
                                       deal.monthlyRent
                                         ? "bg-amber-50 text-amber-700"
+                                        : deal.representativeExcluded
+                                          ? "bg-rose-50 text-rose-700"
                                         : deal.contractType === "renewal"
                                           ? "bg-slate-100 text-slate-600"
                                           : "bg-teal-50 text-teal-700"
                                     )}
                                   >
-                                    {candidate.dealType === "sale" ? "매매" : deal.monthlyRent ? dealKindLabel(deal, candidate.dealType) : deal.contractLabel}
+                                    {deal.representativeExcluded
+                                      ? "제외"
+                                      : candidate.dealType === "sale"
+                                        ? "매매"
+                                        : deal.monthlyRent
+                                          ? dealKindLabel(deal, candidate.dealType)
+                                          : deal.contractLabel}
                                   </span>
                                 </span>
                                 <span className="hidden whitespace-nowrap text-right font-black tabular-nums text-slate-950 sm:block">

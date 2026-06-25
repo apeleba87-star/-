@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 export type NewsCategoryKey =
+  | "move_blog"
   | "report"
   | "award_report"
   | "marketing"
@@ -43,32 +44,6 @@ export default function NewsCategoryTabs({ section, current, showPrivateTab }: P
 
   return (
     <div className="space-y-3">
-      <nav
-        className="flex justify-center gap-2"
-        aria-label="리포트 또는 데이터랩"
-      >
-        <Link
-          href="/news?section=report&category=report"
-          className={`min-h-[44px] shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
-            section === "report"
-              ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md"
-              : "bg-white text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-50"
-          }`}
-        >
-          리포트
-        </Link>
-        <Link
-          href="/news?section=industry&category=chemical"
-          className={`min-h-[44px] shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
-            section === "industry"
-              ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md"
-              : "bg-white text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-50"
-          }`}
-        >
-          데이터랩
-        </Link>
-      </nav>
-
       {section === "report" ? (
         <nav
           className="flex gap-1.5 rounded-xl border border-slate-200/80 bg-white/60 p-1.5 scrollbar-thin max-md:flex-nowrap max-md:overflow-x-auto md:flex-wrap md:justify-center"
