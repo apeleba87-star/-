@@ -1,0 +1,13 @@
+.next
+node_modules
+coverage
+build
+*.tsbuildinfo
+
+magam_app/.dart_tool
+magam_app/build
+magam_app/.idea
+magam_app/.env
+magam_app/.env.pwa.build
+
+scripts/*.log

@@ -2,9 +2,9 @@ import MoveBudgetExplorer from "@/components/move/MoveBudgetExplorer";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "내 예산으로 갈 수 있는 지역 찾기 — 실거래 기반 이사 탐색",
+  title: "내 예산으로 어디까지 갈 수 있을까? — 실거래가 기반 이사검색",
   description:
-    "예산, 지역, 주택 유형, 거래 유형을 선택해 최근 2개월 실거래 기준으로 갈 수 있는 동네 후보를 탐색합니다.",
+    "전세·월세·매매 예산을 입력하면 최근 실거래가 기준으로 갈 수 있는 동네와 주택 유형을 찾아드립니다.",
   path: "/move",
 });
 

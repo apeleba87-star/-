@@ -4,8 +4,9 @@ import { buildPageMetadata } from "@/lib/seo";
 export const revalidate = 3600;
 
 export const metadata = buildPageMetadata({
-  title: "내 예산으로 갈 수 있는 지역 찾기 — 클린아이덱스",
-  description: "예산, 지역, 주택 유형, 거래 유형을 선택해 최근 2개월 실거래 기준으로 갈 수 있는 동네 후보를 탐색합니다.",
+  title: "클린아이덱스 — 내 예산으로 갈 수 있는 동네 찾기",
+  description:
+    "최근 실거래가 기준으로 전세·월세·매매 예산에 맞는 동네와 주택 유형을 찾아보세요. 이사 전 지역 선택과 입주 준비를 도와드립니다.",
   path: "/",
 });
 

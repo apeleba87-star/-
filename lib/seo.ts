@@ -14,15 +14,15 @@ export function getBaseUrl(): string {
   return "https://cleanindex.kr";
 }
 
-/** layout fallback — 브랜드·플랫폼 중립 */
-export const defaultTitle = "클린아이덱스 — 청소·방역 업체를 위한 데이터·현장 도구";
+/** layout fallback — 이사검색 중심 */
+export const defaultTitle = "클린아이덱스 — 내 예산으로 갈 수 있는 동네 찾기";
 
 /** layout·JSON-LD 기본 설명 (한글 약 155자 이내 권장) */
 export const defaultDescription =
-  "입주·이사 수요(입주레이더), 현장 작업 증빙, 나라장터 입찰·낙찰, 인력·시장 리포트를 한 플랫폼에서.";
+  "최근 실거래가 기준으로 전세·월세·매매 예산에 맞는 지역과 주택 유형을 찾아보세요. 이사 전 동네 선택과 입주 준비를 도와드립니다.";
 
 /** 푸터·보조 문구 */
-export const siteTagline = "입주레이더 · 나라장터 · 리포트 · 견적";
+export const siteTagline = "실거래가로 보는 이사 준비 플랫폼";
 
 /** `/` — 입주레이더 */
 export const radarHomeTitle = "입주레이더 — 이번 달 입주·이사 수요가 많은 지역";
@@ -124,6 +124,13 @@ export function buildPageMetadata(opts: {
 export const seoKeywords = [
   "클린아이덱스",
   "Cleanidex",
+  "이사검색",
+  "내 예산으로 갈 수 있는 동네",
+  "전세 예산",
+  "월세 예산",
+  "실거래가",
+  "동네 찾기",
+  "이사 준비",
   "입주레이더",
   "입주청소",
   "입주청소 지역",
