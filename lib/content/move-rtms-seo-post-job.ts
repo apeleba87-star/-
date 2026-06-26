@@ -7,10 +7,14 @@ import { GENERATOR_VERSION } from "@/lib/content/content-generation-runs";
 export const MOVE_RTM_SEO_SOURCE_TYPE = "move_rtms_seo";
 export const MOVE_RTM_SEO_RUN_TYPE = "move_rtms_daily";
 
-const DEFAULT_DAILY_LIMIT = 5;
+const DEFAULT_REGION_DAILY_LIMIT = 5;
+const DEFAULT_UPDATE_DAILY_LIMIT = 2;
+const DEFAULT_DAILY_LIMIT = DEFAULT_REGION_DAILY_LIMIT + DEFAULT_UPDATE_DAILY_LIMIT;
+const TOPIC_POOL_MULTIPLIER = 6;
 const SOURCE_PAGE_SIZE = 250;
 const MAX_ROWS_PER_SOURCE = 750;
 const MIN_REGION_DEALS = 8;
+const MIN_BUILDING_DEALS = 6;
 const MIN_QUALITY_SAMPLE_SIZE = 7;
 const OUTLIER_MAX_MEDIAN_RATIO = 0.55;
 const OUTLIER_MIN_ABSOLUTE_GAP = 100_000_000;
@@ -38,7 +42,7 @@ type RtmsDealRow = {
 
 type DealType = "sale" | "jeonse" | "monthly";
 type HousingType = "apartment" | "villa" | "officetel" | "detached_multi";
-type TopicKind = "region_price" | "budget_fit" | "region_compare" | "price_caution";
+type TopicKind = "region_price" | "budget_fit" | "region_compare" | "price_caution" | "building_price";
 
 type CleanDeal = {
   id: number;
@@ -71,6 +75,17 @@ type RegionGroup = {
   deals: CleanDeal[];
 };
 
+type BuildingGroup = {
+  key: string;
+  cityId: string;
+  cityLabel: string;
+  districtSlug: string;
+  districtLabel: string;
+  dong: string;
+  buildingName: string;
+  deals: CleanDeal[];
+};
+
 type SeoTopic = {
   kind: TopicKind;
   sourceRef: string;
@@ -80,6 +95,11 @@ type SeoTopic = {
   body: string;
   sourceCount: number;
   payload: Record<string, unknown>;
+};
+
+type ExistingTopicIndex = {
+  sourceRefs: Set<string>;
+  titles: Set<string>;
 };
 
 type SeoBlogContent = {
@@ -310,6 +330,37 @@ function groupDeals(deals: CleanDeal[]): RegionGroup[] {
   return [...map.values()].filter((group) => group.deals.length >= MIN_REGION_DEALS);
 }
 
+function groupApartmentBuildings(deals: CleanDeal[]): BuildingGroup[] {
+  const map = new Map<string, BuildingGroup>();
+  for (const deal of deals) {
+    if (deal.housingType !== "apartment") continue;
+    if (!deal.regionKey || !deal.cityId || !deal.districtSlug) continue;
+    if (!deal.buildingName || deal.buildingName === "단지명 미상") continue;
+    const key = `${deal.regionKey}:${deal.dong}:${deal.buildingName}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.deals.push(deal);
+      continue;
+    }
+    map.set(key, {
+      key,
+      cityId: deal.cityId,
+      cityLabel: deal.cityLabel,
+      districtSlug: deal.districtSlug,
+      districtLabel: deal.districtLabel,
+      dong: deal.dong,
+      buildingName: deal.buildingName,
+      deals: [deal],
+    });
+  }
+  return [...map.values()]
+    .map((group) => ({
+      ...group,
+      deals: group.deals.filter((deal) => !deal.representativeExcluded),
+    }))
+    .filter((group) => group.deals.length >= MIN_BUILDING_DEALS);
+}
+
 function stableScore(text: string): number {
   let hash = 0;
   for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
@@ -318,6 +369,10 @@ function stableScore(text: string): number {
 
 function topicSlug(dayKey: string, topic: TopicKind, group: RegionGroup, suffix: string): string {
   return `move-rtms-${dayKey}-${topic}-${group.cityId}-${group.districtSlug}-${stableScore(`${group.dong}:${suffix}`).toString(36)}`;
+}
+
+function buildingTopicSlug(dayKey: string, group: BuildingGroup, suffix: string): string {
+  return `move-rtms-${dayKey}-building-price-${group.cityId}-${group.districtSlug}-${stableScore(`${group.dong}:${group.buildingName}:${suffix}`).toString(36)}`;
 }
 
 function minMaxLabel(values: number[]): string {
@@ -499,7 +554,7 @@ function buildRegionPriceTopic(group: RegionGroup, dayKey: string): SeoTopic | n
   });
   return {
     kind: "region_price",
-    sourceRef: `${dayKey}:region:${group.key}`,
+    sourceRef: `region_price:${group.key}:rent`,
     title,
     slug: topicSlug(dayKey, "region_price", group, "rent"),
     excerpt,
@@ -538,7 +593,7 @@ function buildBudgetFitTopic(group: RegionGroup, dayKey: string): SeoTopic | nul
   });
   return {
     kind: "budget_fit",
-    sourceRef: `${dayKey}:budget:${group.key}:${Math.round(budget / 10_000_000)}`,
+    sourceRef: `budget_fit:${group.key}:${Math.round(budget / 10_000_000)}`,
     title,
     slug: topicSlug(dayKey, "budget_fit", group, String(Math.round(budget / 10_000_000))),
     excerpt,
@@ -583,13 +638,93 @@ function buildCautionTopic(group: RegionGroup, dayKey: string): SeoTopic | null 
   });
   return {
     kind: "price_caution",
-    sourceRef: `${dayKey}:caution:${group.key}`,
+    sourceRef: `price_caution:${group.key}`,
     title,
     slug: topicSlug(dayKey, "price_caution", group, "caution"),
     excerpt,
     body: blog.body,
     sourceCount: rentDeals.length,
     payload: blogPayload("price_caution", title, blog.content, { region_key: group.key, low, median: mid, renewal_count: renewalCount }),
+  };
+}
+
+function dealTypeRangeSummary(deals: CleanDeal[], dealType: DealType): string {
+  const target = deals.filter((deal) => deal.dealType === dealType);
+  if (!target.length) return `${dealLabel(dealType)}: 최근 표본 부족`;
+  const amounts = target.map((deal) => deal.amount);
+  if (dealType === "monthly") {
+    const rents = target.map((deal) => deal.monthlyRent ?? 0).filter((value) => value > 0);
+    return `월세: 보증금 ${minMaxLabel(amounts)} · 월세 ${rents.length ? `${formatMonthly(Math.min(...rents))} ~ ${formatMonthly(Math.max(...rents))}` : "확인 필요"} · 표본 ${target.length.toLocaleString("ko-KR")}건`;
+  }
+  return `${dealLabel(dealType)}: ${minMaxLabel(amounts)} · 표본 ${target.length.toLocaleString("ko-KR")}건`;
+}
+
+function areaSummaryRows(deals: CleanDeal[]): string[] {
+  const byArea = new Map<string, CleanDeal[]>();
+  for (const deal of deals) {
+    const label = deal.areaSqm ? `전용 ${formatArea(deal.areaSqm)}` : "면적 미상";
+    byArea.set(label, [...(byArea.get(label) ?? []), deal]);
+  }
+  return [...byArea.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 4)
+    .map(([label, rows]) => {
+      const amounts = rows.map((deal) => deal.amount);
+      return `${label}: ${minMaxLabel(amounts)} · 최근 ${rows.length.toLocaleString("ko-KR")}건`;
+    });
+}
+
+function buildBuildingPriceTopic(group: BuildingGroup, dayKey: string): SeoTopic | null {
+  const deals = group.deals.filter((deal) => !deal.representativeExcluded);
+  if (deals.length < MIN_BUILDING_DEALS) return null;
+  const saleDeals = deals.filter((deal) => deal.dealType === "sale");
+  const jeonseDeals = deals.filter((deal) => deal.dealType === "jeonse");
+  const monthlyDeals = deals.filter((deal) => deal.dealType === "monthly");
+  if (saleDeals.length + jeonseDeals.length < 3 && monthlyDeals.length < MIN_BUILDING_DEALS) return null;
+
+  const buildingLabel = `${group.dong} ${group.buildingName}`;
+  const label = `${group.cityLabel} ${group.districtLabel} ${group.dong} ${group.buildingName}`;
+  const mainDealLabel = jeonseDeals.length >= saleDeals.length ? "전세 시세" : "매매·전세 가격 흐름";
+  const title = `${buildingLabel} ${mainDealLabel}, 최근 실거래 기준 정리`;
+  const excerpt = `${label}의 최근 매매·전세·월세 실거래 범위와 전용면적별 가격 차이를 정리했습니다.`;
+  const summary = [
+    `단지 위치: ${group.cityLabel} ${group.districtLabel} ${group.dong}`,
+    dealTypeRangeSummary(deals, "sale"),
+    dealTypeRangeSummary(deals, "jeonse"),
+    dealTypeRangeSummary(deals, "monthly"),
+    `주요 면적: ${areaSummaryRows(deals).map((row) => row.split(":")[0]).join(", ") || "면적 표본 부족"}`,
+    `최근 거래일: ${recentDateLabel(deals)}`,
+  ];
+  const areaRows = areaSummaryRows(deals);
+  const blog = buildSeoBlogBody({
+    label: buildingLabel,
+    intro: `${group.cityLabel} ${group.districtLabel} ${group.dong}에서 ${group.buildingName}을 알아보고 있다면 최근 실거래 가격 흐름을 먼저 확인하는 것이 좋습니다. 같은 동 안에서도 단지마다 전용면적, 거래 유형, 갱신 여부에 따라 실제 부담 금액이 달라집니다. 이 글은 최근 RTMS 실거래 데이터를 기준으로 ${group.buildingName}의 매매·전세·월세 가격 범위와 면적별 차이를 정리한 단지별 이사 정보 글입니다.`,
+    summary,
+    flow: `${group.buildingName}에서 최근 확인된 실거래 표본은 ${deals.length.toLocaleString("ko-KR")}건입니다. 매매 ${saleDeals.length.toLocaleString("ko-KR")}건, 전세 ${jeonseDeals.length.toLocaleString("ko-KR")}건, 월세 ${monthlyDeals.length.toLocaleString("ko-KR")}건이 함께 확인되며, 가장 최근 거래일은 ${recentDateLabel(deals)}입니다. 단지명 검색으로 들어온 사용자는 최저가 한 건보다 전용면적별 가격 범위를 함께 보는 편이 안전합니다.`,
+    interpretation: areaRows.length
+      ? `${group.buildingName}은 같은 단지 안에서도 면적별 가격 차이가 보입니다. ${areaRows.join(" ")}처럼 전용면적을 나눠 보면 낮은 거래와 높은 거래가 왜 함께 존재하는지 이해하기 쉽습니다. 특히 전세는 갱신계약이 섞일 수 있고, 매매는 층과 수리 상태에 따라 금액 차이가 커질 수 있습니다.`
+      : `${group.buildingName}은 면적 정보가 비어 있는 거래도 있어 단순 최저가만 보기 어렵습니다. 거래 유형과 신고일, 갱신 여부를 함께 보면서 예산 기준을 잡는 편이 좋습니다.`,
+    dealExamples: dealSummaryRows(deals, 8).split("\n").filter(Boolean),
+    caution: `${group.buildingName}의 실거래가는 현재 매물 호가와 다를 수 있습니다. 갱신계약은 신규계약보다 낮게 보일 수 있고, 월세는 보증금만 낮게 보면 실제 부담이 작아 보일 수 있습니다. 단지별 글에서는 가격 범위를 참고하되, 실제 선택 전에는 전용면적과 계약 유형을 다시 확인해야 합니다.`,
+    nextAction: `${group.buildingName} 가격이 예산보다 높거나 선택지가 적어 보인다면 ${group.districtLabel} 안의 주변 동과 다른 단지도 함께 비교해 보세요. 클린아이덱스 이사검색에서 보증금과 월세 조건을 입력하면 최근 실거래 기준으로 갈 수 있는 지역과 주택 유형을 바로 확인할 수 있습니다.`,
+  });
+  return {
+    kind: "building_price",
+    sourceRef: `building_price:${group.key}`,
+    title,
+    slug: buildingTopicSlug(dayKey, group, "price"),
+    excerpt,
+    body: blog.body,
+    sourceCount: deals.length,
+    payload: blogPayload("building_price", title, blog.content, {
+      building_name: group.buildingName,
+      region_key: `${group.cityId}:${group.districtSlug}:${group.dong}`,
+      deal_counts: {
+        sale: saleDeals.length,
+        jeonse: jeonseDeals.length,
+        monthly: monthlyDeals.length,
+      },
+    }),
   };
 }
 
@@ -637,7 +772,7 @@ function buildCompareTopic(groups: RegionGroup[], dayKey: string): SeoTopic | nu
   });
   return {
     kind: "region_compare",
-    sourceRef: `${dayKey}:compare:${base.cityId}:${base.districtSlug}`,
+    sourceRef: `region_compare:${base.cityId}:${base.districtSlug}`,
     title,
     slug: topicSlug(dayKey, "region_compare", base, "compare"),
     excerpt,
@@ -676,6 +811,7 @@ function buildTopics(deals: CleanDeal[], options: { dayKey: string; limit: numbe
   const groups = groupDeals(deals)
     .sort((a, b) => b.deals.length - a.deals.length)
     .slice(0, 80);
+  const regionLimit = options.limit;
   const rotated = groups
     .map((group) => ({ group, score: stableScore(`${options.dayKey}:${group.key}`) }))
     .sort((a, b) => a.score - b.score)
@@ -685,37 +821,92 @@ function buildTopics(deals: CleanDeal[], options: { dayKey: string; limit: numbe
   for (const group of rotated) {
     const topic = buildRegionPriceTopic(group, options.dayKey);
     if (topic) topics.push(topic);
-    if (topics.filter((item) => item.kind === "region_price").length >= 2) break;
+    if (topics.filter((item) => item.kind === "region_price").length >= 2 || topics.length >= regionLimit) break;
   }
 
-  for (const group of rotated) {
-    const topic = buildBudgetFitTopic(group, options.dayKey);
-    if (topic) {
-      topics.push(topic);
-      break;
-    }
-  }
-
-  const compareTopic = buildCompareTopic(groups, options.dayKey);
-  if (compareTopic) topics.push(compareTopic);
-
-  for (const group of rotated) {
-    const topic = buildCautionTopic(group, options.dayKey);
-    if (topic) {
-      topics.push(topic);
-      break;
-    }
-  }
-
-  if (topics.length < options.limit) {
+  if (topics.length < regionLimit) {
     for (const group of rotated) {
-      if (topics.length >= options.limit) break;
+      const topic = buildBudgetFitTopic(group, options.dayKey);
+      if (topic) {
+        topics.push(topic);
+        break;
+      }
+    }
+  }
+
+  if (topics.length < regionLimit) {
+    const compareTopic = buildCompareTopic(groups, options.dayKey);
+    if (compareTopic) topics.push(compareTopic);
+  }
+
+  if (topics.length < regionLimit) {
+    for (const group of rotated) {
+      const topic = buildCautionTopic(group, options.dayKey);
+      if (topic) {
+        topics.push(topic);
+        break;
+      }
+    }
+  }
+
+  if (topics.length < regionLimit) {
+    for (const group of rotated) {
+      if (topics.length >= regionLimit) break;
       const topic = buildRegionPriceTopic(group, options.dayKey);
       if (topic && !topics.some((item) => item.sourceRef === topic.sourceRef)) topics.push(topic);
     }
   }
 
+  if (topics.length < options.limit) {
+    const buildingGroups = groupApartmentBuildings(deals)
+      .sort((a, b) => b.deals.length - a.deals.length)
+      .slice(0, 120)
+      .map((group) => ({ group, score: stableScore(`${options.dayKey}:building:${group.key}`) }))
+      .sort((a, b) => a.score - b.score)
+      .map((item) => item.group);
+    for (const group of buildingGroups) {
+      if (topics.length >= options.limit) break;
+      const topic = buildBuildingPriceTopic(group, options.dayKey);
+      if (topic && !topics.some((item) => item.sourceRef === topic.sourceRef)) topics.push(topic);
+    }
+  }
+
   return topics.slice(0, options.limit);
+}
+
+async function fetchExistingTopicIndex(supabase: SupabaseClient, topics: SeoTopic[]): Promise<ExistingTopicIndex> {
+  const sourceRefs = new Set(topics.map((topic) => topic.sourceRef));
+  const titles = new Set(topics.map((topic) => topic.title));
+  const existingRefs = new Set<string>();
+  const existingTitles = new Set<string>();
+
+  const { data, error } = await supabase
+    .from("posts")
+    .select("source_ref,title")
+    .eq("source_type", MOVE_RTM_SEO_SOURCE_TYPE)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(1000);
+  if (error) throw new Error(error.message);
+  for (const row of data ?? []) {
+    if (typeof row.source_ref === "string" && sourceRefs.has(row.source_ref)) existingRefs.add(row.source_ref);
+    if (typeof row.title === "string" && titles.has(row.title)) existingTitles.add(row.title);
+  }
+
+  return { sourceRefs: existingRefs, titles: existingTitles };
+}
+
+function selectTopicsForPublishing(
+  topics: SeoTopic[],
+  existing: ExistingTopicIndex,
+  options: { newLimit: number; updateLimit: number }
+): SeoTopic[] {
+  const isExisting = (topic: SeoTopic) => existing.sourceRefs.has(topic.sourceRef) || existing.titles.has(topic.title);
+  const newTopics = topics.filter((topic) => !isExisting(topic)).slice(0, options.newLimit);
+  const updateTopics = topics
+    .filter(isExisting)
+    .filter((topic) => !newTopics.some((selected) => selected.sourceRef === topic.sourceRef || selected.title === topic.title))
+    .slice(0, options.updateLimit);
+  return [...newTopics, ...updateTopics];
 }
 
 async function upsertRun(
@@ -761,15 +952,24 @@ async function saveTopic(
   topic: SeoTopic,
   options: { autoPublish: boolean; force: boolean }
 ): Promise<{ ok: true; postId: string; created: boolean; skippedExisting: boolean } | { ok: false; error: string }> {
-  const { data: existingPost, error: existingError } = await supabase
+  let { data: existingPost, error: existingError } = await supabase
     .from("posts")
     .select("id,published_at")
     .eq("source_type", MOVE_RTM_SEO_SOURCE_TYPE)
     .eq("source_ref", topic.sourceRef)
     .maybeSingle();
   if (existingError) return { ok: false, error: existingError.message };
-  if (existingPost?.id && !options.force) {
-    return { ok: true, postId: existingPost.id, created: false, skippedExisting: true };
+
+  if (!existingPost?.id) {
+    const { data: sameTitlePosts, error: sameTitleError } = await supabase
+      .from("posts")
+      .select("id,published_at")
+      .eq("source_type", MOVE_RTM_SEO_SOURCE_TYPE)
+      .eq("title", topic.title)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(1);
+    if (sameTitleError) return { ok: false, error: sameTitleError.message };
+    existingPost = sameTitlePosts?.[0] ?? null;
   }
 
   const payload = {
@@ -811,12 +1011,17 @@ export async function runMoveRtmsSeoPostJob(
   const autoPublish = options.autoPublish !== false;
   const dryRun = options.dryRun === true;
   const limit = Math.min(Math.max(Math.round(options.dailyLimit ?? DEFAULT_DAILY_LIMIT), 1), 12);
+  const newLimit = Math.min(DEFAULT_REGION_DAILY_LIMIT, limit);
+  const updateLimit = Math.min(DEFAULT_UPDATE_DAILY_LIMIT, Math.max(0, limit - newLimit));
+  const topicPoolLimit = Math.max(limit * TOPIC_POOL_MULTIPLIER, DEFAULT_DAILY_LIMIT * TOPIC_POOL_MULTIPLIER);
   const monthsBack = Math.min(Math.max(Math.round(options.monthsBack ?? 2), 1), 12);
 
   if (dryRun) {
     try {
       const deals = await fetchRecentRtmsDeals(supabase, monthsBack);
-      const topics = buildTopics(deals, { dayKey, limit });
+      const topicPool = buildTopics(deals, { dayKey, limit: topicPoolLimit });
+      const existing = await fetchExistingTopicIndex(supabase, topicPool);
+      const topics = selectTopicsForPublishing(topicPool, existing, { newLimit, updateLimit });
       if (!topics.length) {
         return {
           ok: true,
@@ -835,7 +1040,7 @@ export async function runMoveRtmsSeoPostJob(
         skipped_existing: 0,
         post_ids: [],
         topics: topics.map((topic) => topic.title),
-        message: `dryRun: 실거래 기반 SEO 글 ${topics.length}개를 생성할 수 있습니다.`,
+        message: `dryRun: 실거래 기반 SEO 글 신규 최대 ${newLimit}개, 갱신 최대 ${updateLimit}개를 처리할 수 있습니다.`,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -864,7 +1069,9 @@ export async function runMoveRtmsSeoPostJob(
       };
     }
 
-    const topics = buildTopics(deals, { dayKey, limit });
+    const topicPool = buildTopics(deals, { dayKey, limit: topicPoolLimit });
+    const existing = await fetchExistingTopicIndex(supabase, topicPool);
+    const topics = selectTopicsForPublishing(topicPool, existing, { newLimit, updateLimit });
     if (!topics.length) {
       await markRun(supabase, runKey, {
         status: "skipped",
@@ -910,6 +1117,8 @@ export async function runMoveRtmsSeoPostJob(
       payload: {
         monthsBack,
         limit,
+        newLimit,
+        updateLimit,
         autoPublish,
         created,
         updated,

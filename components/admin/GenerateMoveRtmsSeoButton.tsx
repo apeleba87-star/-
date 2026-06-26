@@ -18,7 +18,7 @@ export default function GenerateMoveRtmsSeoButton() {
   const [force, setForce] = useState(false);
   const [draft, setDraft] = useState(false);
   const [dryRun, setDryRun] = useState(false);
-  const [limit, setLimit] = useState(5);
+  const [limit, setLimit] = useState(7);
   const [result, setResult] = useState<ResultState | null>(null);
 
   async function onRun() {

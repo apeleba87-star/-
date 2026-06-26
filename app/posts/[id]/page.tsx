@@ -292,7 +292,8 @@ function renderPost(
   const isMoveSeoBlog = isMoveSeoBlogPost(post);
   const useDashboard = isDailyTenderReportPost(post) && reportData;
   const loginNext = post.slug ? `/posts/${post.slug}` : `/posts/${post.id}`;
-  const reportGuestLayout = guestPreview && isReport;
+  const gateAsLoggedIn = !guestPreview || isMoveSeoBlog;
+  const reportGuestLayout = guestPreview && isReport && !isMoveSeoBlog;
 
   const dailyPayload =
     useDashboard && reportData
@@ -433,7 +434,7 @@ function renderPost(
   return (
     <div className="mx-auto min-w-0 max-w-[1400px] px-3 py-6 xs:px-4 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
       <GuestPreviewGate
-        isLoggedIn={!guestPreview}
+        isLoggedIn={gateAsLoggedIn}
         loginNext={loginNext}
         tone="violet"
         layout={reportGuestLayout ? "full" : "crop"}

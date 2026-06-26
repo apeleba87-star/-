@@ -43,8 +43,8 @@ export default async function AdminContentRunsPage() {
         <div className="mt-4 border-t border-slate-200 pt-4">
           <p className="mb-2 text-sm font-medium text-slate-700">이사검색 SEO 자동 글</p>
           <p className="mb-2 text-sm text-slate-600">
-            최근 2개월 RTMS 실거래 데이터를 기준으로 지역 시세형, 예산형, 비교형, 주의형 SEO 글을 자동 생성합니다.
-            기본값은 하루 5개 공개 발행입니다.
+            최근 2개월 RTMS 실거래 데이터를 기준으로 지역 시세형, 예산형, 비교형, 주의형, 아파트 단지형 SEO 글을 자동 생성합니다.
+            기본값은 지역 키워드 우선으로 신규 5개와 기존 글 갱신 2개, 하루 최대 7개 공개 처리입니다.
           </p>
           <GenerateMoveRtmsSeoButton />
         </div>
