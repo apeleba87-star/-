@@ -1,13 +1,21 @@
 import { createClient } from "@/lib/supabase-server";
-import { listSeoSitemapDistricts } from "@/lib/demand/region-seo-data";
-import { demandRegionSeoPath } from "@/lib/demand/region-seo-path";
-import { listMoveRegionAliasesForDistricts } from "@/lib/demand/move-region-path";
 import { getBaseUrl } from "@/lib/seo";
+import { ALL_CATALOG_PATHS, CATALOG_TOPICS, HUB_CATEGORIES } from "@/lib/knowledge-hub/catalog";
+import { listContaminants, listMaterials, listProducts, listRecipes } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import { listPublishedGuidePaths } from "@/lib/knowledge-hub/queries";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
   { path: "/", priority: 1, changeFrequency: "daily" },
-  { path: "/news", priority: 0.9, changeFrequency: "daily" },
+  { path: "/services", priority: 0.95, changeFrequency: "weekly" },
+  { path: "/guides", priority: 0.95, changeFrequency: "weekly" },
+  { path: "/products", priority: 0.92, changeFrequency: "weekly" },
+  { path: "/materials", priority: 0.92, changeFrequency: "weekly" },
+  { path: "/pollution", priority: 0.92, changeFrequency: "weekly" },
+  { path: "/facilities", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/cleaning", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/inquiry/regular", priority: 0.85, changeFrequency: "monthly" },
+  { path: "/inquiry/move-in", priority: 0.85, changeFrequency: "monthly" },
   { path: "/industry-news", priority: 0.75, changeFrequency: "weekly" },
   { path: "/categories", priority: 0.8, changeFrequency: "weekly" },
   { path: "/listings", priority: 0.8, changeFrequency: "daily" },
@@ -20,17 +28,11 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/magam/live", priority: 0.8, changeFrequency: "daily" },
   { path: "/magam/support", priority: 0.4, changeFrequency: "monthly" },
   { path: "/beta", priority: 0.7, changeFrequency: "weekly" },
-  { path: "/cleanidex", priority: 0.65, changeFrequency: "weekly" },
-  { path: "/cleanidex/about", priority: 0.6, changeFrequency: "monthly" },
   { path: "/estimate", priority: 0.6, changeFrequency: "monthly" },
-  { path: "/demand/top", priority: 0.75, changeFrequency: "weekly" },
-  { path: "/demand/compare", priority: 0.72, changeFrequency: "weekly" },
-  { path: "/demand/search", priority: 0.7, changeFrequency: "weekly" },
   { path: "/contracts", priority: 0.5, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "monthly" },
   { path: "/terms", priority: 0.3, changeFrequency: "monthly" },
 ];
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getBaseUrl();
   const now = new Date().toISOString();
@@ -42,27 +44,69 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority,
   }));
 
-  const seoDistricts = await listSeoSitemapDistricts();
-  for (const d of seoDistricts) {
-    const priority =
-      d.cityId === "seoul" || d.cityId === "gyeonggi" || d.cityId === "incheon"
-        ? 0.72
-        : ["busan", "daegu", "gwangju", "daejeon", "ulsan"].includes(d.cityId)
-          ? 0.68
-          : 0.62;
+  for (const cat of HUB_CATEGORIES) {
     entries.push({
-      url: `${base}${demandRegionSeoPath(d.cityId, d.guSlug)}`,
-      lastModified: d.lastModified ? new Date(d.lastModified).toISOString() : now,
+      url: `${base}${cat.hubPath}`,
+      lastModified: now,
       changeFrequency: "weekly" as const,
-      priority,
+      priority: 0.9,
     });
   }
-  for (const alias of listMoveRegionAliasesForDistricts(seoDistricts)) {
+
+  for (const path of ALL_CATALOG_PATHS) {
+    const topic = CATALOG_TOPICS.find((t) => t.path === path);
     entries.push({
-      url: `${base}${alias.path}`,
-      lastModified: alias.lastModified ? new Date(alias.lastModified).toISOString() : now,
+      url: `${base}${path}`,
+      lastModified: now,
       changeFrequency: "weekly" as const,
-      priority: 0.7,
+      priority: topic?.guideType === "service_method" || topic?.guideType === "problem" ? 0.85 : 0.8,
+    });
+  }
+
+  for (const r of listRecipes()) {
+    entries.push({
+      url: `${base}/cleaning/${r.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.82,
+    });
+  }
+
+  for (const p of listProducts()) {
+    entries.push({
+      url: `${base}/products/${p.id}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    });
+  }
+
+  for (const m of listMaterials()) {
+    entries.push({
+      url: `${base}/materials/${m.id}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    });
+  }
+
+  for (const c of listContaminants()) {
+    entries.push({
+      url: `${base}/pollution/${c.id}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    });
+  }
+
+  const guidePaths = await listPublishedGuidePaths();
+  for (const g of guidePaths) {
+    if (entries.some((e) => e.url === `${base}${g.path}`)) continue;
+    entries.push({
+      url: `${base}${g.path}`,
+      lastModified: g.updated_at,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
     });
   }
 

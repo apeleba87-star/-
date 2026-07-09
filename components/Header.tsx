@@ -8,6 +8,7 @@ import {
   Bell,
   Menu,
   X,
+  Droplets,
   Home,
   FileText,
   Gavel,
@@ -23,6 +24,8 @@ import {
   Sparkles,
   Handshake,
   Radio,
+  Beaker,
+  FlaskConical,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { withAdminNavLabel } from "@/lib/admin-nav-label";
@@ -79,9 +82,21 @@ type MobileDrawerRow =
 
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
-  { kind: "link", href: "/", label: "이사검색", Icon: Home },
-  { kind: "link", href: "/news", label: "이사정보", Icon: FileText },
-  { kind: "link", href: "/cleanidex", label: "클린아이덱스", Icon: FileText, adminOnly: true },
+  { kind: "link", href: "/", label: "청소 가이드", Icon: Home },
+  { kind: "link", href: "/services", label: "방법·용품", Icon: FileText },
+  { kind: "link", href: "/guides", label: "오염 제거", Icon: Droplets },
+  {
+    kind: "group",
+    label: "분류별",
+    Icon: Beaker,
+    items: [
+      { href: "/products", label: "세정 제품", Icon: Beaker },
+      { href: "/materials", label: "재질별", Icon: Layers },
+      { href: "/pollution", label: "오염별", Icon: Droplets },
+      { href: "/cleaning", label: "레시피", Icon: FlaskConical },
+      { href: "/facilities", label: "현장별", Icon: Home },
+    ],
+  },
   {
     kind: "mega",
     label: "청소업체 전용관",
@@ -90,9 +105,9 @@ const primaryNavItems: PrimaryNavEntry[] = [
       {
         title: "주요 기능",
         items: [
-          { href: "/demand", label: "입주레이더", Icon: BarChart3 },
           { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집", Icon: Radio },
           { href: "/estimate", label: "견적 계산기", Icon: Calculator },
+          { href: "/inquiry/regular", label: "정기청소 문의", Icon: Briefcase },
         ],
       },
       {

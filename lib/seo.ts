@@ -14,15 +14,15 @@ export function getBaseUrl(): string {
   return "https://cleanindex.kr";
 }
 
-/** layout fallback — 이사검색 중심 */
-export const defaultTitle = "클린아이덱스 — 내 예산으로 갈 수 있는 동네 찾기";
+/** layout fallback — 지식 허브 */
+export const defaultTitle = "클린아이덱스 — 오염·재질별 청소 방법 가이드";
 
 /** layout·JSON-LD 기본 설명 (한글 약 155자 이내 권장) */
 export const defaultDescription =
-  "최근 실거래가 기준으로 전세·월세·매매 예산에 맞는 지역과 주택 유형을 찾아보세요. 이사 전 동네 선택과 입주 준비를 도와드립니다.";
+  "사무실·상가·계단 정기청소와 입주청소 방법, 필요 약품·장비를 단계별로 안내합니다. 청소 견적 문의까지 한곳에서.";
 
 /** 푸터·보조 문구 */
-export const siteTagline = "실거래가로 보는 이사 준비 플랫폼";
+export const siteTagline = "청소 방법·용품·견적 지식 허브";
 
 /** `/` — 입주레이더 */
 export const radarHomeTitle = "입주레이더 — 이번 달 입주·이사 수요가 많은 지역";
@@ -124,36 +124,22 @@ export function buildPageMetadata(opts: {
 export const seoKeywords = [
   "클린아이덱스",
   "Cleanidex",
-  "이사검색",
-  "내 예산으로 갈 수 있는 동네",
-  "전세 예산",
-  "월세 예산",
-  "실거래가",
-  "동네 찾기",
-  "이사 준비",
-  "입주레이더",
+  "청소 방법",
+  "사무실 정기청소",
+  "상가 청소",
+  "계단 청소",
   "입주청소",
-  "입주청소 지역",
-  "입주 수요",
-  "이사 청소",
-  "아파트 입주",
-  "청소업",
+  "입주청소 방법",
+  "정기청소",
+  "청소 약품",
+  "청소용품",
+  "청소 견적",
   "방역",
   "소독",
-  "현장 증빙",
-  "작업 완료",
-  "전자서명",
-  "체크리스트",
-  "고객 확인",
   "입찰",
   "나라장터",
   "청소 입찰",
-  "방역 입찰",
-  "구인",
   "견적",
-  "현장거래",
-  "데이터랩",
-  "마케팅 리포트",
 ];
 
 export { SITE_NAME };

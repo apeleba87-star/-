@@ -76,7 +76,7 @@ function rateLimitBucket(pathname: string): { bucket: string; limit: number } | 
   if (pathname === "/login" || pathname === "/signup") {
     return { bucket: "auth", limit: AUTH_RATE_MAX };
   }
-  if (pathname === "/" || pathname.startsWith("/demand/")) {
+  if (pathname === "/" || pathname.startsWith("/services/") || pathname.startsWith("/inquiry/") || pathname.startsWith("/guides") || pathname === "/search") {
     return { bucket: "demand", limit: DEMAND_RATE_MAX };
   }
   if (pathname.startsWith("/api/")) {
@@ -123,8 +123,44 @@ export async function middleware(req: NextRequest) {
 
   if (pathname === "/demand") {
     const url = req.nextUrl.clone();
+    url.pathname = "/services/move-in";
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (pathname.startsWith("/demand/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/services/move-in";
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (pathname === "/move" || pathname.startsWith("/move/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/services/move-in";
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (pathname === "/cleanidex" || pathname.startsWith("/cleanidex/")) {
+    const url = req.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url, 308);
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (pathname === "/news") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/services";
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (pathname === "/services/pollution" || pathname === "/guides/pollution") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/guides";
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (pathname.startsWith("/services/pollution/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/guides/${pathname.slice("/services/pollution/".length)}`;
+    return NextResponse.redirect(url, 301);
   }
 
   const decodedPathname = decodeURIComponent(pathname);

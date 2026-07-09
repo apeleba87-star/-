@@ -20,6 +20,7 @@ export const ADMIN_HUBS: AdminHub[] = [
     description: "글, 뉴스레터, UGC, 자동 생성·리포트 스냅샷",
     items: [
       { href: "/admin/posts", label: "글 관리", description: "블로그·리포트 글 작성·수정" },
+      { href: "/admin/knowledge-hub", label: "지식 허브 콘텐츠", description: "가이드·제품·재질·레시피 전체 목록·편집" },
       { href: "/admin/newsletter", label: "뉴스레터 큐·발송", description: "큐 관리 및 발송" },
       { href: "/admin/ugc", label: "UGC 검수", description: "사용자 제출 콘텐츠 검수" },
       { href: "/admin/content-runs", label: "자동 생성 로그", description: "AI 자동 생성 실행 기록" },

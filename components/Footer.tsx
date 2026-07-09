@@ -9,13 +9,15 @@ type FooterLink = { href: string; label: string };
 const FOOTER_LINK_CLASS =
   "text-slate-400 hover:text-teal-300 transition-colors touch-manipulation py-1 text-xs sm:min-h-[44px] sm:py-2 sm:text-sm";
 
-const MOVE_LINKS: FooterLink[] = [
-  { href: "/", label: "이사검색" },
-  { href: "/news", label: "이사정보" },
+const GUIDE_LINKS: FooterLink[] = [
+  { href: "/services", label: "청소 가이드" },
+  { href: "/inquiry/regular", label: "정기청소 문의" },
+  { href: "/inquiry/move-in", label: "입주청소 문의" },
 ];
 
 const CLEANING_BUSINESS_LINKS: FooterLink[] = [
-  { href: "/demand", label: "청소업체 전용관" },
+  { href: "/tenders", label: "입찰 공고" },
+  { href: "/estimate", label: "견적 계산기" },
   { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집" },
 ];
 
@@ -67,7 +69,7 @@ export default function Footer() {
             </summary>
             <div className="mt-2 space-y-2">
               <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-                {[...MOVE_LINKS, ...CLEANING_BUSINESS_LINKS].map((link) => (
+                {[...GUIDE_LINKS, ...CLEANING_BUSINESS_LINKS].map((link) => (
                   <Link key={link.href} href={link.href} className={FOOTER_LINK_CLASS}>
                     {link.label}
                   </Link>
@@ -78,7 +80,7 @@ export default function Footer() {
           </details>
 
           <div className="hidden flex-col gap-4 sm:flex sm:gap-5">
-            <FooterSection title="이사" links={MOVE_LINKS} />
+            <FooterSection title="청소 가이드" links={GUIDE_LINKS} />
             <FooterSection title="청소업체 전용관" links={CLEANING_BUSINESS_LINKS} />
             <FooterAdminLinks />
           </div>
