@@ -34,11 +34,13 @@ function buildProductsForTopic(topic: CatalogTopic): SeedProduct[] {
   const ids = dbLinkedProductIdsForPath(topic.path);
   return ids.map((productId, i) => {
     const p = getProductById(productId);
+    const salesUrl = p?.salesUrl?.trim();
     return {
       id: `kp-${productId}`,
       display_name: p?.name ?? productId,
       source_type: "smartstore" as const,
-      source_url: `/products/${productId}`,
+      /** 판매 URL 없으면 제품 상세로만 연결 (가짜 아웃링크 금지) */
+      source_url: salesUrl || `/products/${productId}`,
       is_primary: i === 0,
       sort_order: i,
     };

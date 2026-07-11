@@ -12,6 +12,7 @@ type Props = {
   summary?: string[];
   body: GuideBodyJson;
   breadcrumb: { href: string; label: string }[];
+  footer?: React.ReactNode;
 };
 
 function sectionBoxClass(tone?: string) {
@@ -108,7 +109,7 @@ function renderBlock(block: GuideBlock) {
   return null;
 }
 
-export default function KnowledgeDbPageView({ h1, badge, intro, summary, body, breadcrumb }: Props) {
+export default function KnowledgeDbPageView({ h1, badge, intro, summary, body, breadcrumb, footer }: Props) {
   return (
     <article className="mx-auto max-w-3xl">
       <nav className="mb-6 text-sm font-medium text-slate-500">
@@ -183,6 +184,8 @@ export default function KnowledgeDbPageView({ h1, badge, intro, summary, body, b
           </ul>
         </section>
       ) : null}
+
+      {footer}
     </article>
   );
 }

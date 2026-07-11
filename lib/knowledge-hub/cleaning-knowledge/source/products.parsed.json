@@ -1,0 +1,1054 @@
+[
+  {
+    "id": "kiehl-sanikal",
+    "brand": "Kiehl",
+    "name": "사니칼(Sanikal)",
+    "aliases": [
+      "사니칼",
+      "Sanikal"
+    ],
+    "summary": "화장실·욕실·사우나·수영장 등의 방수표면을 세정하면서 광택과 보호효과까지 제공하는 약알칼리성 정기청소용 세정제.",
+    "phApprox": "원액 / 약 pH 9 / 희석 후 / 약 pH 7",
+    "phType": "weak_alkaline",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [
+      "1L",
+      "10L"
+    ],
+    "mainUse": [
+      "화장실",
+      "욕실",
+      "사우나",
+      "목욕탕",
+      "수영장",
+      "호텔",
+      "병원",
+      "사무실",
+      "상업시설",
+      "건물 관리",
+      "공공시설"
+    ],
+    "placeHints": [
+      "화장실",
+      "욕실",
+      "사우나",
+      "목욕탕",
+      "수영장",
+      "호텔",
+      "병원",
+      "사무실",
+      "상업시설",
+      "건물 관리",
+      "공공시설"
+    ],
+    "materialsRaw": [
+      "타일",
+      "세라믹",
+      "도기",
+      "유리",
+      "거울",
+      "스테인리스",
+      "크롬",
+      "황동",
+      "알루미늄",
+      "에나멜",
+      "리놀륨",
+      "방수표면"
+    ],
+    "contaminantsRaw": [
+      "비누때",
+      "석회",
+      "물때",
+      "백화",
+      "기름때",
+      "기름진 먼지",
+      "일반 오염",
+      "생활오염",
+      "특징",
+      "약알칼리성",
+      "희석 시 중성",
+      "무염",
+      "비산성",
+      "솔향(파인향)",
+      "표면 보호 효과",
+      "광택 효과",
+      "먼지 부착 감소",
+      "기름때 제거 우수",
+      "물때 제거 우수",
+      "거품이 적음",
+      "경제적인 희석 사용",
+      "금속 사용 가능",
+      "에나멜 욕조 사용 가능",
+      "위험물 미분류(CLP)"
+    ],
+    "forbiddenRaw": [
+      "목재",
+      "섬유",
+      "일반 대리석 일상청소"
+    ],
+    "compatibleMaterialIds": [
+      "porcelain",
+      "ceramic-tile",
+      "stainless",
+      "chrome-faucet",
+      "glass",
+      "pvc-deco",
+      "aluminum",
+      "brass-bronze",
+      "enamel"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "soap-scum",
+      "grease",
+      "construction-dust"
+    ],
+    "forbiddenMaterialIds": [
+      "marble",
+      "laminate-wood",
+      "carpet"
+    ],
+    "warnings": [
+      "대리석 일반세정에는 사용하지 않음",
+      "목재 사용 금지",
+      "섬유 사용 금지",
+      "대리석 세정 시 무광 마감될 수 있음",
+      "사용 불가: 목재",
+      "사용 불가: 섬유",
+      "사용 불가: 일반 대리석 일상청소"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "kiehl-list",
+        "note": "사니칼 (Sanikal)"
+      }
+    ]
+  },
+  {
+    "id": "kiehl-kallinex",
+    "brand": "Kiehl",
+    "name": "칼리넥스(Calinex)",
+    "aliases": [
+      "칼리넥스",
+      "Calinex"
+    ],
+    "summary": "석회, 백화, 시멘트 잔여물, 녹, 동·식물성 기름때를 제거하는 고농축 산성 세정제. 특히 건축마감청소, 입주청소, 주방 및 위생구역 세정에 적합하다.",
+    "phApprox": "원액 약 0.5 / 희석 후 약 1.5",
+    "phType": "unknown",
+    "dilutions": [
+      "일반세정: 1:16~1:80",
+      "집중세정: 1:8~1:16",
+      "석회·시멘트 제거: 원액~1:1",
+      "폼건: 1:4~1:10"
+    ],
+    "standardDilution": "일반세정: 1:16~1:80",
+    "strongDilution": "집중세정: 1:8~1:16",
+    "packSizes": [
+      "1L",
+      "10L"
+    ],
+    "mainUse": [
+      "주방",
+      "식당",
+      "음식점",
+      "식품가공공장",
+      "병원",
+      "화장실",
+      "욕실",
+      "수영장",
+      "입주청소",
+      "건축마감청소",
+      "상가",
+      "공장"
+    ],
+    "placeHints": [
+      "주방",
+      "식당",
+      "음식점",
+      "식품가공공장",
+      "병원",
+      "화장실",
+      "욕실",
+      "수영장",
+      "입주청소",
+      "건축마감청소",
+      "상가",
+      "공장"
+    ],
+    "materialsRaw": [
+      "스테인리스",
+      "타일",
+      "세라믹",
+      "타일",
+      "매지",
+      "유리",
+      "유리",
+      "유리창",
+      "창틀",
+      "내산성 표면",
+      "내수성 표면",
+      "주방 조리대",
+      "수조"
+    ],
+    "contaminantsRaw": [
+      "석회",
+      "백화",
+      "시멘트",
+      "시멘트 잔여물",
+      "녹",
+      "동물성 기름",
+      "식물성 기름",
+      "구리스",
+      "매지 검은때",
+      "유분때",
+      "실리콘 때",
+      "유리 석회 얼룩"
+    ],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [
+      "ceramic-tile",
+      "grout",
+      "stainless",
+      "glass"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "grease",
+      "rust",
+      "cement-residue"
+    ],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "kiehl-list",
+        "note": "칼리넥스 (Calinex)"
+      }
+    ]
+  },
+  {
+    "id": "kiehl-glasking",
+    "brand": "Kiehl",
+    "name": "글라스킹(GlasKing)",
+    "aliases": [
+      "글라스킹",
+      "GlasKing"
+    ],
+    "summary": "유리 및 모든 방수 표면의 먼지, 물때, 염분, 잡티를 제거하는 고농축 유리 세정제. 스퀴지 작업을 최적화하여 얼룩 없이 깨끗한 마감과 얇은 보호막을 형성하는 프리미엄 세정제.",
+    "phApprox": "원액 약 11 / 사용용액 약 8.5",
+    "phType": "unknown",
+    "dilutions": [
+      "일반 유리청소: 1:100",
+      "가벼운 오염: 1:200",
+      "심한 유리오염: 1:50",
+      "일반 표면세정: 1:100",
+      "심한 표면세정: 1:50"
+    ],
+    "standardDilution": "일반 유리청소: 1:100",
+    "strongDilution": null,
+    "packSizes": [
+      "1L",
+      "10L"
+    ],
+    "mainUse": [
+      "호텔",
+      "백화점",
+      "공항",
+      "터미널",
+      "오피스",
+      "병원",
+      "상업시설",
+      "쇼핑몰",
+      "태양광 발전소",
+      "유리 외벽",
+      "일반 건물"
+    ],
+    "placeHints": [
+      "호텔",
+      "백화점",
+      "공항",
+      "터미널",
+      "오피스",
+      "병원",
+      "상업시설",
+      "쇼핑몰",
+      "태양광 발전소",
+      "유리 외벽",
+      "일반 건물"
+    ],
+    "materialsRaw": [
+      "유리",
+      "창문",
+      "유리",
+      "거울",
+      "쇼윈도",
+      "유리창",
+      "유리창틀",
+      "방수표면",
+      "PVC 창틀",
+      "아크릴 유리",
+      "방수 표면",
+      "태양광 패널"
+    ],
+    "contaminantsRaw": [
+      "먼지",
+      "물때",
+      "잡티",
+      "염분",
+      "해풍 오염",
+      "일반 생활오염",
+      "유리 얼룩"
+    ],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [
+      "glass",
+      "pvc-deco"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "construction-dust"
+    ],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "kiehl-list",
+        "note": "글라스킹 (GlasKing)"
+      }
+    ]
+  },
+  {
+    "id": "kiehl-glassqueen",
+    "brand": "Kiehl",
+    "name": "글라스퀸(GlasQueen)",
+    "aliases": [
+      "글라스퀸",
+      "GlasQueen"
+    ],
+    "summary": "유리, 거울 및 모든 방수 표면의 지문, 물때, 잡티 등을 빠르게 제거하는 프리미엄 원액형 유리 세정제. 빠른 건조와 얼룩 없는 마감이 특징이며 식품·위생구역에서도 사용할 수 있는 친환경 제품이다.",
+    "phApprox": "원액 약 9.5 (약알칼리성)",
+    "phType": "weak_alkaline",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [
+      "500ml",
+      "750ml",
+      "1L",
+      "10L"
+    ],
+    "mainUse": [
+      "백화점",
+      "호텔",
+      "공항",
+      "커피숍",
+      "오피스",
+      "쇼윈도",
+      "병원",
+      "식품공장",
+      "위생구역",
+      "자동차 실내",
+      "샤워부스"
+    ],
+    "placeHints": [
+      "백화점",
+      "호텔",
+      "공항",
+      "커피숍",
+      "오피스",
+      "쇼윈도",
+      "병원",
+      "식품공장",
+      "위생구역",
+      "자동차 실내",
+      "샤워부스"
+    ],
+    "materialsRaw": [
+      "유리",
+      "유리",
+      "창문",
+      "쇼윈도",
+      "거울",
+      "자동차 유리",
+      "유리부스",
+      "방수표면",
+      "아크릴",
+      "장식장",
+      "테이블",
+      "PVC",
+      "일반 방수표면"
+    ],
+    "contaminantsRaw": [
+      "지문",
+      "잡티",
+      "물때",
+      "일반 오염",
+      "먼지",
+      "생활오염",
+      "유리 얼룩",
+      "(※ 심하게 굳은 물때는 제트(Jet) 사용 후 글라스퀸 사용 권장)"
+    ],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [
+      "glass",
+      "pvc-deco"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "construction-dust"
+    ],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "kiehl-list",
+        "note": "글라스퀸 (GlasQueen)"
+      }
+    ]
+  },
+  {
+    "id": "kiehl-tornado",
+    "brand": "Kiehl",
+    "name": "토네이도(Tornado)",
+    "aliases": [
+      "토네이도",
+      "Tornado"
+    ],
+    "summary": "건물 유리, 창틀, 바닥, 벽, 가구 등 다양한 방수 표면에 사용할 수 있는 고농축 다목적 세정제. 기름때, 배기가스 먼지, 니코틴 오염 제거에 뛰어나며 PB(범용세제) 대용으로 사용할 수 있는 대표적인 건물관리용 세제이다.",
+    "phApprox": "원액 약 10.5 / 사용액 약 8.5",
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [
+      "1L",
+      "10L",
+      "200L"
+    ],
+    "mainUse": [
+      "사무실",
+      "건물",
+      "화장실",
+      "흡연실",
+      "흡연구역",
+      "계단",
+      "복도",
+      "상가",
+      "병원",
+      "학교",
+      "공장",
+      "PB 관리현장"
+    ],
+    "placeHints": [
+      "사무실",
+      "건물",
+      "화장실",
+      "흡연실",
+      "흡연구역",
+      "계단",
+      "복도",
+      "상가",
+      "병원",
+      "학교",
+      "공장",
+      "PB 관리현장"
+    ],
+    "materialsRaw": [
+      "유리",
+      "건물 유리",
+      "내창",
+      "외창",
+      "창틀",
+      "방수표면",
+      "PVC",
+      "리놀륨",
+      "고무",
+      "석재",
+      "도자기",
+      "타일",
+      "거울",
+      "일반 방수표면"
+    ],
+    "contaminantsRaw": [
+      "기름때",
+      "기름 먼지",
+      "배기가스 오염",
+      "니코틴",
+      "일반 먼지",
+      "생활오염",
+      "표면 오염",
+      "외벽 오염"
+    ],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [
+      "porcelain",
+      "ceramic-tile",
+      "glass",
+      "pvc-deco"
+    ],
+    "contaminantIds": [
+      "grease",
+      "construction-dust",
+      "nicotine"
+    ],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "kiehl-list",
+        "note": "토네이도 (Tornado)"
+      }
+    ]
+  },
+  {
+    "id": "kiehl-veryprop",
+    "brand": "Kiehl",
+    "name": "베리프롭(Veriprop)",
+    "aliases": [
+      "베리프롭",
+      "Veriprop"
+    ],
+    "summary": "베리프롭은 모든 방수 및 발수성 바닥과 표면을 위한 프리미엄 일상 세정제이다. 단순히 오염을 제거하는 것이 아니라 습윤(물광) 효과를 제공하고, 표면 본래의 색감을 되살려 주며 얼룩과 오염의 재부착을 줄여주는 유지관리용 세제이다.",
+    "phApprox": "원액 약 9.5 / 사용액 약 8.5",
+    "phType": "weak_alkaline",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [
+      "1L",
+      "10L",
+      "200L"
+    ],
+    "mainUse": [
+      "건물 바닥",
+      "계단",
+      "로비",
+      "사무실",
+      "병원",
+      "학교",
+      "상가",
+      "공장",
+      "아파트 공용부",
+      "아트월",
+      "화장실 바닥",
+      "화장실 벽"
+    ],
+    "placeHints": [
+      "건물 바닥",
+      "계단",
+      "로비",
+      "사무실",
+      "병원",
+      "학교",
+      "상가",
+      "공장",
+      "아파트 공용부",
+      "아트월",
+      "화장실 바닥",
+      "화장실 벽"
+    ],
+    "materialsRaw": [
+      "석재",
+      "천연석",
+      "인조석",
+      "화강석",
+      "대리석",
+      "테라조(도끼다시)",
+      "탄성 바닥",
+      "PVC",
+      "리놀륨",
+      "고무",
+      "데코타일",
+      "에폭시",
+      "ETFE",
+      "발수성 표면",
+      "일반 방수 표면",
+      "계단",
+      "아트월",
+      "타일"
+    ],
+    "contaminantsRaw": [
+      "생활 먼지",
+      "일반 오염",
+      "발자국",
+      "바닥 오염",
+      "계단 오염",
+      "표면 오염"
+    ],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [
+      "marble",
+      "granite",
+      "ceramic-tile",
+      "epoxy-floor",
+      "pvc-deco"
+    ],
+    "contaminantIds": [
+      "construction-dust"
+    ],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "kiehl-list",
+        "note": "베리프롭 (Veriprop)"
+      }
+    ]
+  },
+  {
+    "id": "kiehl-clarida-uni",
+    "brand": "Kiehl",
+    "name": "클라리다 유니(Clarida Uni)",
+    "aliases": [
+      "클라리다 유니",
+      "Clarida Uni"
+    ],
+    "summary": "클라리다 유니는 건물 유지관리 및 정기청소를 위한 범용 다목적 세정제이다. 적은 양으로도 뛰어난 세정력을 제공하며, 세정 후 끈적임이나 자국이 남지 않고 표면을 보호한다. 특히 정기청소, 계단청소, 왁스코팅 전 바닥 준비 작업에 많이 사용되는 경제적인 유지관리 세제이다.",
+    "phApprox": "원액 약 8.5 / 사용액 약 7.5(중성)",
+    "phType": "neutral",
+    "dilutions": [
+      "오븐·그릴·탄때: 원액",
+      "매우 심한 표면 오염: 원액 ~ 1:5",
+      "매우 심한 바닥 오염: 1:8",
+      "일상 바닥·기계식 청소: 1:16",
+      "거품 청소: 장비 노즐 기준 1:4~1:10",
+      "오븐·그릴 표면: 0.5~1ml/㎡",
+      "매우 심한 집중청소: 약 40ml/㎡",
+      "거품 청소: 약 20ml/㎡"
+    ],
+    "standardDilution": "오븐·그릴·탄때: 원액",
+    "strongDilution": "오븐·그릴·탄때: 원액",
+    "packSizes": [
+      "1L",
+      "10L"
+    ],
+    "mainUse": [
+      "사무실",
+      "병원",
+      "학교",
+      "상가",
+      "아파트 공용부",
+      "계단",
+      "복도",
+      "건물 바닥",
+      "화장실",
+      "로비",
+      "호텔",
+      "공공시설"
+    ],
+    "placeHints": [
+      "사무실",
+      "병원",
+      "학교",
+      "상가",
+      "아파트 공용부",
+      "계단",
+      "복도",
+      "건물 바닥",
+      "화장실",
+      "로비",
+      "호텔",
+      "공공시설"
+    ],
+    "materialsRaw": [
+      "석재",
+      "화강석",
+      "대리석",
+      "인조석",
+      "자연석",
+      "탄성 바닥",
+      "PVC",
+      "리놀륨",
+      "고무",
+      "데코타일",
+      "유리",
+      "거울",
+      "타일",
+      "코팅 목재(강마루 등)",
+      "코팅 바닥",
+      "일반 방수 표면"
+    ],
+    "contaminantsRaw": [
+      "생활 먼지",
+      "일반 오염",
+      "발자국",
+      "바닥 오염",
+      "표면 오염",
+      "일상 오염"
+    ],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [
+      "marble",
+      "granite",
+      "ceramic-tile",
+      "laminate-wood",
+      "glass",
+      "pvc-deco"
+    ],
+    "contaminantIds": [
+      "construction-dust"
+    ],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "kiehl-list",
+        "note": "클라리다 유니 (Clarida Uni)"
+      }
+    ]
+  },
+  {
+    "id": "kiehl-extrafit",
+    "brand": "Kiehl",
+    "name": "키엘 엑스트라피트",
+    "aliases": [
+      "키엘 엑스트라피트"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-STICKER-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-tablefit",
+    "brand": "Kiehl",
+    "name": "키엘 테이블피트",
+    "aliases": [
+      "키엘 테이블피트"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-LEATHER-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-exonforte",
+    "brand": "Kiehl",
+    "name": "키엘 엑손포르테",
+    "aliases": [
+      "키엘 엑손포르테"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-AXON-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-kobet",
+    "brand": "Kiehl",
+    "name": "코베트",
+    "aliases": [
+      "코베트"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-CORVETT-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-oxycal",
+    "brand": "Kiehl",
+    "name": "키엘 옥시칼",
+    "aliases": [
+      "키엘 옥시칼"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-OXYCAL-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-vinoxin",
+    "brand": "Kiehl",
+    "name": "비녹신",
+    "aliases": [
+      "비녹신"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-BINOXIN-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-jet",
+    "brand": "Kiehl",
+    "name": "키엘 제트(Jet)",
+    "aliases": [
+      "키엘 제트(Jet)"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-JET-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-dopomat",
+    "brand": "Kiehl",
+    "name": "도포마트",
+    "aliases": [
+      "도포마트"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-DOPOMAT-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-rivas",
+    "brand": "Kiehl",
+    "name": "리바스",
+    "aliases": [
+      "리바스"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-RIVAS-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-binoxin-eco",
+    "brand": "Kiehl",
+    "name": "비녹스에코",
+    "aliases": [
+      "비녹스에코"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-BINOXECO-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  },
+  {
+    "id": "kiehl-graset",
+    "brand": "Kiehl",
+    "name": "그라셋",
+    "aliases": [
+      "그라셋"
+    ],
+    "summary": null,
+    "phApprox": null,
+    "phType": "unknown",
+    "dilutions": [],
+    "standardDilution": null,
+    "strongDilution": null,
+    "packSizes": [],
+    "mainUse": [],
+    "placeHints": [],
+    "materialsRaw": [],
+    "contaminantsRaw": [],
+    "forbiddenRaw": [],
+    "compatibleMaterialIds": [],
+    "contaminantIds": [],
+    "forbiddenMaterialIds": [],
+    "warnings": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-GRASET-001",
+        "note": "사례에서 언급된 제품 (상세 스펙 미수록)"
+      }
+    ],
+    "status": "draft"
+  }
+]

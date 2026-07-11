@@ -1,5 +1,6 @@
 import Link from "next/link";
 import KnowledgeHubSeedButton from "@/components/admin/KnowledgeHubSeedButton";
+import AdminProductSalesEditor from "@/components/admin/AdminProductSalesEditor";
 import { CATALOG_TOPICS, HUB_CATEGORIES } from "@/lib/knowledge-hub/catalog";
 import {
   getCleaningKnowledgeDb,
@@ -8,6 +9,7 @@ import {
   listMaterials,
   listProducts,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import { applySalesToProduct, getProductSalesMap } from "@/lib/knowledge-hub/product-sales";
 import { enrichedGuidePathsForRecipe } from "@/lib/knowledge-hub/recipe-guide-linker";
 
 function SectionTable({
@@ -55,10 +57,11 @@ function SectionTable({
   );
 }
 
-export default function AdminKnowledgeHubContent() {
+export default async function AdminKnowledgeHubContent() {
   const db = getCleaningKnowledgeDb();
   const stats = knowledgeStats();
-  const products = listProducts();
+  const salesMap = await getProductSalesMap();
+  const products = listProducts().map((p) => applySalesToProduct(p, salesMap));
   const materials = listMaterials();
   const contaminants = listContaminants();
 
@@ -68,11 +71,11 @@ export default function AdminKnowledgeHubContent() {
         <div>
           <h1 className="text-2xl font-black text-slate-900">지식 허브 콘텐츠</h1>
           <p className="mt-1 text-sm text-slate-600">
-            가이드 {CATALOG_TOPICS.length} · 제품 {stats.products} · 재질 {materials.length} · 오염{" "}
-            {contaminants.length} · 레시피 {stats.recipes} · 팩트 {stats.facts}
+            가이드 {CATALOG_TOPICS.length} · 제품 {stats.products} · 재질 {stats.materials} · 오염{" "}
+            {stats.contaminants} · 레시피 {stats.recipes} · 사례 {stats.cases} · 규칙 {stats.rules}
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            가이드 편집: 목록에서 「편집」→ 페이지에서 ?edit=1 · 시드 후 DB 내용이 저장됩니다.
+            가이드 편집: 「편집」→ ?edit=1 · 제품 판매 링크는 아래 표에서 저장 · 문서 근거 없는 본문은 생성하지 않습니다.
           </p>
         </div>
         <KnowledgeHubSeedButton />
@@ -85,7 +88,7 @@ export default function AdminKnowledgeHubContent() {
           { label: "재질", href: "#materials", count: materials.length },
           { label: "오염", href: "#contaminants", count: contaminants.length },
           { label: "레시피", href: "#recipes", count: stats.recipes },
-          { label: "팩트", href: "#facts", count: stats.facts },
+          { label: "사례", href: "#cases", count: stats.cases },
         ].map((item) => (
           <a
             key={item.href}
@@ -115,6 +118,15 @@ export default function AdminKnowledgeHubContent() {
           공개 · 현장
         </Link>
       </div>
+
+      <AdminProductSalesEditor
+        products={products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          salesUrl: p.salesUrl ?? null,
+          salesLabel: p.salesLabel ?? null,
+        }))}
+      />
 
       <div id="guides" className="space-y-6 scroll-mt-20">
         <h2 className="text-lg font-black text-slate-900">현장·오염 가이드</h2>
@@ -148,21 +160,6 @@ export default function AdminKnowledgeHubContent() {
           );
         })}
       </div>
-
-      <SectionTable
-        title="제품"
-        headers={["이름", "ID", "용도", "링크"]}
-        rows={products.map((p) => [
-          p.name,
-          <span key="id" className="font-mono text-xs">
-            {p.id}
-          </span>,
-          p.mainUse.slice(0, 2).join(" · "),
-          <Link key="l" href={`/products/${p.id}`} className="font-bold text-teal-700 hover:underline">
-            보기
-          </Link>,
-        ])}
-      />
 
       <SectionTable
         title="재질"
@@ -206,6 +203,19 @@ export default function AdminKnowledgeHubContent() {
           <Link key="l" href={`/cleaning/${r.slug}`} className="font-bold text-teal-700 hover:underline">
             보기
           </Link>,
+        ])}
+      />
+
+      <SectionTable
+        title="사례 (원본 근거)"
+        headers={["ID", "이름", "검증", "제품"]}
+        rows={(db.cases ?? []).map((c) => [
+          <span key="id" className="font-mono text-xs">
+            {c.id}
+          </span>,
+          c.name,
+          c.evidenceLevel,
+          c.productNames.join(", ") || "—",
         ])}
       />
 

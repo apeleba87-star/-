@@ -1,0 +1,1379 @@
+[
+  {
+    "id": "CASE-STICKER-001",
+    "name": "오래된 벽면 스티커 접착 잔유물 제거",
+    "categoryMajor": "특수오염 제거",
+    "categoryMid": "접착성 오염",
+    "categoryMinor": "스티커 잔유물",
+    "facility": "미확인",
+    "area": "벽면",
+    "materialRaw": "도장면 또는 페인트면(추정)",
+    "contaminantRaw": "스티커 접착제",
+    "productNames": [
+      "키엘 엑스트라피트"
+    ],
+    "productIds": [
+      "kiehl-extrafit"
+    ],
+    "dilution": "미확인",
+    "dwell": "거의 없음",
+    "tools": [
+      "천 또는 패드",
+      "스크래퍼"
+    ],
+    "result": "약 1분만 반응시켜도 제거되었으며 현장에서는 약 3분을 권장한다.",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "표면 확인",
+        "content": "작업 대상의 재질과 도장 여부를 확인한다."
+      },
+      {
+        "order": "2",
+        "stage": "코팅 제거",
+        "content": "스티커의 비닐 또는 코팅층을 제거한다."
+      },
+      {
+        "order": "3",
+        "stage": "약품 도포",
+        "content": "엑스트라피트를 잔유물에 도포한다."
+      },
+      {
+        "order": "4",
+        "stage": "반응시간",
+        "content": "약 3분간 기다린다."
+      },
+      {
+        "order": "5",
+        "stage": "제거",
+        "content": "천이나 패드로 닦아낸다."
+      },
+      {
+        "order": "6",
+        "stage": "추가 제거",
+        "content": "남은 부분은 스크래퍼 사용"
+      },
+      {
+        "order": "7",
+        "stage": "마무리",
+        "content": "잔여 오염 및 약품을 확인한다."
+      }
+    ],
+    "warnings": [
+      "페인트면",
+      "페인트가 벗겨질 수 있음",
+      "높음",
+      "반드시 테스트 후 사용",
+      "도장면",
+      "도장이 손상될 수 있음",
+      "높음",
+      "장시간 방치 금지",
+      "비코팅 플라스틱",
+      "표면 변색 가능",
+      "중간",
+      "짧게 테스트 후 사용",
+      "PC 본체",
+      "표면이 벗겨질 수 있음",
+      "중간",
+      "직접 분사 금지",
+      "스크래퍼 사용",
+      "흠집 발생 가능",
+      "중간",
+      "낮은 각도로 사용"
+    ],
+    "materialIds": [
+      "painted-wall"
+    ],
+    "contaminantIds": [
+      "adhesive"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-STICKER-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-PAINT-001",
+    "name": "엘리베이터 및 테이블 페인트 잔유물 제거",
+    "categoryMajor": "특수오염 제거",
+    "categoryMid": "페인트 오염",
+    "categoryMinor": "페인트 잔유물",
+    "facility": "엘리베이터, 테이블",
+    "area": "엘리베이터 틈, 테이블 모서리",
+    "materialRaw": "금속 및 코팅된 테이블 표면(추정)",
+    "contaminantRaw": "페인트 잔유물",
+    "productNames": [
+      "키엘 엑스트라피트"
+    ],
+    "productIds": [
+      "kiehl-extrafit"
+    ],
+    "dilution": "미확인",
+    "dwell": "충분한 반응시간 권장",
+    "tools": [
+      "천 또는 패드",
+      "없음"
+    ],
+    "result": "엘리베이터 오염은 제거되었고, 두껍게 굳은 페인트는 2회 작업으로 제거되었다.",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "표면 확인",
+        "content": "작업 대상 재질과 코팅 여부를 확인한다."
+      },
+      {
+        "order": "2",
+        "stage": "약품 도포",
+        "content": "페인트 잔유물 위에 엑스트라피트를 도포한다."
+      },
+      {
+        "order": "3",
+        "stage": "반응시간",
+        "content": "일정 시간 약품이 침투하도록 기다린다."
+      },
+      {
+        "order": "4",
+        "stage": "제거",
+        "content": "천이나 패드로 닦아낸다."
+      },
+      {
+        "order": "5",
+        "stage": "재작업",
+        "content": "두꺼운 페인트는 동일 작업을 반복한다."
+      },
+      {
+        "order": "6",
+        "stage": "마무리",
+        "content": "잔여 오염과 표면 상태를 확인한다."
+      }
+    ],
+    "warnings": [
+      "도장면",
+      "도장이 함께 제거될 수 있음",
+      "높음",
+      "반드시 테스트 후 사용",
+      "코팅면",
+      "코팅 손상 가능",
+      "중간",
+      "장시간 방치 주의",
+      "플라스틱",
+      "변색 가능성",
+      "중간",
+      "사전 테스트",
+      "금속도장",
+      "광택 저하 가능",
+      "중간",
+      "최소량 사용",
+      "장시간 방치",
+      "표면 영향 가능",
+      "중간",
+      "상태를 보며 작업"
+    ],
+    "materialIds": [
+      "stainless"
+    ],
+    "contaminantIds": [
+      "paint-residue"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-PAINT-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-LEATHER-001",
+    "name": "가죽소파 묵은 때 제거",
+    "categoryMajor": "표면 세정",
+    "categoryMid": "가죽 세정",
+    "categoryMinor": "가죽소파 세정",
+    "facility": "사무실, 가정 등",
+    "area": "가죽소파",
+    "materialRaw": "천연가죽 또는 인조가죽(확인 필요)",
+    "contaminantRaw": "묵은 때, 먼지",
+    "productNames": [
+      "키엘 테이블피트"
+    ],
+    "productIds": [
+      "kiehl-tablefit"
+    ],
+    "dilution": "미확인",
+    "dwell": "없음",
+    "tools": [
+      "천",
+      "없음"
+    ],
+    "result": "가죽소파의 묵은 때와 먼지가 효과적으로 제거되었다.",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "재질 확인",
+        "content": "가죽 재질과 손상 여부를 확인한다."
+      },
+      {
+        "order": "2",
+        "stage": "약품 도포",
+        "content": "천에 테이블피트를 소량 묻힌다."
+      },
+      {
+        "order": "3",
+        "stage": "세정",
+        "content": "오염 부위를 부드럽게 닦는다."
+      },
+      {
+        "order": "4",
+        "stage": "반복 작업",
+        "content": "남은 오염은 동일 작업을 반복한다."
+      },
+      {
+        "order": "5",
+        "stage": "마무리",
+        "content": "남은 약품과 오염을 확인한다."
+      }
+    ],
+    "warnings": [
+      "천연가죽",
+      "변색 가능성",
+      "중간",
+      "반드시 사전 테스트",
+      "인조가죽",
+      "광택 변화 가능",
+      "낮음",
+      "소량 사용",
+      "염색가죽",
+      "색 빠짐 가능",
+      "중간",
+      "눈에 띄지 않는 곳에서 테스트",
+      "과도한 마찰",
+      "표면 손상 가능",
+      "중간",
+      "부드러운 천 사용",
+      "약품 과다 사용",
+      "얼룩 발생 가능",
+      "낮음",
+      "소량만 사용"
+    ],
+    "materialIds": [
+      "leather"
+    ],
+    "contaminantIds": [
+      "stain-discoloration",
+      "construction-dust"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-LEATHER-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-AXON-001",
+    "name": "기름범벅 주방 기름때 및 탄때 제거",
+    "categoryMajor": "주방 청소",
+    "categoryMid": "기름때 제거",
+    "categoryMinor": "주방 기름때 및 탄때",
+    "facility": "한식 뷔페 식당",
+    "area": "주방 타일, 주방 벽면, 불판, 후드 외부",
+    "materialRaw": "타일",
+    "contaminantRaw": "기름때, 탄때",
+    "productNames": [
+      "키엘 엑손포르테"
+    ],
+    "productIds": [
+      "kiehl-exonforte"
+    ],
+    "dilution": "제품 1 : 물 5",
+    "dwell": "오염 정도에 따라 충분히 반응",
+    "tools": [
+      "솔, 수세미, 분무기",
+      "스크래퍼"
+    ],
+    "result": "두껍게 쌓인 기름과 탄때가 효과적으로 제거되었으며 스크래퍼를 함께 사용하여 작업시간을 크게 줄일 수 있었다.",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "오염 확인",
+        "content": "기름과 탄때의 두께 및 범위를 확인한다."
+      },
+      {
+        "order": "2",
+        "stage": "희석",
+        "content": "엑손포르테를 물과 1:5로 희석한다."
+      },
+      {
+        "order": "3",
+        "stage": "약품 도포",
+        "content": "오염 부위에 충분히 분사한다."
+      },
+      {
+        "order": "4",
+        "stage": "반응시간",
+        "content": "일정 시간 반응시킨다."
+      },
+      {
+        "order": "5",
+        "stage": "스크래핑",
+        "content": "스크래퍼로 분리된 기름을 제거한다."
+      },
+      {
+        "order": "6",
+        "stage": "세정",
+        "content": "남은 오염은 솔과 수세미로 제거한다."
+      },
+      {
+        "order": "7",
+        "stage": "마무리",
+        "content": "깨끗한 물로 마무리 세정한다."
+      }
+    ],
+    "warnings": [
+      "알루미늄",
+      "변색 가능성",
+      "중간",
+      "사전 테스트",
+      "장시간 방치",
+      "표면 영향 가능",
+      "중간",
+      "적정 반응시간 유지",
+      "도장면",
+      "손상 가능",
+      "중간",
+      "테스트 후 사용",
+      "스크래퍼",
+      "흠집 발생 가능",
+      "중간",
+      "낮은 각도로 사용",
+      "심한 기름",
+      "도구에 기름이 계속 묻음",
+      "낮음",
+      "스크래퍼 우선 사용"
+    ],
+    "materialIds": [
+      "ceramic-tile"
+    ],
+    "contaminantIds": [
+      "grease",
+      "burnt-residue"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-AXON-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-CORVETT-001",
+    "name": "입주청소 타일 석회 및 건축 잔유물 제거",
+    "categoryMajor": "입주청소",
+    "categoryMid": "타일 세정",
+    "categoryMinor": "건축 잔유물 제거",
+    "facility": "통신사 대리점",
+    "area": "바닥 타일",
+    "materialRaw": "타일",
+    "contaminantRaw": "석회 잔유물, 페인트 자국, 건축 잔여물",
+    "productNames": [
+      "코베트"
+    ],
+    "productIds": [
+      "kiehl-kobet"
+    ],
+    "dilution": "코베트 1:30",
+    "dwell": "충분한 반응시간 권장",
+    "tools": [
+      "밀대, 솔, 물걸레",
+      "없음"
+    ],
+    "result": "석회와 건축 잔유물이 제거되었으며 베리프롭 마감으로 광택과 보호 효과를 얻었다.",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "오염 확인",
+        "content": "타일 표면의 석회와 페인트 자국을 확인한다."
+      },
+      {
+        "order": "2",
+        "stage": "희석",
+        "content": "코베트를 약 1:30으로 희석한다."
+      },
+      {
+        "order": "3",
+        "stage": "약품 도포",
+        "content": "바닥 전체에 골고루 도포한다."
+      },
+      {
+        "order": "4",
+        "stage": "세정",
+        "content": "밀대와 솔로 전체를 세정한다."
+      },
+      {
+        "order": "5",
+        "stage": "린스",
+        "content": "물걸레로 잔여 세제를 제거한다."
+      },
+      {
+        "order": "6",
+        "stage": "마감",
+        "content": "베리프롭을 도포한다."
+      },
+      {
+        "order": "7",
+        "stage": "최종 확인",
+        "content": "광택과 잔여 오염을 확인한다."
+      }
+    ],
+    "warnings": [
+      "천연석",
+      "손상 가능성",
+      "중간",
+      "재질 확인 후 사용",
+      "대리석",
+      "산성 오염 여부 확인",
+      "중간",
+      "제품 적합성 확인",
+      "유리",
+      "용접 슬러지는 세제로 제거 불가",
+      "높음",
+      "시공 전 보호 필요",
+      "장시간 방치",
+      "얼룩 가능",
+      "낮음",
+      "적정 시간 작업",
+      "고농도 사용",
+      "필요 이상 사용 주의",
+      "낮음",
+      "권장 희석비 준수"
+    ],
+    "materialIds": [
+      "ceramic-tile"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "cement-residue"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-CORVETT-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-OXYCAL-001",
+    "name": "옥시칼을 이용한 타일 줄눈 산소계 표백 효과",
+    "categoryMajor": "화장실 청소",
+    "categoryMid": "줄눈 세정",
+    "categoryMinor": "타일 줄눈 표백",
+    "facility": "사무실 화장실",
+    "area": "바닥 타일 줄눈",
+    "materialRaw": "시멘트 줄눈",
+    "contaminantRaw": "흑변, 묵은 때",
+    "productNames": [
+      "키엘 옥시칼"
+    ],
+    "productIds": [
+      "kiehl-oxycal"
+    ],
+    "dilution": "미확인",
+    "dwell": "지속 관리 권장",
+    "tools": [
+      "미확인",
+      "없음"
+    ],
+    "result": "세정 후 10일이 지난 시점에도 줄눈 색상이 이전보다 개선된 상태를 확인하였다.",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "오염 확인",
+        "content": "줄눈 오염 상태를 확인한다."
+      },
+      {
+        "order": "2",
+        "stage": "세정",
+        "content": "옥시칼로 줄눈을 세정한다."
+      },
+      {
+        "order": "3",
+        "stage": "경과 관찰",
+        "content": "세정 후 일정 기간 관리하지 않고 변화 관찰"
+      },
+      {
+        "order": "4",
+        "stage": "비교 촬영",
+        "content": "2일 후, 10일 후 사진을 촬영한다."
+      },
+      {
+        "order": "5",
+        "stage": "결과 분석",
+        "content": "줄눈 색상 변화를 비교한다."
+      }
+    ],
+    "warnings": [
+      "색상 줄눈",
+      "탈색 가능성",
+      "중간",
+      "사전 테스트",
+      "천연석",
+      "표면 영향 가능",
+      "중간",
+      "적용 여부 확인",
+      "과다 사용",
+      "불필요한 약품 사용",
+      "낮음",
+      "권장량 사용",
+      "장시간 방치",
+      "재질별 영향 가능",
+      "낮음",
+      "제품 사용법 준수"
+    ],
+    "materialIds": [
+      "grout",
+      "concrete"
+    ],
+    "contaminantIds": [
+      "stain-discoloration"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-OXYCAL-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-BINOXIN-001",
+    "name": "비녹신과 엘록사프리마를 이용한 스테인리스 표면 관리",
+    "categoryMajor": "금속 세정",
+    "categoryMid": "스테인리스 세정",
+    "categoryMinor": "표면 세정 및 보호",
+    "facility": "건물",
+    "area": "금속 표면",
+    "materialRaw": "금속(특히 스테인리스)",
+    "contaminantRaw": "일반 오염, 스티커 잔유물",
+    "productNames": [
+      "비녹신"
+    ],
+    "productIds": [
+      "kiehl-vinoxin"
+    ],
+    "dilution": "없음",
+    "dwell": null,
+    "tools": [
+      "천, 마른 천"
+    ],
+    "result": "세정 완료 및 광택 부여",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "스티커 제거",
+        "content": "스티커 잔유물이 있으면 테이블피트로 먼저 제거한다."
+      },
+      {
+        "order": "2",
+        "stage": "세정",
+        "content": "비녹신을 천에 묻혀 표면을 닦는다."
+      },
+      {
+        "order": "3",
+        "stage": "건조",
+        "content": "비녹신 사용 후 잠시 기다리거나 마른 천 또는 휴지로 건조시킨다."
+      },
+      {
+        "order": "4",
+        "stage": "마감",
+        "content": "엘록사프리마를 마른 천에 1~2회 분사하여 닦는다."
+      },
+      {
+        "order": "5",
+        "stage": "유지관리",
+        "content": "이후 큰 오염이 없으면 엘록사프리마만으로 관리한다."
+      }
+    ],
+    "warnings": [],
+    "materialIds": [
+      "stainless"
+    ],
+    "contaminantIds": [
+      "adhesive"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-BINOXIN-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-JET-001",
+    "name": "샤워부스 찌든 물때 제거",
+    "categoryMajor": "욕실 청소",
+    "categoryMid": "물때 제거",
+    "categoryMinor": "샤워부스 유리 세정",
+    "facility": null,
+    "area": "샤워부스 유리",
+    "materialRaw": "유리",
+    "contaminantRaw": "찌든 물때",
+    "productNames": [
+      "키엘 제트(Jet)"
+    ],
+    "productIds": [
+      "kiehl-jet"
+    ],
+    "dilution": null,
+    "dwell": null,
+    "tools": [
+      "수세미"
+    ],
+    "result": "세척한 부분의 투명도가 개선됨",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "물 적심",
+        "content": "샤워부스 유리에 물을 뿌린다."
+      },
+      {
+        "order": "2",
+        "stage": "약품 사용",
+        "content": "수세미에 제트를 묻힌다."
+      },
+      {
+        "order": "3",
+        "stage": "세정",
+        "content": "물기가 있는 상태에서 유리를 문지른다."
+      },
+      {
+        "order": "4",
+        "stage": "헹굼",
+        "content": "물을 뿌리며 수세미로 헹군다."
+      },
+      {
+        "order": "5",
+        "stage": "마무리",
+        "content": "손으로 유리 표면을 문질러 헹군다."
+      },
+      {
+        "order": "6",
+        "stage": "확인",
+        "content": "건조 후 세척면과 미세척면을 비교한다."
+      }
+    ],
+    "warnings": [],
+    "materialIds": [
+      "glass"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "stain-discoloration"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-JET-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-TORNADO-001",
+    "name": "토네이도를 이용한 범용 세정",
+    "categoryMajor": "범용 세정",
+    "categoryMid": "유리 세정",
+    "categoryMinor": "다목적 세정",
+    "facility": null,
+    "area": "유리창, 바닥, 테이블, 화장실",
+    "materialRaw": "",
+    "contaminantRaw": "먼지, 기름때, 니코틴 오염, 배기가스 오염",
+    "productNames": [
+      "키엘 토네이도"
+    ],
+    "productIds": [
+      "kiehl-tornado"
+    ],
+    "dilution": "유리창은 1:200, 바닥은 1:100 희석비를 사용한다고 설명",
+    "dwell": null,
+    "tools": [],
+    "result": "10년간 방치된 오염 유리창 세정 전·후 사진 제시",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "희석",
+        "content": "유리창은 1:200, 바닥은 1:100으로 희석한다."
+      },
+      {
+        "order": "2",
+        "stage": "세정",
+        "content": "대상 표면을 세정한다."
+      },
+      {
+        "order": "3",
+        "stage": "오점 제거",
+        "content": "테이블 및 바닥의 오점은 더 강하게 희석하여 사용할 수 있다고 설명"
+      }
+    ],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [
+      "grease",
+      "construction-dust",
+      "nicotine"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-TORNADO-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-DOPOMAT-001",
+    "name": "도포마트를 이용한 석재 계단 식용기름 제거",
+    "categoryMajor": "바닥 청소",
+    "categoryMid": "기름 오염 제거",
+    "categoryMinor": "석재 계단 세정",
+    "facility": "중식집 건물",
+    "area": "석재 계단",
+    "materialRaw": "석재",
+    "contaminantRaw": "식용기름 오염",
+    "productNames": [
+      "도포마트"
+    ],
+    "productIds": [
+      "kiehl-dopomat"
+    ],
+    "dilution": "1:10",
+    "dwell": null,
+    "tools": [],
+    "result": "문지르기 전에도 오염이 상당 부분 제거되는 모습을 확인했다고 설명",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "제품 테스트",
+        "content": "도포마트, 코팩스, 오렌지프로를 부분적으로 원액 테스트하였다."
+      },
+      {
+        "order": "2",
+        "stage": "제품 선택",
+        "content": "도포마트를 선택하였다."
+      },
+      {
+        "order": "3",
+        "stage": "희석",
+        "content": "심한 오염이라 1:10으로 희석하였다."
+      },
+      {
+        "order": "4",
+        "stage": "도포",
+        "content": "희석액을 오염 부위에 부었다."
+      },
+      {
+        "order": "5",
+        "stage": "반응",
+        "content": "잠시 담배 한 대 정도의 시간을 기다렸다."
+      },
+      {
+        "order": "6",
+        "stage": "세정",
+        "content": "솔로 문질러 세정하였다."
+      },
+      {
+        "order": "7",
+        "stage": "헹굼",
+        "content": "걸레 또는 물로 닦아 헹구는 것이 중요하다고 설명하였다."
+      }
+    ],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [
+      "grease"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-DOPOMAT-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-AXONFORTE-002",
+    "name": "엑손포르테 성능 테스트",
+    "categoryMajor": "주방 청소",
+    "categoryMid": "기름때 제거",
+    "categoryMinor": "후드 필터 및 기름 오염 수세미 세정",
+    "facility": null,
+    "area": "후드 필터, 기름 오염 수세미",
+    "materialRaw": "",
+    "contaminantRaw": "기름때",
+    "productNames": [
+      "엑손포르테"
+    ],
+    "productIds": [
+      "kiehl-exonforte"
+    ],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": "후드 필터와 기름 오염 수세미의 기름때 제거",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "분사",
+        "content": "엑손포르테를 분사한다."
+      },
+      {
+        "order": "2",
+        "stage": "도포",
+        "content": "손으로 넓게 펴 바른다."
+      },
+      {
+        "order": "3",
+        "stage": "반응",
+        "content": "3~5분 정도 기다린다."
+      },
+      {
+        "order": "4",
+        "stage": "세정",
+        "content": "수세미로 문지른다."
+      },
+      {
+        "order": "5",
+        "stage": "헹굼",
+        "content": "물로 헹군다."
+      },
+      {
+        "order": "1",
+        "stage": "분사",
+        "content": "수세미에 엑손포르테를 분사한다."
+      },
+      {
+        "order": "2",
+        "stage": "희석",
+        "content": "물을 넣어 희석한다."
+      },
+      {
+        "order": "3",
+        "stage": "반응",
+        "content": "1~2분 정도 둔다."
+      },
+      {
+        "order": "4",
+        "stage": "세정",
+        "content": "손으로 주물러 세정한다."
+      },
+      {
+        "order": "5",
+        "stage": "헹굼",
+        "content": "온수로 헹군다."
+      }
+    ],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [
+      "grease"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-AXONFORTE-002"
+      }
+    ]
+  },
+  {
+    "id": "CASE-RIVAS-001",
+    "name": "리바스를 이용한 카페트 오점 제거",
+    "categoryMajor": "카페트 청소",
+    "categoryMid": "오점 제거",
+    "categoryMinor": "카페트 부분 세정",
+    "facility": null,
+    "area": "카페트",
+    "materialRaw": "카페트(섬유재질)",
+    "contaminantRaw": "오점",
+    "productNames": [
+      "리바스"
+    ],
+    "productIds": [
+      "kiehl-rivas"
+    ],
+    "dilution": "1:1",
+    "dwell": null,
+    "tools": [
+      "세정기, 진공청소기, 솔"
+    ],
+    "result": "솔로 문질러도 오점이 제거되었다고 설명",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "희석",
+        "content": "리바스를 물과 희석하였다."
+      },
+      {
+        "order": "2",
+        "stage": "도포",
+        "content": "희석액을 오점 부위에 뿌렸다."
+      },
+      {
+        "order": "3",
+        "stage": "세정",
+        "content": "세정기를 사용하여 작업하였다."
+      },
+      {
+        "order": "4",
+        "stage": "린스",
+        "content": "물로 린스하였다."
+      },
+      {
+        "order": "5",
+        "stage": "흡입",
+        "content": "진공청소기로 흡입하였다."
+      },
+      {
+        "order": "6",
+        "stage": "확인",
+        "content": "필요 시 솔로 문질러 확인하였다."
+      }
+    ],
+    "warnings": [],
+    "materialIds": [
+      "carpet"
+    ],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-RIVAS-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-BINOXECO-001",
+    "name": "비녹스에코를 이용한 주방 스테인리스 및 타일 세정",
+    "categoryMajor": "주방 청소",
+    "categoryMid": "스테인리스 세정",
+    "categoryMinor": "타일 및 스테인리스 세정",
+    "facility": null,
+    "area": "주방 스테인리스 기구, 타일",
+    "materialRaw": "스테인리스",
+    "contaminantRaw": "석회질, 기름때",
+    "productNames": [
+      "비녹스에코"
+    ],
+    "productIds": [
+      "kiehl-binoxin-eco"
+    ],
+    "dilution": "1:5 ~ 1:10",
+    "dwell": null,
+    "tools": [
+      "물에 적신 수세미"
+    ],
+    "result": "세정 사례 소개",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "희석",
+        "content": "물과 1:5 ~ 1:10으로 희석한다."
+      },
+      {
+        "order": "2",
+        "stage": "대체 희석",
+        "content": "물에 적신 수세미에 원액을 살짝 뿌려 사용한다."
+      },
+      {
+        "order": "3",
+        "stage": "세정",
+        "content": "스테인리스 및 타일을 세정한다."
+      }
+    ],
+    "warnings": [],
+    "materialIds": [
+      "stainless"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "grease"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-BINOXECO-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-GRASET-001",
+    "name": "그라셋을 이용한 식품 가공기계 세정",
+    "categoryMajor": "주방 청소",
+    "categoryMid": "기름때 제거",
+    "categoryMinor": "식품 가공기계 세정",
+    "facility": null,
+    "area": "식품 가공기계, 작업대, 바닥, 벽",
+    "materialRaw": "식품 가공기계 및 작업장 표면",
+    "contaminantRaw": "기름때, 눅은 기름때",
+    "productNames": [
+      "그라셋"
+    ],
+    "productIds": [
+      "kiehl-graset"
+    ],
+    "dilution": "1:5 ~ 1:10",
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "희석",
+        "content": "물과 1:5 ~ 1:10으로 희석한다."
+      },
+      {
+        "order": "2",
+        "stage": "세정",
+        "content": "대상 표면 또는 기계를 세정한다."
+      },
+      {
+        "order": "3",
+        "stage": "추가 세정",
+        "content": "그라셋으로 세정되지 않으면 엑손포르테를 사용한다고 설명"
+      }
+    ],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [
+      "grease"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-GRASET-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-VINOX-INTRO-001",
+    "name": "비녹스에코와 비녹신 제품 비교",
+    "categoryMajor": "제품 소개",
+    "categoryMid": "스테인리스 세정",
+    "categoryMinor": "산성 세정제",
+    "facility": null,
+    "area": "스테인리스 금속, 내산성 표면",
+    "materialRaw": "스테인리스, 내산성 표면",
+    "contaminantRaw": "동·식물성 기름때, 시멘트, 석회 가루",
+    "productNames": [
+      "비녹스에코"
+    ],
+    "productIds": [
+      "kiehl-binoxin-eco"
+    ],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "guide_draft",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [
+      "stainless"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "grease",
+      "cement-residue"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-VINOX-INTRO-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-JET-INTRO-001",
+    "name": "제트(Jet) 제품 소개",
+    "categoryMajor": "제품 소개",
+    "categoryMid": "특수 목적 세정제",
+    "categoryMinor": "찌든때·눅은때 제거",
+    "facility": null,
+    "area": "유리, 거울, 금속 표면, 샤워부스 유리, 인덕션 렌지 상판, 타일, 욕조",
+    "materialRaw": "유리, 거울, 금속, 타일, 욕조",
+    "contaminantRaw": "찌든때, 눅은때, 이물질, 유리 물때",
+    "productNames": [
+      "제트(Jet)"
+    ],
+    "productIds": [
+      "kiehl-jet"
+    ],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "guide_draft",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [
+      "ceramic-tile",
+      "glass",
+      "stainless"
+    ],
+    "contaminantIds": [
+      "limescale",
+      "grease",
+      "stain-discoloration"
+    ],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-JET-INTRO-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-DOPOMAT-INTENSO-001",
+    "name": "도포마트인텐소를 이용한 스테인리스 특수 오염 제거",
+    "categoryMajor": "금속 세정",
+    "categoryMid": "스테인리스 세정",
+    "categoryMinor": "특수 오염 제거",
+    "facility": null,
+    "area": "화장실 문 하단 스테인리스",
+    "materialRaw": "스테인리스",
+    "contaminantRaw": "원인을 알 수 없는 오염 자국",
+    "productNames": [
+      "도포마트인텐소"
+    ],
+    "productIds": [
+      "kiehl-dopomat"
+    ],
+    "dilution": null,
+    "dwell": null,
+    "tools": [
+      "수세미"
+    ],
+    "result": "도포마트인텐소 사용 후 오염 자국이 벗겨지듯 제거되었다고 설명",
+    "evidenceLevel": "field_case",
+    "steps": [
+      {
+        "order": "1",
+        "stage": "오염 확인",
+        "content": "화장실 문 하단 스테인리스의 오염 상태를 확인하였다."
+      },
+      {
+        "order": "2",
+        "stage": "기존 제품 테스트",
+        "content": "옥시칼, 비녹신, 비녹스에코, 토네이도, 도포마트, 엑스트라피트를 사용했으나 반응이 없었다."
+      },
+      {
+        "order": "3",
+        "stage": "제품 선택",
+        "content": "도포마트인텐소를 선택하였다."
+      },
+      {
+        "order": "4",
+        "stage": "약품 도포",
+        "content": "도포마트인텐소 원액을 수세미에 묻혔다."
+      },
+      {
+        "order": "5",
+        "stage": "세정",
+        "content": "수세미로 살살 문질렀다."
+      },
+      {
+        "order": "6",
+        "stage": "결과 확인",
+        "content": "오염 자국이 벗겨지듯 제거되는 것을 확인하였다."
+      }
+    ],
+    "warnings": [],
+    "materialIds": [
+      "stainless"
+    ],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-DOPOMAT-INTENSO-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-BATHROOM-GUIDE-001",
+    "name": "키엘 화장실·욕실 세정제품 선택 가이드",
+    "categoryMajor": "제품 선택 가이드",
+    "categoryMid": "화장실 세정",
+    "categoryMinor": "욕실 세정",
+    "facility": null,
+    "area": null,
+    "materialRaw": "",
+    "contaminantRaw": "",
+    "productNames": [],
+    "productIds": [],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "guide_draft",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-BATHROOM-GUIDE-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-FLOOR-SURFACE-GUIDE-001",
+    "name": "키엘 바닥·표면 세정제품 종류와 선택 방법",
+    "categoryMajor": "제품 선택 가이드",
+    "categoryMid": "바닥·표면 세정",
+    "categoryMinor": "재질·기능별 제품 선택",
+    "facility": null,
+    "area": null,
+    "materialRaw": "",
+    "contaminantRaw": "",
+    "productNames": [],
+    "productIds": [],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "guide_draft",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-FLOOR-SURFACE-GUIDE-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-WOOD-FLOOR-GUIDE-001",
+    "name": "키엘 목재 바닥 세정 및 왁스코팅 제품 선택 가이드",
+    "categoryMajor": "제품 선택 가이드",
+    "categoryMid": "목재 바닥 관리",
+    "categoryMinor": "목재 세정·보호·왁스코팅",
+    "facility": null,
+    "area": null,
+    "materialRaw": "",
+    "contaminantRaw": "",
+    "productNames": [],
+    "productIds": [],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "guide_draft",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-WOOD-FLOOR-GUIDE-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-KITCHEN-PRODUCT-GUIDE-001",
+    "name": "키엘 주방 및 홀 세정제품 선택 가이드",
+    "categoryMajor": "제품 선택 가이드",
+    "categoryMid": "주방 및 홀 세정",
+    "categoryMinor": "기름때 세정",
+    "facility": null,
+    "area": null,
+    "materialRaw": "",
+    "contaminantRaw": "",
+    "productNames": [],
+    "productIds": [],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "guide_draft",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-KITCHEN-PRODUCT-GUIDE-001"
+      }
+    ]
+  },
+  {
+    "id": "CASE-GLASS-PRODUCT-GUIDE-001",
+    "name": "키엘 유리창 세정제품 종류와 선택 방법",
+    "categoryMajor": "제품 선택 가이드",
+    "categoryMid": "유리 세정",
+    "categoryMinor": "오염·작업방식별 제품 선택",
+    "facility": null,
+    "area": null,
+    "materialRaw": "",
+    "contaminantRaw": "",
+    "productNames": [],
+    "productIds": [],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": "글라스킹은 세정 후 유리를 반짝이고 매끄럽게 마무리한다고 설명",
+    "evidenceLevel": "guide_draft",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-GLASS-PRODUCT-GUIDE-001"
+      }
+    ]
+  },
+  {
+    "id": "SAFETY-BLEACH-MIXING-001",
+    "name": "락스 혼합 사용 위험과 안전한 사용 기준",
+    "categoryMajor": "세정제 안전관리",
+    "categoryMid": "염소계 표백제",
+    "categoryMinor": "혼합 금지 및 환기",
+    "facility": null,
+    "area": null,
+    "materialRaw": "",
+    "contaminantRaw": "",
+    "productNames": [],
+    "productIds": [],
+    "dilution": null,
+    "dwell": null,
+    "tools": [],
+    "result": null,
+    "evidenceLevel": "principle",
+    "steps": [],
+    "warnings": [],
+    "materialIds": [],
+    "contaminantIds": [],
+    "sourceRefs": [
+      {
+        "doc": "cleaning-cases",
+        "caseId": "SAFETY-BLEACH-MIXING-001"
+      }
+    ]
+  }
+]

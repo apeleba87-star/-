@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AlertTriangle, Beaker, Clock, Droplets, Wrench } from "lucide-react";
 import EntityRichText from "@/components/knowledge-hub/EntityRichText";
+import ProductSalesCta from "@/components/knowledge-hub/ProductSalesCta";
+import ProInquiryCta from "@/components/knowledge-hub/ProInquiryCta";
 import type { KnowledgeRecipe } from "@/lib/knowledge-hub/cleaning-knowledge/types";
 import {
   getContaminantById,
@@ -8,9 +10,11 @@ import {
   getProductById,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { getCatalogTopicByPath } from "@/lib/knowledge-hub/catalog";
+import { applySalesToProduct, type ProductSalesRow } from "@/lib/knowledge-hub/product-sales";
 
 type Props = {
   recipe: KnowledgeRecipe;
+  salesMap?: Record<string, ProductSalesRow>;
 };
 
 function confidenceLabel(c: KnowledgeRecipe["confidence"]) {
@@ -19,8 +23,9 @@ function confidenceLabel(c: KnowledgeRecipe["confidence"]) {
   return "현장 확인 필요";
 }
 
-export default function CleaningRecipeView({ recipe }: Props) {
-  const product = getProductById(recipe.productId);
+export default function CleaningRecipeView({ recipe, salesMap = {} }: Props) {
+  const baseProduct = getProductById(recipe.productId);
+  const product = baseProduct ? applySalesToProduct(baseProduct, salesMap) : undefined;
   const material = getMaterialById(recipe.materialId);
   const contaminant = getContaminantById(recipe.contaminantId);
 
@@ -150,6 +155,24 @@ export default function CleaningRecipeView({ recipe }: Props) {
           </ul>
         </section>
       ) : null}
+
+      {product ? (
+        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
+          <h2 className="text-lg font-black text-slate-900">제품 구매</h2>
+          <div className="mt-3">
+            <ProductSalesCta product={product} />
+          </div>
+        </section>
+      ) : null}
+
+      <ProInquiryCta
+        className="mt-10"
+        path={`/cleaning/${recipe.slug}`}
+        productId={recipe.productId}
+        recipeSlug={recipe.slug}
+        materialId={recipe.materialId}
+        contaminantId={recipe.contaminantId}
+      />
 
       {recipe.sources?.length ? (
         <section className="mt-8 text-xs text-slate-500">

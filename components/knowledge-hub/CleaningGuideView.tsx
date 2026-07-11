@@ -247,13 +247,13 @@ export default function CleaningGuideView({ guide, canEdit, coupangUrls }: Props
             <Sparkles className="h-5 w-5" aria-hidden />
             <span className="text-sm font-bold">청소 문의</span>
           </div>
-          <h2 className="mt-3 text-2xl font-black">직접 하기 어려우신가요?</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-200">지역과 규모만 알려주시면 견적을 안내해 드립니다.</p>
+          <h2 className="mt-3 text-2xl font-black">전문업체 문의하기</h2>
+          <p className="mt-2 text-sm leading-7 text-slate-200">지금 보고 계신 가이드 내용을 바탕으로 견적을 안내합니다.</p>
           <Link
             href={`${inquiryPath}?ref=${guide.service_slug}&path=${encodeURIComponent(guide.path)}`}
             className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 sm:w-auto"
           >
-            {inquiryLabel}
+            전문업체 문의하기
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
         </section>

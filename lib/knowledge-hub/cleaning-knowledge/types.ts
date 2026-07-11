@@ -1,3 +1,12 @@
+/** 문서·사례 출처 참조 (더미 금지 정책의 공개 엔티티에 권장) */
+export type SourceRef = {
+  doc: "kiehl-list" | "cleaning-cases" | "cleaning-knowledge" | "manual";
+  caseId?: string;
+  note?: string;
+};
+
+export type EvidenceLevel = "field_case" | "product_spec" | "principle" | "guide_draft";
+
 export type PHType =
   | "strong_acid"
   | "acid"
@@ -40,6 +49,7 @@ export type KnowledgeMaterial = {
   aliases?: string[];
   riskLevel: "low" | "medium" | "high" | "very_high";
   notes?: string;
+  sourceRefs?: SourceRef[];
 };
 
 export type KnowledgeContaminant = {
@@ -48,22 +58,37 @@ export type KnowledgeContaminant = {
   type: ContaminantType;
   phDirection?: string;
   notes?: string;
+  sourceRefs?: SourceRef[];
 };
 
 export type KnowledgeProduct = {
   id: string;
   brand: string;
   name: string;
+  aliases?: string[];
   phType: PHType;
   phApprox?: string | null;
+  summary?: string;
   mainUse: string[];
+  /** 문서「적용 재질」 */
+  compatibleMaterialIds?: string[];
+  /** 문서「제거 가능한 오염」 */
+  contaminantIds?: string[];
+  /** 문서「사용 불가」재질 */
+  forbiddenMaterialIds?: string[];
+  placeHints?: string[];
   standardDilution?: string;
   strongDilution?: string;
   dwellTime?: string;
+  packSizes?: string[];
   warnings: string[];
   confidence: Confidence;
-  status?: "active" | "discontinued" | "verify";
+  status?: "active" | "discontinued" | "verify" | "draft";
+  /** 운영자가 넣는 판매 URL — 없으면 구매 CTA 비노출 */
+  salesUrl?: string | null;
+  salesLabel?: string;
   sources?: KnowledgeSource[];
+  sourceRefs?: SourceRef[];
 };
 
 export type KnowledgeFact = {
@@ -82,6 +107,7 @@ export type KnowledgeFact = {
   confidence: Confidence;
   guidePaths?: string[];
   sources: KnowledgeSource[];
+  sourceRefs?: SourceRef[];
 };
 
 export type KnowledgeRecipe = {
@@ -92,7 +118,11 @@ export type KnowledgeRecipe = {
   materialId: string;
   contaminantId: string;
   productId: string;
+  /** 복수 제품 사례 시 보조 제품 */
+  secondaryProductIds?: string[];
   factIds?: string[];
+  caseIds?: string[];
+  evidenceLevel?: EvidenceLevel;
   dilution: string;
   dwellTime: string;
   tools: string[];
@@ -102,6 +132,7 @@ export type KnowledgeRecipe = {
   confidence: Confidence;
   guidePaths?: string[];
   sources?: KnowledgeSource[];
+  sourceRefs?: SourceRef[];
 };
 
 export type KnowledgeQaCase = {
@@ -112,6 +143,7 @@ export type KnowledgeQaCase = {
   relatedFactIds?: string[];
   confidence: Confidence;
   sources?: KnowledgeSource[];
+  sourceRefs?: SourceRef[];
 };
 
 export type KnowledgeRule = {
@@ -121,6 +153,21 @@ export type KnowledgeRule = {
   severity: "info" | "warning" | "critical";
   confidence: Confidence;
   sources?: KnowledgeSource[];
+  sourceRefs?: SourceRef[];
+};
+
+export type KnowledgeCaseEvidence = {
+  id: string;
+  name: string;
+  categoryMajor: string;
+  categoryMid?: string;
+  categoryMinor?: string;
+  productNames: string[];
+  materialRaw?: string;
+  contaminantRaw?: string;
+  evidenceLevel: EvidenceLevel;
+  result?: string;
+  sourceRefs: SourceRef[];
 };
 
 export type CleaningKnowledgeDb = {
@@ -133,6 +180,7 @@ export type CleaningKnowledgeDb = {
   recipes: KnowledgeRecipe[];
   qaCases: KnowledgeQaCase[];
   rules: KnowledgeRule[];
+  cases?: KnowledgeCaseEvidence[];
 };
 
 export type IngestResult = {

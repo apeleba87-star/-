@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import KnowledgeDbPageView from "@/components/knowledge-hub/KnowledgeDbPageView";
+import ProInquiryCta from "@/components/knowledge-hub/ProInquiryCta";
 import { getMaterialById, listMaterials } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { generateMaterialPageBody } from "@/lib/knowledge-hub/generate-from-db";
 import { buildPageMetadata } from "@/lib/seo";
@@ -39,6 +40,7 @@ export default async function MaterialDetailPage({ params }: Props) {
         intro={body.intro}
         body={body}
         breadcrumb={[{ href: "/materials", label: "재질별 청소" }]}
+        footer={<ProInquiryCta path={`/materials/${id}`} materialId={id} className="mt-10" />}
       />
     </div>
   );

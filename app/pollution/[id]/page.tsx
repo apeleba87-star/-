@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import KnowledgeDbPageView from "@/components/knowledge-hub/KnowledgeDbPageView";
+import ProInquiryCta from "@/components/knowledge-hub/ProInquiryCta";
 import { getContaminantById, listContaminants } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { generateContaminantPageBody } from "@/lib/knowledge-hub/generate-from-db";
 import { buildPageMetadata } from "@/lib/seo";
@@ -39,6 +40,7 @@ export default async function PollutionDetailPage({ params }: Props) {
         intro={body.intro}
         body={body}
         breadcrumb={[{ href: "/pollution", label: "오염별 제거" }]}
+        footer={<ProInquiryCta path={`/pollution/${id}`} contaminantId={id} className="mt-10" />}
       />
     </div>
   );

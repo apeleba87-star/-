@@ -1,6 +1,5 @@
 import type { CatalogTopic } from "@/lib/knowledge-hub/catalog";
 import { getCatalogTopicByPath, CATALOG_TOPICS, HUB_CATEGORIES } from "@/lib/knowledge-hub/catalog";
-import { CATEGORY_OVERVIEW, CATEGORY_OVERVIEW_FULL } from "@/lib/knowledge-hub/category-overview";
 import {
   getCleaningKnowledgeDb,
   getContaminantById,
@@ -12,7 +11,7 @@ import {
 import type { GuideBodyJson, GuideBlock } from "@/lib/knowledge-hub/types";
 import { CONTAMINANT_TYPE_KO, PH_DIRECTION_KO, RISK_LEVEL_KO } from "@/lib/knowledge-hub/korean-labels";
 
-const GLOBAL_RULE_IDS = ["rule-no-mix", "rule-pretest", "rule-material-first"];
+const GLOBAL_RULE_IDS = ["rule-no-mix-bleach-acid", "rule-pretest", "rule-material-contaminant-first"];
 
 function unique<T>(arr: T[]): T[] {
   return [...new Set(arr)];
@@ -89,7 +88,7 @@ function buildCautionBlock(warnings: string[]): GuideBlock | null {
   };
 }
 
-function buildFaqForPath(path: string, skipGlobalFallback = false): GuideBlock | null {
+function buildFaqForPath(path: string): GuideBlock | null {
   const db = getCleaningKnowledgeDb();
   const factsOnPath = getFactsForGuidePath(path);
   const relatedFactIds = new Set(factsOnPath.map((f) => f.id));
@@ -97,12 +96,7 @@ function buildFaqForPath(path: string, skipGlobalFallback = false): GuideBlock |
     .filter((q) => q.relatedFactIds?.some((id) => relatedFactIds.has(id)))
     .map((q) => ({ q: q.question, a: q.answerSummary }));
 
-  if (!items.length) {
-    if (skipGlobalFallback) return null;
-    const fallback = db.qaCases.slice(0, 2).map((q) => ({ q: q.question, a: q.answerSummary }));
-    if (!fallback.length) return null;
-    return { id: "faq", type: "faq", title: "자주 묻는 질문", items: fallback };
-  }
+  if (!items.length) return null;
   return { id: "faq", type: "faq", title: "자주 묻는 질문", items };
 }
 
@@ -162,40 +156,12 @@ function buildAreaGuideChecklist(topic: CatalogTopic): GuideBlock | null {
 }
 
 function buildOverviewBlocks(topic: CatalogTopic): GuideBlock[] {
-  const content = CATEGORY_OVERVIEW_FULL[topic.categorySlug];
-  if (!content) return [];
-
-  const blocks: GuideBlock[] = [];
-
-  blocks.push({
-    id: "scope",
-    type: "checklist",
-    title: content.scopeTitle,
-    items: content.scopeItems,
-  });
-
-  blocks.push({
-    id: "sequence",
-    type: "steps",
-    title: content.sequenceTitle,
-    steps: content.sequence,
-  });
-
-  blocks.push({
-    id: "frequency",
-    type: "section",
-    title: "청소 주기",
-    tone: "summary",
-    paragraphs: [content.frequency],
-  });
-
+  /** 문서 근거 없는 범위·주기·순서 문장은 넣지 않음. 하위 가이드 목록(네비)만 허용 */
   const areaGuides = buildAreaGuideChecklist(topic);
-  if (areaGuides) blocks.push(areaGuides);
-
-  return blocks;
+  return areaGuides ? [areaGuides] : [];
 }
 
-/** 카탈로그 가이드(50페이지) 본문 — DB 팩트·레시피 기반 */
+/** 카탈로그 가이드 본문 — 연결된 레시피·팩트·규칙만 (임의 문장 금지) */
 export function generateGuideBodyForTopic(topic: CatalogTopic): GuideBodyJson {
   const path = topic.path;
   const isOverview = topic.topicSlug === "overview";
@@ -218,25 +184,25 @@ export function generateGuideBodyForTopic(topic: CatalogTopic): GuideBodyJson {
 
   const recipeBlock = buildRecipeListBlock(
     recipes,
-    isOverview ? "현장 레시피" : "현장 레시피",
-    isOverview ? "이 현장에서 자주 쓰는 제품 조합입니다." : undefined
+    "문서·사례 기반 레시피",
+    recipes.length ? undefined : undefined
   );
   if (recipeBlock) blocks.push(recipeBlock);
 
-  const factBlock = buildFactsSection(facts, isOverview ? "핵심 정리 (구역별 팩트 모음)" : "핵심 정리");
+  const factBlock = buildFactsSection(facts, "검증된 정리");
   if (factBlock) blocks.push(factBlock);
 
-  if (topic.guideType === "service_method" || topic.guideType === "problem") {
-    if (!isOverview) {
+  /** 연결 데이터가 있을 때만 원칙 규칙 노출 (전역 규칙 = 원문 추출분) */
+  if (recipes.length || facts.length) {
+    const principleRules = getCleaningKnowledgeDb()
+      .rules.filter((r) => r.id === "rule-material-contaminant-first" || r.id === "rule-pretest")
+      .map((r) => r.body);
+    if (principleRules.length) {
       blocks.push({
         id: "principle",
         type: "section",
         title: "작업 원칙",
-        paragraphs: [
-          "재질과 오염원을 먼저 확인한 뒤 제품을 고릅니다. 화장실세정제·유리세정제 등 장소 라벨은 편의 구분일 뿐입니다.",
-          "사전 테스트(눈에 띄지 않는 구석) 후 본 작업을 진행합니다.",
-          "산성 세정 후에는 물로 충분히 헹구고 잔수를 제거합니다. 입주·마감·고오염 바닥은 마른 걸레 마무리를 권장합니다.",
-        ],
+        paragraphs: principleRules,
       });
     }
   }
@@ -244,7 +210,7 @@ export function generateGuideBodyForTopic(topic: CatalogTopic): GuideBodyJson {
   const caution = buildCautionBlock(warnings);
   if (caution) blocks.push(caution);
 
-  const faq = buildFaqForPath(path, isOverview);
+  const faq = buildFaqForPath(path);
   if (faq) blocks.push(faq);
 
   if (recipes.length) {
@@ -255,28 +221,30 @@ export function generateGuideBodyForTopic(topic: CatalogTopic): GuideBodyJson {
     });
   }
 
-  const overviewContent = isOverview ? CATEGORY_OVERVIEW_FULL[topic.categorySlug] : undefined;
+  if (!blocks.length) {
+    blocks.push({
+      id: "empty",
+      type: "section",
+      title: "등록된 사용법 없음",
+      tone: "summary",
+      paragraphs: [
+        "이 주제에는 아직 제공하신 문서·사례에 근거한 레시피·팩트가 없습니다. 임의로 작성한 내용은 표시하지 않습니다.",
+      ],
+    });
+  }
 
   const summary = [
     `대상: ${topic.focus}`,
-    isOverview && overviewContent ? overviewContent.frequency : null,
-    recipes.length ? `연결 레시피 ${recipes.length}건` : null,
-    facts.length ? `검증 팩트 ${facts.length}건 반영` : null,
+    recipes.length ? `연결 레시피 ${recipes.length}건` : "연결 레시피 없음",
+    facts.length ? `팩트 ${facts.length}건` : null,
   ].filter(Boolean) as string[];
 
   const relatedPaths = unique([
     ...relatedGuidesFromRecipes(recipes.map((r) => r.id)),
-    ...(topic.guideType === "problem"
-      ? []
-      : isOverview
-        ? getSiblingTopics(topic.categorySlug, path).map((t) => t.path)
-        : getTopicsByCategoryFallback(topic.categorySlug, path)),
+    ...(isOverview ? getSiblingTopics(topic.categorySlug, path).map((t) => t.path) : getTopicsByCategoryFallback(topic.categorySlug, path)),
   ]).slice(0, isOverview ? 9 : 5);
 
-  const intro =
-    isOverview && overviewContent?.introExtra
-      ? overviewContent.introExtra
-      : topic.seoDescription;
+  const intro = recipes.length || facts.length ? topic.seoDescription : `${topic.h1} — 문서 근거 데이터 연결 대기 중`;
 
   return {
     intro,
@@ -299,7 +267,7 @@ export function generateGuideBodyForPath(path: string): GuideBodyJson | null {
   return generateGuideBodyForTopic(topic);
 }
 
-/** 제품 허브 페이지 본문 */
+/** 제품 허브 페이지 본문 — 문서 필드만 */
 export function generateProductPageBody(productId: string): GuideBodyJson | null {
   const product = getProductById(productId);
   if (!product) return null;
@@ -308,31 +276,73 @@ export function generateProductPageBody(productId: string): GuideBodyJson | null
   const facts = factsForProduct(productId);
   const blocks: GuideBlock[] = [];
 
-  blocks.push({
-    id: "overview",
-    type: "section",
-    title: "제품 개요",
-    paragraphs: [
-      `${product.brand} ${product.name}`,
-      `주요 용도: ${product.mainUse.join(", ")}`,
-      product.standardDilution ? `표준 희석: ${product.standardDilution}` : "",
-      product.strongDilution ? `집중 세정: ${product.strongDilution}` : "",
-      product.dwellTime ? `대기 시간: ${product.dwellTime}` : "",
-      product.phApprox ? `pH: ${product.phApprox}` : "",
-    ].filter(Boolean),
-  });
+  const overviewParas = [
+    product.summary,
+    product.mainUse.length ? `주요 용도·장소: ${product.mainUse.join(", ")}` : "",
+    product.standardDilution ? `희석: ${product.standardDilution}` : "",
+    product.strongDilution ? `집중: ${product.strongDilution}` : "",
+    product.dwellTime ? `대기 시간: ${product.dwellTime}` : "",
+    product.phApprox ? `pH: ${product.phApprox}` : "",
+    product.packSizes?.length ? `규격: ${product.packSizes.join(", ")}` : "",
+  ].filter(Boolean) as string[];
+
+  if (overviewParas.length) {
+    blocks.push({
+      id: "overview",
+      type: "section",
+      title: "제품 개요",
+      paragraphs: overviewParas,
+    });
+  }
+
+  if (product.compatibleMaterialIds?.length) {
+    blocks.push({
+      id: "materials",
+      type: "checklist",
+      title: "적용 재질 (문서)",
+      items: product.compatibleMaterialIds.map((id) => getMaterialById(id)?.name ?? id),
+    });
+  }
+
+  if (product.contaminantIds?.length) {
+    blocks.push({
+      id: "contaminants",
+      type: "checklist",
+      title: "제거 가능한 오염 (문서)",
+      items: product.contaminantIds.map((id) => getContaminantById(id)?.name ?? id),
+    });
+  }
+
+  if (product.forbiddenMaterialIds?.length) {
+    blocks.push({
+      id: "forbidden",
+      type: "section",
+      title: "사용 주의·불가 재질",
+      tone: "caution",
+      paragraphs: product.forbiddenMaterialIds.map((id) => getMaterialById(id)?.name ?? id),
+    });
+  }
 
   const factBlock = buildFactsSection(facts, "사용 요령");
   if (factBlock) blocks.push(factBlock);
 
-  const recipeBlock = buildRecipeListBlock(recipes, "이 제품 레시피");
+  const recipeBlock = buildRecipeListBlock(recipes, "이 제품 레시피 (사례)");
   if (recipeBlock) blocks.push(recipeBlock);
 
   const caution = buildCautionBlock([...product.warnings, ...productWarningsFromRecipes(recipes)]);
   if (caution) blocks.push(caution);
 
+  if (!blocks.length) {
+    blocks.push({
+      id: "empty",
+      type: "section",
+      title: "상세 스펙 대기",
+      paragraphs: ["사례에서 언급된 제품입니다. 리스트업 상세가 추가되면 스펙이 채워집니다."],
+    });
+  }
+
   return {
-    intro: `${product.name} 사용법·희석·주의사항을 정리했습니다.`,
+    intro: product.summary ?? `${product.name} — 문서·사례 근거 정보`,
     summary: product.mainUse.slice(0, 3),
     toc: blocks.map((b) => b.title),
     blocks,

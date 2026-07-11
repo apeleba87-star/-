@@ -13,6 +13,9 @@ export function buildEntityLinkRegistry(): EntityLink[] {
 
   for (const p of db.products) {
     links.push({ label: p.name, href: `/products/${p.id}`, kind: "product" });
+    for (const a of p.aliases ?? []) {
+      if (a && a.length > 1) links.push({ label: a, href: `/products/${p.id}`, kind: "product" });
+    }
     const en = p.name.match(/\(([^)]+)\)/)?.[1];
     if (en) links.push({ label: en, href: `/products/${p.id}`, kind: "product" });
   }

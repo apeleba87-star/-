@@ -1,4 +1,5 @@
 import { INITIAL_CLEANING_KNOWLEDGE } from "@/lib/knowledge-hub/cleaning-knowledge/initial-knowledge";
+import { SOURCE_DOC_KNOWLEDGE } from "@/lib/knowledge-hub/cleaning-knowledge/build-from-source";
 import type {
   CleaningKnowledgeDb,
   KnowledgeFact,
@@ -9,12 +10,21 @@ import { recipeMatchesGuidePath, enrichedGuidePathsForRecipe } from "@/lib/knowl
 
 let cache: CleaningKnowledgeDb | null = null;
 
-/** 런타임 단일 소스. 추후 DB·JSON 배치 병합 시 이 함수만 확장 */
+/**
+ * 런타임 단일 소스.
+ * v3: 사용자 제공 문서(리스트업·사례·원문 원칙) 기준. 더미 레시피/팩트 미포함.
+ * 레거시 initial-knowledge는 마이그레이션 참고용으로만 유지.
+ */
 export function getCleaningKnowledgeDb(): CleaningKnowledgeDb {
   if (!cache) {
-    cache = INITIAL_CLEANING_KNOWLEDGE;
+    cache = SOURCE_DOC_KNOWLEDGE;
   }
   return cache;
+}
+
+/** @deprecated 문서 근거 DB로 전환됨. 비교·마이그레이션용 */
+export function getLegacyCleaningKnowledgeDb(): CleaningKnowledgeDb {
+  return INITIAL_CLEANING_KNOWLEDGE;
 }
 
 export function listRecipes(): KnowledgeRecipe[] {
@@ -31,6 +41,10 @@ export function listMaterials() {
 
 export function listContaminants() {
   return getCleaningKnowledgeDb().contaminants;
+}
+
+export function listCases() {
+  return getCleaningKnowledgeDb().cases ?? [];
 }
 
 export function getRecipeBySlug(slug: string): KnowledgeRecipe | undefined {
@@ -77,9 +91,9 @@ export function searchRecipes(query: string): KnowledgeRecipe[] {
       r.summary,
       r.field,
       product?.name,
+      ...(product?.aliases ?? []),
       material?.name,
       contaminant?.name,
-      ...(product?.mainUse ?? []),
     ]
       .filter(Boolean)
       .join(" ")
@@ -91,12 +105,12 @@ export function searchRecipes(query: string): KnowledgeRecipe[] {
 export function knowledgeStats() {
   const db = getCleaningKnowledgeDb();
   return {
-    version: db.version,
-    updatedAt: db.updatedAt,
     products: db.products.length,
-    facts: db.facts.length,
     recipes: db.recipes.length,
-    qaCases: db.qaCases.length,
+    facts: db.facts.length,
+    materials: db.materials.length,
+    contaminants: db.contaminants.length,
     rules: db.rules.length,
+    cases: db.cases?.length ?? 0,
   };
 }
