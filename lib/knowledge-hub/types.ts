@@ -42,6 +42,13 @@ export type GuideProductsBlock = {
   subtitle?: string;
 };
 
+export type GuideLinksBlock = {
+  id: string;
+  type: "links";
+  title: string;
+  items: { href: string; label: string; note?: string }[];
+};
+
 export type GuideRecipesBlock = {
   id: string;
   type: "recipes";
@@ -56,6 +63,7 @@ export type GuideBlock =
   | GuideStepsBlock
   | GuideFaqBlock
   | GuideProductsBlock
+  | GuideLinksBlock
   | GuideRecipesBlock;
 
 export type GuideBodyJson = {

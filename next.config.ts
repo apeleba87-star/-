@@ -12,6 +12,11 @@ function supabaseStorageHostname(): string {
 }
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/facilities", destination: "/services", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {

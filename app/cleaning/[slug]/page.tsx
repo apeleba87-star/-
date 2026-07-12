@@ -31,7 +31,7 @@ export default async function CleaningRecipePage({ params }: Props) {
   if (!recipe) notFound();
   const salesMap = await getProductSalesMap();
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-8">
       <CleaningRecipeView recipe={recipe} salesMap={salesMap} />
     </div>
   );

@@ -1,10 +1,14 @@
-import { createServiceSupabase } from "@/lib/supabase-server";
+import { unstable_cache } from "next/cache";
+import { createClient, createServiceSupabase } from "@/lib/supabase-server";
 
 export type ProductSalesRow = {
   product_id: string;
   sales_url: string;
   sales_label: string | null;
 };
+
+export const PRODUCT_SALES_CACHE_TAG = "cleaning-product-sales";
+const PRODUCT_SALES_REVALIDATE_SEC = 3600;
 
 /** 스마트스토어 홈 — 제품별 링크 없을 때 fallback */
 export function getSmartstoreHomeUrl(): string | null {
@@ -49,10 +53,10 @@ export function resolveProductPurchase(product: {
   };
 }
 
-/** 제품 ID → 판매 링크 맵 (실패 시 빈 맵 — 더미 URL 생성 안 함) */
-export async function getProductSalesMap(): Promise<Record<string, ProductSalesRow>> {
+async function loadProductSalesMap(): Promise<Record<string, ProductSalesRow>> {
   try {
-    const supabase = createServiceSupabase();
+    // 공개 읽기 — RLS anon select 정책 사용 (service role 불필요)
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("cleaning_product_sales")
       .select("product_id, sales_url, sales_label");
@@ -70,6 +74,14 @@ export async function getProductSalesMap(): Promise<Record<string, ProductSalesR
   } catch {
     return {};
   }
+}
+
+/** 제품 ID → 판매 링크 맵 (실패 시 빈 맵 — 더미 URL 생성 안 함) */
+export function getProductSalesMap(): Promise<Record<string, ProductSalesRow>> {
+  return unstable_cache(loadProductSalesMap, ["cleaning-product-sales-map"], {
+    revalidate: PRODUCT_SALES_REVALIDATE_SEC,
+    tags: [PRODUCT_SALES_CACHE_TAG],
+  })();
 }
 
 export async function upsertProductSales(

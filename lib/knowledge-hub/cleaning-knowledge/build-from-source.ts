@@ -75,44 +75,45 @@ const BASE_MATERIALS: KnowledgeMaterial[] = [
   { id: "porcelain", name: "도기·자기(변기·세면대)", riskLevel: "low", sourceRefs: [{ doc: "kiehl-list" }] },
   { id: "ceramic-tile", name: "타일(자기·포세린)", riskLevel: "low", sourceRefs: [{ doc: "kiehl-list" }] },
   { id: "grout", name: "줄눈·석회질", riskLevel: "medium", sourceRefs: [{ doc: "kiehl-list" }] },
-  { id: "stainless", name: "스테인레스", riskLevel: "medium", notes: "기름때는 표면을 적신 뒤 희석·원액 도포. 대기 후 마르기 전에 닦고, 식품 접촉면은 물로 충분히 헹군다. 거친 수세미·스크래퍼는 주의.", sourceRefs: [{ doc: "cleaning-knowledge" }, { doc: "manual", note: "그라셋 표면 청소 요령" }] },
+  { id: "stainless", name: "스테인레스", riskLevel: "medium", notes: "결 방향 따라 작업. 거친 수세미·스크래퍼 주의. 코팅·등급별 사전 테스트. 식품 접촉면은 충분히 헹굼.", sourceRefs: [{ doc: "kiehl-list", note: "비녹신·그라셋 등 금속 표면" }, { doc: "manual", note: "그라셋 표면 청소 요령" }] },
   { id: "chrome-faucet", name: "크롬·수전", riskLevel: "medium", sourceRefs: [{ doc: "kiehl-list" }] },
   {
     id: "marble",
     name: "대리석·라임스톤",
     riskLevel: "very_high",
-    notes: "산성·강한 알칼리에 취약 (원문·리스트업)",
+    notes: "산성·강한 알칼리에 취약",
     sourceRefs: [{ doc: "cleaning-knowledge" }, { doc: "kiehl-list" }],
   },
   { id: "granite", name: "화강석", riskLevel: "medium", sourceRefs: [{ doc: "cleaning-knowledge" }] },
-  { id: "epoxy-floor", name: "에폭시 코팅 바닥", riskLevel: "medium", notes: "주방·홀 바닥은 걸레·기계 습식 후 마른 밀대로 마무리. 넓은 식품공장 바닥은 배수구를 막은 뒤 고무 밀대로 분산·헹굼을 고려한다.", sourceRefs: [{ doc: "kiehl-list" }, { doc: "manual", note: "그라셋 바닥 청소 요령" }] },
+  { id: "epoxy-floor", name: "에폭시 코팅 바닥", riskLevel: "medium", notes: "습식 후 마른 밀대 마무리. 넓은 식품공장 바닥은 배수·분산·헹굼을 고려.", sourceRefs: [{ doc: "kiehl-list" }, { doc: "manual", note: "그라셋 바닥 청소 요령" }] },
   { id: "laminate-wood", name: "강마루·강화마루·목재", riskLevel: "medium", sourceRefs: [{ doc: "kiehl-list" }] },
   { id: "silicone", name: "실리콘(줄·창틀)", riskLevel: "high", sourceRefs: [{ doc: "cleaning-knowledge" }] },
-  { id: "glass", name: "유리", riskLevel: "low", notes: "원액형 유리세제는 분무 후 마른 천(극세사)으로 바로 닦고, 넓게 뿌리지 않는다. 희석형(토네이도 등)은 스펀지·밀대 후 스퀴지·마른 천으로 건조. 거친 수세미는 표면 손상 주의.", sourceRefs: [{ doc: "kiehl-list" }, { doc: "manual", note: "글라스퀸·토네이도 유리 청소 요령" }] },
-  { id: "pvc-deco", name: "데코타일·리놀륨·합성수지", riskLevel: "low", aliases: ["데코타일"], notes: "방수 바닥 일상 세정은 대걸레·밀대·분무 후 마른 밀대(사각맙)로 마무리하면 자국이 적다.", sourceRefs: [{ doc: "kiehl-list" }, { doc: "manual", note: "토네이도 바닥 청소 요령" }] },
+  { id: "glass", name: "유리", riskLevel: "low", notes: "원액형은 분무 후 마른 천으로 바로. 희석형은 스퀴지·마른 천 마무리. 거친 수세미 주의.", sourceRefs: [{ doc: "kiehl-list" }, { doc: "manual", note: "글라스퀸·토네이도 유리 청소 요령" }] },
+  { id: "pvc-deco", name: "데코타일·리놀륨·합성수지", riskLevel: "low", aliases: ["데코타일"], notes: "일상 세정 후 마른 밀대(사각맙)로 마무리하면 자국이 적다.", sourceRefs: [{ doc: "kiehl-list" }, { doc: "manual", note: "토네이도 바닥 청소 요령" }] },
   {
     id: "aluminum",
     name: "알루미늄",
     riskLevel: "high",
-    notes: "강알칼리 시 변색 (원문)",
+    notes: "강알칼리 시 변색",
     sourceRefs: [{ doc: "cleaning-knowledge" }],
   },
-  { id: "brass-bronze", name: "청동·황동", riskLevel: "high", notes: "산성 주의 (원문)", sourceRefs: [{ doc: "cleaning-knowledge" }] },
+  { id: "brass-bronze", name: "청동·황동", riskLevel: "high", notes: "산성 주의", sourceRefs: [{ doc: "cleaning-knowledge" }] },
   { id: "concrete", name: "콘크리트·시멘트", riskLevel: "medium", sourceRefs: [{ doc: "cleaning-knowledge" }] },
   { id: "exterior-wall", name: "외벽·베란다 콘크리트 면", riskLevel: "medium", sourceRefs: [{ doc: "cleaning-cases" }] },
-  { id: "enamel", name: "에나멜(욕조)", riskLevel: "high", notes: "산성 취약 (원문·리스트업)", sourceRefs: [{ doc: "cleaning-knowledge" }, { doc: "kiehl-list" }] },
+  { id: "enamel", name: "에나멜(욕조)", riskLevel: "high", notes: "산성 취약", sourceRefs: [{ doc: "cleaning-knowledge" }, { doc: "kiehl-list" }] },
   { id: "leather", name: "가죽", riskLevel: "high", sourceRefs: [{ doc: "cleaning-cases", caseId: "CASE-LEATHER-001" }, { doc: "kiehl-list" }] },
   { id: "carpet", name: "카펫·섬유", riskLevel: "medium", sourceRefs: [{ doc: "cleaning-cases", caseId: "CASE-RIVAS-001" }, { doc: "kiehl-list" }] },
   { id: "painted-wall", name: "도장·페인트 벽면", riskLevel: "high", sourceRefs: [{ doc: "cleaning-cases", caseId: "CASE-STICKER-001" }] },
-  { id: "plastic", name: "플라스틱(PVC·PP·PE·아크릴)", riskLevel: "medium", notes: "ABS·용제 민감 재질은 사전 테스트 (리스트업)", sourceRefs: [{ doc: "kiehl-list" }] },
+  { id: "plastic", name: "플라스틱(PVC·PP·PE·아크릴)", riskLevel: "medium", notes: "ABS·용제 민감 재질은 사전 테스트", sourceRefs: [{ doc: "kiehl-list" }] },
 ];
 
 const BASE_CONTAMINANTS: KnowledgeContaminant[] = [
-  { id: "limescale", name: "요석·석회·백화", type: "inorganic", phDirection: "alkaline", notes: "무기 석회질. 문서에 「물때」만 있으면 water-spot으로 구분", sourceRefs: [{ doc: "kiehl-list" }, { doc: "cleaning-knowledge" }] },
+  { id: "limescale", name: "요석·석회·백화", type: "inorganic", phDirection: "alkaline", notes: "요석이 명시된 석회질. 석회·백화만이면 lime-deposit", sourceRefs: [{ doc: "kiehl-list" }, { doc: "cleaning-knowledge" }] },
+  { id: "lime-deposit", name: "석회·백화", type: "inorganic", phDirection: "alkaline", notes: "요석 없이 석회·백화만 문서에 있을 때. 「물때」만이면 water-spot", sourceRefs: [{ doc: "kiehl-list" }] },
   { id: "water-spot", name: "물때", type: "inorganic", notes: "유리·수전 등의 물 자국. 요석·석회와 별도 표기", sourceRefs: [{ doc: "kiehl-list" }] },
-  { id: "soap-scum", name: "비누찌꺼기", type: "mixed", notes: "욕실 비누때·비누막. 리스트업에서 비누때/비누찌꺼기/비누막으로 표기", sourceRefs: [{ doc: "kiehl-list" }] },
+  { id: "soap-scum", name: "비누찌꺼기", type: "mixed", notes: "욕실 비누때·비누막", sourceRefs: [{ doc: "kiehl-list" }] },
   { id: "grease", name: "기름때·유기 오염", type: "organic", phDirection: "acidic", sourceRefs: [{ doc: "kiehl-list" }, { doc: "cleaning-knowledge" }] },
-  { id: "mold", name: "곰팡이", type: "microbial", notes: "락스 표백과 근절은 별개 (원문)", sourceRefs: [{ doc: "cleaning-knowledge" }] },
+  { id: "mold", name: "곰팡이", type: "microbial", notes: "락스 표백과 근절은 별개", sourceRefs: [{ doc: "cleaning-knowledge" }] },
   { id: "rust", name: "녹", type: "inorganic", sourceRefs: [{ doc: "kiehl-list" }] },
   { id: "burnt-residue", name: "탄찌·그을음", type: "organic", sourceRefs: [{ doc: "cleaning-cases" }] },
   { id: "stain-discoloration", name: "찌든 때·변색·오점", type: "mixed", sourceRefs: [{ doc: "cleaning-cases" }] },
@@ -212,13 +213,14 @@ function uniqueStrings(arr: string[]): string[] {
   return [...new Set(arr.map((s) => s.trim()).filter(Boolean))];
 }
 
-/** 문서 원문 오염 문구 → ID. 「물때」만 있으면 water-spot (요석·석회로 확대 금지) */
+/** 문서 원문 오염 문구 → ID. 「물때」만 있으면 water-spot. 석회·백화만이면 lime-deposit (요석으로 확대 금지) */
 function contaminantIdsFromRaw(raw: string[]): string[] {
   const ids: string[] = [];
   for (const t of raw) {
     const s = t.trim();
     if (!s) continue;
-    if (/요석|석회|백화/.test(s)) ids.push("limescale");
+    if (/요석/.test(s)) ids.push("limescale");
+    else if (/석회|백화/.test(s)) ids.push("lime-deposit");
     else if (/물때|경수/.test(s)) ids.push("water-spot");
     else if (/비누/.test(s)) ids.push("soap-scum");
     else if (/기름|유분|구리스|눅은/.test(s)) ids.push("grease");
@@ -265,15 +267,17 @@ function materialIdsFromRaw(raw: string[]): string[] {
     else if (/줄눈/.test(s)) ids.push("grout");
     else if (/유리|거울|샤워부스|유리세라믹|인덕션/.test(s)) ids.push("glass");
     else if (/스테인리스|스테인레스/.test(s)) ids.push("stainless");
-    else if (/크롬|수전/.test(s)) ids.push("chrome-faucet");
-    else if (/에나멜|욕조/.test(s)) ids.push("enamel");
+    else if (/크롬|수전|수도꼭지/.test(s)) ids.push("chrome-faucet");
+    else if (/에나멜/.test(s)) ids.push("enamel");
     else if (/알루미늄/.test(s)) ids.push("aluminum");
     else if (/황동|청동|구리|브라스/.test(s)) ids.push("brass-bronze");
     else if (/목재|마루|파케|강화마루|강마루|라미네이트|합판|쪽마루/.test(s)) ids.push("laminate-wood");
-    else if (/리놀륨|데코|PVC|합성수지|비닐/.test(s)) ids.push("pvc-deco");
-    else if (/플라스틱|PP|PE|아크릴|ABS/.test(s)) ids.push("plastic");
+    // 데코·리놀·PVC 바닥만 — 단독 「PVC」「합성수지」「비닐」은 창틀·기타와 혼동되어 제외
+    else if (/리놀륨|데코타일|PVC\s*계?\s*데코|PVC\s*바닥|비닐\s*바닥|탄성\s*바닥/.test(s)) ids.push("pvc-deco");
+    else if (/플라스틱|PP|PE|아크릴|ABS|PVC\s*창/.test(s)) ids.push("plastic");
     else if (/가죽/.test(s)) ids.push("leather");
-    else if (/카페트|카펫|섬유|어닝|텐트|직물/.test(s)) ids.push("carpet");
+    // 「섬유」단독은 카펫·직물 외 일반 금지 문구와 혼동 → 구체 표현만
+    else if (/카페트|카펫|어닝|텐트|직물|타일카펫|패브릭|합성섬유/.test(s)) ids.push("carpet");
     else if (/콘크리트|시멘트(?!\s*잔)/.test(s)) ids.push("concrete");
     else if (/도장|페인트\s*벽|벽면/.test(s) && /도장|페인트/.test(s)) ids.push("painted-wall");
     else if (/에폭시/.test(s)) ids.push("epoxy-floor");
@@ -283,9 +287,50 @@ function materialIdsFromRaw(raw: string[]): string[] {
   return uniqueStrings(ids);
 }
 
-function forbiddenMaterialIdsFromRaw(raw: string[]): string[] {
-  // 사용 불가 문구도 동일 매핑 — 「일반 대리석」 등
-  return materialIdsFromRaw(raw);
+/**
+ * 금지 문구 → ID. 허용 매핑보다 넓게 잡아 「합성수지」「섬유」 등 포괄 금지도 반영.
+ * 조건부 금지(코팅·손상·민감 등)는 전면 금지 ID로 올리지 않음.
+ */
+function isConditionalForbidPhrase(s: string): boolean {
+  return /코팅|손상|민감|보호필름|새\s|함침|변색\s*우려|시험되지|확인\s*할\s*수\s*없는|사전\s*테스트|일부/.test(
+    s
+  );
+}
+
+function forbiddenMaterialIdsFromRaw(raw: string[], opts?: { includeConditional?: boolean }): string[] {
+  const includeConditional = opts?.includeConditional ?? false;
+  const ids: string[] = [];
+  for (const t of raw) {
+    const s = t.trim();
+    if (!s) continue;
+    if (!includeConditional && isConditionalForbidPhrase(s)) continue;
+
+    ids.push(...materialIdsFromRaw([s]));
+    if (/리놀륨|데코타일|합성수지|비닐\s*바닥|PVC\s*바닥|탄성\s*바닥|PVC/.test(s)) {
+      ids.push("pvc-deco");
+    }
+    if (/합성수지|플라스틱|아크릴|ABS/.test(s)) ids.push("plastic");
+    if (/섬유|직물|카페트|카펫/.test(s)) ids.push("carpet");
+    if (/크롬|수전/.test(s)) ids.push("chrome-faucet");
+    if (/에나멜|욕조/.test(s)) ids.push("enamel");
+    if (/스테인리스|스테인레스/.test(s)) ids.push("stainless");
+    if (/대리석|라임스톤|라임석|방해석|천연석/.test(s)) ids.push("marble");
+    if (/목재|마루|원목|라미네이트/.test(s)) ids.push("laminate-wood");
+    if (/알루미늄/.test(s)) ids.push("aluminum");
+    if (/황동|청동|구리/.test(s)) ids.push("brass-bronze");
+    if (/유리|거울/.test(s)) ids.push("glass");
+  }
+  return uniqueStrings(ids);
+}
+
+/** 전면 금지(비조건부)만 — 재질 허브 목록 필터용 */
+export function productHardForbidsMaterial(
+  forbiddenRaw: string[] | undefined,
+  materialId: string
+): boolean {
+  return forbiddenMaterialIdsFromRaw(forbiddenRaw ?? [], { includeConditional: false }).includes(
+    materialId
+  );
 }
 
 /** 리스트업 표에만 있고 상세 카드가 없는 제품 — 폴백 (재파싱 후 대개 비움) */
@@ -306,7 +351,13 @@ function toProduct(p: ParsedProduct): KnowledgeProduct {
   const mergedMaterialsRaw = materialsRaw.length ? materialsRaw : table?.materialsRaw ?? [];
   const mappedContaminantIds = contaminantIdsFromRaw(mergedContaminantsRaw);
   const mappedMaterialIds = materialIdsFromRaw(mergedMaterialsRaw);
-  const mappedForbiddenIds = forbiddenMaterialIdsFromRaw(forbiddenRaw);
+  /** 주의 노출용(조건부 금지 포함) */
+  const mappedForbiddenIds = forbiddenMaterialIdsFromRaw(forbiddenRaw, { includeConditional: true });
+  /** 호환 목록에서 뺄 때 — 조건부 금지는 전면 제외로 쓰지 않음 */
+  const hardForbiddenIds = new Set(forbiddenMaterialIdsFromRaw(forbiddenRaw, { includeConditional: false }));
+  const compatibleMaterialIds = (
+    mappedMaterialIds.length ? mappedMaterialIds : p.compatibleMaterialIds ?? []
+  ).filter((id) => !hardForbiddenIds.has(id));
 
   return {
     id: p.id,
@@ -317,7 +368,7 @@ function toProduct(p: ParsedProduct): KnowledgeProduct {
     phApprox: p.phApprox,
     summary: p.summary ?? table?.summary,
     mainUse: p.mainUse?.length ? p.mainUse : table?.mainUse ?? p.placeHints?.slice(0, 8) ?? [],
-    compatibleMaterialIds: mappedMaterialIds.length ? mappedMaterialIds : p.compatibleMaterialIds,
+    compatibleMaterialIds,
     contaminantIds: mappedContaminantIds.length ? mappedContaminantIds : p.contaminantIds,
     forbiddenMaterialIds: mappedForbiddenIds.length ? mappedForbiddenIds : p.forbiddenMaterialIds,
     placeHints: p.placeHints,
@@ -347,7 +398,7 @@ function enrichProductsFromCases(products: KnowledgeProduct[], cases: ParsedCase
     const matRaw = uniqueStrings(related.map((c) => c.materialRaw).filter(Boolean) as string[]);
     return {
       ...p,
-      summary: `사례 「${primary.name}」에서 사용된 제품입니다. 키엘 리스트업 상세 카드는 아직 수록되지 않았습니다.`,
+      summary: `사례 「${primary.name}」에서 사용된 제품입니다. 상세 스펙은 아직 수록되지 않았습니다.`,
       mainUse: uniqueStrings([primary.categoryMajor, primary.area].filter(Boolean) as string[]),
       contaminantsRaw: contRaw,
       materialsRaw: matRaw,
@@ -372,9 +423,25 @@ function toCaseEvidence(c: ParsedCase): KnowledgeCaseEvidence {
     categoryMajor: c.categoryMajor,
     categoryMid: c.categoryMid,
     categoryMinor: c.categoryMinor,
+    facility: c.facility ?? undefined,
+    area: c.area ?? undefined,
     productNames: c.productNames,
+    productIds: c.productIds?.length ? c.productIds : undefined,
     materialRaw: c.materialRaw ?? undefined,
     contaminantRaw: c.contaminantRaw ?? undefined,
+    materialIds: c.materialIds?.length ? c.materialIds : undefined,
+    contaminantIds: c.contaminantIds?.length ? c.contaminantIds : undefined,
+    dilution: c.dilution && c.dilution !== "미확인" ? c.dilution : undefined,
+    dwell: c.dwell ?? undefined,
+    tools: c.tools?.length ? c.tools : undefined,
+    steps: c.steps?.length
+      ? c.steps.map((s) => ({
+          order: s.order,
+          stage: s.stage,
+          content: s.content,
+        }))
+      : undefined,
+    warnings: c.warnings?.length ? c.warnings : undefined,
     evidenceLevel: c.evidenceLevel as KnowledgeCaseEvidence["evidenceLevel"],
     result: c.result ?? undefined,
     sourceRefs: c.sourceRefs as SourceRef[],

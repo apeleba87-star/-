@@ -1,4 +1,5 @@
 export {
+  getCaseById,
   getCleaningKnowledgeDb,
   getContaminantById,
   getFactsForGuidePath,
@@ -7,6 +8,8 @@ export {
   getRecipeBySlug,
   getRecipesForGuidePath,
   knowledgeStats,
+  listCases,
+  listCasesForProduct,
   listRecipes,
   searchRecipes,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";

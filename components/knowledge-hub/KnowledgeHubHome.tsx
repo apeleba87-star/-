@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Beaker, Building2, Droplets, FlaskConical, Layers } from "lucide-react";
+import { Beaker, Building2, ClipboardList, Droplets, FlaskConical, Layers } from "lucide-react";
 import GuideSearch from "@/components/knowledge-hub/GuideSearch";
-import { HUB_CATEGORIES, getTopicsByCategory } from "@/lib/knowledge-hub/catalog";
+import { getServiceCategories, getTopicsByCategory } from "@/lib/knowledge-hub/catalog";
 import { hubIcon } from "@/lib/knowledge-hub/hub-icons";
 
 export default function KnowledgeHubHome() {
@@ -25,14 +25,15 @@ export default function KnowledgeHubHome() {
 
         <section className="mx-auto mt-12 max-w-4xl">
           <h2 className="text-xl font-black text-slate-950">분류별 탐색</h2>
-          <p className="mt-2 text-sm text-slate-600">제품·재질·오염·레시피·현장별로 찾아보세요.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <p className="mt-2 text-sm text-slate-600">제품·재질·오염·레시피·사례·장소별로 찾아보세요.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { href: "/products", label: "세정 제품", Icon: Beaker },
               { href: "/materials", label: "재질별", Icon: Layers },
               { href: "/pollution", label: "오염별", Icon: Droplets },
               { href: "/cleaning", label: "레시피", Icon: FlaskConical },
-              { href: "/facilities", label: "현장별", Icon: Building2 },
+              { href: "/cases", label: "사례", Icon: ClipboardList },
+              { href: "/services", label: "장소별", Icon: Building2 },
             ].map((item) => (
               <Link
                 key={item.href}
@@ -48,15 +49,15 @@ export default function KnowledgeHubHome() {
 
         <section className="mx-auto mt-12 max-w-4xl">
           <div className="flex items-end justify-between gap-4">
-            <h2 className="text-xl font-black text-slate-950">카테고리</h2>
+            <h2 className="text-xl font-black text-slate-950">장소별 가이드</h2>
             <Link href="/services" className="text-sm font-bold text-teal-700 hover:underline">
               전체 보기
             </Link>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {HUB_CATEGORIES.map((cat) => {
+            {getServiceCategories().map((cat) => {
               const Icon = hubIcon(cat.icon);
-              const href = cat.slug === "pollution" ? "/guides" : cat.hubPath;
+              const href = cat.hubPath;
               const featured = getTopicsByCategory(cat.slug).slice(0, 3);
               return (
                 <article

@@ -167,8 +167,8 @@ export const INITIAL_CLEANING_KNOWLEDGE: CleaningKnowledgeDb = {
       name: "그라셋",
       phType: "strong_alkaline",
       mainUse: ["주방 기름때", "후드·화구·스테인레스"],
-      standardDilution: "약 40°C 온수 희석",
-      warnings: ["알루미늄·함석 변색", "고무장갑·환기", "차가운 물 희석이 기본인 제품과 달리 온수 사용"],
+      standardDilution: "약 1:100 권장",
+      warnings: ["알루미늄·함석 변색 가능 — 사전 테스트", "고무장갑·환기", "가능하면 표면을 약 40~60℃ 온수로 적신다(끓는 물 금지)"],
       confidence: "high",
       sources: [SRC.kitchen, SRC.charlie4],
     },
@@ -688,7 +688,7 @@ export const INITIAL_CLEANING_KNOWLEDGE: CleaningKnowledgeDb = {
       materialId: "ceramic-tile",
       contaminantId: "grease",
       productId: "kiehl-graset",
-      dilution: "현장 테스트(온수 희석)",
+      dilution: "현장 테스트",
       dwellTime: "샘플 반응 시간 확인",
       tools: ["돌돌이", "연마솔", "방독면", "밀대"],
       steps: [
@@ -996,7 +996,7 @@ export const INITIAL_CLEANING_KNOWLEDGE: CleaningKnowledgeDb = {
     {
       id: "rule-cold-water-acid",
       title: "산성 희석은 찬물",
-      body: "산성·대부분 바닥/유리 세정은 상온·찬물 희석이 기본. 온수는 그라셋·엑손포르테 등 라벨 표기 제품만.",
+      body: "산성·대부분 바닥/유리 세정은 상온·찬물 희석이 기본. 그라셋은 가능하면 표면을 약 40~60℃ 온수로 적신다(끓는 물 금지). 엑손포르테는 묵은 기름때 온수 희석을 권장한다.",
       severity: "warning",
       confidence: "high",
       sources: [SRC.charlie4],

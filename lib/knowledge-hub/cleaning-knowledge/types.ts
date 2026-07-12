@@ -162,15 +162,31 @@ export type KnowledgeRule = {
   sourceRefs?: SourceRef[];
 };
 
+export type KnowledgeCaseStep = {
+  order?: string;
+  stage: string;
+  content?: string;
+};
+
 export type KnowledgeCaseEvidence = {
   id: string;
   name: string;
   categoryMajor: string;
   categoryMid?: string;
   categoryMinor?: string;
+  facility?: string;
+  area?: string;
   productNames: string[];
+  productIds?: string[];
   materialRaw?: string;
   contaminantRaw?: string;
+  materialIds?: string[];
+  contaminantIds?: string[];
+  dilution?: string;
+  dwell?: string;
+  tools?: string[];
+  steps?: KnowledgeCaseStep[];
+  warnings?: string[];
   evidenceLevel: EvidenceLevel;
   result?: string;
   sourceRefs: SourceRef[];

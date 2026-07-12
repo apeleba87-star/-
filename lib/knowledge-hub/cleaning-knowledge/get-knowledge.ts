@@ -1,7 +1,11 @@
 import { INITIAL_CLEANING_KNOWLEDGE } from "@/lib/knowledge-hub/cleaning-knowledge/initial-knowledge";
-import { SOURCE_DOC_KNOWLEDGE } from "@/lib/knowledge-hub/cleaning-knowledge/build-from-source";
+import {
+  SOURCE_DOC_KNOWLEDGE,
+  productHardForbidsMaterial,
+} from "@/lib/knowledge-hub/cleaning-knowledge/build-from-source";
 import type {
   CleaningKnowledgeDb,
+  KnowledgeCaseEvidence,
   KnowledgeFact,
   KnowledgeProduct,
   KnowledgeRecipe,
@@ -35,6 +39,44 @@ export function listProducts(): KnowledgeProduct[] {
   return getCleaningKnowledgeDb().products;
 }
 
+/** 데코·리놀·PVC바닥은 문서 허용/금지가 갈라지므로 원문 구문으로 판별 */
+function productAllowsPvcDecoFamily(p: KnowledgeProduct): boolean {
+  const mats = p.materialsRaw ?? [];
+  const forb = p.forbiddenRaw ?? [];
+  const decoOk =
+    mats.some((s) => /데코타일|PVC\s*계?\s*데코|PVC\s*바닥|비닐\s*바닥|탄성\s*바닥/.test(s)) &&
+    !forb.some((s) => /데코타일|PVC\s*계?\s*데코|PVC\s*바닥|비닐\s*바닥|합성수지/.test(s));
+  const linoOk = mats.some((s) => /리놀륨/.test(s)) && !forb.some((s) => /리놀륨/.test(s));
+  return decoOk || linoOk;
+}
+
+/** 크롬·수전: 전면 금지 문구가 있으면 제외(손상·코팅 등 조건부 금지는 허용 목록 유지) */
+function productAllowsChromeFaucet(p: KnowledgeProduct): boolean {
+  const mats = p.materialsRaw ?? [];
+  const forb = p.forbiddenRaw ?? [];
+  const allowed = mats.some((s) => /수전|수도꼭지|크롬/.test(s));
+  if (!allowed) return false;
+  return !forb.some(
+    (s) => /수전|크롬/.test(s) && !/코팅|손상|민감|도금 부속|니켈|사전\s*테스트/.test(s)
+  );
+}
+
+/** 재질에 문서상 적용 가능한 제품 (전면 금지 재질만 제외, 코팅·손상 등 조건부 금지는 유지) */
+export function listProductsForMaterial(materialId: string): KnowledgeProduct[] {
+  const products = listProducts();
+  if (materialId === "pvc-deco") {
+    return products.filter(productAllowsPvcDecoFamily);
+  }
+  if (materialId === "chrome-faucet") {
+    return products.filter(productAllowsChromeFaucet);
+  }
+  return products.filter(
+    (p) =>
+      Boolean(p.compatibleMaterialIds?.includes(materialId)) &&
+      !productHardForbidsMaterial(p.forbiddenRaw, materialId)
+  );
+}
+
 export function listMaterials() {
   return getCleaningKnowledgeDb().materials;
 }
@@ -43,8 +85,16 @@ export function listContaminants() {
   return getCleaningKnowledgeDb().contaminants;
 }
 
-export function listCases() {
+export function listCases(): KnowledgeCaseEvidence[] {
   return getCleaningKnowledgeDb().cases ?? [];
+}
+
+export function getCaseById(id: string): KnowledgeCaseEvidence | undefined {
+  return listCases().find((c) => c.id === id);
+}
+
+export function listCasesForProduct(productId: string): KnowledgeCaseEvidence[] {
+  return listCases().filter((c) => c.productIds?.includes(productId));
 }
 
 export function getRecipeBySlug(slug: string): KnowledgeRecipe | undefined {

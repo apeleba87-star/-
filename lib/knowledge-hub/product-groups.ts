@@ -1,4 +1,5 @@
 import type { KnowledgeProduct } from "@/lib/knowledge-hub/cleaning-knowledge/types";
+import { listProductsForMaterial } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 
 export type ProductUseGroupId =
   | "glass"
@@ -35,6 +36,7 @@ export const PRODUCT_USE_GROUPS: ProductUseGroup[] = [
       const m = p.compatibleMaterialIds ?? [];
       return (
         c.includes("limescale") ||
+        c.includes("lime-deposit") ||
         c.includes("soap-scum") ||
         c.includes("water-spot") ||
         m.includes("porcelain") ||
@@ -131,8 +133,12 @@ export function filterProductsByProblem(
   materialId?: string | null,
   contaminantId?: string | null
 ): KnowledgeProduct[] {
+  const allowedByMaterial = materialId
+    ? new Set(listProductsForMaterial(materialId).map((p) => p.id))
+    : null;
+
   return products.filter((p) => {
-    if (materialId && !(p.compatibleMaterialIds ?? []).includes(materialId)) return false;
+    if (allowedByMaterial && !allowedByMaterial.has(p.id)) return false;
     if (contaminantId && !(p.contaminantIds ?? []).includes(contaminantId)) return false;
     return true;
   });

@@ -33,15 +33,18 @@ export default async function MaterialDetailPage({ params }: Props) {
   if (!material || !body) notFound();
 
   return (
-    <div className="px-4 py-10">
-      <KnowledgeDbPageView
-        h1={material.name}
-        badge="재질별 청소"
-        intro={body.intro}
-        body={body}
-        breadcrumb={[{ href: "/materials", label: "재질별 청소" }]}
-        footer={<ProInquiryCta path={`/materials/${id}`} materialId={id} className="mt-10" />}
-      />
-    </div>
+    <main className="min-h-screen bg-slate-50">
+      <div className="page-shell py-8 sm:py-10">
+        <KnowledgeDbPageView
+          h1={material.name}
+          badge="재질별 청소"
+          riskLevel={material.riskLevel}
+          summary={body.summary}
+          body={body}
+          breadcrumb={[{ href: "/materials", label: "재질별 청소" }]}
+          footer={<ProInquiryCta path={`/materials/${id}`} materialId={id} className="mt-10" />}
+        />
+      </div>
+    </main>
   );
 }

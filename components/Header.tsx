@@ -26,6 +26,7 @@ import {
   Radio,
   Beaker,
   FlaskConical,
+  ClipboardList,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { withAdminNavLabel } from "@/lib/admin-nav-label";
@@ -82,9 +83,8 @@ type MobileDrawerRow =
 
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
-  { kind: "link", href: "/", label: "청소 가이드", Icon: Home },
-  { kind: "link", href: "/services", label: "방법·용품", Icon: FileText },
-  { kind: "link", href: "/guides", label: "오염 제거", Icon: Droplets },
+  { kind: "link", href: "/", label: "홈", Icon: Home },
+  { kind: "link", href: "/services", label: "장소별", Icon: FileText },
   {
     kind: "group",
     label: "분류별",
@@ -94,7 +94,7 @@ const primaryNavItems: PrimaryNavEntry[] = [
       { href: "/materials", label: "재질별", Icon: Layers },
       { href: "/pollution", label: "오염별", Icon: Droplets },
       { href: "/cleaning", label: "레시피", Icon: FlaskConical },
-      { href: "/facilities", label: "현장별", Icon: Home },
+      { href: "/cases", label: "사례", Icon: ClipboardList },
     ],
   },
   {

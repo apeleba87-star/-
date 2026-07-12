@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import ProductPhBadge from "@/components/knowledge-hub/ProductPhBadge";
 import type { KnowledgeProduct } from "@/lib/knowledge-hub/cleaning-knowledge/types";
 import { dilutionSortKey } from "@/lib/knowledge-hub/dilution-label";
 import { parseProductPh } from "@/lib/knowledge-hub/ph-scale";
-import { filterProductsByProblem } from "@/lib/knowledge-hub/product-groups";
 
 type SortKey = "ph" | "name" | "dilution";
 
@@ -31,9 +31,23 @@ type Props = {
   products: ProductCardData[];
   materials: FilterOption[];
   contaminants: FilterOption[];
-  initialMaterial?: string;
-  initialContaminant?: string;
+  /** 서버에서 listProductsForMaterial 로 미리 계산 — 클라이언트에 지식 DB 미포함 */
+  productIdsByMaterial: Record<string, string[]>;
 };
+
+function filterByProblem(
+  products: ProductCardData[],
+  materialId: string,
+  contaminantId: string,
+  productIdsByMaterial: Record<string, string[]>
+): ProductCardData[] {
+  const allowed = materialId ? new Set(productIdsByMaterial[materialId] ?? []) : null;
+  return products.filter((p) => {
+    if (allowed && !allowed.has(p.id)) return false;
+    if (contaminantId && !(p.contaminantIds ?? []).includes(contaminantId)) return false;
+    return true;
+  });
+}
 
 function useChips(p: ProductCardData): string[] {
   const raw = p.contaminantsRaw?.length ? p.contaminantsRaw : p.mainUse;
@@ -151,9 +165,12 @@ export default function ProductsCatalog({
   products,
   materials,
   contaminants,
-  initialMaterial = "",
-  initialContaminant = "",
+  productIdsByMaterial,
 }: Props) {
+  const searchParams = useSearchParams();
+  const initialMaterial = searchParams.get("material") ?? "";
+  const initialContaminant = searchParams.get("contaminant") ?? "";
+
   const [q, setQ] = useState("");
   const [materialId, setMaterialId] = useState(initialMaterial);
   const [contaminantId, setContaminantId] = useState(initialContaminant);
@@ -162,13 +179,9 @@ export default function ProductsCatalog({
   const listRef = useRef<HTMLUListElement>(null);
 
   const baseList = useMemo(() => {
-    const list = filterProductsByProblem(
-      products as KnowledgeProduct[],
-      materialId || null,
-      contaminantId || null
-    ) as ProductCardData[];
+    const list = filterByProblem(products, materialId, contaminantId, productIdsByMaterial);
     return [...list].sort((a, b) => compareProducts(a, b, sort));
-  }, [products, materialId, contaminantId, sort]);
+  }, [products, materialId, contaminantId, productIdsByMaterial, sort]);
 
   const query = q.trim();
   const matchIds = useMemo(() => {

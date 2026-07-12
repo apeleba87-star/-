@@ -144,6 +144,41 @@ export function parseProductPh(phApprox: string | null | undefined): PhInfo | nu
   };
 }
 
+/**
+ * phApprox에서 원액·사용액(희석) pH를 각각 추출.
+ */
+export function parseProductPhPair(phApprox: string | null | undefined): {
+  concentrate: PhInfo | null;
+  diluted: PhInfo | null;
+} {
+  const concentrate = parseProductPh(phApprox);
+  if (!phApprox?.trim()) return { concentrate, diluted: null };
+
+  const raw = phApprox.trim();
+  const dilutedMatch =
+    raw.match(
+      /(?:사용(?:액|용액)|희석(?:\s*후|\s*액)?|사용\s*용액)[^0-9]{0,24}?(?:약\s*)?(?:pH\s*)?(\d+(?:\.\d+)?)/i
+    ) ?? null;
+
+  if (!dilutedMatch) return { concentrate, diluted: null };
+  const n = Number(dilutedMatch[1]);
+  if (Number.isNaN(n) || n < 0 || n > 14) return { concentrate, diluted: null };
+
+  const value = clampPh(n);
+  const band = phBand(value);
+  return {
+    concentrate,
+    diluted: {
+      value,
+      valueLabel: formatValueLabel(value),
+      band,
+      natureLabel: phNatureLabel(band),
+      color: phColor(value),
+      textColor: phTextColor(value),
+    },
+  };
+}
+
 function buildFromBand(approxValue: number, band: PhBand): PhInfo {
   return {
     value: approxValue,

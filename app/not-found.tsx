@@ -18,13 +18,13 @@ export default function NotFound() {
           href="/services"
           className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
         >
-          청소 가이드
+          장소별 가이드
         </Link>
         <Link
-          href="/guides"
+          href="/pollution"
           className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
         >
-          오염 제거
+          오염별
         </Link>
         <Link
           href="/products"

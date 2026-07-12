@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import ProductDetailView from "@/components/knowledge-hub/ProductDetailView";
 import {
-  getCleaningKnowledgeDb,
   getProductById,
   listProducts,
+  getCleaningKnowledgeDb,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import {
   applySalesToProduct,
@@ -26,11 +26,15 @@ export async function generateMetadata({ params }: Props) {
   const { id } = await params;
   const product = getProductById(id);
   if (!product) return { title: "제품" };
-  return buildPageMetadata({
+  const meta = buildPageMetadata({
     title: `${product.name} 사용법 | 클린아이덱스`,
     description: product.summary ?? `${product.name} 희석·용도·주의사항.`,
     path: `/products/${id}`,
   });
+  if (product.status === "draft") {
+    return { ...meta, robots: { index: false, follow: true } };
+  }
+  return meta;
 }
 
 export default async function ProductDetailPage({ params }: Props) {
@@ -44,7 +48,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const recipes = getCleaningKnowledgeDb().recipes.filter((r) => r.productId === id);
 
   return (
-    <div className="px-4 py-10">
+    <div className="px-4 py-6 sm:py-8">
       <ProductDetailView product={product} recipes={recipes} purchase={purchase} />
     </div>
   );

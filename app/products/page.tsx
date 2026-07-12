@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import {
   listContaminants,
   listMaterials,
   listProducts,
+  listProductsForMaterial,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import ProductsCatalog from "@/components/knowledge-hub/ProductsCatalog";
 import { buildPageMetadata } from "@/lib/seo";
@@ -14,15 +16,17 @@ export const metadata = buildPageMetadata({
   path: "/products",
 });
 
-type Props = {
-  searchParams: Promise<{ material?: string; contaminant?: string }>;
-};
-
-export default async function ProductsHubPage({ searchParams }: Props) {
-  const sp = await searchParams;
+export default function ProductsHubPage() {
   const all = listProducts();
+
+  const productIdsByMaterial: Record<string, string[]> = {};
+  for (const m of listMaterials()) {
+    const ids = listProductsForMaterial(m.id).map((p) => p.id);
+    if (ids.length) productIdsByMaterial[m.id] = ids;
+  }
+
   const materials = listMaterials()
-    .filter((m) => all.some((p) => p.compatibleMaterialIds?.includes(m.id)))
+    .filter((m) => productIdsByMaterial[m.id]?.length)
     .map((m) => ({ id: m.id, name: m.name }));
   const contaminants = listContaminants()
     .filter((c) => all.some((p) => p.contaminantIds?.includes(c.id)))
@@ -44,13 +48,22 @@ export default async function ProductsHubPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-10 pt-6">
-      <ProductsCatalog
-        products={products}
-        materials={materials}
-        contaminants={contaminants}
-        initialMaterial={sp.material}
-        initialContaminant={sp.contaminant}
-      />
+      <Suspense
+        fallback={
+          <div className="animate-pulse space-y-4">
+            <div className="h-9 w-40 rounded bg-slate-200" />
+            <div className="h-12 rounded-2xl bg-slate-100" />
+            <div className="h-40 rounded-3xl bg-slate-100" />
+          </div>
+        }
+      >
+        <ProductsCatalog
+          products={products}
+          materials={materials}
+          contaminants={contaminants}
+          productIdsByMaterial={productIdsByMaterial}
+        />
+      </Suspense>
     </div>
   );
 }

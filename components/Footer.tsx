@@ -10,7 +10,9 @@ const FOOTER_LINK_CLASS =
   "text-slate-400 hover:text-teal-300 transition-colors touch-manipulation py-1 text-xs sm:min-h-[44px] sm:py-2 sm:text-sm";
 
 const GUIDE_LINKS: FooterLink[] = [
-  { href: "/services", label: "청소 가이드" },
+  { href: "/services", label: "장소별 가이드" },
+  { href: "/products", label: "세정 제품" },
+  { href: "/pollution", label: "오염별" },
   { href: "/inquiry/regular", label: "정기청소 문의" },
   { href: "/inquiry/move-in", label: "입주청소 문의" },
 ];
@@ -80,7 +82,7 @@ export default function Footer() {
           </details>
 
           <div className="hidden flex-col gap-4 sm:flex sm:gap-5">
-            <FooterSection title="청소 가이드" links={GUIDE_LINKS} />
+            <FooterSection title="장소별·분류" links={GUIDE_LINKS} />
             <FooterSection title="청소업체 전용관" links={CLEANING_BUSINESS_LINKS} />
             <FooterAdminLinks />
           </div>

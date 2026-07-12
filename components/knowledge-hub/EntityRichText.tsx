@@ -1,15 +1,22 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { buildEntityLinkRegistry } from "@/lib/knowledge-hub/entity-links";
+import { buildEntityLinkRegistry, type EntityLink } from "@/lib/knowledge-hub/entity-links";
 
 type Props = {
   text: string;
   className?: string;
 };
 
+let registryCache: EntityLink[] | null = null;
+
+function getRegistry(): EntityLink[] {
+  if (!registryCache) registryCache = buildEntityLinkRegistry();
+  return registryCache;
+}
+
 /** 본문 내 제품·재질·오염명을 한글 라벨로 자동 링크 */
 export default function EntityRichText({ text, className }: Props) {
-  const registry = buildEntityLinkRegistry();
+  const registry = getRegistry();
   const parts: ReactNode[] = [];
   let cursor = 0;
 

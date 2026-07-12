@@ -1,6 +1,5 @@
-import Link from "next/link";
+import MaterialsCatalog from "@/components/knowledge-hub/MaterialsCatalog";
 import { listMaterials } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
-import { RISK_LEVEL_KO } from "@/lib/knowledge-hub/korean-labels";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const revalidate = 86400;
@@ -11,34 +10,34 @@ export const metadata = buildPageMetadata({
   path: "/materials",
 });
 
+const RISK_SORT: Record<string, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  very_high: 3,
+};
+
 export default function MaterialsHubPage() {
-  const materials = listMaterials();
+  const materials = listMaterials()
+    .slice()
+    .sort((a, b) => {
+      const rd = (RISK_SORT[a.riskLevel] ?? 9) - (RISK_SORT[b.riskLevel] ?? 9);
+      if (rd !== 0) return rd;
+      return a.name.localeCompare(b.name, "ko");
+    })
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      riskLevel: m.riskLevel,
+    }));
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <header className="mb-10">
-        <h1 className="text-3xl font-black text-slate-950 sm:text-4xl">재질별 청소</h1>
-        <p className="mt-4 text-lg leading-8 text-slate-600">
-          재질 특성에 맞는 제품·레시피를 선택하세요. 위험도가 높은 재질은 사전 테스트가 필수입니다.
-        </p>
-      </header>
-
-      <ul className="grid gap-4 sm:grid-cols-2">
-        {materials.map((m) => (
-          <li key={m.id}>
-            <Link
-              href={`/materials/${m.id}`}
-              className="block h-full rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-teal-300 hover:shadow-sm"
-            >
-              <h2 className="text-xl font-black text-slate-900">{m.name}</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                위험도: <span className="font-bold">{RISK_LEVEL_KO[m.riskLevel] ?? m.riskLevel}</span>
-              </p>
-              {m.notes ? <p className="mt-2 line-clamp-2 text-sm text-slate-500">{m.notes}</p> : null}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <main className="min-h-screen bg-slate-50">
+      <div className="page-shell py-8 sm:py-10">
+        <div className="mx-auto max-w-2xl">
+          <MaterialsCatalog materials={materials} />
+        </div>
+      </div>
+    </main>
   );
 }

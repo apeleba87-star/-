@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase-server";
-import { upsertProductSales } from "@/lib/knowledge-hub/product-sales";
+import { PRODUCT_SALES_CACHE_TAG, upsertProductSales } from "@/lib/knowledge-hub/product-sales";
 import { getProductById } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 
 type RouteCtx = { params: Promise<{ id: string }> };
@@ -27,6 +27,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   const result = await upsertProductSales(id, body.salesUrl ?? null, body.salesLabel ?? null, user.id);
   if (!result.ok) return NextResponse.json(result, { status: 400 });
 
+  revalidateTag(PRODUCT_SALES_CACHE_TAG, { expire: 0 });
   revalidatePath(`/products/${id}`);
   revalidatePath("/products");
   revalidatePath("/admin/knowledge-hub");

@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase-server";
 import { getBaseUrl } from "@/lib/seo";
 import { ALL_CATALOG_PATHS, CATALOG_TOPICS, HUB_CATEGORIES } from "@/lib/knowledge-hub/catalog";
-import { listContaminants, listMaterials, listProducts, listRecipes } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import {
+  listCases,
+  listContaminants,
+  listMaterials,
+  listProducts,
+  listRecipes,
+} from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { listPublishedGuidePaths } from "@/lib/knowledge-hub/queries";
 import type { MetadataRoute } from "next";
 
@@ -12,7 +18,7 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/products", priority: 0.92, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.92, changeFrequency: "weekly" },
   { path: "/pollution", priority: 0.92, changeFrequency: "weekly" },
-  { path: "/facilities", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/cases", priority: 0.85, changeFrequency: "weekly" },
   { path: "/cleaning", priority: 0.9, changeFrequency: "weekly" },
   { path: "/inquiry/regular", priority: 0.85, changeFrequency: "monthly" },
   { path: "/inquiry/move-in", priority: 0.85, changeFrequency: "monthly" },
@@ -73,11 +79,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const p of listProducts()) {
+    if (p.status === "draft") continue;
     entries.push({
       url: `${base}/products/${p.id}`,
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.8,
+    });
+  }
+
+  for (const c of listCases()) {
+    entries.push({
+      url: `${base}/cases/${c.id}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.75,
     });
   }
 

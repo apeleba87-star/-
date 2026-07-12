@@ -76,7 +76,18 @@ function rateLimitBucket(pathname: string): { bucket: string; limit: number } | 
   if (pathname === "/login" || pathname === "/signup") {
     return { bucket: "auth", limit: AUTH_RATE_MAX };
   }
-  if (pathname === "/" || pathname.startsWith("/services/") || pathname.startsWith("/inquiry/") || pathname.startsWith("/guides") || pathname === "/search") {
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/services/") ||
+    pathname.startsWith("/inquiry/") ||
+    pathname.startsWith("/guides") ||
+    pathname === "/search" ||
+    pathname.startsWith("/products") ||
+    pathname.startsWith("/materials") ||
+    pathname.startsWith("/pollution") ||
+    pathname.startsWith("/cleaning") ||
+    pathname.startsWith("/cases")
+  ) {
     return { bucket: "demand", limit: DEMAND_RATE_MAX };
   }
   if (pathname.startsWith("/api/")) {
