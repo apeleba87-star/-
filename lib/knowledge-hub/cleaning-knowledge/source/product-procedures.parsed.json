@@ -1,0 +1,1267 @@
+[
+  {
+    "id": "recipe-tornado-floor-daily",
+    "slug": "tornado-floor-daily-1-100",
+    "seoTitle": "토네이도 바닥 일상 세정 (1:100)",
+    "field": "바닥",
+    "materialId": "pvc-deco",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-tornado",
+    "dilution": "1:100 (찬물 8L + 80ml)",
+    "dwellTime": "즉시",
+    "tools": ["대걸레", "밀대 걸레", "마른 밀대 걸레(사각맙)", "습식 세정 기계(선택)"],
+    "steps": [
+      "찬물 8L에 제품 80ml를 희석한다(1:100). 오염이 적으면 절반만 써도 된다.",
+      "[1안] 살짝 젖은 걸레에 희석액을 부어 닦는다.",
+      "[2안] 넓은 바닥은 군데군데 희석액을 뿌린 뒤 걸레로 닦는다.",
+      "[3안] 분무기로 걸레·바닥에 뿌리며 닦는다. 기계 습식 세정도 가능하다.",
+      "자국을 줄이려면 마른 밀대 걸레(사각맙)로 마무리한다.",
+      "표준 사용량: 0.3~1 ml/㎡. 현장 오염도에 맞게 희석비를 조정한다."
+    ],
+    "warnings": [
+      "코팅 바닥은 벗겨질 수 있으니 사전 테스트한다.",
+      "바닥 세정 후 표면이 약간 끈적일 수 있다."
+    ],
+    "summary": "방수 바닥·리놀륨 등 일상 바닥 세정. 표준 희석 1:100.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 토네이도 사용법 — 바닥" }]
+  },
+  {
+    "id": "recipe-tornado-surface-wipe",
+    "slug": "tornado-surface-wipe-1-50-100",
+    "seoTitle": "토네이도 표면·물체 닦기 (1:50~1:100)",
+    "field": "표면",
+    "materialId": "plastic",
+    "contaminantId": "grease",
+    "productId": "kiehl-tornado",
+    "dilution": "1:50~1:100 (찬물 8L + 80ml 기준)",
+    "dwellTime": "오염 심하면 짧게 대기",
+    "tools": ["분무기", "천", "패드", "수세미", "마른 걸레"],
+    "steps": [
+      "찬물 8L에 80ml 기준으로 1:50~1:100 희석한다. 분무기 사용을 권장한다.",
+      "천·패드(수세미·울스텐 등)에 희석액을 묻히거나 표면에 분무한다.",
+      "오염이 심하면 잠시 대기한 뒤 닦는다.",
+      "깨끗한 마른 걸레로 마무리한다.",
+      "표준 사용량: 0.3~1 ml/㎡."
+    ],
+    "warnings": ["거친 수세미는 표면 손상에 주의한다."],
+    "summary": "가구·책상·집기 등 방수 표면의 먼지·기름때 일상 닦기.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 토네이도 사용법 — 표면" }]
+  },
+  {
+    "id": "recipe-tornado-glass",
+    "slug": "tornado-glass-1-100-200",
+    "seoTitle": "토네이도 건물 유리 세정 (1:100~1:200)",
+    "field": "유리",
+    "materialId": "glass",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-tornado",
+    "dilution": "1:100~1:200 (찬물 8L + 40~80ml)",
+    "dwellTime": "즉시",
+    "tools": ["천", "패드", "스펀지", "밀대", "스퀴지", "마른 천(극세사)"],
+    "steps": [
+      "오염도에 맞춰 찬물 8L에 40~80ml 희석한다(1:100~1:200).",
+      "스펀지·밀대·걸레·수세미 등에 적셔 유리를 세정한다.",
+      "스퀴지 또는 마른 천으로 잔수를 제거하고 완전히 건조한다.",
+      "표준 사용량: 약 0.6 ml/㎡."
+    ],
+    "warnings": ["거친 수세미는 유리·코팅 손상에 주의한다."],
+    "summary": "건물 내외 유리·창틀 세정. 먼지·가벼운 기름때에 적합.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 토네이도 사용법 — 유리" }]
+  },
+  {
+    "id": "recipe-tornado-nicotine",
+    "slug": "tornado-nicotine-1-10",
+    "seoTitle": "토네이도 니코틴 제거 (1:10)",
+    "field": "흡연 구역",
+    "materialId": "glass",
+    "contaminantId": "nicotine",
+    "productId": "kiehl-tornado",
+    "dilution": "1:10",
+    "dwellTime": "오염 심하면 짧게 대기",
+    "tools": ["분무통", "천", "마른 걸레"],
+    "steps": [
+      "분무통에 찬물과 제품을 1:10으로 희석한다.",
+      "니코틴·담배 찌꺼기 부위에 분무한 뒤 천으로 닦는다.",
+      "오염이 심하면 잠시 대기한 다음 깨끗한 마른 걸레로 마무리한다."
+    ],
+    "warnings": ["사전 테스트 후 사용한다.", "목재·섬유에는 사용하지 않는다."],
+    "summary": "흡연실·유리 등 니코틴 오염 집중 세정. 표준 1:10.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 토네이도 사용법 — 니코틴" }]
+  },
+  {
+    "id": "recipe-graset-surface-daily",
+    "slug": "graset-surface-daily-1-100",
+    "seoTitle": "그라셋 표면·조리대 일상 세정 (1:100)",
+    "field": "주방 표면",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-graset",
+    "dilution": "약 1:100 권장 (8L에 50~200ml, 1:40~1:160)",
+    "dwellTime": "오염 심하면 약 10분 (마르기 전 세정)",
+    "tools": ["걸레", "천", "분무기", "패드", "수세미", "스크래퍼(선택)"],
+    "steps": [
+      "사용 전 보이지 않는 곳에서 알칼리 민감성을 확인한다.",
+      "표면을 물에 적신 뒤, 가능하면 온수(약 40~60℃)로 희석한다.",
+      "일상 닦기: 8L 물에 50~200ml 희석(권장 약 1:100, 범위 1:40~1:160).",
+      "원액 또는 희석액을 걸레·천에 묻히거나 분무한다.",
+      "오염이 심하면 약 10분 대기한 뒤, 마르기 전에 패드·수세미로 닦는다. 심하면 스크래퍼를 쓴다.",
+      "음식물이 닿는 면은 많은 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "거친 수세미는 표면 손상에 주의한다.",
+      "식품 접촉면은 반드시 충분히 헹군다.",
+      "제품을 표면에서 마르게 두지 않는다."
+    ],
+    "summary": "조리기구·조리대·주방기기 일상 기름때 닦기. 권장 약 1:100.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 그라셋 사용법 — 표면" }]
+  },
+  {
+    "id": "recipe-graset-floor-machine",
+    "slug": "graset-hall-floor-1-50",
+    "seoTitle": "그라셋 홀·주방 바닥 집중 세정 (1:50)",
+    "field": "바닥",
+    "materialId": "epoxy-floor",
+    "contaminantId": "grease",
+    "productId": "kiehl-graset",
+    "dilution": "약 1:50 권장 (8L에 50~200ml, 1:40~1:160)",
+    "dwellTime": "즉시~짧게",
+    "tools": ["대걸레", "밀대 걸레", "솔", "습식 세정 기계", "마른 밀대 걸레(사각맙)", "고무 밀대"],
+    "steps": [
+      "집중(기계식 습식) 청소: 권장 약 1:50. 8L에 50~200ml(1:40~1:160) 범위에서 맞춘다.",
+      "[홀 바닥 1안] 살짝 젖은 걸레에 희석액을 부어 닦는다.",
+      "[홀 바닥 2안] 넓은 바닥은 군데군데 뿌린 뒤 솔·걸레로 닦는다. 기계 습식이 더 경제적인 경우가 많다.",
+      "자국을 줄이려면 마른 밀대 걸레(사각맙)로 마무리한다.",
+      "[주방·식품공장 넓은 바닥] 배수구를 비닐·고무판으로 막는다.",
+      "희석액을 뿌린 뒤 고무 밀대로 고인 물을 분산시키며 세정한다.",
+      "세정 후 배수구를 열고 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "알칼리 내성을 모르는 코팅 바닥은 사전 테스트한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "홀·주방 바닥 기름성 오염. 집중 권장 약 1:50.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 그라셋 사용법 — 바닥" }]
+  },
+  {
+    "id": "recipe-graset-heavy-grease",
+    "slug": "graset-heavy-grease-neat-1-5",
+    "seoTitle": "그라셋 눌어붙은 기름때·입주청소 (원액~1:5)",
+    "field": "주방 집중",
+    "materialId": "stainless",
+    "contaminantId": "burnt-residue",
+    "productId": "kiehl-graset",
+    "dilution": "원액~1:5",
+    "dwellTime": "약 10분",
+    "tools": ["분무기", "패드", "수세미", "스크래퍼", "헹굼용 물"],
+    "steps": [
+      "사용 전 보이지 않는 곳에서 알칼리 민감성을 확인한다. 표면을 물에 적신다.",
+      "매우 심한 눌어붙은 기름때·입주청소: 원액~1:5로 희석해 도포한다.",
+      "약 10분 후 세정하고 깨끗한 물로 헹군다.",
+      "표준 사용량: 약 40 ml/㎡."
+    ],
+    "warnings": [
+      "보호장갑·보안경을 착용한다.",
+      "식품 접촉면은 물로 충분히 헹군다.",
+      "표면에서 마르게 두지 않는다."
+    ],
+    "summary": "심하게 눌어붙은 기름때·입주 집중 세정. 원액~1:5, 약 10분 대기.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 그라셋 사용법 — 집중" }]
+  },
+  {
+    "id": "recipe-graset-foam",
+    "slug": "graset-foam-1-4-10",
+    "seoTitle": "그라셋 거품 세정 (노즐 1:4~1:10)",
+    "field": "거품 세정",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-graset",
+    "dilution": "원액 투입 · 노즐 1:4~1:10",
+    "dwellTime": "약 10분",
+    "tools": ["거품 분무기", "고압 헹굼(선택)"],
+    "steps": [
+      "거품 분무기에 원액을 채우고 노즐을 1:4~1:10으로 조정한다.",
+      "표면에 거품을 도포한 뒤 약 10분 후 깨끗한 물로 헹군다(고압 헹굼 포함 가능).",
+      "표준 사용량: 약 20 ml/㎡."
+    ],
+    "warnings": [
+      "식품 접촉면은 충분히 헹군다.",
+      "전기설비에 직접 분사하지 않는다."
+    ],
+    "summary": "폼건·가압 분무기 거품 세정. 노즐 1:4~1:10, 약 10분 후 헹굼.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 그라셋 사용법 — 거품" }]
+  },
+  {
+    "id": "recipe-glassqueen-glass-neat",
+    "slug": "glassqueen-glass-waterproof-neat",
+    "seoTitle": "글라스퀸 유리·방수 표면 원액 세정",
+    "field": "유리",
+    "materialId": "glass",
+    "contaminantId": "water-spot",
+    "productId": "kiehl-glassqueen",
+    "dilution": "원액 사용",
+    "dwellTime": "즉시 (빠른 건조)",
+    "tools": ["분무기", "마른 천", "극세사 천"],
+    "steps": [
+      "원액을 분무기로 표면에 뿌린다(분무 추천). 직접 뿌려도 된다.",
+      "오염되지 않은 마른 천(극세사 포함)으로 세정한다.",
+      "빠르게 건조되므로 한 번에 너무 넓게 뿌리지 않는다.",
+      "표준 사용량: 약 5 ml/㎡."
+    ],
+    "warnings": [
+      "항상 깨끗한 마른 천을 사용한다.",
+      "심하게 굳은 물때는 제트 등 1차 처리 후 글라스퀸을 쓴다."
+    ],
+    "summary": "유리·거울·방수 표면 원액 분무 후 마른 천 마감. 빠른 건조.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 글라스퀸 사용법" }]
+  },
+  {
+    "id": "recipe-glasking-glass-regular",
+    "slug": "glasking-glass-regular-1-100",
+    "seoTitle": "글라스킹 유리 정기 세정 (1:100)",
+    "field": "유리",
+    "materialId": "glass",
+    "contaminantId": "water-spot",
+    "productId": "kiehl-glasking",
+    "dilution": "1:100 (약하면 1:200)",
+    "dwellTime": "즉시",
+    "tools": ["밀대", "스퀴지"],
+    "steps": [
+      "8L 물에 80ml 희석한다(1:100). 오염이 약하면 8L에 40ml(1:200).",
+      "밀대로 세정한 뒤 스퀴지로 닦는다.",
+      "표준 사용량: 약 0.5 ml/㎡."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "유리 일반 정기 청소. 표준 1:100, 약하면 1:200.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 글라스킹 사용법 — 유리 정기" }]
+  },
+  {
+    "id": "recipe-glasking-glass-intensive",
+    "slug": "glasking-glass-intensive-1-50",
+    "seoTitle": "글라스킹 유리 집중 세정 (1:50)",
+    "field": "유리",
+    "materialId": "glass",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-glasking",
+    "dilution": "1:50 (8L에 120~180ml)",
+    "dwellTime": "즉시",
+    "tools": ["밀대", "스퀴지"],
+    "steps": [
+      "오염이 심한 유리: 8L 물에 120~180ml 희석한다(약 1:50).",
+      "밀대로 세정한 뒤 스퀴지로 닦는다.",
+      "표준 사용량: 약 0.6~0.8 ml/㎡."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "오염이 심한 유리 집중 세정. 표준 약 1:50.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 글라스킹 사용법 — 유리 집중" }]
+  },
+  {
+    "id": "recipe-glasking-surface-regular",
+    "slug": "glasking-surface-regular-1-100",
+    "seoTitle": "글라스킹 표면 닦기 정기 (1:100)",
+    "field": "표면",
+    "materialId": "plastic",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-glasking",
+    "dilution": "1:100 (약하면 1:200)",
+    "dwellTime": "즉시",
+    "tools": ["청소용 천", "극세사", "마른 천"],
+    "steps": [
+      "8L 물에 80ml 희석한다(1:100). 오염이 약하면 8L에 40ml(1:200).",
+      "청소용 천(극세사 포함)으로 닦는다.",
+      "세정 후 마른 천으로 마무리한다.",
+      "표준 사용량: 약 0.2~0.3 ml/㎡."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "방수 표면 일반 닦기. 표준 1:100, 약하면 1:200.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 글라스킹 사용법 — 표면 정기" }]
+  },
+  {
+    "id": "recipe-glasking-surface-intensive",
+    "slug": "glasking-surface-intensive-1-50",
+    "seoTitle": "글라스킹 표면 집중 닦기 (1:50)",
+    "field": "표면",
+    "materialId": "plastic",
+    "contaminantId": "grease",
+    "productId": "kiehl-glasking",
+    "dilution": "1:50 (8L에 160ml)",
+    "dwellTime": "즉시",
+    "tools": ["청소용 천", "극세사", "패드", "수세미", "울스텐"],
+    "steps": [
+      "오염이 심한 표면: 8L 물에 160ml 희석한다(1:50).",
+      "청소용 천(극세사)·패드(수세미·울스텐 등)로 닦는다.",
+      "표준 사용량: 약 0.3~0.5 ml/㎡."
+    ],
+    "warnings": [
+      "거친 수세미는 표면 손상에 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "오염이 심한 방수 표면 집중 닦기. 표준 1:50.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 글라스킹 사용법 — 표면 집중" }]
+  },
+  {
+    "id": "recipe-veriprop-floor-daily",
+    "slug": "veriprop-floor-daily-1-200",
+    "seoTitle": "베리프롭 바닥 일상·정기 세정 (1:200)",
+    "field": "바닥",
+    "materialId": "pvc-deco",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-veryprop",
+    "dilution": "1:200 (찬물 8L + 1단위 40ml)",
+    "dwellTime": "즉시",
+    "tools": ["대걸레", "밀대 걸레", "마른 밀대 걸레(사각맙)", "분무기", "습식 세정 기계(선택)"],
+    "steps": [
+      "찬물 8L에 1단위(40ml, 상단 도징캡)를 희석한다(1:200).",
+      "[1안] 살짝 젖은 걸레에 희석액을 부어 닦는다.",
+      "[2안] 넓은 바닥은 군데군데 희석액을 뿌린 뒤 걸레로 닦는다.",
+      "[3안] 분무기로 걸레·바닥에 뿌리며 닦는다. 대걸레·밀대 걸레에 모두 적용 가능하다.",
+      "기계 습식 세정이 가능하면 더 경제적이고 세정력이 좋다.",
+      "자국을 남기지 않으려면 마른 밀대 걸레(사각맙)로 마무리한다."
+    ],
+    "warnings": [
+      "희석 농도가 진하면 거품이 많아진다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "방수 바닥 일상·정기 세정. 표준 1:200(8L + 40ml).",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 베리프롭 사용법 — 바닥" }]
+  },
+  {
+    "id": "recipe-veriprop-surface-daily",
+    "slug": "veriprop-surface-daily-1-200",
+    "seoTitle": "베리프롭 표면 닦기·일상 세정 (1:200)",
+    "field": "표면",
+    "materialId": "plastic",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-veryprop",
+    "dilution": "1:200 (찬물 8L + 1단위 40ml)",
+    "dwellTime": "즉시",
+    "tools": ["청소용 천", "걸레", "분무기"],
+    "steps": [
+      "찬물 8L에 1단위(40ml)를 희석한다(1:200).",
+      "닦기·기계식 습식 세정·표면 청소에 사용한다.",
+      "자국을 줄이려면 마른 걸레로 마무리한다."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "방수 표면 일상·정기 닦기. 표준 1:200.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 베리프롭 사용법 — 표면" }]
+  },
+  {
+    "id": "recipe-veriprop-intensive",
+    "slug": "veriprop-intensive-1-50-100",
+    "seoTitle": "베리프롭 집중·발수성 표면 (1:50~1:100)",
+    "field": "바닥·표면",
+    "materialId": "pvc-deco",
+    "contaminantId": "grease",
+    "productId": "kiehl-veryprop",
+    "dilution": "1:50~1:100 (발수성 표면은 1:100)",
+    "dwellTime": "즉시",
+    "tools": ["대걸레", "밀대 걸레", "분무기", "천"],
+    "steps": [
+      "표면 오염이 심한 집중 청소는 1:50~1:100으로 희석한다.",
+      "발수성 표면은 찬물과 1:100으로 사용한다.",
+      "바닥은 대걸레·밀대·분무 방식, 표면은 닦기로 세정한다."
+    ],
+    "warnings": [
+      "희석 농도가 진하면 거품이 많아진다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "집중 청소·발수성 표면. 표준 1:50~1:100, 발수성 1:100.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 베리프롭 사용법 — 집중" }]
+  },
+  {
+    "id": "recipe-veriprop-spot-heavy",
+    "slug": "veriprop-spot-heavy-1-10",
+    "seoTitle": "베리프롭 부분 심한 오염 (1:10)",
+    "field": "부분 오염",
+    "materialId": "pvc-deco",
+    "contaminantId": "grease",
+    "productId": "kiehl-veryprop",
+    "dilution": "1:10",
+    "dwellTime": "5분",
+    "tools": ["분무기", "걸레", "천"],
+    "steps": [
+      "부분적인 매우 심한 오염은 1:10으로 뿌린다.",
+      "5분 후 세정한다."
+    ],
+    "warnings": [
+      "희석 농도가 진하면 거품이 많아진다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "부분 심한 오염. 1:10 분무 후 5분 대기·세정.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 베리프롭 사용법 — 부분 오염" }]
+  },
+  {
+    "id": "recipe-binoxin-eco-surface-daily",
+    "slug": "binoxin-eco-surface-daily-1-10-20",
+    "seoTitle": "비녹스 에코 표면 일상 세정 (1:10~1:20)",
+    "field": "표면",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-binoxin-eco",
+    "dilution": "기계 1:20 / 수작업 1:10",
+    "dwellTime": "오염 심하면 약 10분 (마르기 전 세정)",
+    "tools": ["걸레", "천", "분무기", "패드", "수세미", "울스텐"],
+    "steps": [
+      "내산성을 보이지 않는 곳에서 테스트하고, 산에 약한 인접 물체를 보호한다.",
+      "세정할 곳에 물을 충분히 뿌린다. 희석에는 찬물만 사용한다.",
+      "기계식: 찬물 2L에 100ml(1:20). 수작업: 1:10 희석을 권장한다.",
+      "희석액을 걸레·천에 묻히거나 분무한다.",
+      "오염이 심하면 약 10분 대기한 뒤, 마르기 전에 패드·수세미·울스텐으로 닦는다.",
+      "세정 후 물로 충분히 헹군다. 식품 접촉면은 많은 물로 헹군다."
+    ],
+    "warnings": [
+      "거친 수세미는 표면 손상에 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "수조·조리기구·조리대 등 일상 표면 세정. 기계 1:20, 수작업 1:10.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 비녹스 에코 사용법 — 표면 일상" }]
+  },
+  {
+    "id": "recipe-binoxin-eco-surface-intensive",
+    "slug": "binoxin-eco-surface-intensive-1-5-10",
+    "seoTitle": "비녹스 에코 집중·입주 세정 (1:5~1:10)",
+    "field": "표면·입주",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-binoxin-eco",
+    "dilution": "기계 1:5~1:10 / 수작업 1:5",
+    "dwellTime": "오염 심하면 약 10분 (마르기 전 세정)",
+    "tools": ["걸레", "천", "분무기", "패드", "수세미", "울스텐"],
+    "steps": [
+      "내산성 테스트·인접 물체 보호 후, 세정면에 물을 충분히 뿌린다. 희석은 찬물만 사용한다.",
+      "기계식: 찬물 2L에 250~500ml(1:5~1:10). 수작업: 1:5 희석을 권장한다.",
+      "희석액을 걸레·천에 묻히거나 분무한 뒤, 심하면 약 10분 대기 후 패드 등으로 세정한다.",
+      "세정 후 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "거친 수세미는 표면 손상에 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "집중·입주청소 표면 세정. 기계 1:5~1:10, 수작업 1:5.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 비녹스 에코 사용법 — 집중" }]
+  },
+  {
+    "id": "recipe-binoxin-eco-limescale",
+    "slug": "binoxin-eco-limescale-neat-1-1",
+    "seoTitle": "비녹스 에코 석회·시멘트·줄눈 (원액~1:1)",
+    "field": "석회·줄눈",
+    "materialId": "grout",
+    "contaminantId": "cement-residue",
+    "productId": "kiehl-binoxin-eco",
+    "dilution": "원액~1:1 (원액 권장)",
+    "dwellTime": "잠깐 대기 (반응 후 제거)",
+    "tools": ["분무기", "패드", "수세미", "울스텐", "스크래퍼", "솔"],
+    "steps": [
+      "내산성 테스트·보호 후 세정면에 물을 충분히 뿌린다.",
+      "석회·시멘트 잔유물: 찬물에 원액 또는 1:1 희석(원액 권장).",
+      "원액~1:1을 뿌리거나 패드·수세미에 묻힌다.",
+      "용액과 오염이 반응하도록 잠깐 대기한다.",
+      "스크래퍼·패드·수세미·울스텐·솔 등으로 제거한다.",
+      "물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "산에 약한 표면·인접 물체에 주의한다.",
+      "거친 수세미·스크래퍼는 표면 손상에 주의한다."
+    ],
+    "summary": "석회·시멘트 잔유물·줄눈 유분 제거. 원액~1:1, 원액 권장.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 비녹스 에코 사용법 — 석회" }]
+  },
+  {
+    "id": "recipe-binoxin-eco-floor",
+    "slug": "binoxin-eco-floor-hall-kitchen",
+    "seoTitle": "비녹스 에코 홀·주방·화장실 바닥 세정",
+    "field": "바닥",
+    "materialId": "epoxy-floor",
+    "contaminantId": "grease",
+    "productId": "kiehl-binoxin-eco",
+    "dilution": "일상 1:10~1:20 / 집중 1:5~1:10",
+    "dwellTime": "즉시~짧게",
+    "tools": ["대걸레", "밀대 걸레", "솔", "습식 세정 기계", "마른 밀대 걸레(사각맙)", "고무 밀대"],
+    "steps": [
+      "내산성 확인 후 세정면에 물을 충분히 뿌린다. 희석은 찬물만 사용한다.",
+      "일상: 기계 1:20(2L+100ml), 수작업 1:10. 집중·입주: 기계 1:5~1:10, 수작업 1:5.",
+      "[홀 1안] 살짝 젖은 걸레에 희석액을 부어 닦는다.",
+      "[홀 2안] 넓은 바닥은 군데군데 뿌린 뒤 솔·걸레로 닦는다. 기계 습식이 더 경제적인 경우가 많다.",
+      "자국을 줄이려면 마른 밀대 걸레(사각맙)로 마무리한다.",
+      "[주방·화장실·식품공장 넓은 바닥] 배수구를 비닐·고무판으로 막는다.",
+      "희석액을 뿌린 뒤 고무 밀대로 고인 물을 분산시키며 세정한다.",
+      "세정 후 배수구를 열고 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "산에 약한 바닥·인접 재질은 사전 테스트한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "홀·주방·화장실·식품공장 바닥. 일상·집중 희석 후 걸레·기계·배수구 방식.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 비녹스 에코 사용법 — 바닥" }]
+  },
+  {
+    "id": "recipe-binoxin-eco-foam",
+    "slug": "binoxin-eco-foam-1-4-10",
+    "seoTitle": "비녹스 에코 거품 세정 (노즐 1:4~1:10)",
+    "field": "거품 세정",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-binoxin-eco",
+    "dilution": "노즐 1:4~1:10",
+    "dwellTime": "현장 상황에 따름",
+    "tools": ["거품 분무기", "헹굼용 물"],
+    "steps": [
+      "내산성 확인·사전 물 적심 후 작업한다.",
+      "거품식 세정: 노즐을 1:4~1:10으로 설정한다.",
+      "세정 후 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "식품 접촉면은 충분히 헹군다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "거품 세정. 노즐 1:4~1:10 설정 후 충분히 헹굼.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 비녹스 에코 사용법 — 거품" }]
+  },
+  {
+    "id": "recipe-sanikal-eco-daily",
+    "slug": "sanikal-eco-daily-1-200",
+    "seoTitle": "사니칼 에코 매일 세정 (1:200)",
+    "field": "화장실·욕실",
+    "materialId": "ceramic-tile",
+    "contaminantId": "soap-scum",
+    "productId": "kiehl-sanikal",
+    "dilution": "1:200 (찬물 2L + 10ml)",
+    "dwellTime": "잠시 반응 후 세정",
+    "tools": ["패드", "수세미", "울스텐", "솔", "스폰지", "천", "극세사", "마른 밀대 걸레(사각맙)"],
+    "steps": [
+      "내산성을 확인한 뒤, 세정 표면을 충분히 물로 적신다.",
+      "찬물 2L에 10ml 희석한다(1:200). 표준 사용량: 약 1 ml/㎡.",
+      "잠시 반응 시간을 준 뒤 패드·솔·스폰지·천으로 세정한다.",
+      "세정 후 깨끗한 물로 헹군다.",
+      "자국을 줄이려면 마른 밀대 걸레(사각맙)로 마무리한다."
+    ],
+    "warnings": [
+      "강력 수세미는 재질에 따라 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "화장실·욕실 매일 세정. 표준 1:200(2L+10ml), 약 1 ml/㎡.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 사니칼 에코 사용법 — 매일" }]
+  },
+  {
+    "id": "recipe-sanikal-eco-regular-intensive",
+    "slug": "sanikal-eco-regular-intensive-1-50-200",
+    "seoTitle": "사니칼 에코 정기·집중 세정 (1:50~1:200)",
+    "field": "화장실·욕실",
+    "materialId": "ceramic-tile",
+    "contaminantId": "limescale",
+    "productId": "kiehl-sanikal",
+    "dilution": "정기 1:100~1:200 / 집중 1:50~1:100",
+    "dwellTime": "잠시 반응 후 세정",
+    "tools": ["패드", "수세미", "울스텐", "솔", "스폰지", "천", "고무 밀대", "마른 밀대 걸레(사각맙)"],
+    "steps": [
+      "내산성 확인 후 표면을 충분히 물로 적신다.",
+      "정기: 찬물 2L에 10~20ml(1:100~1:200). 집중: 2L에 20~40ml(1:50~1:100).",
+      "잠시 반응시킨 뒤 패드·솔·스폰지·천으로 세정하고 물로 헹군다.",
+      "넓은 바닥의 심한 오염·입주청소: 배수구를 비닐·고무판으로 막는다.",
+      "희석액을 뿌린 뒤 고무 밀대로 고인 물을 분산시키며 세정한다.",
+      "배수구를 열고 물로 충분히 헹군 뒤, 필요 시 마른 밀대 걸레로 마무리한다."
+    ],
+    "warnings": [
+      "강력 수세미는 재질에 따라 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "정기 1:100~1:200, 집중 1:50~1:100. 넓은 바닥은 배수구 방식.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 사니칼 에코 사용법 — 정기·집중" }]
+  },
+  {
+    "id": "recipe-sanikal-eco-toilet",
+    "slug": "sanikal-eco-toilet-neat",
+    "seoTitle": "사니칼 에코 변기 세정 (원액)",
+    "field": "변기",
+    "materialId": "porcelain",
+    "contaminantId": "limescale",
+    "productId": "kiehl-sanikal",
+    "dilution": "원액 사용",
+    "dwellTime": "잠시 반응 후 솔 세정",
+    "tools": ["변기솔"],
+    "steps": [
+      "원액을 테두리 안에 뿌린다.",
+      "잠시 반응시킨 뒤 솔로 세정한다.",
+      "물을 내린다."
+    ],
+    "warnings": ["내산성을 확인한 뒤 사용한다."],
+    "summary": "변기 테두리에 원액 도포 → 반응 → 솔 세정 → 물 내림.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 사니칼 에코 사용법 — 변기" }]
+  },
+  {
+    "id": "recipe-sanikal-eco-first-clean",
+    "slug": "sanikal-eco-first-clean-1-10",
+    "seoTitle": "사니칼 에코 정기청소 초도 세정 (1:10→1:200)",
+    "field": "초도·정기",
+    "materialId": "ceramic-tile",
+    "contaminantId": "soap-scum",
+    "productId": "kiehl-sanikal",
+    "dilution": "최초 1:10 → 1:50 → 1:100 → 1:200",
+    "dwellTime": "잠시 반응 후 세정",
+    "tools": ["패드", "솔", "스폰지", "천", "헹굼용 물"],
+    "steps": [
+      "내산성 확인 후 표면을 충분히 물로 적신다.",
+      "정기청소 초도: 최초 1:10으로 희석해 사용한다.",
+      "이후 점차 1:50, 1:100, 1:200으로 희석을 늘린다.",
+      "그다음부터는 표준 1:200으로 계속 사용한다.",
+      "세정 후 깨끗한 물로 헹군다."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "초도 1:10에서 시작해 1:200 유지관리로 단계적 희석.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 사니칼 에코 사용법 — 초도" }]
+  },
+  {
+    "id": "recipe-sanikal-eco-foam",
+    "slug": "sanikal-eco-foam-1-4-10",
+    "seoTitle": "사니칼 에코 거품 세정 (폼건 1:4~1:10)",
+    "field": "거품 세정",
+    "materialId": "ceramic-tile",
+    "contaminantId": "soap-scum",
+    "productId": "kiehl-sanikal",
+    "dilution": "폼건 1:4~1:10",
+    "dwellTime": "10분",
+    "tools": ["폼건", "고압 헹굼(선택)"],
+    "steps": [
+      "대중목욕탕·사우나·수영장 등: 폼건에 1:4~1:10으로 연결해 살포한다.",
+      "10분 후 물로 씻어낸다(고압 헹굼 포함 가능)."
+    ],
+    "warnings": [
+      "내산성을 확인한 뒤 사용한다.",
+      "세정 후 반드시 물로 헹군다."
+    ],
+    "summary": "목욕탕·사우나·수영장 폼건 세정. 1:4~1:10, 10분 후 헹굼.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 사니칼 에코 사용법 — 거품" }]
+  },
+  {
+    "id": "recipe-exonforte-grill-oven",
+    "slug": "exonforte-grill-oven-neat",
+    "seoTitle": "엑손포르테 그릴·오븐 원액 세정",
+    "field": "그릴·오븐",
+    "materialId": "stainless",
+    "contaminantId": "burnt-residue",
+    "productId": "kiehl-exonforte",
+    "dilution": "원액 사용",
+    "dwellTime": "약 10분",
+    "tools": ["거품 분무기", "젖은 천", "물 분무기", "마른 천"],
+    "steps": [
+      "알칼리 민감성을 확인한다. 스위치를 끄고 식혀 최고 30℃ 이하에서 작업한다.",
+      "표면을 물에 적신 뒤 원액을 거품 분무한다. 표준 사용량: 약 0.5~1 ml/㎡.",
+      "약 10분 대기한다. 탄때는 원액으로 두고, 정도에 따라 반복하거나 대기 시간을 늘린다.",
+      "젖은 천 또는 물 분무로 세정한 뒤 마른 천으로 닦아 말린다.",
+      "식품 접촉면은 음용수로 ㎡당 8L 이상 헹군다."
+    ],
+    "warnings": [
+      "알루미늄·아연합금에는 사용하지 않는다.",
+      "거친 수세미는 표면 손상에 주의한다."
+    ],
+    "summary": "그릴·오븐 원액 거품 분무. 30℃ 이하, 약 10분 대기.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 엑손포르테 사용법 — 그릴·오븐" }]
+  },
+  {
+    "id": "recipe-exonforte-surface-daily",
+    "slug": "exonforte-surface-daily-1-16",
+    "seoTitle": "엑손포르테 일상 닦기·기계 습식 (1:16)",
+    "field": "표면·환풍기",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-exonforte",
+    "dilution": "1:16 (8L + 500ml)",
+    "dwellTime": "약 5~10분 (마르기 전 세정)",
+    "tools": ["걸레", "천", "분무기", "붓", "패드", "수세미", "울스텐", "솔", "스크래퍼(선택)"],
+    "steps": [
+      "알칼리 민감성을 확인하고 표면을 물에 적신다.",
+      "일상(닦기·기계식 습식): 물 8L에 500ml 희석(1:16). 묵은 기름때는 온수(약 40~60℃) 희석이 더 효과적이다.",
+      "원액 또는 희석액을 걸레·천에 묻히거나 분무·붓으로 바른다.",
+      "약 5~10분 반응시킨 뒤, 마르기 전에 패드·솔·천으로 문지른다. 심하면 스크래퍼를 쓴다.",
+      "물 또는 물수건으로 완전히 헹군 뒤 물기를 닦아 말린다. 식품 접촉면은 음용수로 ㎡당 8L 이상 헹군다."
+    ],
+    "warnings": [
+      "거친 수세미는 표면 손상에 주의한다.",
+      "헹굴 때 ARCANDIS-Splend를 쓰면 좋다(선택).",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "표면·물체·환풍기 일상 세정. 표준 1:16, 5~10분 반응.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 엑손포르테 사용법 — 일상" }]
+  },
+  {
+    "id": "recipe-exonforte-intensive",
+    "slug": "exonforte-intensive-1-8-neat",
+    "seoTitle": "엑손포르테 집중 세정 (1:8·원액~1:5)",
+    "field": "바닥·표면 집중",
+    "materialId": "epoxy-floor",
+    "contaminantId": "grease",
+    "productId": "kiehl-exonforte",
+    "dilution": "바닥 1:8 / 표면 원액~1:5",
+    "dwellTime": "약 5~10분",
+    "tools": ["대걸레", "밀대 걸레", "솔", "습식 세정 기계", "고무 밀대", "마른 밀대 걸레(사각맙)", "패드", "분무기"],
+    "steps": [
+      "알칼리 민감성 확인 후 표면을 물에 적신다.",
+      "매우 심한 바닥: 8L에 1L 희석(1:8). 매우 심한 물체·표면: 원액~1:5. 표준 사용량: 약 40 ml/㎡.",
+      "[주방·식품공장 바닥 1안] 살짝 젖은 걸레에 희석액을 부어 닦는다.",
+      "[2안] 바닥에 군데군데 뿌린 뒤 솔·걸레로 닦는다. 기계 습식이 더 경제적인 경우가 많다.",
+      "[3안 넓은 바닥] 배수구를 비닐·고무판으로 막은 뒤 희석액을 뿌리고 고무 밀대로 분산·세정한다.",
+      "배수구를 열고 물로 충분히 헹군 뒤, 마른 밀대 걸레로 마무리한다."
+    ],
+    "warnings": [
+      "알칼리에 민감한 바닥은 사전 테스트한다.",
+      "식품 접촉면은 음용수로 충분히 헹군다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "매우 심한 오염. 바닥 1:8, 표면 원액~1:5, 약 40 ml/㎡.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 엑손포르테 사용법 — 집중" }]
+  },
+  {
+    "id": "recipe-exonforte-hood-filter",
+    "slug": "exonforte-hood-filter-soak-foam",
+    "seoTitle": "엑손포르테 후드 필터 세정",
+    "field": "후드 필터",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-exonforte",
+    "dilution": "희석 담금 또는 원액 거품 직분사",
+    "dwellTime": "약 10분",
+    "tools": ["큰 비닐", "지퍼백", "통", "거품 분무기", "천", "수세미"],
+    "steps": [
+      "희석액을 큰 비닐·지퍼백·통에 붓고 후드 필터를 담가 약 10분 둔다.",
+      "또는 거품 분무기로 원액을 후드 필터에 직분사한 뒤 약 10분 둔다.",
+      "천·수세미로 살살 문질러 오염을 닦는다.",
+      "물로 충분히 헹군 뒤 말린다."
+    ],
+    "warnings": ["거친 수세미는 표면 손상에 주의한다."],
+    "summary": "후드 필터 담금 또는 원액 거품 직분사 후 약 10분·헹굼.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 엑손포르테 사용법 — 후드 필터" }]
+  },
+  {
+    "id": "recipe-exonforte-foam",
+    "slug": "exonforte-foam-1-4-10",
+    "seoTitle": "엑손포르테 거품 세정 (노즐 1:4~1:10)",
+    "field": "거품 세정",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-exonforte",
+    "dilution": "원액 투입 · 노즐 1:4~1:10",
+    "dwellTime": "약 10분",
+    "tools": ["거품 분무기", "가압 분무기", "고압 헹굼(선택)"],
+    "steps": [
+      "원액을 거품 분무기에 채우고 노즐을 1:4~1:10으로 조정한다.",
+      "도포 후 약 10분 뒤 깨끗한 물로 헹군다(고압 포함 가능).",
+      "표준 사용량: 약 20 ml/㎡."
+    ],
+    "warnings": [
+      "식품 접촉면은 충분히 헹군다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "거품·가압 분무 세정. 노즐 1:4~1:10, 약 10분 후 헹굼, 약 20 ml/㎡.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 엑손포르테 사용법 — 거품" }]
+  },
+  {
+    "id": "recipe-corvett-machine",
+    "slug": "corvett-machine-1-10-80",
+    "seoTitle": "코베트 기계식 집중 세정 (1:10~1:80)",
+    "field": "바닥",
+    "materialId": "ceramic-tile",
+    "contaminantId": "stain-discoloration",
+    "productId": "kiehl-kobet",
+    "dilution": "1:10~1:80 (찬물, 오염도에 따라)",
+    "dwellTime": "약 5분",
+    "tools": ["회전식 바닥 청소기", "자동 스크러버", "소포제(선택)"],
+    "steps": [
+      "비적용 대상을 확인하고, 알칼리에 약한 인접면을 미리 보호한다.",
+      "오염 상태에 따라 찬물과 1:10~1:80으로 희석한다.",
+      "회전식 바닥 청소기 또는 자동 스크러버로 도포·세정한다.",
+      "뿌린 후 약 5분 반응시킨다.",
+      "세정 후 바닥을 물로 완전히 헹군다.",
+      "오수 탱크에 거품이 많으면 소포제(거품억제제)를 첨가한다."
+    ],
+    "warnings": [
+      "분무기로 공중 분사하지 않는다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "포세린·다공성 타일 기계 집중 세정. 찬물 1:10~1:80, 약 5분 반응 후 헹굼.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 코베트 사용법 — 기계" }]
+  },
+  {
+    "id": "recipe-corvett-manual",
+    "slug": "corvett-manual-1-10",
+    "seoTitle": "코베트 수작업 집중 세정 (1:10)",
+    "field": "바닥",
+    "materialId": "ceramic-tile",
+    "contaminantId": "stain-discoloration",
+    "productId": "kiehl-kobet",
+    "dilution": "1:10 (찬물, 권장)",
+    "dwellTime": "약 5분",
+    "tools": ["솔", "수세미", "패드"],
+    "steps": [
+      "비적용 대상을 확인하고, 알칼리에 약한 인접면을 미리 보호한다.",
+      "오염 상태에 따라 찬물에 희석한다(1:10 권장).",
+      "솔·수세미 등으로 도포·문지른다.",
+      "뿌린 후 약 5분 반응시킨 뒤 세정한다.",
+      "세정 후 바닥을 물로 완전히 헹군다."
+    ],
+    "warnings": [
+      "분무기로 공중 분사하지 않는다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "타일 바닥 수작업 집중 세정. 찬물 1:10 권장, 약 5분 반응 후 헹굼.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 코베트 사용법 — 수작업" }]
+  },
+  {
+    "id": "recipe-clarida-uni-floor-glass",
+    "slug": "clarida-uni-floor-glass-1-200",
+    "seoTitle": "클라리다 유니 바닥·유리·거울 일반 세정 (1:200)",
+    "field": "바닥·유리",
+    "materialId": "pvc-deco",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-clarida-uni",
+    "dilution": "1:200",
+    "dwellTime": "즉시",
+    "tools": ["대걸레", "밀대 걸레", "분무기", "습식 세정 기계(선택)", "마른 밀대 걸레(사각맙)", "스폰지 밀대", "스퀴지", "마른 걸레", "극세사"],
+    "steps": [
+      "용액:물을 1:200으로 희석한다(바닥·유리·거울 일반 세정 최적).",
+      "[바닥 1안] 살짝 젖은 걸레에 희석액을 부어 닦는다.",
+      "[바닥 2안] 넓은 바닥은 군데군데 뿌린 뒤 걸레로 닦는다.",
+      "[바닥 3안] 분무기로 걸레·바닥에 뿌리며 닦는다. 기계 습식도 가능하다.",
+      "자국을 줄이려면 마른 밀대 걸레(사각맙)로 마무리한다.",
+      "[유리·거울] 스폰지 밀대·걸레·수세미에 적셔 세정한 뒤 스퀴지 또는 마른 걸레(극세사)로 닦는다."
+    ],
+    "warnings": [
+      "거친 수세미는 유리 손상에 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "바닥·유리·거울 일반 세정. 표준 1:200.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 클라리다 유니 사용법 — 일반" }]
+  },
+  {
+    "id": "recipe-clarida-uni-floor-intensive",
+    "slug": "clarida-uni-floor-intensive-1-50-100",
+    "seoTitle": "클라리다 유니 바닥 집중 세정 (1:50~1:100)",
+    "field": "바닥",
+    "materialId": "pvc-deco",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-clarida-uni",
+    "dilution": "1:50~1:100",
+    "dwellTime": "잠시 대기 후 세정",
+    "tools": ["대걸레", "밀대 걸레", "분무기", "습식 세정 기계(선택)", "마른 밀대 걸레(사각맙)"],
+    "steps": [
+      "오염이 심한 바닥: 1:50~1:100으로 희석해 바닥에 뿌린다.",
+      "잠시 대기한 뒤 세정한다.",
+      "대걸레·밀대·분무·기계 습식 중 현장 방식에 맞게 닦고, 마른 밀대 걸레로 마무리한다."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "오염이 심한 바닥 집중 세정. 표준 1:50~1:100, 잠시 대기 후 세정.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 클라리다 유니 사용법 — 바닥 집중" }]
+  },
+  {
+    "id": "recipe-clarida-uni-surface",
+    "slug": "clarida-uni-surface-1-50",
+    "seoTitle": "클라리다 유니 표면·물체 세정 (1:50)",
+    "field": "표면",
+    "materialId": "plastic",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-clarida-uni",
+    "dilution": "1:50",
+    "dwellTime": "오염 심하면 잠시 대기",
+    "tools": ["분무기", "걸레", "천", "마른 걸레", "극세사"],
+    "steps": [
+      "1:50으로 희석해 분무기로 사용한다.",
+      "희석액을 걸레·천에 묻히거나 분무한다.",
+      "오염이 심하면 잠시 대기한다.",
+      "깨끗한 마른 걸레(극세사 포함)로 닦는다."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "표면·물체 세정. 표준 1:50 분무 후 마른 걸레 마감.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 클라리다 유니 사용법 — 표면" }]
+  },
+  {
+    "id": "recipe-parketto-clean-daily",
+    "slug": "parketto-clean-daily-1-320",
+    "seoTitle": "파케토 클린 일반 세정 (1:320)",
+    "field": "목재 바닥",
+    "materialId": "laminate-wood",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-parketto-clean",
+    "dilution": "1:320 (찬물 8L + 1단위 25ml)",
+    "dwellTime": "즉시",
+    "tools": ["대걸레", "밀대 걸레", "사각맙", "분무기", "마른 밀대 걸레"],
+    "steps": [
+      "찬물 8L에 1단위(상단 도징캡 25ml)를 희석한다(1:320).",
+      "[1안] 살짝 젖은 밀대 걸레에 희석액을 부어 닦는다.",
+      "[2안] 밀대 걸레 천을 희석액에 담근 뒤 짜서 사용한다.",
+      "[3안] 분무하거나 바닥에 뿌리며 밀대 걸레로 닦는다.",
+      "과도하게 적시지 말고, 물기가 고이지 않게 한다.",
+      "세정 후 마른 밀대 걸레(사각맙)로 마무리한다.",
+      "습식 청소 적용 범위: 약 0.05~0.1 ml/㎡."
+    ],
+    "warnings": [
+      "미처리·손상 마루는 최소 수분으로 사전 테스트한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "목재·마루 일반 세정. 표준 1:320(8L+25ml), 마른 밀대 마감.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 파케토 클린 사용법 — 일반" }]
+  },
+  {
+    "id": "recipe-parketto-clean-intensive",
+    "slug": "parketto-clean-intensive-1-80-160",
+    "seoTitle": "파케토 클린 집중 세정 (1:80~1:160)",
+    "field": "목재 바닥",
+    "materialId": "laminate-wood",
+    "contaminantId": "stain-discoloration",
+    "productId": "kiehl-parketto-clean",
+    "dilution": "1:80~1:160 (찬물 8L + 2~4단위)",
+    "dwellTime": "눌러붙은 얼룩은 잠시 대기",
+    "tools": ["대걸레", "밀대 걸레", "사각맙", "분무기", "마른 밀대 걸레"],
+    "steps": [
+      "오염도에 따라 찬물 8L에 2~4단위(50~100ml)를 희석한다(1:80~1:160).",
+      "밀대 걸레·분무 방식으로 세정한다. 과도한 수분·고인 물은 피한다.",
+      "오래 눌러붙은 얼룩은 희석액을 묻힌 뒤 잠시 대기하거나, 더 진하게 희석하거나 반복해 닦는다.",
+      "세정 후 마른 밀대 걸레로 마무리한다.",
+      "습식 청소 적용 범위: 약 0.05~0.1 ml/㎡."
+    ],
+    "warnings": [
+      "과도하게 바닥을 적시지 않는다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "목재·마루 집중 세정. 표준 1:80~1:160, 얼룩은 대기·반복.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 파케토 클린 사용법 — 집중" }]
+  },
+  {
+    "id": "recipe-parketto-care-coat",
+    "slug": "parketto-care-coat-neat",
+    "seoTitle": "파케토 케어 코팅 (원액)",
+    "field": "목재 코팅",
+    "materialId": "laminate-wood",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-parketto-care",
+    "dilution": "원액 사용",
+    "dwellTime": "약 90분 간격 / 시공 후 1주일 습식 금지",
+    "tools": ["왁스 걸레", "밀대 걸레", "붓(브러시)", "젖은 헝겊", "드라이 클리닝 기계(선택)"],
+    "steps": [
+      "새 목재는 제조사 권장 건조(일반적으로 8~14일) 후 실시한다.",
+      "코팅 전 젖은 헝겊으로 먼지를 제거한다. 눌러붙은 얼룩은 파케토 클린 콘젠트라트로 제거한다.",
+      "마모가 심한 면은 기계 드라이 클리닝 후, 나선형으로 청소기를 움직이며 깨끗해질 때까지 청소하고 젖은 천으로 퇴적물·먼지를 제거한다.",
+      "바닥은 깨끗·건조해야 하며 광택·왁스·실리콘·먼지가 없어야 한다. 사용 전 잘 흔든다.",
+      "왁스 걸레·밀대 걸레·붓으로 약 250 ml/10㎡(회당 약 25~30 ml/㎡)를 고르게 얇게 도포한다. 겹치는 경로로 충분히 젖게 작업한다.",
+      "표면 구조에 따라 약 90분 간격으로 1~2회 도포한다. 건조되며 내수성 보호 코팅이 형성된다.",
+      "시공 후 1주일간 젖은 발로 밟거나 습식 세정하지 않는다."
+    ],
+    "warnings": [
+      "오일·왁스 마감·미처리 원목에는 사용하지 않는다.",
+      "1L로 약 30~40㎡(약 9~12평) 코팅."
+    ],
+    "summary": "밀폐·마감 목재 보호 코팅. 원액 얇게 1~2회, 90분 간격, 1주일 습식 금지.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 파케토 케어 사용법 — 코팅" }]
+  },
+  {
+    "id": "recipe-parketto-care-maintain",
+    "slug": "parketto-care-maintain-1-32",
+    "seoTitle": "파케토 케어 간헐 유지 보수 (약 1:32)",
+    "field": "목재 유지",
+    "materialId": "laminate-wood",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-parketto-care",
+    "dilution": "약 1:32 (찬물 8L + 약 250ml)",
+    "dwellTime": "즉시",
+    "tools": ["걸레", "밀대 걸레"],
+    "steps": [
+      "찬물 8L에 약 250ml를 희석한다.",
+      "걸레를 희석액에 담근 뒤 잘 짜서 표면을 닦는다.",
+      "물기가 고이지 않게 한다.",
+      "적용 범위: 약 1 ml/㎡(1L로 약 1000㎡)."
+    ],
+    "warnings": ["물기가 고이지 않게 한다."],
+    "summary": "간헐 유지 보수. 찬물 8L+약 250ml, 짠 걸레로 닦기.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 파케토 케어 사용법 — 유지" }]
+  },
+  {
+    "id": "recipe-parketto-care-spray-buff",
+    "slug": "parketto-care-spray-buff-1-1",
+    "seoTitle": "파케토 케어 스프레이 버핑·광택 (1:1)",
+    "field": "코팅 복구",
+    "materialId": "laminate-wood",
+    "contaminantId": "stain-discoloration",
+    "productId": "kiehl-parketto-care",
+    "dilution": "1:1 (스프레이 버핑) / 원액 광택은 마른 상태",
+    "dwellTime": "즉시",
+    "tools": ["스프레이 캔", "고속 기계(약 1,000 rpm)", "멀티 디스크"],
+    "steps": [
+      "코팅 일부 복구(스프레이 버핑): 찬물에 1:1 희석 후 스프레이 캔과 고속 기계(약 1,000 rpm)로 작업한다. 적용 범위: 약 1.5 ml/㎡.",
+      "광택 연마: 마른 상태에서 고속 광택 연마기(약 1,000 rpm)와 멀티 디스크로 코팅을 광택·고착화하며 미끄럼 방지성을 유지한다."
+    ],
+    "warnings": ["오일·왁스 마감·미처리 원목에는 사용하지 않는다."],
+    "summary": "부분 복구는 1:1 스프레이 버핑, 광택은 마른 상태 고속 연마.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 파케토 케어 사용법 — 버핑·광택" }]
+  },
+  {
+    "id": "recipe-kallinex-surface-daily",
+    "slug": "kallinex-surface-daily-1-16-80",
+    "seoTitle": "칼리넥스 표면 일상 세정 (1:16~1:80)",
+    "field": "표면",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-kallinex",
+    "dilution": "기계 1:16~1:80 / 수작업 1:20",
+    "dwellTime": "오염 심하면 약 10분 (마르기 전 세정)",
+    "tools": ["걸레", "천", "분무기", "패드", "수세미", "울스텐"],
+    "steps": [
+      "내산성을 보이지 않는 곳에서 테스트하고, 산에 약한 인접 물체를 보호한다.",
+      "세정할 곳에 물을 충분히 뿌린다. 희석에는 찬물만 사용한다.",
+      "기계식: 찬물 2L에 25~125ml(1:16~1:80). 수작업: 1:20 희석을 권장한다.",
+      "희석액을 걸레·천에 묻히거나 분무한다.",
+      "오염이 심하면 약 10분 대기한 뒤, 마르기 전에 패드·수세미·울스텐으로 닦는다.",
+      "세정 후 물로 충분히 헹군다. 식품 접촉면은 많은 물로 헹군다."
+    ],
+    "warnings": [
+      "거친 수세미는 표면 손상에 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "수조·조리기구·조리대 등 일상 표면 세정. 기계 1:16~1:80, 수작업 1:20.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 칼리넥스 사용법 — 표면 일상" }]
+  },
+  {
+    "id": "recipe-kallinex-surface-intensive",
+    "slug": "kallinex-surface-intensive-1-8-16",
+    "seoTitle": "칼리넥스 집중·입주 세정 (1:8~1:16)",
+    "field": "표면·입주",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-kallinex",
+    "dilution": "기계 1:8~1:16 / 수작업 1:10",
+    "dwellTime": "오염 심하면 약 10분 (마르기 전 세정)",
+    "tools": ["걸레", "천", "분무기", "패드", "수세미", "울스텐"],
+    "steps": [
+      "내산성 테스트·인접 물체 보호 후, 세정면에 물을 충분히 뿌린다. 희석은 찬물만 사용한다.",
+      "기계식: 찬물 2L에 125~500ml(1:8~1:16). 수작업: 1:10 희석을 권장한다.",
+      "희석액을 걸레·천에 묻히거나 분무한 뒤, 심하면 약 10분 대기 후 패드 등으로 세정한다.",
+      "세정 후 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "거친 수세미는 표면 손상에 주의한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "집중·입주청소 표면 세정. 기계 1:8~1:16, 수작업 1:10.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 칼리넥스 사용법 — 집중" }]
+  },
+  {
+    "id": "recipe-kallinex-limescale",
+    "slug": "kallinex-limescale-neat-1-1",
+    "seoTitle": "칼리넥스 석회·시멘트·줄눈 (원액~1:1)",
+    "field": "석회·줄눈",
+    "materialId": "grout",
+    "contaminantId": "cement-residue",
+    "productId": "kiehl-kallinex",
+    "dilution": "원액~1:1 (권장)",
+    "dwellTime": "잠깐 대기 (반응 후 제거)",
+    "tools": ["분무기", "패드", "수세미", "울스텐", "스크래퍼", "솔"],
+    "steps": [
+      "내산성 테스트·보호 후 세정면에 물을 충분히 뿌린다.",
+      "석회·시멘트 잔유물: 찬물에 원액 또는 1:1 희석(원액~1:1 권장).",
+      "원액~1:1을 뿌리거나 패드·수세미에 묻힌다.",
+      "용액과 오염이 반응하도록 잠깐 대기한다.",
+      "스크래퍼·패드·수세미·울스텐·솔 등으로 제거한다.",
+      "물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "산에 약한 표면·인접 물체에 주의한다.",
+      "거친 수세미·스크래퍼는 표면 손상에 주의한다."
+    ],
+    "summary": "석회·시멘트 잔유물·줄눈 유분 제거. 원액~1:1 권장.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 칼리넥스 사용법 — 석회" }]
+  },
+  {
+    "id": "recipe-kallinex-floor",
+    "slug": "kallinex-floor-hall-kitchen",
+    "seoTitle": "칼리넥스 홀·주방·화장실 바닥 세정",
+    "field": "바닥",
+    "materialId": "epoxy-floor",
+    "contaminantId": "grease",
+    "productId": "kiehl-kallinex",
+    "dilution": "일상 1:16~1:80 / 집중 1:8~1:16",
+    "dwellTime": "즉시~짧게",
+    "tools": ["대걸레", "밀대 걸레", "솔", "습식 세정 기계", "마른 밀대 걸레(사각맙)", "고무 밀대"],
+    "steps": [
+      "내산성 확인 후 세정면에 물을 충분히 뿌린다. 희석은 찬물만 사용한다.",
+      "일상: 기계 1:16~1:80(2L에 25~125ml), 수작업 1:20. 집중·입주: 기계 1:8~1:16, 수작업 1:10.",
+      "[홀 1안] 살짝 젖은 걸레에 희석액을 부어 닦는다.",
+      "[홀 2안] 넓은 바닥은 군데군데 뿌린 뒤 솔·걸레로 닦는다. 기계 습식이 더 경제적인 경우가 많다.",
+      "자국을 줄이려면 마른 밀대 걸레(사각맙)로 마무리한다.",
+      "[주방·화장실·식품공장 넓은 바닥] 배수구를 비닐·고무판으로 막는다.",
+      "희석액을 뿌린 뒤 고무 밀대로 고인 물을 분산시키며 세정한다.",
+      "세정 후 배수구를 열고 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "산에 약한 바닥·인접 재질은 사전 테스트한다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "홀·주방·화장실·식품공장 바닥. 일상·집중 희석 후 걸레·기계·배수구 방식.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 칼리넥스 사용법 — 바닥" }]
+  },
+  {
+    "id": "recipe-kallinex-foam",
+    "slug": "kallinex-foam-1-4-10",
+    "seoTitle": "칼리넥스 거품 세정 (노즐 1:4~1:10)",
+    "field": "거품 세정",
+    "materialId": "stainless",
+    "contaminantId": "grease",
+    "productId": "kiehl-kallinex",
+    "dilution": "노즐 1:4~1:10",
+    "dwellTime": "현장 상황에 따름",
+    "tools": ["거품 분무기", "헹굼용 물"],
+    "steps": [
+      "내산성 확인·사전 물 적심 후 작업한다.",
+      "거품식 세정: 노즐을 1:4~1:10으로 설정한다.",
+      "세정 후 물로 충분히 헹군다."
+    ],
+    "warnings": [
+      "식품 접촉면은 충분히 헹군다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "거품 세정. 노즐 1:4~1:10 설정 후 충분히 헹굼.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 칼리넥스 사용법 — 거품" }]
+  },
+  {
+    "id": "recipe-torvan-daily",
+    "slug": "torvan-daily-1-320",
+    "seoTitle": "토르반 일상 세정 (1:320)",
+    "field": "바닥·표면",
+    "materialId": "pvc-deco",
+    "contaminantId": "construction-dust",
+    "productId": "kiehl-torvan",
+    "dilution": "1:320 (찬물 8L + 25ml)",
+    "dwellTime": "즉시",
+    "tools": ["대걸레", "밀대 걸레", "분무기", "스크러버(선택)", "마른 밀대 걸레(사각맙)", "진공청소기(선택)"],
+    "steps": [
+      "찬물 8L에 25ml 희석한다(1:320). 오염이 덜하면 절반만 써도 된다.",
+      "[바닥] 살짝 젖은 걸레에 부어 닦거나, 넓은 곳은 군데군데 뿌린 뒤 걸레로 닦거나, 분무하며 닦는다.",
+      "스크러버(돌돌이) 사용 시 더 경제적이고 세정력이 좋은 경우가 많다.",
+      "[표면] 희석액을 걸레·천에 묻히거나 분무한다. 심하면 잠시 대기한다.",
+      "표면에 물기가 남지 않도록 마른 걸레질 또는 진공청소한다. 바닥은 마른 밀대 걸레로 마무리한다."
+    ],
+    "warnings": [
+      "금속·유리·섬유에는 사용하지 않는다.",
+      "희석비는 현장 오염도에 맞게 조정한다."
+    ],
+    "summary": "바닥·표면 일상 세정. 표준 1:320(8L+25ml).",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 토르반 사용법 — 일상" }]
+  },
+  {
+    "id": "recipe-torvan-intensive",
+    "slug": "torvan-intensive-1-80-160",
+    "seoTitle": "토르반 집중 세정 (1:80~1:160)",
+    "field": "바닥·표면",
+    "materialId": "pvc-deco",
+    "contaminantId": "stain-discoloration",
+    "productId": "kiehl-torvan",
+    "dilution": "1:80~1:160 (찬물 8L + 50~100ml)",
+    "dwellTime": "오염 심하면 잠시 대기",
+    "tools": ["대걸레", "밀대 걸레", "분무기", "스크러버(선택)", "마른 밀대 걸레(사각맙)"],
+    "steps": [
+      "찬물 8L에 50~100ml 희석한다(1:80~1:160).",
+      "희석액을 걸레·바닥·표면에 뿌리거나 분사한 뒤 세정한다.",
+      "바닥은 대걸레·밀대·스크러버, 표면은 천·분무 후 심하면 잠시 대기한다.",
+      "물기가 남지 않도록 마른 걸레질·진공청소·마른 밀대 걸레로 마무리한다."
+    ],
+    "warnings": ["희석비는 현장 오염도에 맞게 조정한다."],
+    "summary": "집중 세정. 표준 1:80~1:160(8L+50~100ml).",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 토르반 사용법 — 집중" }]
+  },
+  {
+    "id": "recipe-torvan-soft-coating-strip",
+    "slug": "torvan-soft-coating-strip-1-80",
+    "seoTitle": "토르반 소프트 코팅 박리 (1:80)",
+    "field": "코팅 박리",
+    "materialId": "epoxy-floor",
+    "contaminantId": "stain-discoloration",
+    "productId": "kiehl-torvan",
+    "dilution": "1:80 (찬물 8L + 100ml)",
+    "dwellTime": "도포 후 스크러버 작업",
+    "tools": ["기계식 스크러버(돌돌이)", "분무기", "마른 밀대 걸레"],
+    "steps": [
+      "Prisma Steinprotektor, Trend, Ceradur 등 소프트 코팅 박리: 찬물 8L에 100ml 희석(1:80).",
+      "뿌린 후 기계식 스크러버(돌돌이)로 작업한다.",
+      "표면에 물기가 남지 않도록 마른 걸레질 또는 진공청소한다."
+    ],
+    "warnings": [
+      "코팅·재질 내성을 사전 확인한다.",
+      "희석비는 현장 상황에 맞게 조정한다."
+    ],
+    "summary": "소프트 코팅(Prisma Steinprotektor·Trend·Ceradur 등) 박리. 표준 1:80+스크러버.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 토르반 사용법 — 소프트 코팅 박리" }]
+  },
+  {
+    "id": "recipe-powerfix-gel-neat",
+    "slug": "powerfix-gel-neat-toilet-limescale",
+    "seoTitle": "파워픽스 젤 원액 요석·석회 세정",
+    "field": "변기·위생도기",
+    "materialId": "porcelain",
+    "contaminantId": "limescale",
+    "productId": "kiehl-powerfix-gel",
+    "dilution": "원액 사용",
+    "dwellTime": "약 5분 (마르기 전 세정)",
+    "tools": ["붓(추천)", "젖은 천", "수세미", "청소 도구"],
+    "steps": [
+      "사용할 곳의 내산성을 먼저 확인한다.",
+      "원액을 직분사하거나 젖은 천·수세미·붓으로 오염 부위에 바른다(붓 추천).",
+      "약 5분 반응시킨다. 표면에서 세제를 그냥 건조시키지 않는다.",
+      "각종 청소 도구로 세정한 뒤 반드시 물로 헹군다.",
+      "오염이 매우 심하면 반복한다.",
+      "표준 사용량: 약 10 ml/㎡."
+    ],
+    "warnings": [
+      "분무기 공중 분사하지 않는다.",
+      "크롬 수전·대리석·황동·알루미늄 등에는 사용하지 않는다.",
+      "보호장갑·보안경을 착용한다."
+    ],
+    "summary": "요석·석회 원액 젤 도포. 약 5분 반응 후 세정·헹굼, 약 10 ml/㎡.",
+    "confidence": "high",
+    "sourceRefs": [{ "doc": "manual", "note": "홈캐리 파워픽스 젤 사용법" }]
+  }
+]

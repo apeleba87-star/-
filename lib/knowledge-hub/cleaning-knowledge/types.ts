@@ -77,6 +77,12 @@ export type KnowledgeProduct = {
   /** 문서「사용 불가」재질 */
   forbiddenMaterialIds?: string[];
   placeHints?: string[];
+  /** 문서에 적힌 적용 재질 원문 (표시용 — 매핑 라벨보다 우선) */
+  materialsRaw?: string[];
+  /** 문서에 적힌 제거 오염 원문 */
+  contaminantsRaw?: string[];
+  /** 문서에 적힌 사용 불가 원문 */
+  forbiddenRaw?: string[];
   standardDilution?: string;
   strongDilution?: string;
   dwellTime?: string;

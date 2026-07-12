@@ -674,7 +674,7 @@
       "glass"
     ],
     "contaminantIds": [
-      "limescale",
+      "water-spot",
       "stain-discoloration"
     ],
     "sourceRefs": [
@@ -1130,7 +1130,7 @@
       "stainless"
     ],
     "contaminantIds": [
-      "limescale",
+      "water-spot",
       "grease",
       "stain-discoloration"
     ],

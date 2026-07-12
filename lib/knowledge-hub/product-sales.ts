@@ -6,6 +6,49 @@ export type ProductSalesRow = {
   sales_label: string | null;
 };
 
+/** 스마트스토어 홈 — 제품별 링크 없을 때 fallback */
+export function getSmartstoreHomeUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_SMARTSTORE_HOME_URL?.trim();
+  if (!raw) return null;
+  if (!/^https?:\/\//i.test(raw)) return null;
+  return raw;
+}
+
+export type ProductPurchaseLink = {
+  url: string;
+  label: string;
+  /** 제품 전용 링크면 true, 스토어 홈이면 false */
+  isProductLink: boolean;
+};
+
+/**
+ * 제품 구매 링크.
+ * 1) 관리자 등록 salesUrl (예: 그라셋 스마트스토어 상품)
+ * 2) 없으면 스토어 홈
+ */
+export function resolveProductPurchase(product: {
+  id: string;
+  name: string;
+  salesUrl?: string | null;
+  salesLabel?: string | null;
+}): ProductPurchaseLink | null {
+  const productUrl = product.salesUrl?.trim();
+  if (productUrl && /^https?:\/\//i.test(productUrl)) {
+    return {
+      url: productUrl,
+      label: product.salesLabel?.trim() || `${product.name} 구매하기`,
+      isProductLink: true,
+    };
+  }
+  const home = getSmartstoreHomeUrl();
+  if (!home) return null;
+  return {
+    url: home,
+    label: `${product.name} 구매하기`,
+    isProductLink: false,
+  };
+}
+
 /** 제품 ID → 판매 링크 맵 (실패 시 빈 맵 — 더미 URL 생성 안 함) */
 export async function getProductSalesMap(): Promise<Record<string, ProductSalesRow>> {
   try {
@@ -67,10 +110,27 @@ export function applySalesToProduct<T extends { id: string; salesUrl?: string | 
   salesMap: Record<string, ProductSalesRow>
 ): T {
   const row = salesMap[product.id];
-  if (!row) return product;
+  if (row) {
+    return {
+      ...product,
+      salesUrl: row.sales_url,
+      salesLabel: row.sales_label ?? product.salesLabel,
+    };
+  }
+  // DB에 없을 때만 문서/합의된 기본 상품 URL
+  const fallback = STATIC_PRODUCT_SALES[product.id];
+  if (!fallback) return product;
   return {
     ...product,
-    salesUrl: row.sales_url,
-    salesLabel: row.sales_label ?? product.salesLabel,
+    salesUrl: fallback.url,
+    salesLabel: fallback.label ?? product.salesLabel,
   };
 }
+
+/** 관리자 미등록 시 사용하는 제품별 스마트스토어 URL */
+const STATIC_PRODUCT_SALES: Record<string, { url: string; label?: string }> = {
+  "kiehl-tornado": {
+    url: "https://smartstore.naver.com/home_carry/products/7825156407",
+    label: "토네이도 구매하기",
+  },
+};

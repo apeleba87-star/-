@@ -37,6 +37,9 @@ export type GuideProductsBlock = {
   id: string;
   type: "products";
   title: string;
+  /** 지식 DB 제품 ID — 문서·사례로 연결된 제품만 */
+  productIds?: string[];
+  subtitle?: string;
 };
 
 export type GuideRecipesBlock = {

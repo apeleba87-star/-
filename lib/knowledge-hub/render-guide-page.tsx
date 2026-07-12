@@ -30,17 +30,21 @@ async function resolveCoupangUrls(guide: CleaningGuideWithProducts): Promise<Rec
   const urls: Record<string, string> = {};
   await Promise.all(
     guide.products.map(async (p) => {
-      if (p.source_type === "smartstore" && p.source_url) {
-        urls[p.id] = p.source_url;
-        return;
-      }
       if (p.source_url) {
         urls[p.id] = p.source_url;
         return;
       }
+      // 쿠팡 자동 조회는 지연·실패가 잦아 가이드 렌더를 막지 않음 (판매 링크는 관리자 등록 URL만)
       if (p.coupang_keyword) {
-        const products = await fetchCoupangByKeyword(p.coupang_keyword);
-        if (products[0]?.productUrl) urls[p.id] = products[0].productUrl;
+        try {
+          const products = await Promise.race([
+            fetchCoupangByKeyword(p.coupang_keyword),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("coupang-timeout")), 2500)),
+          ]);
+          if (products[0]?.productUrl) urls[p.id] = products[0].productUrl;
+        } catch {
+          /* ignore */
+        }
       }
     })
   );

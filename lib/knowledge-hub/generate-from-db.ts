@@ -25,6 +25,97 @@ function recipesForMaterial(materialId: string) {
   return getCleaningKnowledgeDb().recipes.filter((r) => r.materialId === materialId);
 }
 
+function productsForMaterial(materialId: string) {
+  return getCleaningKnowledgeDb().products.filter((p) => p.compatibleMaterialIds?.includes(materialId));
+}
+
+function productsForContaminant(contaminantId: string) {
+  return getCleaningKnowledgeDb().products.filter((p) => p.contaminantIds?.includes(contaminantId));
+}
+
+function productsForbiddingMaterial(materialId: string) {
+  return getCleaningKnowledgeDb().products.filter((p) => p.forbiddenMaterialIds?.includes(materialId));
+}
+
+function casesForMaterial(materialId: string) {
+  const mat = getMaterialById(materialId);
+  if (!mat) return [];
+  const names = [mat.name, ...(mat.aliases ?? [])].map((n) => n.split("(")[0]!.trim()).filter(Boolean);
+  // 재질 ID별 문서 키워드 (리스트업·사례 원문)
+  const extra: Record<string, string[]> = {
+    porcelain: ["도기", "변기", "세면대", "소변기"],
+    glass: ["유리", "거울", "샤워부스"],
+    "ceramic-tile": ["타일", "포세린"],
+    stainless: ["스테인리스", "스테인레스"],
+    leather: ["가죽"],
+    carpet: ["카페트", "카펫"],
+    plastic: ["플라스틱"],
+  };
+  const needles = [...names, ...(extra[materialId] ?? [])];
+  return (getCleaningKnowledgeDb().cases ?? []).filter((c) => {
+    const hay = `${c.materialRaw ?? ""} ${c.name}`;
+    return needles.some((n) => n.length >= 2 && hay.includes(n));
+  });
+}
+
+function casesForContaminant(contaminantId: string) {
+  const cont = getContaminantById(contaminantId);
+  if (!cont) return [];
+  const needles: string[] = [];
+  if (contaminantId === "soap-scum") needles.push("비누");
+  else if (contaminantId === "water-spot") needles.push("물때", "경수");
+  else if (contaminantId === "limescale") needles.push("요석", "석회", "백화");
+  else if (contaminantId === "grease") needles.push("기름", "유분", "구리스");
+  else if (contaminantId === "adhesive") needles.push("스티커", "접착");
+  else needles.push(...cont.name.split(/[·・]/).map((s) => s.trim()).filter((s) => s.length >= 2));
+  return (getCleaningKnowledgeDb().cases ?? []).filter((c) => {
+    const hay = c.contaminantRaw ?? "";
+    return needles.some((n) => hay.includes(n));
+  });
+}
+
+function buildLinkedProductsBlock(
+  products: ReturnType<typeof productsForMaterial>,
+  title: string,
+  subtitle?: string
+): GuideBlock | null {
+  if (!products.length) return null;
+  return {
+    id: "linked-products",
+    type: "products",
+    title,
+    productIds: products.map((p) => p.id),
+    subtitle,
+  };
+}
+
+function buildProductSpecChecklist(
+  products: ReturnType<typeof productsForMaterial>,
+  title: string
+): GuideBlock | null {
+  if (!products.length) return null;
+  return {
+    id: "product-specs",
+    type: "checklist",
+    title,
+    items: products.map((p) => {
+      const bits = [
+        p.name,
+        p.standardDilution ? `희석 ${p.standardDilution}` : null,
+        p.contaminantsRaw?.length ? `문서 오염: ${p.contaminantsRaw.slice(0, 5).join(", ")}` : null,
+      ].filter(Boolean);
+      return bits.join(" · ");
+    }),
+  };
+}
+
+function rulesTouchingLabel(labels: string[]): string[] {
+  const db = getCleaningKnowledgeDb();
+  return db.rules
+    .filter((r) => labels.some((l) => l && r.body.includes(l)))
+    .map((r) => r.body);
+}
+
 function factsForContaminant(contaminantId: string) {
   return getCleaningKnowledgeDb().facts.filter((f) => f.contaminantId === contaminantId);
 }
@@ -218,6 +309,11 @@ export function generateGuideBodyForTopic(topic: CatalogTopic): GuideBodyJson {
       id: "products",
       type: "products",
       title: "관련 제품",
+      productIds: unique([
+        ...recipes.map((r) => r.productId),
+        ...facts.map((f) => f.productId).filter(Boolean) as string[],
+      ]),
+      subtitle: "문서·사례 레시피에 연결된 제품입니다.",
     });
   }
 
@@ -295,25 +391,47 @@ export function generateProductPageBody(productId: string): GuideBodyJson | null
     });
   }
 
-  if (product.compatibleMaterialIds?.length) {
+  if (product.materialsRaw?.length) {
     blocks.push({
       id: "materials",
       type: "checklist",
-      title: "적용 재질 (문서)",
+      title: "적용 재질 (문서 원문)",
+      items: product.materialsRaw,
+    });
+  } else if (product.compatibleMaterialIds?.length) {
+    blocks.push({
+      id: "materials",
+      type: "checklist",
+      title: "적용 재질",
       items: product.compatibleMaterialIds.map((id) => getMaterialById(id)?.name ?? id),
     });
   }
 
-  if (product.contaminantIds?.length) {
+  if (product.contaminantsRaw?.length) {
     blocks.push({
       id: "contaminants",
       type: "checklist",
-      title: "제거 가능한 오염 (문서)",
+      title: "제거 가능한 오염 (문서 원문)",
+      items: product.contaminantsRaw,
+    });
+  } else if (product.contaminantIds?.length) {
+    blocks.push({
+      id: "contaminants",
+      type: "checklist",
+      title: "제거 가능한 오염",
       items: product.contaminantIds.map((id) => getContaminantById(id)?.name ?? id),
     });
   }
 
-  if (product.forbiddenMaterialIds?.length) {
+  if (product.forbiddenRaw?.length) {
+    blocks.push({
+      id: "forbidden",
+      type: "section",
+      title: "사용 주의·불가 (문서 원문)",
+      tone: "caution",
+      paragraphs: product.forbiddenRaw,
+    });
+  } else if (product.forbiddenMaterialIds?.length) {
     blocks.push({
       id: "forbidden",
       type: "section",
@@ -336,27 +454,40 @@ export function generateProductPageBody(productId: string): GuideBodyJson | null
     blocks.push({
       id: "empty",
       type: "section",
-      title: "상세 스펙 대기",
-      paragraphs: ["사례에서 언급된 제품입니다. 리스트업 상세가 추가되면 스펙이 채워집니다."],
+      title: "상세 스펙 없음",
+      paragraphs: [
+        "이 제품은 청소 사례에서만 언급되었습니다. 키엘 리스트업에 상세 카드가 추가되면 스펙·희석·적용 범위가 채워집니다.",
+      ],
     });
   }
 
+  const intro =
+    product.status === "draft" && !product.summary?.includes("리스트업")
+      ? product.summary ?? `${product.name} — 사례 근거만 있음 (리스트업 상세 미수록)`
+      : product.summary ?? `${product.name} — 문서·사례 근거 정보`;
+
   return {
-    intro: product.summary ?? `${product.name} — 문서·사례 근거 정보`,
-    summary: product.mainUse.slice(0, 3),
+    intro,
+    summary:
+      product.status === "draft"
+        ? ["사례 근거 제품", ...product.mainUse.slice(0, 2)]
+        : product.mainUse.slice(0, 3),
     toc: blocks.map((b) => b.title),
     blocks,
     relatedPaths: relatedGuidesFromRecipes(recipes.map((r) => r.id)),
   };
 }
 
-/** 재질 허브 */
+/** 재질 허브 — 문서(리스트업) 적용 재질·사례로 연결된 제품만 노출 */
 export function generateMaterialPageBody(materialId: string): GuideBodyJson | null {
   const material = getMaterialById(materialId);
   if (!material) return null;
 
   const recipes = recipesForMaterial(materialId);
   const facts = factsForMaterial(materialId);
+  const products = productsForMaterial(materialId);
+  const forbiddenBy = productsForbiddingMaterial(materialId);
+  const cases = casesForMaterial(materialId);
   const blocks: GuideBlock[] = [];
 
   blocks.push({
@@ -369,27 +500,98 @@ export function generateMaterialPageBody(materialId: string): GuideBodyJson | nu
     ],
   });
 
+  const productBlock = buildLinkedProductsBlock(
+    products,
+    "문서상 적용 제품",
+    "키엘 리스트업「적용 재질」에 이 재질이 기재된 제품입니다."
+  );
+  if (productBlock) blocks.push(productBlock);
+
+  const specBlock = buildProductSpecChecklist(products, "제품별 문서 요지");
+  if (specBlock) blocks.push(specBlock);
+
+  // 연결 제품이 문서에서 제거한다고 적은 오염
+  const contFromProducts = unique(
+    products.flatMap((p) => p.contaminantIds ?? []).map((id) => getContaminantById(id)?.name ?? id)
+  );
+  if (contFromProducts.length) {
+    blocks.push({
+      id: "related-contaminants",
+      type: "checklist",
+      title: "연결 제품이 문서에 적은 오염",
+      items: contFromProducts,
+    });
+  }
+
+  if (cases.length) {
+    blocks.push({
+      id: "cases",
+      type: "checklist",
+      title: "관련 현장 사례",
+      items: cases.map((c) => {
+        const bits = [c.name, c.contaminantRaw ? `오염: ${c.contaminantRaw}` : null, c.result].filter(Boolean);
+        return bits.join(" — ");
+      }),
+    });
+  }
+
   const factBlock = buildFactsSection(facts, "세정 시 알아둘 점");
   if (factBlock) blocks.push(factBlock);
 
-  const recipeBlock = buildRecipeListBlock(recipes, "이 재질 레시피");
+  const recipeBlock = buildRecipeListBlock(recipes, "이 재질 레시피 (사례)");
   if (recipeBlock) blocks.push(recipeBlock);
 
+  const forbidNotes = [
+    ...forbiddenBy.flatMap((p) =>
+      (p.forbiddenRaw ?? [])
+        .filter((f) => materialIdsMention(f, material))
+        .map((f) => `${p.name}: ${f}`)
+    ),
+    ...rulesTouchingLabel([material.name, ...(material.aliases ?? []), materialId === "aluminum" ? "알루미늄" : "", materialId === "marble" ? "대리석" : ""].filter(Boolean)),
+  ];
+  const caution = buildCautionBlock(forbidNotes);
+  if (caution) blocks.push(caution);
+
+  if (blocks.length <= 1 && !products.length && !recipes.length) {
+    blocks.push({
+      id: "empty",
+      type: "section",
+      title: "연결 데이터 없음",
+      tone: "summary",
+      paragraphs: [
+        "제공 문서(리스트업·사례)에서 이 재질에 직접 연결된 제품·레시피가 아직 없습니다. 임의로 작성한 내용은 표시하지 않습니다.",
+      ],
+    });
+  }
+
   return {
-    intro: `${material.name} 청소 시 사용할 제품과 주의사항입니다.`,
+    intro: `${material.name} 청소 시 사용할 제품과 주의사항입니다. 목록은 제공 문서 기준입니다.`,
+    summary: [
+      products.length ? `문서 적용 제품 ${products.length}개` : null,
+      recipes.length ? `사례 레시피 ${recipes.length}건` : null,
+      cases.length ? `관련 사례 ${cases.length}건` : null,
+    ].filter(Boolean) as string[],
     toc: blocks.map((b) => b.title),
     blocks,
     relatedPaths: relatedGuidesFromRecipes(recipes.map((r) => r.id)),
   };
 }
 
-/** 오염 허브 */
+function materialIdsMention(forbiddenPhrase: string, material: NonNullable<ReturnType<typeof getMaterialById>>): boolean {
+  const hay = forbiddenPhrase;
+  if (hay.includes(material.name.split("(")[0]!.trim())) return true;
+  return (material.aliases ?? []).some((a) => hay.includes(a));
+}
+
+/** 오염 허브 — 리스트업「제거 가능한 오염」·사례로 연결된 제품만 */
 export function generateContaminantPageBody(contaminantId: string): GuideBodyJson | null {
   const contaminant = getContaminantById(contaminantId);
   if (!contaminant) return null;
 
   const recipes = recipesForContaminant(contaminantId);
   const facts = factsForContaminant(contaminantId);
+  const products = productsForContaminant(contaminantId);
+  const cases = casesForContaminant(contaminantId);
   const blocks: GuideBlock[] = [];
 
   blocks.push({
@@ -403,17 +605,77 @@ export function generateContaminantPageBody(contaminantId: string): GuideBodyJso
     ].filter(Boolean),
   });
 
+  const productBlock = buildLinkedProductsBlock(
+    products,
+    "문서상 제거 가능 제품",
+    "키엘 리스트업「제거 가능한 오염」에 이 오염이 기재된 제품입니다."
+  );
+  if (productBlock) blocks.push(productBlock);
+
+  const specBlock = buildProductSpecChecklist(products, "제품별 문서 요지");
+  if (specBlock) blocks.push(specBlock);
+
+  const matsFromProducts = unique(
+    products.flatMap((p) => p.compatibleMaterialIds ?? []).map((id) => getMaterialById(id)?.name ?? id)
+  );
+  if (matsFromProducts.length) {
+    blocks.push({
+      id: "related-materials",
+      type: "checklist",
+      title: "연결 제품이 문서에 적은 적용 재질",
+      items: matsFromProducts,
+    });
+  }
+
+  if (cases.length) {
+    blocks.push({
+      id: "cases",
+      type: "checklist",
+      title: "관련 현장 사례",
+      items: cases.map((c) => {
+        const bits = [c.name, c.materialRaw ? `재질: ${c.materialRaw}` : null, c.result].filter(Boolean);
+        return bits.join(" — ");
+      }),
+    });
+  }
+
   const factBlock = buildFactsSection(facts, "제거 원칙");
   if (factBlock) blocks.push(factBlock);
 
-  const recipeBlock = buildRecipeListBlock(recipes, "이 오염 레시피");
+  const recipeBlock = buildRecipeListBlock(recipes, "이 오염 레시피 (사례)");
   if (recipeBlock) blocks.push(recipeBlock);
 
-  const caution = buildCautionBlock(globalCautions());
+  const principleBits = rulesTouchingLabel(
+    [
+      contaminant.name,
+      contaminantId === "limescale" ? "석회" : "",
+      contaminantId === "grease" ? "기름때" : "",
+      contaminantId === "water-spot" ? "물때" : "",
+      contaminantId === "mold" ? "곰팡이" : "",
+    ].filter(Boolean)
+  );
+  const caution = buildCautionBlock([...principleBits, ...globalCautions()]);
   if (caution) blocks.push(caution);
 
+  if (blocks.length <= 1 && !products.length && !recipes.length) {
+    blocks.push({
+      id: "empty",
+      type: "section",
+      title: "연결 데이터 없음",
+      tone: "summary",
+      paragraphs: [
+        "제공 문서에서 이 오염에 직접 연결된 제품·레시피가 아직 없습니다. 임의로 작성한 내용은 표시하지 않습니다.",
+      ],
+    });
+  }
+
   return {
-    intro: `${contaminant.name} 제거 방법과 연결 제품·레시피입니다.`,
+    intro: `${contaminant.name} 제거 방법과 연결 제품·레시피입니다. 목록은 제공 문서 기준입니다.`,
+    summary: [
+      products.length ? `문서 연결 제품 ${products.length}개` : null,
+      recipes.length ? `사례 레시피 ${recipes.length}건` : null,
+      cases.length ? `관련 사례 ${cases.length}건` : null,
+    ].filter(Boolean) as string[],
     toc: blocks.map((b) => b.title),
     blocks,
     relatedPaths: relatedGuidesFromRecipes(recipes.map((r) => r.id)),

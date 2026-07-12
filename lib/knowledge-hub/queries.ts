@@ -57,23 +57,28 @@ function seedToGuide(seed: SeedGuide, published: boolean): CleaningGuideWithProd
 }
 
 export async function getGuideByPath(path: string): Promise<CleaningGuideWithProducts | null> {
-  const supabase = createClient();
-  const { data: row } = await supabase
-    .from("cleaning_guides")
-    .select("*")
-    .eq("path", path)
-    .maybeSingle();
+  const seed = getSeedGuideByPath(path);
 
-  if (row) {
-    const { data: products } = await supabase
-      .from("knowledge_products")
+  try {
+    const supabase = createClient();
+    const { data: row } = await supabase
+      .from("cleaning_guides")
       .select("*")
-      .eq("guide_id", row.id)
-      .order("sort_order", { ascending: true });
-    return rowToGuide(row as Record<string, unknown>, (products ?? []) as KnowledgeProductRow[]);
+      .eq("path", path)
+      .maybeSingle();
+
+    if (row) {
+      const { data: products } = await supabase
+        .from("knowledge_products")
+        .select("*")
+        .eq("guide_id", row.id)
+        .order("sort_order", { ascending: true });
+      return rowToGuide(row as Record<string, unknown>, (products ?? []) as KnowledgeProductRow[]);
+    }
+  } catch {
+    /* DB 장애 시 시드로 폴백 */
   }
 
-  const seed = getSeedGuideByPath(path);
   if (!seed) return null;
   return seedToGuide(seed, true);
 }

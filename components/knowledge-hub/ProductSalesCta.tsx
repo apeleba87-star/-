@@ -21,7 +21,7 @@ export default function ProductSalesCta({ product, className }: Props) {
       href={product.salesUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800 ${className ?? ""}`}
+      className={`inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 ${className ?? ""}`}
     >
       {product.salesLabel ?? `${product.name} 구매하기`}
       <ExternalLink className="h-4 w-4" aria-hidden />

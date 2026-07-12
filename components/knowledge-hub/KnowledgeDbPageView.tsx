@@ -3,6 +3,7 @@ import { ListChecks } from "lucide-react";
 import EntityRichText from "@/components/knowledge-hub/EntityRichText";
 import RecipeSummaryList from "@/components/knowledge-hub/RecipeSummaryList";
 import { getCatalogTopicByPath } from "@/lib/knowledge-hub/catalog";
+import { getProductById } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import type { GuideBodyJson, GuideBlock } from "@/lib/knowledge-hub/types";
 
 type Props = {
@@ -104,7 +105,35 @@ function renderBlock(block: GuideBlock) {
     );
   }
   if (block.type === "products") {
-    return null;
+    const ids = block.productIds ?? [];
+    if (!ids.length) return null;
+    return (
+      <section key={block.id} id={block.id} className="scroll-mt-24 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+        <h2 className="text-xl font-black text-slate-950 sm:text-2xl">{block.title}</h2>
+        {block.subtitle ? <p className="mt-2 text-sm text-slate-600">{block.subtitle}</p> : null}
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          {ids.map((id) => {
+            const p = getProductById(id);
+            if (!p) return null;
+            return (
+              <li key={id}>
+                <Link
+                  href={`/products/${id}`}
+                  className="block h-full rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:shadow-sm"
+                >
+                  <p className="text-xs font-bold text-violet-700">{p.brand}</p>
+                  <p className="mt-1 font-black text-slate-900">{p.name}</p>
+                  {p.standardDilution ? (
+                    <p className="mt-2 text-sm font-medium text-slate-700">희석: {p.standardDilution}</p>
+                  ) : null}
+                  {p.summary ? <p className="mt-2 line-clamp-2 text-sm text-slate-600">{p.summary}</p> : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    );
   }
   return null;
 }

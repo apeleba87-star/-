@@ -56,7 +56,9 @@ export default function AdminProductSalesEditor({ products: initial }: Props) {
           제품 · 판매 링크 <span className="text-sm font-normal text-slate-500">({rows.length})</span>
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          http(s) URL만 저장됩니다. 비우면 구매 CTA가 숨겨집니다. (마이그레이션 191 필요)
+          제품별 스마트스토어 URL을 넣으면 해당 상품으로 바로 이동합니다. 비우면{" "}
+          <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_SMARTSTORE_HOME_URL</code>{" "}
+          스토어 홈으로 이동합니다. (마이그레이션 191 필요)
         </p>
         {message ? <p className="mt-2 text-xs font-medium text-teal-700">{message}</p> : null}
       </div>
