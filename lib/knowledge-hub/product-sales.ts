@@ -26,9 +26,8 @@ export type ProductPurchaseLink = {
 };
 
 /**
- * 제품 구매 링크.
- * 1) 관리자 등록 salesUrl (예: 그라셋 스마트스토어 상품)
- * 2) 없으면 스토어 홈
+ * 제품 전용 구매 링크만 반환.
+ * 링크 없으면 null — UI는 「상품 준비중입니다」로 안내.
  */
 export function resolveProductPurchase(product: {
   id: string;
@@ -44,13 +43,7 @@ export function resolveProductPurchase(product: {
       isProductLink: true,
     };
   }
-  const home = getSmartstoreHomeUrl();
-  if (!home) return null;
-  return {
-    url: home,
-    label: `${product.name} 구매하기`,
-    isProductLink: false,
-  };
+  return null;
 }
 
 async function loadProductSalesMap(): Promise<Record<string, ProductSalesRow>> {

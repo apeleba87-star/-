@@ -402,8 +402,12 @@ export default function ProductDetailView({ product, recipes, purchase }: Props)
         ) : null}
       </article>
 
-      {purchase ? <div className="h-16" aria-hidden /> : null}
-      {purchase ? <ProductPurchaseBar href={purchase.url} label={purchase.label} /> : null}
+      <div className="h-16" aria-hidden />
+      {purchase ? (
+        <ProductPurchaseBar href={purchase.url} label={purchase.label} />
+      ) : (
+        <ProductPurchaseBar preparing />
+      )}
     </div>
   );
 }

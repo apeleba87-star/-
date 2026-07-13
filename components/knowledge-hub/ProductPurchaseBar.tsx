@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 
-type Props = {
-  href: string;
-  label: string;
-};
+type Props =
+  | { href: string; label: string; preparing?: false }
+  | { preparing: true; href?: never; label?: never };
 
 /** 제품 상세 하단 구매 CTA — 아래로 스크롤 시 잠시 숨겨 본문 가림 완화 */
-export default function ProductPurchaseBar({ href, label }: Props) {
+export default function ProductPurchaseBar(props: Props) {
   const [hidden, setHidden] = useState(false);
+  const preparing = props.preparing === true;
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -41,15 +41,24 @@ export default function ProductPurchaseBar({ href, label }: Props) {
       }`}
     >
       <div className="pointer-events-auto w-full max-w-lg">
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-5 text-base font-bold text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-900"
-        >
-          {label}
-          <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
-        </a>
+        {preparing ? (
+          <p
+            role="status"
+            className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-slate-200 px-5 text-base font-bold text-slate-600 shadow-lg shadow-slate-900/10"
+          >
+            상품 준비중입니다
+          </p>
+        ) : (
+          <a
+            href={props.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-5 text-base font-bold text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-900"
+          >
+            {props.label}
+            <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+          </a>
+        )}
       </div>
     </div>
   );

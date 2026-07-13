@@ -82,7 +82,11 @@ export default function GuideSearch({ variant = "hero", autoFocus = false, initi
           autoComplete="off"
           autoFocus={autoFocus}
           value={query}
-          placeholder="예: 욕실 곰팡이, 입주청소 순서, 사무실 화장실"
+          placeholder={
+            variant === "hero"
+              ? "예: 석회, 스테인리스, 유리…"
+              : "예: 욕실 곰팡이, 입주청소 순서, 사무실 화장실"
+          }
           className={inputClass}
           role="combobox"
           aria-expanded={open && results.length > 0}

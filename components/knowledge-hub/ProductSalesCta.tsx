@@ -6,12 +6,15 @@ type Props = {
   className?: string;
 };
 
-/** 판매 URL이 있을 때만 노출. 더미/자동 아웃링크 금지 */
+/** 판매 URL이 있을 때만 구매 버튼. 없으면 준비중 안내 */
 export default function ProductSalesCta({ product, className }: Props) {
   if (!product.salesUrl) {
     return (
-      <p className={`text-sm text-slate-500 ${className ?? ""}`}>
-        판매 링크는 관리자에서 등록되면 표시됩니다.
+      <p
+        role="status"
+        className={`inline-flex min-h-[48px] items-center justify-center rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-600 ${className ?? ""}`}
+      >
+        상품 준비중입니다
       </p>
     );
   }
