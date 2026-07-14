@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   SOLUTION_PARTS,
   SOLUTION_PLACES,
@@ -79,6 +80,7 @@ export default function AdminSolutionsPanel({
   seedPages,
   dbPages,
 }: Props) {
+  const router = useRouter();
   const productName = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of products) m.set(p.id, p.name);
@@ -86,6 +88,9 @@ export default function AdminSolutionsPanel({
   }, [products]);
 
   const [localMasters, setLocalMasters] = useState(mastersProp);
+  const [localDbPages, setLocalDbPages] = useState(dbPages);
+  useEffect(() => setLocalMasters(mastersProp), [mastersProp]);
+  useEffect(() => setLocalDbPages(dbPages), [dbPages]);
   const masterMap = useMemo(() => {
     const m = new Map<string, MasterRow>();
     for (const row of localMasters) m.set(row.contaminantId, row);
@@ -350,6 +355,7 @@ export default function AdminSolutionsPanel({
       const productIdsOrdered = recommendations
         .map((r) => r.productId)
         .filter((x): x is string => Boolean(x));
+      const resolvedSlug = (slug.trim() || pageContaminantId).replace(/[^a-z0-9-_]/gi, "-");
       const res = await fetch("/api/admin/solutions/pages", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -367,13 +373,50 @@ export default function AdminSolutionsPanel({
           detail,
         }),
       });
-      const json = (await res.json()) as { ok: boolean; error?: string; path?: string; id?: string };
+      const raw = await res.text();
+      let json: { ok: boolean; error?: string; path?: string; id?: string };
+      try {
+        json = JSON.parse(raw) as { ok: boolean; error?: string; path?: string; id?: string };
+      } catch {
+        setMsg(`저장 실패 (서버 ${res.status}). 로그인·권한·DB 연결을 확인해 주세요.`);
+        return;
+      }
       if (!json.ok) {
-        setMsg(json.error || "저장 실패");
+        setMsg(json.error || `저장 실패 (${res.status})`);
         return;
       }
 
-      if (json.id) setEditingId(json.id);
+      const savedId = json.id ?? editingId;
+      if (savedId) setEditingId(savedId);
+
+      const path =
+        json.path ?? `/solutions/${placeId}/${spaceId}/${partId}/${resolvedSlug}`;
+      if (savedId) {
+        const saved: PageListItem = {
+          id: savedId,
+          placeId: placeId as PageListItem["placeId"],
+          spaceId: spaceId as PageListItem["spaceId"],
+          partId: partId as PageListItem["partId"],
+          contaminantId: pageContaminantId,
+          slug: resolvedSlug,
+          title: title.trim(),
+          placeContext: summary.trim() || undefined,
+          productIds: productIdsOrdered.length ? productIdsOrdered : undefined,
+          detail,
+          status,
+          path,
+          source: "db",
+        };
+        setLocalDbPages((prev) => {
+          const idx = prev.findIndex((p) => p.id === savedId);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = saved;
+            return next;
+          }
+          return [...prev, saved];
+        });
+      }
 
       let masterNote = "";
       if (syncMasterOnSave) {
@@ -388,7 +431,13 @@ export default function AdminSolutionsPanel({
             warnings: master?.warnings ?? [],
           }),
         });
-        const masterJson = (await masterRes.json()) as { ok: boolean; error?: string };
+        const masterRaw = await masterRes.text();
+        let masterJson: { ok: boolean; error?: string };
+        try {
+          masterJson = JSON.parse(masterRaw) as { ok: boolean; error?: string };
+        } catch {
+          masterJson = { ok: false, error: `서버 ${masterRes.status}` };
+        }
         if (masterJson.ok) {
           patchLocalMaster(pageContaminantId, productIdsOrdered);
           masterNote = " · 오염 마스터도 반영됨";
@@ -397,7 +446,12 @@ export default function AdminSolutionsPanel({
         }
       }
 
-      setMsg(`저장됨 ${json.path ?? ""}${masterNote} — 목록을 새로고침하면 최신이 보입니다.`);
+      const publishNote =
+        status === "published"
+          ? " · 공개 페이지에 반영됩니다"
+          : " · draft라서 공개에는 시드/기존 공개본이 그대로입니다 (공개하려면 published)";
+      setMsg(`저장됨 ${path}${masterNote}${publishNote}`);
+      router.refresh();
       setScreen("list");
     } catch {
       setMsg("저장 중 오류");
@@ -409,9 +463,9 @@ export default function AdminSolutionsPanel({
   const allListed = useMemo(() => {
     const map = new Map<string, PageListItem>();
     for (const p of seedPages) map.set(p.id, p);
-    for (const p of dbPages) map.set(p.id, { ...p, source: "db" });
+    for (const p of localDbPages) map.set(p.id, { ...p, source: "db" });
     return [...map.values()].sort((a, b) => a.title.localeCompare(b.title, "ko"));
-  }, [seedPages, dbPages]);
+  }, [seedPages, localDbPages]);
 
   if (screen === "list") {
     return (
@@ -861,6 +915,12 @@ export default function AdminSolutionsPanel({
             <option value="draft">draft (비공개)</option>
             <option value="published">published (공개)</option>
           </select>
+          {status === "draft" ? (
+            <p className="mt-1.5 text-xs font-medium text-amber-800">
+              draft로 저장하면 DB에는 들어가지만, 공개 URL에는 반영되지 않습니다. 사이트에 보이려면
+              published로 저장하세요.
+            </p>
+          ) : null}
         </label>
 
         <div className="mt-4 flex flex-wrap gap-2">
