@@ -67,7 +67,7 @@ function recommendationsFromMaster(
 export default function AdminSolutionsPanel({
   products,
   contaminants,
-  masters,
+  masters: mastersProp,
   seedPages,
   dbPages,
 }: Props) {
@@ -77,11 +77,12 @@ export default function AdminSolutionsPanel({
     return m;
   }, [products]);
 
+  const [localMasters, setLocalMasters] = useState(mastersProp);
   const masterMap = useMemo(() => {
     const m = new Map<string, MasterRow>();
-    for (const row of masters) m.set(row.contaminantId, row);
+    for (const row of localMasters) m.set(row.contaminantId, row);
     return m;
-  }, [masters]);
+  }, [localMasters]);
 
   const [contaminantId, setContaminantId] = useState(contaminants[0]?.id ?? "");
   const current = masterMap.get(contaminantId);
@@ -102,6 +103,27 @@ export default function AdminSolutionsPanel({
     setProductIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
+  function patchLocalMaster(contamId: string, nextProductIds: string[]) {
+    setLocalMasters((prev) => {
+      const idx = prev.findIndex((m) => m.contaminantId === contamId);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], defaultProductIds: nextProductIds };
+        return copy;
+      }
+      return [
+        ...prev,
+        {
+          contaminantId: contamId,
+          defaultProductIds: nextProductIds,
+          baseGuide: "",
+          warnings: [],
+        },
+      ];
+    });
+    if (contamId === contaminantId) setProductIds(nextProductIds);
+  }
+
   async function saveMaster() {
     setBusy(true);
     setMsg(null);
@@ -117,7 +139,12 @@ export default function AdminSolutionsPanel({
         }),
       });
       const json = (await res.json()) as { ok: boolean; error?: string };
-      setMsg(json.ok ? "오염 마스터 저장됨" : json.error || "저장 실패");
+      if (json.ok) {
+        patchLocalMaster(contaminantId, productIds);
+        setMsg("오염 마스터 저장됨");
+      } else {
+        setMsg(json.error || "저장 실패");
+      }
     } catch {
       setMsg("저장 중 오류");
     } finally {
@@ -144,6 +171,18 @@ export default function AdminSolutionsPanel({
   const [recommendations, setRecommendations] = useState<SolutionRecommendProduct[]>([]);
   const [customLabel, setCustomLabel] = useState("");
   const [customRating, setCustomRating] = useState<SolutionStarRating>(2);
+  const [pickProductId, setPickProductId] = useState("");
+  const [pickRating, setPickRating] = useState<SolutionStarRating>(3);
+  const [syncMasterOnSave, setSyncMasterOnSave] = useState(true);
+
+  const usedProductIds = useMemo(
+    () => new Set(recommendations.map((r) => r.productId).filter((x): x is string => Boolean(x))),
+    [recommendations]
+  );
+  const availableProducts = useMemo(
+    () => products.filter((p) => !usedProductIds.has(p.id)),
+    [products, usedProductIds]
+  );
 
   function pullMasterProducts(contamId: string, keep: SolutionRecommendProduct[] = recommendations) {
     const master = masterMap.get(contamId);
@@ -174,6 +213,9 @@ export default function AdminSolutionsPanel({
     setCautionsText("");
     setIfFailsText("");
     setCustomLabel("");
+    setPickProductId("");
+    setPickRating(3);
+    setSyncMasterOnSave(true);
     setMsg(null);
     pullMasterProducts(firstContam, []);
     setScreen("form");
@@ -205,6 +247,9 @@ export default function AdminSolutionsPanel({
       (r) => r.productId && !masterIds.includes(r.productId)
     );
     setRecommendations([...fromMaster, ...orphanProducts, ...extras]);
+    setPickProductId("");
+    setPickRating(3);
+    setSyncMasterOnSave(true);
     setMsg(null);
     setScreen("form");
   }
@@ -230,6 +275,21 @@ export default function AdminSolutionsPanel({
 
   function removeRec(index: number) {
     setRecommendations((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addCatalogProduct() {
+    if (!pickProductId) return;
+    if (usedProductIds.has(pickProductId)) {
+      setMsg("이미 추가된 제품입니다.");
+      return;
+    }
+    const name = productName.get(pickProductId) ?? pickProductId;
+    setRecommendations((prev) => [
+      ...prev,
+      { productId: pickProductId, label: name, rating: pickRating },
+    ]);
+    setPickProductId("");
+    setMsg(null);
   }
 
   function addCustomRec() {
@@ -289,13 +349,37 @@ export default function AdminSolutionsPanel({
         }),
       });
       const json = (await res.json()) as { ok: boolean; error?: string; path?: string; id?: string };
-      if (json.ok) {
-        if (json.id) setEditingId(json.id);
-        setMsg(`저장됨 ${json.path ?? ""} — 목록을 새로고침하면 최신이 보입니다.`);
-        setScreen("list");
-      } else {
+      if (!json.ok) {
         setMsg(json.error || "저장 실패");
+        return;
       }
+
+      if (json.id) setEditingId(json.id);
+
+      let masterNote = "";
+      if (syncMasterOnSave) {
+        const master = masterMap.get(pageContaminantId);
+        const masterRes = await fetch("/api/admin/solutions/contaminant-master", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contaminantId: pageContaminantId,
+            productIds: productIdsOrdered,
+            baseGuide: master?.baseGuide ?? null,
+            warnings: master?.warnings ?? [],
+          }),
+        });
+        const masterJson = (await masterRes.json()) as { ok: boolean; error?: string };
+        if (masterJson.ok) {
+          patchLocalMaster(pageContaminantId, productIdsOrdered);
+          masterNote = " · 오염 마스터도 반영됨";
+        } else {
+          masterNote = ` · 마스터 반영 실패: ${masterJson.error ?? "오류"}`;
+        }
+      }
+
+      setMsg(`저장됨 ${json.path ?? ""}${masterNote} — 목록을 새로고침하면 최신이 보입니다.`);
+      setScreen("list");
     } catch {
       setMsg("저장 중 오류");
     } finally {
@@ -446,7 +530,7 @@ export default function AdminSolutionsPanel({
 
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">
-          추천세제는 마스터 제품을 불러온 뒤 별점만 지정합니다. published면 공개됩니다.
+          제품은 카탈로그에서 추가하거나 마스터에서 불러온 뒤 별점·순서를 지정합니다. published면 공개됩니다.
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -576,6 +660,9 @@ export default function AdminSolutionsPanel({
               마스터 제품 다시 불러오기
             </button>
           </div>
+          <p className="mt-1 text-xs text-slate-500">
+            제품 카탈로그에서 골라 추가하거나, 마스터를 불러온 뒤 별점·순서를 조정하세요.
+          </p>
           <ul className="mt-3 space-y-2">
             {recommendations.map((r, i) => (
               <li
@@ -614,7 +701,51 @@ export default function AdminSolutionsPanel({
                 </button>
               </li>
             ))}
+            {!recommendations.length ? (
+              <li className="text-sm text-slate-500">추가된 제품이 없습니다. 아래에서 골라 주세요.</li>
+            ) : null}
           </ul>
+
+          <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-teal-200 bg-white/80 p-3">
+            <label className="min-w-[12rem] flex-1 text-sm">
+              <span className="font-bold text-slate-600">마스터 제품 추가</span>
+              <select
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                value={pickProductId}
+                onChange={(e) => setPickProductId(e.target.value)}
+              >
+                <option value="">제품 선택…</option>
+                {availableProducts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="font-bold text-slate-600">별점</span>
+              <select
+                className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                value={pickRating}
+                onChange={(e) => setPickRating(Number(e.target.value) as SolutionStarRating)}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={addCatalogProduct}
+              disabled={!pickProductId}
+              className="rounded-xl bg-teal-800 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
+            >
+              제품 추가
+            </button>
+          </div>
+
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="min-w-[10rem] flex-1 text-sm">
               <span className="font-bold text-slate-600">직접 추가 (예: 구연산)</span>
@@ -646,6 +777,21 @@ export default function AdminSolutionsPanel({
               추가
             </button>
           </div>
+
+          <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={syncMasterOnSave}
+              onChange={(e) => setSyncMasterOnSave(e.target.checked)}
+            />
+            <span>
+              저장 시 <strong>오염 마스터에도 반영</strong>
+              <span className="block text-xs text-slate-500">
+                이 페이지 추천 제품(제품 ID 있는 항목) 순서로 같은 오염의 마스터를 갱신합니다.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50/40 p-4">
