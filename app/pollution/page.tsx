@@ -1,42 +1,59 @@
 import Link from "next/link";
+import SolutionsCatalog from "@/components/knowledge-hub/SolutionsCatalog";
 import { listContaminants } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { CONTAMINANT_TYPE_KO } from "@/lib/knowledge-hub/korean-labels";
+import {
+  listSolutionCardData,
+  SOLUTIONS_FINDER_SUBTITLE,
+} from "@/lib/knowledge-hub/solutions/get-solutions";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const revalidate = 86400;
 
 export const metadata = buildPageMetadata({
-  title: "오염별 제거 | 클린아이덱스",
-  description: "물때·기름때·곰팡이 등 오염 유형별 제거 방법과 레시피.",
+  title: "오염으로 찾기 — 장소·부위 검색어 | 클린아이덱스",
+  description:
+    "가정집 화장실 변기 요석, 상가 소변기 요석처럼 장소·부위로 세분화된 오염 제거 가이드.",
   path: "/pollution",
 });
 
 export default function PollutionHubPage() {
+  const solutionPages = listSolutionCardData();
   const contaminants = listContaminants();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <header className="mb-10">
-        <h1 className="text-3xl font-black text-slate-950 sm:text-4xl">오염별 제거</h1>
-        <p className="mt-4 text-lg leading-8 text-slate-600">
-          오염 유형을 먼저 파악한 뒤 재질에 맞는 레시피를 선택하세요.
-        </p>
-      </header>
+    <main className="min-h-screen bg-slate-50">
+      <div className="page-shell py-8 sm:py-10">
+        <div className="mx-auto max-w-2xl">
+          <SolutionsCatalog
+            pages={solutionPages}
+            title="오염으로 찾기"
+            subtitle={SOLUTIONS_FINDER_SUBTITLE}
+          />
 
-      <ul className="grid gap-4 sm:grid-cols-2">
-        {contaminants.map((c) => (
-          <li key={c.id}>
-            <Link
-              href={`/pollution/${c.id}`}
-              className="block h-full rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-rose-300 hover:shadow-sm"
-            >
-              <span className="text-xs font-bold text-rose-700">{CONTAMINANT_TYPE_KO[c.type]}</span>
-              <h2 className="mt-1 text-xl font-black text-slate-900">{c.name}</h2>
-              {c.notes ? <p className="mt-2 line-clamp-2 text-sm text-slate-600">{c.notes}</p> : null}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+          <details className="mt-14 border-t border-slate-200 pt-8">
+            <summary className="cursor-pointer list-none text-base font-bold text-slate-600 marker:content-none hover:text-teal-800 [&::-webkit-details-marker]:hidden">
+              오염 마스터만 보기
+              <span className="ml-1 text-slate-400">▾</span>
+            </summary>
+            <ul id="masters" className="mt-4 grid gap-2 sm:grid-cols-2">
+              {contaminants.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/pollution/${c.id}`}
+                    className="block rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-teal-300"
+                  >
+                    <span className="text-xs font-bold text-teal-800">
+                      {CONTAMINANT_TYPE_KO[c.type] ?? c.type}
+                    </span>
+                    <span className="mt-0.5 block text-base font-bold text-slate-900">{c.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      </div>
+    </main>
   );
 }

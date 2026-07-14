@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { PRODUCT_SALES_CACHE_TAG, upsertProductSales } from "@/lib/knowledge-hub/product-sales";
-import { getProductById } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import { getMergedProductById } from "@/lib/knowledge-hub/product-catalog";
 
 type RouteCtx = { params: Promise<{ id: string }> };
 
@@ -19,7 +19,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   }
 
   const { id } = await ctx.params;
-  if (!getProductById(id)) {
+  if (!(await getMergedProductById(id))) {
     return NextResponse.json({ ok: false, error: "알 수 없는 제품 ID입니다." }, { status: 404 });
   }
 

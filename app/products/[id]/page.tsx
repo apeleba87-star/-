@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import ProductDetailView from "@/components/knowledge-hub/ProductDetailView";
+import { getCleaningKnowledgeDb } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import {
-  getProductById,
-  listProducts,
-  getCleaningKnowledgeDb,
-} from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+  getMergedProductById,
+  listMergedProducts,
+} from "@/lib/knowledge-hub/product-catalog";
 import {
   applySalesToProduct,
   getProductSalesMap,
@@ -19,12 +19,13 @@ type Props = {
 };
 
 export async function generateStaticParams() {
-  return listProducts().map((p) => ({ id: p.id }));
+  const products = await listMergedProducts();
+  return products.map((p) => ({ id: p.id }));
 }
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
-  const product = getProductById(id);
+  const product = await getMergedProductById(id);
   if (!product) return { title: "제품" };
   const meta = buildPageMetadata({
     title: `${product.name} 사용법 | 클린아이덱스`,
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { id } = await params;
-  const base = getProductById(id);
+  const base = await getMergedProductById(id);
   if (!base) notFound();
 
   const salesMap = await getProductSalesMap();

@@ -1,14 +1,14 @@
 import Link from "next/link";
 import KnowledgeHubSeedButton from "@/components/admin/KnowledgeHubSeedButton";
-import AdminProductSalesEditor from "@/components/admin/AdminProductSalesEditor";
+import AdminProductsPanel from "@/components/admin/AdminProductsPanel";
 import { CATALOG_TOPICS, HUB_CATEGORIES } from "@/lib/knowledge-hub/catalog";
 import {
   getCleaningKnowledgeDb,
   knowledgeStats,
   listContaminants,
   listMaterials,
-  listProducts,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import { listAdminCatalogProducts } from "@/lib/knowledge-hub/product-catalog";
 import { applySalesToProduct, getProductSalesMap } from "@/lib/knowledge-hub/product-sales";
 import { enrichedGuidePathsForRecipe } from "@/lib/knowledge-hub/recipe-guide-linker";
 
@@ -60,190 +60,222 @@ function SectionTable({
 export default async function AdminKnowledgeHubContent() {
   const db = getCleaningKnowledgeDb();
   const stats = knowledgeStats();
-  const salesMap = await getProductSalesMap();
-  const products = listProducts().map((p) => applySalesToProduct(p, salesMap));
+  const [salesMap, catalog] = await Promise.all([getProductSalesMap(), listAdminCatalogProducts()]);
   const materials = listMaterials();
   const contaminants = listContaminants();
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-black text-slate-900">지식 허브 (마스터)</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          제품 추가·편집·삭제와 판매 링크를 관리합니다. 검색어 본문 편집은{" "}
+          <Link href="/admin/solutions" className="font-semibold text-teal-800 hover:underline">
+            검색어 솔루션
+          </Link>
+          에서 합니다.
+        </p>
+      </div>
+
+      <Link
+        href="/admin/solutions"
+        className="flex items-center justify-between gap-4 rounded-2xl border-2 border-teal-800 bg-teal-50 px-5 py-4 transition hover:bg-teal-100"
+      >
         <div>
-          <h1 className="text-2xl font-black text-slate-900">지식 허브 콘텐츠</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            가이드 {CATALOG_TOPICS.length} · 제품 {stats.products} · 재질 {stats.materials} · 오염{" "}
-            {stats.contaminants} · 레시피 {stats.recipes} · 사례 {stats.cases} · 규칙 {stats.rules}
-          </p>
-          <p className="mt-2 text-xs text-slate-500">
-            가이드 편집: 「편집」→ ?edit=1 · 제품 판매 링크는 아래 표에서 저장 · 문서 근거 없는 본문은 생성하지 않습니다.
+          <p className="text-lg font-black text-teal-950">검색어 솔루션 편집</p>
+          <p className="mt-0.5 text-sm text-teal-900/80">
+            목록 → 편집하기 / 새로 만들기 · 한줄 요약·추천세제 별점·제거 단계
           </p>
         </div>
-        <KnowledgeHubSeedButton />
-      </div>
+        <span className="shrink-0 text-sm font-bold text-teal-900">바로가기 →</span>
+      </Link>
 
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {[
-          { label: "현장 가이드", href: "#guides", count: CATALOG_TOPICS.length },
-          { label: "제품", href: "#products", count: products.length },
-          { label: "재질", href: "#materials", count: materials.length },
-          { label: "오염", href: "#contaminants", count: contaminants.length },
-          { label: "레시피", href: "#recipes", count: stats.recipes },
-          { label: "사례", href: "#cases", count: stats.cases },
-        ].map((item) => (
-          <a
-            key={item.href}
-            href={item.href}
-            className="rounded-xl border border-slate-200 bg-white p-4 text-center hover:border-teal-300"
-          >
-            <p className="text-2xl font-black text-teal-700">{item.count}</p>
-            <p className="text-sm font-medium text-slate-700">{item.label}</p>
-          </a>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2 text-sm">
-        <Link href="/products" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
-          공개 · 제품
-        </Link>
-        <Link href="/materials" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
-          공개 · 재질
-        </Link>
-        <Link href="/pollution" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
-          공개 · 오염
-        </Link>
-        <Link href="/cleaning" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
-          공개 · 레시피
-        </Link>
-        <Link href="/services" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
-          공개 · 현장
-        </Link>
-      </div>
-
-      <AdminProductSalesEditor
-        products={products.map((p) => ({
-          id: p.id,
-          name: p.name,
-          salesUrl: p.salesUrl ?? null,
-          salesLabel: p.salesLabel ?? null,
-        }))}
-      />
-
-      <div id="guides" className="space-y-6 scroll-mt-20">
-        <h2 className="text-lg font-black text-slate-900">현장·오염 가이드</h2>
-        {HUB_CATEGORIES.map((cat) => {
-          const topics = CATALOG_TOPICS.filter((t) => t.categorySlug === cat.slug);
-          return (
-            <section key={cat.slug} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
-                <h3 className="font-bold text-slate-900">{cat.name}</h3>
-              </div>
-              <table className="min-w-full text-sm">
-                <tbody>
-                  {topics.map((p) => (
-                    <tr key={p.path} className="border-t border-slate-100">
-                      <td className="px-4 py-2 font-medium">{p.h1}</td>
-                      <td className="px-4 py-2 text-slate-500">{p.path}</td>
-                      <td className="px-4 py-2">
-                        <Link href={`${p.path}?edit=1`} className="font-bold text-teal-700 hover:underline">
-                          편집
-                        </Link>
-                        <span className="mx-2 text-slate-300">|</span>
-                        <Link href={p.path} className="text-slate-600 hover:underline">
-                          보기
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          );
+      <AdminProductsPanel
+        products={catalog.map((p) => {
+          const withSales = applySalesToProduct(p, salesMap);
+          return {
+            id: withSales.id,
+            brand: withSales.brand,
+            name: withSales.name,
+            aliases: withSales.aliases ?? [],
+            phType: withSales.phType,
+            phApprox: withSales.phApprox ?? null,
+            summary: withSales.summary ?? "",
+            mainUse: withSales.mainUse ?? [],
+            compatibleMaterialIds: withSales.compatibleMaterialIds ?? [],
+            contaminantIds: withSales.contaminantIds ?? [],
+            forbiddenMaterialIds: withSales.forbiddenMaterialIds ?? [],
+            materialsRaw: withSales.materialsRaw ?? [],
+            contaminantsRaw: withSales.contaminantsRaw ?? [],
+            forbiddenRaw: withSales.forbiddenRaw ?? [],
+            standardDilution: withSales.standardDilution ?? "",
+            strongDilution: withSales.strongDilution ?? "",
+            dwellTime: withSales.dwellTime ?? "",
+            packSizes: withSales.packSizes ?? [],
+            warnings: withSales.warnings ?? [],
+            confidence: withSales.confidence,
+            status: withSales.status ?? "active",
+            salesUrl: withSales.salesUrl ?? null,
+            salesLabel: withSales.salesLabel ?? null,
+            catalogOrigin: p.catalogOrigin,
+            hasDbRow: p.hasDbRow,
+            isDeleted: p.isDeleted,
+          };
         })}
-      </div>
-
-      <SectionTable
-        title="재질"
-        headers={["이름", "ID", "위험도", "링크"]}
-        rows={materials.map((m) => [
-          m.name,
-          <span key="id" className="font-mono text-xs">
-            {m.id}
-          </span>,
-          m.riskLevel,
-          <Link key="l" href={`/materials/${m.id}`} className="font-bold text-teal-700 hover:underline">
-            보기
-          </Link>,
-        ])}
+        materials={materials.map((m) => ({ id: m.id, name: m.name }))}
+        contaminants={contaminants.map((c) => ({ id: c.id, name: c.name }))}
       />
 
-      <SectionTable
-        title="오염"
-        headers={["이름", "ID", "유형", "링크"]}
-        rows={contaminants.map((c) => [
-          c.name,
-          <span key="id" className="font-mono text-xs">
-            {c.id}
-          </span>,
-          c.type,
-          <Link key="l" href={`/pollution/${c.id}`} className="font-bold text-teal-700 hover:underline">
-            보기
-          </Link>,
-        ])}
-      />
+      <details className="rounded-xl border border-slate-200 bg-white p-5">
+        <summary className="cursor-pointer text-base font-black text-slate-900">
+          현장 가이드 편집 링크 ({CATALOG_TOPICS.length})
+        </summary>
+        <p className="mt-2 text-sm text-slate-500">공개 가이드에서 ?edit=1 로 편집합니다.</p>
+        <div className="mt-4 space-y-4">
+          {HUB_CATEGORIES.map((cat) => {
+            const topics = CATALOG_TOPICS.filter((t) => t.categorySlug === cat.slug);
+            if (!topics.length) return null;
+            return (
+              <div key={cat.slug}>
+                <p className="text-sm font-bold text-slate-700">{cat.name}</p>
+                <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-100">
+                  {topics.map((p) => (
+                    <li key={p.path} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                      <span className="min-w-0 flex-1 font-medium text-slate-900">{p.h1}</span>
+                      <Link href={`${p.path}?edit=1`} className="font-bold text-teal-700 hover:underline">
+                        편집
+                      </Link>
+                      <Link href={p.path} className="text-slate-500 hover:underline">
+                        보기
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </details>
 
-      <SectionTable
-        title="레시피"
-        headers={["slug", "요약", "연결 가이드 수", "링크"]}
-        rows={db.recipes.map((r) => [
-          <span key="s" className="font-mono text-xs">
-            {r.slug}
-          </span>,
-          r.summary.slice(0, 50) + (r.summary.length > 50 ? "…" : ""),
-          String(enrichedGuidePathsForRecipe(r).length),
-          <Link key="l" href={`/cleaning/${r.slug}`} className="font-bold text-teal-700 hover:underline">
-            보기
-          </Link>,
-        ])}
-      />
+      <details className="rounded-xl border border-slate-200 bg-white p-5">
+        <summary className="cursor-pointer text-base font-black text-slate-900">
+          마스터 목록 조회
+        </summary>
+        <p className="mt-2 text-sm text-slate-500">
+          재질 {stats.materials} · 오염 {stats.contaminants} · 레시피 {stats.recipes} · 사례{" "}
+          {stats.cases} · 규칙 {stats.rules}
+        </p>
+        <div className="mt-4 space-y-6">
+          <SectionTable
+            title="재질"
+            headers={["이름", "ID", "위험도", "링크"]}
+            rows={materials.map((m) => [
+              m.name,
+              <span key="id" className="font-mono text-xs">
+                {m.id}
+              </span>,
+              m.riskLevel,
+              <Link key="l" href={`/materials/${m.id}`} className="font-bold text-teal-700 hover:underline">
+                보기
+              </Link>,
+            ])}
+          />
+          <SectionTable
+            title="오염"
+            headers={["이름", "ID", "유형", "링크"]}
+            rows={contaminants.map((c) => [
+              c.name,
+              <span key="id" className="font-mono text-xs">
+                {c.id}
+              </span>,
+              c.type,
+              <Link key="l" href={`/pollution/${c.id}`} className="font-bold text-teal-700 hover:underline">
+                보기
+              </Link>,
+            ])}
+          />
+          <SectionTable
+            title="레시피"
+            headers={["slug", "요약", "연결 가이드 수", "링크"]}
+            rows={db.recipes.map((r) => [
+              <span key="s" className="font-mono text-xs">
+                {r.slug}
+              </span>,
+              r.summary.slice(0, 50) + (r.summary.length > 50 ? "…" : ""),
+              String(enrichedGuidePathsForRecipe(r).length),
+              <Link key="l" href={`/cleaning/${r.slug}`} className="font-bold text-teal-700 hover:underline">
+                보기
+              </Link>,
+            ])}
+          />
+          <SectionTable
+            title="사례 (원본 근거)"
+            headers={["ID", "이름", "검증", "제품"]}
+            rows={(db.cases ?? []).map((c) => [
+              <span key="id" className="font-mono text-xs">
+                {c.id}
+              </span>,
+              c.name,
+              c.evidenceLevel,
+              c.productNames.join(", ") || "—",
+            ])}
+          />
+          <SectionTable
+            title="팩트"
+            headers={["ID", "내용", "연결 가이드"]}
+            rows={db.facts.map((f) => [
+              <span key="id" className="font-mono text-xs">
+                {f.id}
+              </span>,
+              f.body.slice(0, 80) + (f.body.length > 80 ? "…" : ""),
+              <span key="g" className="text-xs text-slate-500">
+                {f.guidePaths?.length ? `${f.guidePaths.length}건` : "—"}
+              </span>,
+            ])}
+          />
+          <SectionTable
+            title="Q&A"
+            headers={["질문", "답변"]}
+            rows={db.qaCases.map((q) => [
+              q.question,
+              q.answerSummary.slice(0, 100) + (q.answerSummary.length > 100 ? "…" : ""),
+            ])}
+          />
+          <SectionTable
+            title="규칙"
+            headers={["제목", "내용"]}
+            rows={db.rules.map((r) => [r.title, r.body])}
+          />
+        </div>
+      </details>
 
-      <SectionTable
-        title="사례 (원본 근거)"
-        headers={["ID", "이름", "검증", "제품"]}
-        rows={(db.cases ?? []).map((c) => [
-          <span key="id" className="font-mono text-xs">
-            {c.id}
-          </span>,
-          c.name,
-          c.evidenceLevel,
-          c.productNames.join(", ") || "—",
-        ])}
-      />
-
-      <SectionTable
-        title="팩트"
-        headers={["ID", "내용", "연결 가이드"]}
-        rows={db.facts.map((f) => [
-          <span key="id" className="font-mono text-xs">
-            {f.id}
-          </span>,
-          f.body.slice(0, 80) + (f.body.length > 80 ? "…" : ""),
-          <span key="g" className="text-xs text-slate-500">
-            {f.guidePaths?.length ? `${f.guidePaths.length}건` : "—"}
-          </span>,
-        ])}
-      />
-
-      <SectionTable
-        title="Q&A"
-        headers={["질문", "답변"]}
-        rows={db.qaCases.map((q) => [q.question, q.answerSummary.slice(0, 100) + (q.answerSummary.length > 100 ? "…" : "")])}
-      />
-
-      <SectionTable
-        title="규칙"
-        headers={["제목", "내용"]}
-        rows={db.rules.map((r) => [r.title, r.body])}
-      />
+      <details className="rounded-xl border border-slate-200 bg-white p-5">
+        <summary className="cursor-pointer text-base font-black text-slate-900">도구</summary>
+        <p className="mt-2 text-sm text-slate-500">시드·공개 사이트 바로가기 (일상 편집과 분리)</p>
+        <div className="mt-4">
+          <KnowledgeHubSeedButton />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 text-sm">
+          <Link href="/products" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 제품
+          </Link>
+          <Link href="/solutions" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 검색어 가이드
+          </Link>
+          <Link href="/materials" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 재질
+          </Link>
+          <Link href="/pollution" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 오염
+          </Link>
+          <Link href="/cleaning" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 레시피
+          </Link>
+          <Link href="/services" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 현장
+          </Link>
+        </div>
+      </details>
     </div>
   );
 }

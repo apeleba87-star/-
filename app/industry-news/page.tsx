@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "업계소식",
   description:
     "청소·방역 업계 동향과 현장 이야기를 블로그 형식으로 전합니다. 입찰·낙찰 리포트와 통계는 데이터랩에서 확인하세요.",
+  robots: { index: false, follow: true },
 };
 
 export default function IndustryNewsPage() {

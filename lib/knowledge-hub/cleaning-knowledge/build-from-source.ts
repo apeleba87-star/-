@@ -122,6 +122,8 @@ const BASE_CONTAMINANTS: KnowledgeContaminant[] = [
   { id: "nicotine", name: "담배·니코틴 찌꺼기", type: "organic", sourceRefs: [{ doc: "kiehl-list" }] },
   { id: "adhesive", name: "스티커·접착 잔유물", type: "surface_damage", sourceRefs: [{ doc: "cleaning-cases", caseId: "CASE-STICKER-001" }] },
   { id: "paint-residue", name: "페인트 잔유물", type: "surface_damage", sourceRefs: [{ doc: "cleaning-cases", caseId: "CASE-PAINT-001" }] },
+  { id: "odor", name: "악취", type: "organic", notes: "표면·배수·트랩 기인. 향으로만 덮지 않음", sourceRefs: [{ doc: "cleaning-knowledge" }] },
+  { id: "dust", name: "먼지", type: "inorganic", notes: "천장·환풍기·공사 분진과 구분: construction-dust", sourceRefs: [{ doc: "cleaning-knowledge" }] },
 ];
 
 const SOURCE_RULES: KnowledgeRule[] = [

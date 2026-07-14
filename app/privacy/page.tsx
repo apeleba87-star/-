@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import MagamLegalPageShell from "@/components/magam/MagamLegalPageShell";
 import { isMagamFromQuery } from "@/lib/magam/brand";
+import { SITE_OPERATOR, operatorSupportEmail } from "@/lib/site/operator";
 
 export const metadata: Metadata = {
   title: "개인정보 처리방침",
@@ -102,26 +103,28 @@ function PrivacyBody() {
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold text-slate-800">제7조 (개인정보 보호책임자)</h2>
         <p className="text-sm leading-relaxed text-slate-700">
-          서비스는 개인정보 처리에 관한 업무를 총괄하는 개인정보 보호책임자를 두고 있습니다. 개인정보와 관련한 문의·불만·권리 행사는 서비스 내 문의 채널 또는 아래 연락처로 요청하실 수 있습니다.
+          서비스는 개인정보 처리에 관한 업무를 총괄하는 개인정보 보호책임자를 두고 있습니다. 개인정보와
+          관련한 문의·불만·권리 행사는{" "}
+          <Link href="/contact" className="font-medium text-slate-800 underline-offset-2 hover:underline">
+            문의
+          </Link>
+          페이지 또는 아래 연락처로 요청하실 수 있습니다.
         </p>
-        <p className="mt-2 text-sm text-slate-600">
-          개인정보와 관련한 문의·불만·권리 행사는{" "}
-          <a href="/magam/support" className="font-medium text-slate-800 underline-offset-2 hover:underline">
-            마감링크 고객지원
-          </a>
-          또는 아래 연락처로 요청하실 수 있습니다.
-        </p>
-        <p className="mt-2 text-sm text-slate-600">
-          이메일:{" "}
-          <a
-            href={`mailto:${process.env.MAGAM_SUPPORT_EMAIL ?? process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL ?? "apeleba2@naver.com"}`}
-            className="font-medium text-slate-800 underline-offset-2 hover:underline"
-          >
-            {process.env.MAGAM_SUPPORT_EMAIL ??
-              process.env.NEXT_PUBLIC_MAGAM_SUPPORT_EMAIL ??
-              "apeleba2@naver.com"}
-          </a>
-        </p>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
+          <li>
+            개인정보 보호책임자: {SITE_OPERATOR.ceoName} ({SITE_OPERATOR.tradeName})
+          </li>
+          <li>전화: {SITE_OPERATOR.phoneDisplay}</li>
+          <li>
+            이메일:{" "}
+            <a
+              href={`mailto:${operatorSupportEmail()}`}
+              className="font-medium text-slate-800 underline-offset-2 hover:underline"
+            >
+              {operatorSupportEmail()}
+            </a>
+          </li>
+        </ul>
       </section>
 
       <section className="mb-8">

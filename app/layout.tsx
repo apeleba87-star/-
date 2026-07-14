@@ -85,12 +85,14 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* AdSense 검증 — next/script 대신 head에 script 태그 직접 삽입 (크롤러 HTML 소스 확인) */}
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4236788855275924"
-          crossOrigin="anonymous"
-        />
+        {/* AdSense — NEXT_PUBLIC_ADSENSE_ENABLED=true 일 때만 로드 (Auto ads 포함 광고 차단) */}
+        {process.env.NEXT_PUBLIC_ADSENSE_ENABLED === "true" ? (
+          <script
+            async
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4236788855275924"
+            crossOrigin="anonymous"
+          />
+        ) : null}
       </head>
       <body
         className={`${notoSansKr.className} ${siteDisplay.variable} flex min-h-screen min-w-0 flex-col antialiased`}

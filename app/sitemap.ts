@@ -5,10 +5,14 @@ import {
   listCases,
   listContaminants,
   listMaterials,
-  listProducts,
   listRecipes,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import { listMergedProducts } from "@/lib/knowledge-hub/product-catalog";
 import { listPublishedGuidePaths } from "@/lib/knowledge-hub/queries";
+import {
+  getSolutionPath,
+  listSolutionPages,
+} from "@/lib/knowledge-hub/solutions/get-solutions";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
@@ -18,11 +22,11 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/products", priority: 0.92, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.92, changeFrequency: "weekly" },
   { path: "/pollution", priority: 0.92, changeFrequency: "weekly" },
+  { path: "/solutions", priority: 0.93, changeFrequency: "weekly" },
   { path: "/cases", priority: 0.85, changeFrequency: "weekly" },
   { path: "/cleaning", priority: 0.9, changeFrequency: "weekly" },
   { path: "/inquiry/regular", priority: 0.85, changeFrequency: "monthly" },
   { path: "/inquiry/move-in", priority: 0.85, changeFrequency: "monthly" },
-  { path: "/industry-news", priority: 0.75, changeFrequency: "weekly" },
   { path: "/categories", priority: 0.8, changeFrequency: "weekly" },
   { path: "/listings", priority: 0.8, changeFrequency: "daily" },
   { path: "/tenders", priority: 0.8, changeFrequency: "daily" },
@@ -38,6 +42,8 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/contracts", priority: 0.5, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "monthly" },
   { path: "/terms", priority: 0.3, changeFrequency: "monthly" },
+  { path: "/about", priority: 0.4, changeFrequency: "monthly" },
+  { path: "/contact", priority: 0.4, changeFrequency: "monthly" },
 ];
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getBaseUrl();
@@ -78,7 +84,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  for (const p of listProducts()) {
+  for (const p of await listMergedProducts()) {
     if (p.status === "draft") continue;
     entries.push({
       url: `${base}/products/${p.id}`,
@@ -112,6 +118,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.8,
+    });
+  }
+
+  for (const s of listSolutionPages()) {
+    entries.push({
+      url: `${base}${getSolutionPath(s)}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.86,
     });
   }
 

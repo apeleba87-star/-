@@ -3,6 +3,7 @@ import Link from "next/link";
 import FooterAdminLinks from "@/components/FooterAdminLinks";
 import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
 import { siteTagline } from "@/lib/seo";
+import { SITE_OPERATOR, operatorSupportEmail } from "@/lib/site/operator";
 
 type FooterLink = { href: string; label: string };
 
@@ -24,6 +25,8 @@ const CLEANING_BUSINESS_LINKS: FooterLink[] = [
 ];
 
 const LEGAL_LINKS: FooterLink[] = [
+  { href: "/about", label: "회사소개" },
+  { href: "/contact", label: "문의" },
   { href: "/login", label: "로그인" },
   { href: "/terms", label: "이용약관" },
   { href: "/privacy", label: "개인정보 처리방침" },
@@ -51,6 +54,8 @@ function FooterSection({ title, links }: { title: string; links: FooterLink[] })
 }
 
 export default function Footer() {
+  const email = operatorSupportEmail();
+
   return (
     <footer className="mt-auto border-t border-slate-200 bg-gray-900 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:py-8 sm:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
       <div className="mx-auto max-w-2xl px-3 xs:px-4 sm:px-6 lg:max-w-6xl lg:px-8">
@@ -97,10 +102,29 @@ export default function Footer() {
               </Link>
             ))}
           </nav>
+
+          <div className="space-y-0.5 text-[11px] leading-relaxed text-slate-500 sm:text-xs">
+            <p>
+              상호 {SITE_OPERATOR.tradeName} · 대표 {SITE_OPERATOR.ceoName} · 사업자등록번호{" "}
+              {SITE_OPERATOR.businessNumber}
+            </p>
+            <p>
+              전화{" "}
+              <a href={`tel:${SITE_OPERATOR.phoneTel}`} className="hover:text-teal-300">
+                {SITE_OPERATOR.phoneDisplay}
+              </a>
+              {" · "}
+              이메일{" "}
+              <a href={`mailto:${email}`} className="hover:text-teal-300">
+                {email}
+              </a>
+            </p>
+            {SITE_OPERATOR.address ? <p>주소 {SITE_OPERATOR.address}</p> : null}
+          </div>
         </div>
 
         <p className="mt-3 text-[11px] text-slate-600 sm:mt-6 sm:text-xs">
-          © {new Date().getFullYear()} 클린아이덱스
+          © {new Date().getFullYear()} {SITE_OPERATOR.serviceName} · {SITE_OPERATOR.tradeName}
         </p>
       </div>
     </footer>

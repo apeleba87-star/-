@@ -86,7 +86,8 @@ function rateLimitBucket(pathname: string): { bucket: string; limit: number } | 
     pathname.startsWith("/materials") ||
     pathname.startsWith("/pollution") ||
     pathname.startsWith("/cleaning") ||
-    pathname.startsWith("/cases")
+    pathname.startsWith("/cases") ||
+    pathname.startsWith("/solutions")
   ) {
     return { bucket: "demand", limit: DEMAND_RATE_MAX };
   }

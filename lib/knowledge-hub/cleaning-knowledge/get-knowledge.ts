@@ -35,8 +35,14 @@ export function listRecipes(): KnowledgeRecipe[] {
   return getCleaningKnowledgeDb().recipes;
 }
 
-export function listProducts(): KnowledgeProduct[] {
+/** 문서 시드 제품만 (DB 오버레이 없음) */
+export function listSourceProducts(): KnowledgeProduct[] {
   return getCleaningKnowledgeDb().products;
+}
+
+/** @deprecated 가능하면 listMergedProducts 사용 — 동기 호출용 시드 목록 */
+export function listProducts(): KnowledgeProduct[] {
+  return listSourceProducts();
 }
 
 /** 데코·리놀·PVC바닥은 문서 허용/금지가 갈라지므로 원문 구문으로 판별 */
@@ -62,8 +68,10 @@ function productAllowsChromeFaucet(p: KnowledgeProduct): boolean {
 }
 
 /** 재질에 문서상 적용 가능한 제품 (전면 금지 재질만 제외, 코팅·손상 등 조건부 금지는 유지) */
-export function listProductsForMaterial(materialId: string): KnowledgeProduct[] {
-  const products = listProducts();
+export function filterProductsForMaterial(
+  products: KnowledgeProduct[],
+  materialId: string
+): KnowledgeProduct[] {
   if (materialId === "pvc-deco") {
     return products.filter(productAllowsPvcDecoFamily);
   }
@@ -75,6 +83,10 @@ export function listProductsForMaterial(materialId: string): KnowledgeProduct[] 
       Boolean(p.compatibleMaterialIds?.includes(materialId)) &&
       !productHardForbidsMaterial(p.forbiddenRaw, materialId)
   );
+}
+
+export function listProductsForMaterial(materialId: string): KnowledgeProduct[] {
+  return filterProductsForMaterial(listProducts(), materialId);
 }
 
 export function listMaterials() {

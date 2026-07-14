@@ -26,6 +26,27 @@ export default async function AdminDashboardPage() {
   return (
     <div>
       <h1 className="mb-8 text-2xl font-bold text-slate-900">관리자 대시보드</h1>
+
+      <section className="mb-8">
+        <h2 className="mb-3 text-sm font-semibold text-slate-500">콘텐츠 편집</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/admin/solutions"
+            className="block rounded-2xl border-2 border-teal-800 bg-teal-50 px-5 py-4 transition hover:bg-teal-100"
+          >
+            <h3 className="font-black text-teal-950">검색어 솔루션</h3>
+            <p className="mt-1 text-sm text-teal-900/80">목록 → 편집하기 / 새로 만들기</p>
+          </Link>
+          <Link
+            href="/admin/knowledge-hub"
+            className="block rounded-2xl border border-slate-200 bg-white px-5 py-4 transition hover:border-teal-300"
+          >
+            <h3 className="font-bold text-slate-900">지식 허브 (마스터)</h3>
+            <p className="mt-1 text-sm text-slate-500">제품 판매 링크 · 가이드 편집 링크</p>
+          </Link>
+        </div>
+      </section>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <Link href="/admin/users" className="card block hover:border-blue-200">
           <h3 className="text-sm font-medium text-slate-500">총 사용자</h3>

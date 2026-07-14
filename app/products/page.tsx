@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import {
+  filterProductsForMaterial,
   listContaminants,
   listMaterials,
-  listProducts,
-  listProductsForMaterial,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import { listMergedProducts } from "@/lib/knowledge-hub/product-catalog";
 import ProductsCatalog from "@/components/knowledge-hub/ProductsCatalog";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -16,12 +16,12 @@ export const metadata = buildPageMetadata({
   path: "/products",
 });
 
-export default function ProductsHubPage() {
-  const all = listProducts();
+export default async function ProductsHubPage() {
+  const all = await listMergedProducts();
 
   const productIdsByMaterial: Record<string, string[]> = {};
   for (const m of listMaterials()) {
-    const ids = listProductsForMaterial(m.id).map((p) => p.id);
+    const ids = filterProductsForMaterial(all, m.id).map((p) => p.id);
     if (ids.length) productIdsByMaterial[m.id] = ids;
   }
 
