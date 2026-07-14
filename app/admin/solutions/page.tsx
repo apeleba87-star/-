@@ -23,7 +23,11 @@ export default async function AdminSolutionsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <AdminSolutionsPanel
-        products={products.map((p) => ({ id: p.id, name: p.name }))}
+        products={products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          standardDilution: p.standardDilution ?? null,
+        }))}
         contaminants={listContaminants().map((c) => ({ id: c.id, name: c.name }))}
         masters={[...masterMap.values()]}
         seedPages={seedPages.map((p) => ({

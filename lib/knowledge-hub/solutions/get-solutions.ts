@@ -154,6 +154,7 @@ export type SolutionViewRecommendation = {
   productId?: string;
   label: string;
   rating: SolutionStarRating;
+  dilution?: string;
   href?: string;
 };
 
@@ -200,10 +201,15 @@ function buildRecommendations(
   if (detail?.recommendations?.length) {
     return detail.recommendations.map((r: SolutionRecommendProduct) => {
       const product = r.productId ? productById.get(r.productId) : undefined;
+      const dilution =
+        (r.dilution && r.dilution.trim()) ||
+        product?.standardDilution?.trim() ||
+        undefined;
       return {
         productId: r.productId,
         label: r.label || product?.name || r.productId || "",
         rating: r.rating,
+        dilution,
         href: r.productId ? `/products/${r.productId}` : undefined,
       };
     });
@@ -212,6 +218,7 @@ function buildRecommendations(
     productId: p.id,
     label: p.name,
     rating: confidenceToStars(p.confidence),
+    dilution: p.standardDilution?.trim() || undefined,
     href: `/products/${p.id}`,
   }));
 }

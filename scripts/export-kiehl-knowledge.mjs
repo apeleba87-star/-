@@ -206,8 +206,13 @@ for (const c of kiehlCases) {
 }
 
 fs.mkdirSync(OUT, { recursive: true });
-fs.writeFileSync(path.join(OUT, "kiehl-knowledge-full.json"), JSON.stringify(exportDoc, null, 2), "utf8");
-fs.writeFileSync(path.join(OUT, "kiehl-knowledge-full.md"), md.join("\n"), "utf8");
+const BOM = "\uFEFF";
+fs.writeFileSync(
+  path.join(OUT, "kiehl-knowledge-full.json"),
+  BOM + JSON.stringify(exportDoc, null, 2),
+  "utf8"
+);
+fs.writeFileSync(path.join(OUT, "kiehl-knowledge-full.md"), BOM + md.join("\n"), "utf8");
 
 console.log("OK", {
   products: kiehlProducts.length,

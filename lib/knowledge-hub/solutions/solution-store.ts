@@ -40,6 +40,8 @@ export function normalizeSolutionDetail(raw: unknown): SolutionDetailBody | unde
         label,
         rating,
         productId: typeof r.productId === "string" && r.productId ? r.productId : undefined,
+        dilution:
+          typeof r.dilution === "string" && r.dilution.trim() ? r.dilution.trim() : undefined,
       });
     }
   }

@@ -144,10 +144,17 @@ export default function SolutionDetailView({ data }: Props) {
                       <p className="mt-0.5 text-sm font-bold text-teal-900">제일 잘 맞아요</p>
                     ) : null}
                   </div>
-                  <Rating value={r.rating} label={r.label} />
+                  {r.dilution ? (
+                    <p className="absolute left-1/2 top-1/2 w-max max-w-[42%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-sm font-bold text-stone-600">
+                      희석 {r.dilution}
+                    </p>
+                  ) : null}
+                  <div className="relative z-10 shrink-0">
+                    <Rating value={r.rating} label={r.label} />
+                  </div>
                 </>
               );
-              const className = `flex w-full items-center gap-2.5 rounded-2xl px-3.5 py-3 text-left transition ${
+              const className = `relative flex w-full items-center gap-2.5 rounded-2xl px-3.5 py-3 text-left transition ${
                 top
                   ? "bg-[#d7ebe7] ring-1 ring-teal-900/25"
                   : "bg-white ring-1 ring-stone-300 hover:ring-teal-900/30"

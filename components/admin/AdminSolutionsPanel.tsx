@@ -16,7 +16,8 @@ import type {
   SolutionStarRating,
 } from "@/lib/knowledge-hub/solutions/types";
 
-type ProductOpt = { id: string; name: string };
+type ProductOpt = { id: string; name: string; standardDilution?: string | null };
+
 type ContaminantOpt = { id: string; name: string };
 type MasterRow = {
   contaminantId: string;
@@ -48,6 +49,11 @@ function listToLines(list?: string[]): string {
   return (list ?? []).join("\n");
 }
 
+function productDilution(products: ProductOpt[], productId: string): string | undefined {
+  const d = products.find((p) => p.id === productId)?.standardDilution?.trim();
+  return d || undefined;
+}
+
 function recommendationsFromMaster(
   masterProductIds: string[],
   products: ProductOpt[],
@@ -56,10 +62,12 @@ function recommendationsFromMaster(
   return masterProductIds.map((pid) => {
     const existing = prev.find((r) => r.productId === pid);
     const name = products.find((p) => p.id === pid)?.name ?? pid;
+    const fromCatalog = productDilution(products, pid);
     return {
       productId: pid,
       label: existing?.label || name,
       rating: existing?.rating ?? (3 as SolutionStarRating),
+      dilution: existing?.dilution?.trim() || fromCatalog,
     };
   });
 }
@@ -263,6 +271,12 @@ export default function AdminSolutionsPanel({
     setRecommendations((prev) => prev.map((r, i) => (i === index ? { ...r, rating } : r)));
   }
 
+  function setDilution(index: number, dilution: string) {
+    setRecommendations((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, dilution: dilution.trim() || undefined } : r))
+    );
+  }
+
   function moveRec(index: number, dir: -1 | 1) {
     setRecommendations((prev) => {
       const next = [...prev];
@@ -286,7 +300,12 @@ export default function AdminSolutionsPanel({
     const name = productName.get(pickProductId) ?? pickProductId;
     setRecommendations((prev) => [
       ...prev,
-      { productId: pickProductId, label: name, rating: pickRating },
+      {
+        productId: pickProductId,
+        label: name,
+        rating: pickRating,
+        dilution: productDilution(products, pickProductId),
+      },
     ]);
     setPickProductId("");
     setMsg(null);
@@ -661,7 +680,8 @@ export default function AdminSolutionsPanel({
             </button>
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            제품 카탈로그에서 골라 추가하거나, 마스터를 불러온 뒤 별점·순서를 조정하세요.
+            제품 카탈로그에서 골라 추가하거나 마스터를 불러오면 표준 희석이 함께 채워집니다. 별점·희석·순서를
+            조정하세요.
           </p>
           <ul className="mt-3 space-y-2">
             {recommendations.map((r, i) => (
@@ -679,6 +699,16 @@ export default function AdminSolutionsPanel({
                     <span className="ml-1 text-xs font-medium text-slate-400">(직접 추가)</span>
                   )}
                 </span>
+                <label className="text-xs font-bold text-slate-500">
+                  희석
+                  <input
+                    type="text"
+                    className="ml-1 w-[7.5rem] rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-medium text-slate-900"
+                    value={r.dilution ?? ""}
+                    onChange={(e) => setDilution(i, e.target.value)}
+                    placeholder="예: 1:100"
+                  />
+                </label>
                 <select
                   className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
                   value={r.rating}

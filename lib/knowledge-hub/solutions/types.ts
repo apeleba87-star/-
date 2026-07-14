@@ -112,6 +112,8 @@ export type SolutionRecommendProduct = {
   productId?: string;
   label: string;
   rating: SolutionStarRating;
+  /** 표준 희석 등 표시용 (예: 1:100). 마스터 불러오기 시 제품 standardDilution으로 채움 */
+  dilution?: string;
 };
 
 /**

@@ -1,8 +1,8 @@
-{
+﻿{
   "meta": {
     "title": "클린아이덱스 — 독일 키엘(Kiehl) 세제 지식 전체 내보내기",
     "purpose": "다른 AI/작업용 입력 데이터. 문서·파싱 소스 기준.",
-    "generatedAt": "2026-07-14T06:59:06.327Z",
+    "generatedAt": "2026-07-14T07:02:46.331Z",
     "sourceFiles": [
       "lib/knowledge-hub/cleaning-knowledge/source/products.parsed.json",
       "lib/knowledge-hub/cleaning-knowledge/source/product-procedures.parsed.json",
