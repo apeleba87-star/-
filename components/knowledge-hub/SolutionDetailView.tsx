@@ -235,7 +235,7 @@ export default function SolutionDetailView({ data }: Props) {
       ) : null}
 
       <section className="mt-14" aria-labelledby="siblings-h">
-        <SectionTitle id="siblings-h">같은 {partLabel}, 다른 오염</SectionTitle>
+        <SectionTitle id="siblings-h">{`같은 ${partLabel}, 다른 오염`}</SectionTitle>
         {siblings.length ? (
           <ul className="mt-3 space-y-2">
             {siblings.map((s) => (
