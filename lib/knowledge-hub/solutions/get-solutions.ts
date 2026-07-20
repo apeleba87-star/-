@@ -7,9 +7,11 @@ import type { KnowledgeProduct } from "@/lib/knowledge-hub/cleaning-knowledge/ty
 import { listMergedProducts } from "@/lib/knowledge-hub/product-catalog";
 import { CONTAMINANT_TYPE_KO } from "@/lib/knowledge-hub/korean-labels";
 import { SOURCE_SOLUTIONS_DB } from "@/lib/knowledge-hub/solutions/seed";
+import { enrichPageFromSiblings } from "@/lib/knowledge-hub/solutions/solution-inherit";
 import {
   getDbContaminantMasters,
   getDbSolutionPages,
+  getArchivedSolutionPageIds,
 } from "@/lib/knowledge-hub/solutions/solution-store";
 import {
   getPartLabel,
@@ -33,13 +35,21 @@ export function getSolutionsDb(): SolutionsDb {
   return cache;
 }
 
-/** Seed + DB published pages (DB wins on same id; keep seed detail if DB omits it) */
+/** Seed + DB published pages (DB wins on same id; archived DB rows suppress seed) */
 export async function listMergedSolutionPages(): Promise<SolutionPage[]> {
   const seed = getSolutionsDb().pages.filter((p) => p.status === "published");
-  const dbPages = await getDbSolutionPages();
+  const [dbPages, archivedList] = await Promise.all([
+    getDbSolutionPages(),
+    getArchivedSolutionPageIds(),
+  ]);
+  const archivedIds = new Set(archivedList);
   const map = new Map<string, SolutionPage>();
-  for (const p of seed) map.set(p.id, p);
+  for (const p of seed) {
+    if (archivedIds.has(p.id)) continue;
+    map.set(p.id, p);
+  }
   for (const p of dbPages) {
+    if (archivedIds.has(p.id)) continue;
     const prev = map.get(p.id);
     if (!prev) {
       map.set(p.id, p);
@@ -56,7 +66,7 @@ export async function listMergedSolutionPages(): Promise<SolutionPage[]> {
       materialContaminantId: p.materialContaminantId ?? prev.materialContaminantId,
     });
   }
-  return [...map.values()];
+  return [...map.values()].map((p, _, all) => enrichPageFromSiblings(p, all));
 }
 
 export function listSolutionPages(opts?: { publishedOnly?: boolean }): SolutionPage[] {
@@ -255,7 +265,9 @@ function buildCautions(
 
 function buildIfFails(detail: SolutionDetailBody | undefined, siblings: SolutionPage[]): string[] {
   if (detail?.ifFails?.length) return detail.ifFails;
-  return siblings.slice(0, 4).map((s) => s.title.replace(/^가정집\s+|상가\s+/u, ""));
+  return siblings.slice(0, 4).map((s) =>
+    s.title.replace(/^(가정집|상가|식당|카페|미용실|사무실|병원)\s+/u, "")
+  );
 }
 
 function buildSolutionViewContent(args: {

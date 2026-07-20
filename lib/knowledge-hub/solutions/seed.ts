@@ -2,12 +2,17 @@ import type {
   ContaminantMasterExt,
   MaterialContaminantMaster,
   SolutionPage,
+  SolutionPlaceId,
+  SolutionSpaceId,
   SolutionsDb,
 } from "@/lib/knowledge-hub/solutions/types";
 import {
+  PLACE_SPACE_ORDER,
   SOLUTION_PARTS,
   SOLUTION_PLACES,
   SOLUTION_SPACES,
+  getPlaceLabel,
+  getSpaceLabel,
 } from "@/lib/knowledge-hub/solutions/taxonomy";
 
 const CONTAMINANT_MASTERS: ContaminantMasterExt[] = [
@@ -144,8 +149,8 @@ function toPage(r: Row): SolutionPage {
   };
 }
 
-/** MVP allowlist: home bathroom/restroom + shop restroom (~50) */
-const ROWS: Row[] = [
+/** MVP allowlist + 장소별 화장실 복제 원본 */
+const BASE_ROWS: Row[] = [
   {
     placeId: "home",
     spaceId: "restroom",
@@ -932,16 +937,294 @@ const ROWS: Row[] = [
   },
 ];
 
+/** 다른 장소로 복제할 때: 원본 공간 → 대상 공간 (+ 부위 필터 선택) */
+type SpaceCloneRule = {
+  toPlaces: SolutionPlaceId[];
+  toSpace: SolutionSpaceId;
+  fromPlace: SolutionPlaceId;
+  fromSpaces: SolutionSpaceId[];
+  /** 있으면 해당 부위만 */
+  partIds?: SolutionPage["partId"][];
+  contextByPlace?: Partial<Record<SolutionPlaceId, string>>;
+};
+
+const COMMERCIAL: SolutionPlaceId[] = [
+  "shop",
+  "restaurant",
+  "cafe",
+  "salon",
+  "office",
+  "hospital",
+];
+
+const SPACE_CLONE_RULES: SpaceCloneRule[] = [
+  {
+    toPlaces: COMMERCIAL,
+    toSpace: "restroom",
+    fromPlace: "home",
+    fromSpaces: ["restroom", "bathroom"],
+    contextByPlace: {
+      shop: "상가·공용 화장실은 이용 빈도가 높아 요석·물때·악취가 빠르게 쌓입니다.",
+      restaurant: "식당 화장실은 손님·직원이 함께 써서 물때·악취 관리 주기가 중요합니다.",
+      cafe: "카페 화장실은 공간이 좁은 경우가 많아 환기와 물기·물때 관리가 중요합니다.",
+      salon: "미용실 화장실·세면은 손님 동선과 가깝고 물때·비누찌꺼기가 잦습니다.",
+      office: "사무실 화장실은 공용으로 요석·물때·악취를 주기적으로 관리하는 것이 좋습니다.",
+      hospital: "병원·의원 화장실은 공용 빈도가 높아 위생·악취·요석 관리가 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["restaurant", "cafe", "shop"],
+    toSpace: "kitchen",
+    fromPlace: "home",
+    fromSpaces: ["kitchen"],
+    contextByPlace: {
+      restaurant: "식당 주방은 기름때·배수구 오염이 빠르게 쌓입니다.",
+      cafe: "카페 주방·바 주변은 커피·시럽·물때가 겹치기 쉽습니다.",
+      shop: "상가 주방·탕비 공간은 기름때와 배수 관리가 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["restaurant", "cafe", "shop", "salon"],
+    toSpace: "hall",
+    fromPlace: "home",
+    fromSpaces: ["living"],
+    contextByPlace: {
+      restaurant: "식당 홀은 바닥·테이블 동선 오염이 잦습니다.",
+      cafe: "카페 홀·테이블 구역은 음료 얼룩·바닥 먼지가 쌓이기 쉽습니다.",
+      shop: "상가 매장 홀은 바닥·유리 동선 관리가 필요합니다.",
+      salon: "미용실 대기·홀 공간은 바닥·먼지가 눈에 잘 띕니다.",
+    },
+  },
+  {
+    toPlaces: ["shop", "cafe", "salon"],
+    toSpace: "storefront",
+    fromPlace: "home",
+    fromSpaces: ["windows"],
+    contextByPlace: {
+      shop: "상가 쇼윈도·유리는 물때·지문이 잘 남습니다.",
+      cafe: "카페 유리·쇼케이스는 물때·지문 관리가 중요합니다.",
+      salon: "미용실 유리·창은 물때·지문이 눈에 잘 띕니다.",
+    },
+  },
+  {
+    toPlaces: ["shop", "cafe", "salon", "restaurant"],
+    toSpace: "counter",
+    fromPlace: "home",
+    fromSpaces: ["kitchen"],
+    partIds: ["countertop", "sink", "faucet", "tile", "drain"],
+    contextByPlace: {
+      shop: "상가 카운터는 손때·물때가 잦습니다.",
+      cafe: "카페 바·카운터는 음료 얼룩·물때가 쌓이기 쉽습니다.",
+      salon: "미용실 카운터는 손때·제품 잔여물이 남기 쉽습니다.",
+      restaurant: "식당 카운터·패스 주변은 기름·물때가 겹칩니다.",
+    },
+  },
+  {
+    toPlaces: COMMERCIAL,
+    toSpace: "entrance",
+    fromPlace: "home",
+    fromSpaces: ["entrance"],
+    contextByPlace: {
+      shop: "상가 입구·현관은 바닥 흙·물기가 들어옵니다.",
+      restaurant: "식당 입구는 바닥·매트 오염이 잦습니다.",
+      cafe: "카페 입구는 바닥 흙·물기 관리가 필요합니다.",
+      salon: "미용실 입구는 바닥·신발장 오염이 눈에 띕니다.",
+      office: "사무실 현관·로비는 바닥 먼지가 쌓이기 쉽습니다.",
+      hospital: "병원 로비·입구는 바닥 위생 관리가 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["office"],
+    toSpace: "office-floor",
+    fromPlace: "home",
+    fromSpaces: ["living", "study"],
+    contextByPlace: {
+      office: "사무공간은 데스크·바닥·먼지 관리가 기본입니다.",
+    },
+  },
+  {
+    toPlaces: ["office"],
+    toSpace: "pantry-office",
+    fromPlace: "home",
+    fromSpaces: ["kitchen", "pantry"],
+    partIds: ["sink", "faucet", "countertop", "tile", "drain", "floor", "hood"],
+    contextByPlace: {
+      office: "탕비실은 싱크·배수·바닥 오염이 잦습니다.",
+    },
+  },
+  {
+    toPlaces: ["office"],
+    toSpace: "meeting",
+    fromPlace: "home",
+    fromSpaces: ["living"],
+    contextByPlace: {
+      office: "회의실은 테이블·바닥·유리 오염이 눈에 띕니다.",
+    },
+  },
+  {
+    toPlaces: ["hospital"],
+    toSpace: "waiting",
+    fromPlace: "home",
+    fromSpaces: ["living"],
+    contextByPlace: {
+      hospital: "병원 대기실은 바닥·의자·손때 관리가 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["hospital"],
+    toSpace: "clinic",
+    fromPlace: "home",
+    fromSpaces: ["living", "study"],
+    contextByPlace: {
+      hospital: "진료실은 바닥·가구·손때 위생이 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["hospital"],
+    toSpace: "treatment",
+    fromPlace: "home",
+    fromSpaces: ["living", "restroom"],
+    partIds: ["floor", "tile", "sink", "faucet", "mirror", "drain", "silicone"],
+    contextByPlace: {
+      hospital: "처치·검사실은 바닥·세면 위생 관리가 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["salon"],
+    toSpace: "styling",
+    fromPlace: "home",
+    fromSpaces: ["restroom", "living"],
+    partIds: ["mirror", "sink", "faucet", "floor", "tile", "chair", "drain"],
+    contextByPlace: {
+      salon: "시술·커트 공간은 거울·바닥·세면 오염이 잦습니다.",
+    },
+  },
+];
+
+function pageKey(r: Pick<Row, "placeId" | "spaceId" | "partId" | "contaminantId" | "slug">): string {
+  const slug = r.slug ?? r.contaminantId;
+  return `${r.placeId}__${r.spaceId}__${r.partId}__${slug}`;
+}
+
+function rewritePlaceTitle(
+  title: string,
+  fromPlaceName: string,
+  toPlaceName: string,
+  fromSpaceLabel: string,
+  toSpaceLabel: string
+): string {
+  let t = title;
+  if (t.startsWith(fromPlaceName)) {
+    t = toPlaceName + t.slice(fromPlaceName.length);
+  }
+  if (fromSpaceLabel !== toSpaceLabel && t.includes(fromSpaceLabel)) {
+    t = t.replace(fromSpaceLabel, toSpaceLabel);
+  }
+  return t;
+}
+
+function cloneByRules(baseRows: Row[]): Row[] {
+  const existing = new Set(baseRows.map((r) => pageKey(r)));
+  const clones: Row[] = [];
+  const allSources = [...baseRows];
+
+  function addClone(row: Row) {
+    const key = pageKey(row);
+    if (existing.has(key)) return;
+    clones.push(row);
+    existing.add(key);
+    allSources.push(row);
+  }
+
+  for (const rule of SPACE_CLONE_RULES) {
+    const sources = allSources.filter(
+      (r) =>
+        r.placeId === rule.fromPlace &&
+        rule.fromSpaces.includes(r.spaceId as SolutionSpaceId) &&
+        (!rule.partIds || rule.partIds.includes(r.partId))
+    );
+    const fromPlaceName = getPlaceLabel(rule.fromPlace);
+
+    for (const placeId of rule.toPlaces) {
+      // PLACE_SPACE_ORDER에 없는 공간은 건너뜀
+      const allowed = PLACE_SPACE_ORDER[placeId];
+      if (allowed && !allowed.includes(rule.toSpace)) continue;
+
+      const placeName = getPlaceLabel(placeId);
+      const toSpaceLabel = getSpaceLabel(rule.toSpace, placeId);
+      const defaultContext = rule.contextByPlace?.[placeId];
+
+      for (const src of sources) {
+        const fromSpaceLabel = getSpaceLabel(src.spaceId, rule.fromPlace);
+        const title = rewritePlaceTitle(
+          src.title,
+          fromPlaceName,
+          placeName,
+          fromSpaceLabel,
+          toSpaceLabel
+        );
+        const description = src.description
+          ? rewritePlaceTitle(
+              src.description,
+              fromPlaceName,
+              placeName,
+              fromSpaceLabel,
+              toSpaceLabel
+            )
+          : undefined;
+        const placeContext =
+          src.placeContext
+            ?.replaceAll(fromPlaceName, placeName)
+            .replaceAll(fromSpaceLabel, toSpaceLabel) ?? defaultContext;
+
+        addClone({
+          ...src,
+          placeId,
+          spaceId: rule.toSpace,
+          title,
+          description,
+          placeContext,
+        });
+      }
+    }
+  }
+
+  // 상가 소변기 → 공용 화장실 있는 다른 장소
+  const shopUrinal = allSources.filter(
+    (r) => r.placeId === "shop" && r.spaceId === "restroom" && r.partId === "urinal"
+  );
+  for (const placeId of COMMERCIAL) {
+    if (placeId === "shop") continue;
+    const placeName = getPlaceLabel(placeId);
+    const defaultContext = SPACE_CLONE_RULES[0]?.contextByPlace?.[placeId];
+    for (const src of shopUrinal) {
+      addClone({
+        ...src,
+        placeId,
+        spaceId: "restroom",
+        title: src.title.replace(/^상가/, placeName),
+        description: src.description
+          ? src.description.replace(/^상가/, placeName)
+          : undefined,
+        placeContext: src.placeContext?.replaceAll("상가", placeName) ?? defaultContext,
+      });
+    }
+  }
+
+  return clones;
+}
+
 export function buildSolutionsDb(): SolutionsDb {
+  const pages = [...BASE_ROWS, ...cloneByRules(BASE_ROWS)].map(toPage);
   return {
     version: 1,
-    updatedAt: "2026-07-14",
+    updatedAt: "2026-07-20",
     places: SOLUTION_PLACES,
     spaces: SOLUTION_SPACES,
     parts: SOLUTION_PARTS,
     contaminantMasters: CONTAMINANT_MASTERS,
     materialContaminants: MATERIAL_CONTAMINANTS,
-    pages: ROWS.map(toPage),
+    pages,
   };
 }
 

@@ -4,6 +4,7 @@ import { createServerSupabase } from "@/lib/supabase-server";
 import { getContaminantById } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import {
   SOLUTION_PAGES_CACHE_TAG,
+  archiveSolutionPage,
   normalizeSolutionDetail,
   upsertSolutionPage,
 } from "@/lib/knowledge-hub/solutions/solution-store";
@@ -80,6 +81,72 @@ export async function PUT(req: Request) {
       id: page.id,
       path: `/solutions/${page.placeId}/${page.spaceId}/${page.partId}/${page.slug}`,
     });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "서버 오류";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ ok: false, error: "로그인이 필요합니다." }, { status: 401 });
+
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (profile?.role !== "admin" && profile?.role !== "editor") {
+      return NextResponse.json({ ok: false, error: "권한이 없습니다." }, { status: 403 });
+    }
+
+    const body = (await req.json()) as {
+      id?: string;
+      placeId?: string;
+      spaceId?: string;
+      partId?: string;
+      contaminantId?: string;
+      slug?: string;
+      title?: string;
+      materialId?: string;
+      description?: string;
+      placeContext?: string;
+      productIds?: string[];
+      materialContaminantId?: string;
+      detail?: SolutionPage["detail"];
+      status?: SolutionPage["status"];
+    };
+
+    if (!body.id?.trim()) {
+      return NextResponse.json({ ok: false, error: "id가 필요합니다." }, { status: 400 });
+    }
+
+    const page: SolutionPage = {
+      id: body.id.trim(),
+      placeId: (body.placeId || "home") as SolutionPage["placeId"],
+      spaceId: (body.spaceId || "restroom") as SolutionPage["spaceId"],
+      partId: (body.partId || "toilet") as SolutionPage["partId"],
+      contaminantId: body.contaminantId || "limescale",
+      slug: (body.slug?.trim() || body.contaminantId || "limescale").replace(/[^a-z0-9-_]/gi, "-"),
+      materialId: body.materialId,
+      title: (body.title || body.id).trim(),
+      description: body.description,
+      placeContext: body.placeContext,
+      productIds: body.productIds,
+      materialContaminantId: body.materialContaminantId,
+      detail: body.detail,
+      status: "archived",
+    };
+
+    const result = await archiveSolutionPage(page, user.id);
+    if (!result.ok) return NextResponse.json(result, { status: 400 });
+
+    revalidateTag(SOLUTION_PAGES_CACHE_TAG, { expire: 0 });
+    revalidatePath("/solutions");
+    revalidatePath("/pollution");
+    revalidatePath(`/solutions/${page.placeId}/${page.spaceId}/${page.partId}/${page.slug}`);
+
+    return NextResponse.json({ ok: true, id: page.id });
   } catch (e) {
     const message = e instanceof Error ? e.message : "서버 오류";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

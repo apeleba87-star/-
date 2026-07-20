@@ -107,6 +107,17 @@ function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-JXV9GMLMEZ');`}
         </Script>
+        {/* Naver Analytics */}
+        <Script id="naver-analytics" strategy="afterInteractive">
+          {`if(!window.wcs_add) window.wcs_add = {};
+window.wcs_add["wa"] = "1b37d6dbad0a760";
+(function(){
+  var s = document.createElement("script");
+  s.src = "https://wcs.pstatic.net/wcslog.js";
+  s.onload = function(){ if(window.wcs) window.wcs_do(); };
+  document.head.appendChild(s);
+})();`}
+        </Script>
         <SiteBrandingScripts />
         <SupabaseSessionRefresh />
         <RadarAdPlacementPreviewBoot />

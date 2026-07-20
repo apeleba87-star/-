@@ -8,11 +8,25 @@ import type {
 export const SOLUTION_PLACES: SolutionPlace[] = [
   { id: "home", name: "가정집" },
   { id: "shop", name: "상가" },
+  { id: "restaurant", name: "식당" },
+  { id: "cafe", name: "카페" },
+  { id: "salon", name: "미용실" },
   { id: "office", name: "사무실" },
   { id: "hospital", name: "병원" },
   { id: "school", name: "학교" },
   { id: "public", name: "공중" },
   { id: "childcare", name: "어린이시설" },
+];
+
+/** 오염으로 찾기 1단에 노출 (학교·공중·어린이시설은 추후) */
+export const PRIMARY_PLACE_ORDER: SolutionPlace["id"][] = [
+  "home",
+  "shop",
+  "restaurant",
+  "cafe",
+  "salon",
+  "office",
+  "hospital",
 ];
 
 export const SOLUTION_SPACES: SolutionSpace[] = [
@@ -32,6 +46,13 @@ export const SOLUTION_SPACES: SolutionSpace[] = [
   { id: "office-floor", name: "사무공간" },
   { id: "waiting", name: "대기실" },
   { id: "clinic", name: "진료실" },
+  { id: "hall", name: "홀·테이블" },
+  { id: "storefront", name: "쇼윈도·유리" },
+  { id: "counter", name: "카운터·바" },
+  { id: "pantry-office", name: "탕비실" },
+  { id: "meeting", name: "회의실" },
+  { id: "treatment", name: "처치·검사실" },
+  { id: "styling", name: "시술·커트 공간" },
 ];
 
 /** 가정집: 화장실·욕실 동일 */
@@ -69,6 +90,17 @@ export const HOME_SPACE_LABELS: Partial<Record<SolutionSpaceId, string>> = {
   study: "서재·공부방",
   dressroom: "드레스룸",
   pantry: "팬트리",
+};
+
+/** 장소별 공간 선택 순서 (없으면 페이지에 있는 것만) */
+export const PLACE_SPACE_ORDER: Partial<Record<SolutionPlace["id"], SolutionSpaceId[]>> = {
+  home: HOME_SPACE_ORDER,
+  shop: ["restroom", "storefront", "counter", "hall"],
+  restaurant: ["restroom", "kitchen", "hall", "entrance"],
+  cafe: ["restroom", "counter", "hall", "kitchen"],
+  salon: ["restroom", "styling", "counter", "entrance"],
+  office: ["restroom", "office-floor", "pantry-office", "meeting", "entrance"],
+  hospital: ["restroom", "waiting", "clinic", "treatment", "entrance"],
 };
 
 export const SOLUTION_PARTS: SolutionPart[] = [
@@ -119,7 +151,10 @@ export function getSpaceLabel(id: string, placeId?: string): string {
     const home = HOME_SPACE_LABELS[id as SolutionSpaceId];
     if (home) return home;
   }
-  if (id === "restroom" && placeId === "shop") return "화장실";
+  if (id === "restroom" || id === "bathroom") {
+    if (placeId === "home") return "화장실·욕실";
+    return "화장실";
+  }
   return SOLUTION_SPACES.find((s) => s.id === id)?.name ?? id;
 }
 

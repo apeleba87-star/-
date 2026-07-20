@@ -193,7 +193,36 @@ export async function upsertSolutionPage(
   return { ok: true };
 }
 
-/** Admin: list all DB pages including draft */
+/** Soft-delete: archive row (also suppresses matching seed on public/admin lists) */
+export async function archiveSolutionPage(
+  page: SolutionPage,
+  userId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return upsertSolutionPage({ ...page, status: "archived" }, userId);
+}
+
+export async function listArchivedSolutionPageIds(): Promise<string[]> {
+  try {
+    const supabase = createServiceSupabase();
+    const { data, error } = await supabase
+      .from("cleaning_solution_pages")
+      .select("id")
+      .eq("status", "archived");
+    if (error || !data) return [];
+    return data.map((row) => row.id as string);
+  } catch {
+    return [];
+  }
+}
+
+export function getArchivedSolutionPageIds(): Promise<string[]> {
+  return unstable_cache(listArchivedSolutionPageIds, ["cleaning-solution-pages-archived"], {
+    revalidate: 3600,
+    tags: [SOLUTION_PAGES_CACHE_TAG],
+  })();
+}
+
+/** Admin: list all DB pages including draft (excludes archived from default use — caller filters) */
 export async function listAllDbSolutionPages(): Promise<SolutionPage[]> {
   try {
     const supabase = createServiceSupabase();

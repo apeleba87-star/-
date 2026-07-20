@@ -4,11 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  PLACE_SPACE_ORDER,
+  PRIMARY_PLACE_ORDER,
   SOLUTION_PARTS,
   SOLUTION_PLACES,
   SOLUTION_SPACES,
   getPartLabel,
+  getPlaceLabel,
   getSpaceLabel,
+  spaceIdsForUiSelection,
 } from "@/lib/knowledge-hub/solutions/taxonomy";
 import type {
   SolutionDetailBody,
@@ -16,6 +20,7 @@ import type {
   SolutionRecommendProduct,
   SolutionStarRating,
 } from "@/lib/knowledge-hub/solutions/types";
+import { enrichPageFromSiblings } from "@/lib/knowledge-hub/solutions/solution-inherit";
 
 type ProductOpt = { id: string; name: string; standardDilution?: string | null };
 
@@ -166,6 +171,11 @@ export default function AdminSolutionsPanel({
   }
 
   const [screen, setScreen] = useState<"list" | "form">("list");
+  const [listBrowse, setListBrowse] = useState<"place" | "space" | "pages">("place");
+  const [filterPlaceId, setFilterPlaceId] = useState("");
+  const [filterSpaceId, setFilterSpaceId] = useState("");
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [placeId, setPlaceId] = useState("home");
   const [spaceId, setSpaceId] = useState("restroom");
@@ -235,6 +245,23 @@ export default function AdminSolutionsPanel({
   }
 
   function startEdit(page: PageListItem) {
+    const pool = (() => {
+      const archivedIds = new Set(
+        localDbPages.filter((p) => p.status === "archived").map((p) => p.id)
+      );
+      const map = new Map<string, PageListItem>();
+      for (const p of seedPages) {
+        if (archivedIds.has(p.id)) continue;
+        map.set(p.id, p);
+      }
+      for (const p of localDbPages) {
+        if (p.status === "archived") continue;
+        map.set(p.id, { ...p, source: "db" });
+      }
+      return [...map.values()];
+    })();
+    const enriched = enrichPageFromSiblings(page, pool);
+
     setEditingId(page.id);
     setPlaceId(page.placeId);
     setSpaceId(page.spaceId);
@@ -244,7 +271,7 @@ export default function AdminSolutionsPanel({
     setTitle(page.title);
     setStatus(page.status === "published" ? "published" : "draft");
 
-    const d = page.detail;
+    const d = enriched.detail;
     setSummary(d?.summary ?? page.placeContext ?? "");
     setDifficulty(d?.difficulty ?? "");
     setLocationsText(listToLines(d?.locations));
@@ -252,18 +279,25 @@ export default function AdminSolutionsPanel({
     setCautionsText(listToLines(d?.cautions));
     setIfFailsText(listToLines(d?.ifFails));
 
-    const masterIds = masterMap.get(page.contaminantId)?.defaultProductIds ?? page.productIds ?? [];
+    const masterIds =
+      masterMap.get(page.contaminantId)?.defaultProductIds ??
+      enriched.productIds ??
+      page.productIds ??
+      [];
     const prev = d?.recommendations ?? [];
-    const fromMaster = recommendationsFromMaster(masterIds, products, prev);
-    const extras = prev.filter((r) => !r.productId);
-    const orphanProducts = prev.filter(
-      (r) => r.productId && !masterIds.includes(r.productId)
-    );
-    setRecommendations([...fromMaster, ...orphanProducts, ...extras]);
+    if (prev.length) {
+      setRecommendations(prev);
+    } else {
+      setRecommendations(recommendationsFromMaster(masterIds, products, []));
+    }
     setPickProductId("");
     setPickRating(3);
-    setSyncMasterOnSave(true);
-    setMsg(null);
+    setSyncMasterOnSave(false);
+    setMsg(
+      enriched.inheritedFromPlaceId
+        ? `${getPlaceLabel(enriched.inheritedFromPlaceId)} 동일 부위·오염 내용을 불러왔습니다. 저장하면 이 장소에 따로 저장됩니다.`
+        : null
+    );
     setScreen("form");
   }
 
@@ -461,34 +495,210 @@ export default function AdminSolutionsPanel({
   }
 
   const allListed = useMemo(() => {
+    const archivedIds = new Set(
+      localDbPages.filter((p) => p.status === "archived").map((p) => p.id)
+    );
     const map = new Map<string, PageListItem>();
-    for (const p of seedPages) map.set(p.id, p);
-    for (const p of localDbPages) map.set(p.id, { ...p, source: "db" });
+    for (const p of seedPages) {
+      if (archivedIds.has(p.id)) continue;
+      map.set(p.id, p);
+    }
+    for (const p of localDbPages) {
+      if (p.status === "archived") continue;
+      map.set(p.id, { ...p, source: "db" });
+    }
     return [...map.values()].sort((a, b) => a.title.localeCompare(b.title, "ko"));
   }, [seedPages, localDbPages]);
+
+  const placeBuckets = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const p of allListed) {
+      count.set(p.placeId, (count.get(p.placeId) ?? 0) + 1);
+    }
+    return PRIMARY_PLACE_ORDER.map((id) => ({
+      id,
+      label: getPlaceLabel(id),
+      n: count.get(id) ?? 0,
+    })).filter((p) => p.n > 0);
+  }, [allListed]);
+
+  const spaceBuckets = useMemo(() => {
+    if (!filterPlaceId) return [];
+    const bySpace = new Map<string, number>();
+    for (const p of allListed) {
+      if (p.placeId !== filterPlaceId) continue;
+      bySpace.set(p.spaceId, (bySpace.get(p.spaceId) ?? 0) + 1);
+    }
+    const order = PLACE_SPACE_ORDER[filterPlaceId as keyof typeof PLACE_SPACE_ORDER] ?? [];
+    const seen = new Set<string>();
+    const out: { id: string; label: string; matchIds: string[]; n: number }[] = [];
+    for (const id of order) {
+      const matchIds = spaceIdsForUiSelection(filterPlaceId, id);
+      const n = matchIds.reduce((sum, sid) => sum + (bySpace.get(sid) ?? 0), 0);
+      if (!n) continue;
+      out.push({ id, label: getSpaceLabel(id, filterPlaceId), matchIds, n });
+      matchIds.forEach((sid) => seen.add(sid));
+    }
+    for (const [sid, n] of bySpace) {
+      if (seen.has(sid)) continue;
+      out.push({ id: sid, label: getSpaceLabel(sid, filterPlaceId), matchIds: [sid], n });
+    }
+    return out;
+  }, [allListed, filterPlaceId]);
+
+  const filteredPages = useMemo(() => {
+    if (!filterPlaceId || !filterSpaceId) return [];
+    const space = spaceBuckets.find((s) => s.id === filterSpaceId);
+    const matchIds = space?.matchIds ?? [filterSpaceId];
+    return allListed.filter(
+      (p) => p.placeId === filterPlaceId && matchIds.includes(p.spaceId)
+    );
+  }, [allListed, filterPlaceId, filterSpaceId, spaceBuckets]);
+
+  async function saveTitleInline(page: PageListItem, nextTitle: string) {
+    const next = nextTitle.trim();
+    if (!next || next === page.title) {
+      setEditingTitleId(null);
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/admin/solutions/pages", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: page.id,
+          placeId: page.placeId,
+          spaceId: page.spaceId,
+          partId: page.partId,
+          contaminantId: page.contaminantId,
+          slug: page.slug,
+          title: next,
+          placeContext: page.placeContext,
+          status: page.status === "published" ? "published" : "draft",
+          productIds: page.productIds,
+          detail: page.detail,
+          materialId: page.materialId,
+          materialContaminantId: page.materialContaminantId,
+          description: page.description,
+        }),
+      });
+      const raw = await res.text();
+      let json: { ok: boolean; error?: string };
+      try {
+        json = JSON.parse(raw) as { ok: boolean; error?: string };
+      } catch {
+        setMsg(`제목 저장 실패 (서버 ${res.status})`);
+        return;
+      }
+      if (!json.ok) {
+        setMsg(json.error || "제목 저장 실패");
+        return;
+      }
+      setLocalDbPages((prev) => {
+        const row: PageListItem = {
+          ...page,
+          title: next,
+          source: "db",
+          status: page.status === "published" ? "published" : "draft",
+        };
+        const idx = prev.findIndex((x) => x.id === page.id);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = row;
+          return copy;
+        }
+        return [...prev, row];
+      });
+      setMsg("제목 저장됨");
+      setEditingTitleId(null);
+      router.refresh();
+    } catch {
+      setMsg("제목 저장 중 오류");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deletePage(page: PageListItem) {
+    if (!window.confirm(`「${page.title}」을(를) 삭제할까요?\n공개·목록에서 숨겨집니다.`)) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/admin/solutions/pages", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: page.id,
+          placeId: page.placeId,
+          spaceId: page.spaceId,
+          partId: page.partId,
+          contaminantId: page.contaminantId,
+          slug: page.slug,
+          title: page.title,
+          placeContext: page.placeContext,
+          productIds: page.productIds,
+          detail: page.detail,
+          materialId: page.materialId,
+          materialContaminantId: page.materialContaminantId,
+          description: page.description,
+          status: page.status,
+        }),
+      });
+      const raw = await res.text();
+      let json: { ok: boolean; error?: string };
+      try {
+        json = JSON.parse(raw) as { ok: boolean; error?: string };
+      } catch {
+        setMsg(`삭제 실패 (서버 ${res.status})`);
+        return;
+      }
+      if (!json.ok) {
+        setMsg(json.error || "삭제 실패");
+        return;
+      }
+      setLocalDbPages((prev) => {
+        const archived: PageListItem = { ...page, status: "archived", source: "db" };
+        const idx = prev.findIndex((x) => x.id === page.id);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = archived;
+          return copy;
+        }
+        return [...prev, archived];
+      });
+      setMsg("삭제됨 (목록·공개에서 숨김)");
+      router.refresh();
+    } catch {
+      setMsg("삭제 중 오류");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (screen === "list") {
     return (
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-black text-slate-900">검색어 솔루션</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          목록에서 편집하거나 새로 만듭니다.{" "}
-          <Link href="/solutions" className="font-semibold text-teal-800 hover:underline">
-            공개 허브
-          </Link>
-          {" · "}
-          <Link href="/admin/knowledge-hub" className="font-semibold text-slate-600 hover:underline">
-            지식 허브 (마스터·판매)
-          </Link>
-        </p>
+          <p className="mt-1 text-sm text-slate-600">
+            장소 → 공간으로 좁힌 뒤 제목을 바로 수정하거나 상세 편집합니다.{" "}
+            <Link href="/solutions" className="font-semibold text-teal-800 hover:underline">
+              공개 허브
+            </Link>
+            {" · "}
+            <Link href="/admin/knowledge-hub" className="font-semibold text-slate-600 hover:underline">
+              지식 허브 (마스터·판매)
+            </Link>
+          </p>
           {msg ? <p className="mt-2 text-sm font-medium text-teal-800">{msg}</p> : null}
         </div>
 
         <section className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-black text-slate-900">
-              검색어 페이지 목록
+              검색어 페이지
               <span className="ml-2 text-sm font-bold text-slate-500">({allListed.length})</span>
             </h2>
             <button
@@ -499,37 +709,151 @@ export default function AdminSolutionsPanel({
               새로 만들기
             </button>
           </div>
-          <ul className="mt-4 divide-y divide-slate-100">
-            {allListed.map((p) => (
-              <li
-                key={`${p.source}-${p.id}`}
-                className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
+
+          {listBrowse !== "place" ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="text-sm font-bold text-teal-800 hover:underline"
+                onClick={() => {
+                  if (listBrowse === "pages") {
+                    setListBrowse("space");
+                    setFilterSpaceId("");
+                  } else {
+                    setListBrowse("place");
+                    setFilterPlaceId("");
+                    setFilterSpaceId("");
+                  }
+                }}
               >
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-slate-950">{p.title}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {p.source === "db" ? "DB" : "시드"} · {p.status}
-                    {p.detail ? " · 상세있음" : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => startEdit(p)}
-                  className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 hover:border-teal-700 hover:text-teal-800"
-                >
-                  편집하기
-                </button>
-                {p.status === "published" ? (
-                  <Link
-                    href={p.path}
-                    className="rounded-xl px-2 py-2 text-sm font-bold text-slate-500 hover:text-teal-800"
+                ← 뒤로
+              </button>
+              <p className="text-sm text-slate-500">
+                {[
+                  filterPlaceId ? getPlaceLabel(filterPlaceId) : null,
+                  filterSpaceId ? getSpaceLabel(filterSpaceId, filterPlaceId) : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+          ) : null}
+
+          {listBrowse === "place" ? (
+            <ul className="mt-4 divide-y divide-slate-100">
+              {placeBuckets.map((pl) => (
+                <li key={pl.id} className="py-2 first:pt-0 last:pb-0">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-xl px-2 py-3 text-left hover:bg-slate-50"
+                    onClick={() => {
+                      setFilterPlaceId(pl.id);
+                      setFilterSpaceId("");
+                      setListBrowse("space");
+                    }}
                   >
-                    보기
-                  </Link>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+                    <span className="font-bold text-slate-950">{pl.label}</span>
+                    <span className="text-sm font-bold text-slate-500">{pl.n}개 →</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {listBrowse === "space" ? (
+            <ul className="mt-4 divide-y divide-slate-100">
+              {spaceBuckets.map((sp) => (
+                <li key={sp.id} className="py-2 first:pt-0 last:pb-0">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-xl px-2 py-3 text-left hover:bg-slate-50"
+                    onClick={() => {
+                      setFilterSpaceId(sp.id);
+                      setListBrowse("pages");
+                    }}
+                  >
+                    <span className="font-bold text-slate-950">{sp.label}</span>
+                    <span className="text-sm font-bold text-slate-500">{sp.n}개 →</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {listBrowse === "pages" ? (
+            <ul className="mt-4 divide-y divide-slate-100">
+              {filteredPages.map((p) => (
+                <li
+                  key={`${p.source}-${p.id}`}
+                  className="flex flex-wrap items-start gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    {editingTitleId === p.id ? (
+                      <input
+                        autoFocus
+                        className="w-full rounded-lg border border-teal-600 px-2 py-1.5 text-sm font-bold text-slate-950 outline-none ring-2 ring-teal-800/20"
+                        value={titleDraft}
+                        disabled={busy}
+                        onChange={(e) => setTitleDraft(e.target.value)}
+                        onBlur={() => void saveTitleInline(p, titleDraft)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void saveTitleInline(p, titleDraft);
+                          }
+                          if (e.key === "Escape") setEditingTitleId(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="w-full text-left font-bold text-slate-950 hover:text-teal-800"
+                        title="클릭하여 제목 수정"
+                        onClick={() => {
+                          setEditingTitleId(p.id);
+                          setTitleDraft(p.title);
+                        }}
+                      >
+                        {p.title}
+                      </button>
+                    )}
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {p.source === "db" ? "DB" : "시드"} · {p.status}
+                      {p.detail ? " · 상세있음" : ""}
+                      {" · "}
+                      {getPartLabel(p.partId, p.spaceId)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(p)}
+                    className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 hover:border-teal-700 hover:text-teal-800"
+                  >
+                    편집하기
+                  </button>
+                  {p.status === "published" ? (
+                    <Link
+                      href={p.path}
+                      className="rounded-xl px-2 py-2 text-sm font-bold text-slate-500 hover:text-teal-800"
+                    >
+                      보기
+                    </Link>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void deletePage(p)}
+                    className="rounded-xl px-2 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    삭제
+                  </button>
+                </li>
+              ))}
+              {!filteredPages.length ? (
+                <li className="py-6 text-center text-sm text-slate-500">페이지가 없습니다.</li>
+              ) : null}
+            </ul>
+          ) : null}
         </section>
 
         <details className="rounded-xl border border-slate-200 bg-white p-5">

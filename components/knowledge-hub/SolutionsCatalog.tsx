@@ -7,6 +7,9 @@ import type { SolutionCardData } from "@/lib/knowledge-hub/solutions/get-solutio
 import {
   HOME_SPACE_ORDER,
   KITCHEN_PART_ORDER,
+  PLACE_SPACE_ORDER,
+  PRIMARY_PLACE_ORDER,
+  getPlaceLabel,
   getSpaceLabel,
   spaceIdsForUiSelection,
 } from "@/lib/knowledge-hub/solutions/taxonomy";
@@ -63,47 +66,47 @@ export default function SolutionsCatalog({
   }, [pages, query]);
 
   const places = useMemo(() => {
-    const map = new Map<string, { id: string; label: string; n: number }>();
+    const count = new Map<string, number>();
     for (const p of pages) {
-      const cur = map.get(p.placeId);
-      if (cur) cur.n += 1;
-      else map.set(p.placeId, { id: p.placeId, label: p.placeLabel, n: 1 });
+      count.set(p.placeId, (count.get(p.placeId) ?? 0) + 1);
     }
-    return [...map.values()];
+    return PRIMARY_PLACE_ORDER.map((id) => ({
+      id,
+      label: getPlaceLabel(id),
+      n: count.get(id) ?? 0,
+    }));
   }, [pages]);
 
   const spaces: SpaceChoice[] = useMemo(() => {
     if (!placeId) return [];
 
-    if (placeId === "home") {
-      const bySpace = countBySpace(pages, placeId);
-      return HOME_SPACE_ORDER.map((id) => {
-        const matchIds = spaceIdsForUiSelection(placeId, id);
-        const n = matchIds.reduce((sum, sid) => sum + (bySpace.get(sid) ?? 0), 0);
-        return {
-          id,
-          label: getSpaceLabel(id, placeId),
-          matchIds,
-          n,
-          comingSoon: n === 0,
-        };
+    const bySpace = countBySpace(pages, placeId);
+    const order = PLACE_SPACE_ORDER[placeId as keyof typeof PLACE_SPACE_ORDER] ?? HOME_SPACE_ORDER;
+
+    const fromOrder: SpaceChoice[] = order.map((id) => {
+      const matchIds = spaceIdsForUiSelection(placeId, id);
+      const n = matchIds.reduce((sum, sid) => sum + (bySpace.get(sid) ?? 0), 0);
+      return {
+        id,
+        label: getSpaceLabel(id, placeId),
+        matchIds,
+        n,
+        comingSoon: n === 0,
+      };
+    });
+
+    // 순서에 없지만 페이지가 있는 공간 추가
+    for (const [sid, n] of bySpace) {
+      if (fromOrder.some((s) => s.matchIds.includes(sid))) continue;
+      fromOrder.push({
+        id: sid,
+        label: getSpaceLabel(sid, placeId),
+        matchIds: [sid],
+        n,
+        comingSoon: false,
       });
     }
-
-    const map = new Map<string, SpaceChoice>();
-    for (const p of pages) {
-      if (p.placeId !== placeId) continue;
-      const cur = map.get(p.spaceId);
-      if (cur) cur.n += 1;
-      else
-        map.set(p.spaceId, {
-          id: p.spaceId,
-          label: p.spaceLabel,
-          matchIds: [p.spaceId],
-          n: 1,
-        });
-    }
-    return [...map.values()];
+    return fromOrder;
   }, [pages, placeId]);
 
   const activeSpace = spaces.find((s) => s.id === spaceId);
@@ -226,8 +229,10 @@ export default function SolutionsCatalog({
                   <li key={pl.id}>
                     <ChoiceButton
                       label={pl.label}
-                      hint={`${pl.n}개 가이드`}
+                      hint={pl.n ? `${pl.n}개 가이드` : "준비중"}
+                      disabled={pl.n === 0}
                       onClick={() => {
+                        if (!pl.n) return;
                         setPlaceId(pl.id);
                         setSpaceId("");
                         setPartId("");

@@ -13,7 +13,7 @@ export const revalidate = 86400;
 export const metadata = buildPageMetadata({
   title: "오염으로 찾기 — 장소·부위 검색어 | 클린아이덱스",
   description:
-    "가정집 화장실 변기 요석, 상가 소변기 요석처럼 장소·부위로 세분화된 오염 제거 가이드.",
+    "가정집·상가·식당·카페·미용실·사무실·병원 등 장소·부위로 세분화된 오염 제거 가이드.",
   path: "/pollution",
 });
 

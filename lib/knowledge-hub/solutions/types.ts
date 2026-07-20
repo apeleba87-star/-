@@ -6,6 +6,9 @@
 export type SolutionPlaceId =
   | "home"
   | "shop"
+  | "restaurant"
+  | "cafe"
+  | "salon"
   | "office"
   | "hospital"
   | "school"
@@ -28,7 +31,14 @@ export type SolutionSpaceId =
   | "pantry"
   | "office-floor"
   | "waiting"
-  | "clinic";
+  | "clinic"
+  | "hall"
+  | "storefront"
+  | "counter"
+  | "pantry-office"
+  | "meeting"
+  | "treatment"
+  | "styling";
 
 export type SolutionPartId =
   | "toilet"
@@ -68,7 +78,7 @@ export type SolutionPartId =
   | "door-frame"
   | "closet";
 
-export type SolutionStatus = "draft" | "published";
+export type SolutionStatus = "draft" | "published" | "archived";
 
 export type SolutionPart = {
   id: SolutionPartId;
