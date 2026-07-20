@@ -32,9 +32,9 @@ export function toPlaceJobCard(job: PlaceJob): PlaceJobCard {
 /** 허브에 노출할 장소 (시드/DB에 job이 있는 것만 + PRIMARY 순서) */
 export function placeIdsWithJobs(jobs: { placeId: string }[]): string[] {
   const have = new Set(jobs.map((j) => j.placeId));
-  const ordered = PRIMARY_PLACE_ORDER.filter((id) => have.has(id));
+  const ordered: string[] = PRIMARY_PLACE_ORDER.filter((id) => have.has(id));
   for (const id of have) {
-    if (!ordered.includes(id as (typeof PRIMARY_PLACE_ORDER)[number])) ordered.push(id);
+    if (!ordered.includes(id)) ordered.push(id);
   }
   return ordered;
 }

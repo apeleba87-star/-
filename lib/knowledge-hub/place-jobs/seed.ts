@@ -1,19 +1,26 @@
 import type { PlaceJob } from "@/lib/knowledge-hub/place-jobs/types";
 
-type Seed = Omit<PlaceJob, "id" | "status"> & { status?: PlaceJob["status"] };
+type SeedBody = {
+  sortOrder?: number;
+  summary?: string;
+  prepare?: string[];
+  steps?: string[];
+  motions?: string[];
+  checklist?: string[];
+  frequency?: string;
+  cautions?: string[];
+  pollutionLinks?: PlaceJob["pollutionLinks"];
+  relatedServicePath?: string;
+  status?: PlaceJob["status"];
+};
 
-function job(
-  placeId: string,
-  slug: string,
-  title: string,
-  body: Omit<Seed, "placeId" | "slug" | "title" | "sortOrder"> & { sortOrder?: number }
-): PlaceJob {
+function job(placeId: string, slug: string, title: string, body: SeedBody): PlaceJob {
   return {
     id: `${placeId}__${slug}`,
     placeId,
     slug,
     title,
-    status: "published",
+    status: body.status ?? "published",
     sortOrder: body.sortOrder ?? 0,
     summary: body.summary,
     prepare: body.prepare ?? [],
