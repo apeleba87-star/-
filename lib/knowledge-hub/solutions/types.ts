@@ -11,6 +11,8 @@ export type SolutionPlaceId =
   | "salon"
   | "office"
   | "hospital"
+  | "gym"
+  | "academy"
   | "school"
   | "public"
   | "childcare";
@@ -38,7 +40,10 @@ export type SolutionSpaceId =
   | "pantry-office"
   | "meeting"
   | "treatment"
-  | "styling";
+  | "styling"
+  | "workout"
+  | "classroom"
+  | "locker";
 
 export type SolutionPartId =
   | "toilet"

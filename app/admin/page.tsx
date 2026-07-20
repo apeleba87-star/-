@@ -38,6 +38,20 @@ export default async function AdminDashboardPage() {
             <p className="mt-1 text-sm text-teal-900/80">목록 → 편집하기 / 새로 만들기</p>
           </Link>
           <Link
+            href="/admin/places"
+            className="block rounded-2xl border-2 border-slate-800 bg-slate-50 px-5 py-4 transition hover:bg-slate-100"
+          >
+            <h3 className="font-black text-slate-950">장소별 청소 방법</h3>
+            <p className="mt-1 text-sm text-slate-700/80">장소 → 할 일 · 루틴·동선 매뉴얼</p>
+          </Link>
+          <Link
+            href="/admin/materials"
+            className="block rounded-2xl border-2 border-amber-800 bg-amber-50 px-5 py-4 transition hover:bg-amber-100"
+          >
+            <h3 className="font-black text-amber-950">재질별 표면 안전</h3>
+            <p className="mt-1 text-sm text-amber-900/80">금기 · 권장 · 일상 관리</p>
+          </Link>
+          <Link
             href="/admin/knowledge-hub"
             className="block rounded-2xl border border-slate-200 bg-white px-5 py-4 transition hover:border-teal-300"
           >

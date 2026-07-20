@@ -13,11 +13,16 @@ import {
   getSolutionPath,
   listSolutionPages,
 } from "@/lib/knowledge-hub/solutions/get-solutions";
+import {
+  getPlaceJobPath,
+  listMergedPlaceJobs,
+} from "@/lib/knowledge-hub/place-jobs";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
   { path: "/", priority: 1, changeFrequency: "daily" },
   { path: "/services", priority: 0.95, changeFrequency: "weekly" },
+  { path: "/places", priority: 0.95, changeFrequency: "weekly" },
   { path: "/guides", priority: 0.95, changeFrequency: "weekly" },
   { path: "/products", priority: 0.92, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.92, changeFrequency: "weekly" },
@@ -124,6 +129,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const s of listSolutionPages()) {
     entries.push({
       url: `${base}${getSolutionPath(s)}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.86,
+    });
+  }
+
+  for (const j of await listMergedPlaceJobs()) {
+    entries.push({
+      url: `${base}${getPlaceJobPath(j)}`,
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.86,

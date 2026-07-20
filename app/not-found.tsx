@@ -15,7 +15,7 @@ export default function NotFound() {
           홈으로
         </Link>
         <Link
-          href="/services"
+          href="/places"
           className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
         >
           장소별 가이드

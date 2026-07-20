@@ -1,5 +1,44 @@
 import type { SolutionDetailBody, SolutionPage } from "@/lib/knowledge-hub/solutions/types";
 
+const PLACE_NAME_PREFIX =
+  /^(가정집|상가|식당|카페|미용실|사무실|병원|헬스장|학원|학교|공중|어린이시설)(\s+|$)/u;
+
+/** 「한줄로 보면」앞에 장소·공간을 붙임 — 예: 미용실 화장실 거울에 … */
+export function summaryWithPlace(
+  summary: string,
+  placeLabel: string,
+  spaceLabel: string
+): string {
+  let body = summary.trim();
+  if (!body) return body;
+
+  const prefix = `${placeLabel} ${spaceLabel}`;
+  if (body.startsWith(`${prefix} `) || body === prefix) return body;
+
+  // 다른 장소명으로 시작하면 벗겨 냄
+  if (PLACE_NAME_PREFIX.test(body)) {
+    body = body.replace(PLACE_NAME_PREFIX, "").trim();
+  }
+
+  // 앞에 남은 공간 라벨 제거 (화장실·욕실 / 화장실 등)
+  for (const label of [spaceLabel, "화장실·욕실", "화장실"]) {
+    if (body.startsWith(`${label} `)) {
+      body = body.slice(label.length).trim();
+      break;
+    }
+    if (body.startsWith(label) && body.length > label.length) {
+      const next = body[label.length];
+      if (next && /[은는이가을를의에]/.test(next)) {
+        // "화장실은 공간이…" → "미용실 화장실은…"
+        return `${placeLabel} ${body}`;
+      }
+    }
+  }
+
+  if (body.startsWith(`${prefix} `) || body === prefix) return body;
+  return `${prefix} ${body}`;
+}
+
 /** 같은 공간·부위·슬러그일 때 상세를 빌려올 장소 우선순위 */
 const PLACE_TEMPLATE_PRIORITY = [
   "home",
@@ -9,6 +48,8 @@ const PLACE_TEMPLATE_PRIORITY = [
   "salon",
   "office",
   "hospital",
+  "gym",
+  "academy",
 ] as const;
 
 function normSpace(spaceId: string): string {

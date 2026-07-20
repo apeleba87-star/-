@@ -20,7 +20,7 @@ import type {
   SolutionRecommendProduct,
   SolutionStarRating,
 } from "@/lib/knowledge-hub/solutions/types";
-import { enrichPageFromSiblings } from "@/lib/knowledge-hub/solutions/solution-inherit";
+import { enrichPageFromSiblings, summaryWithPlace } from "@/lib/knowledge-hub/solutions/solution-inherit";
 
 type ProductOpt = { id: string; name: string; standardDilution?: string | null };
 
@@ -272,7 +272,14 @@ export default function AdminSolutionsPanel({
     setStatus(page.status === "published" ? "published" : "draft");
 
     const d = enriched.detail;
-    setSummary(d?.summary ?? page.placeContext ?? "");
+    const rawSummary = d?.summary ?? page.placeContext ?? "";
+    setSummary(
+      summaryWithPlace(
+        rawSummary,
+        getPlaceLabel(page.placeId),
+        getSpaceLabel(page.spaceId, page.placeId)
+      )
+    );
     setDifficulty(d?.difficulty ?? "");
     setLocationsText(listToLines(d?.locations));
     setMethodText(listToLines(d?.methodSteps));
@@ -358,8 +365,13 @@ export default function AdminSolutionsPanel({
   }
 
   function buildDetail(): SolutionDetailBody | undefined {
+    const placedSummary = summaryWithPlace(
+      summary.trim(),
+      getPlaceLabel(placeId),
+      getSpaceLabel(spaceId, placeId)
+    );
     const detail: SolutionDetailBody = {
-      summary: summary.trim() || undefined,
+      summary: placedSummary || undefined,
       difficulty: difficulty || undefined,
       locations: linesToList(locationsText),
       methodSteps: linesToList(methodText),
@@ -688,6 +700,14 @@ export default function AdminSolutionsPanel({
               공개 허브
             </Link>
             {" · "}
+            <Link href="/admin/places" className="font-semibold text-slate-600 hover:underline">
+              장소별 방법
+            </Link>
+            {" · "}
+            <Link href="/admin/materials" className="font-semibold text-slate-600 hover:underline">
+              재질별
+            </Link>
+            {" · "}
             <Link href="/admin/knowledge-hub" className="font-semibold text-slate-600 hover:underline">
               지식 허브 (마스터·판매)
             </Link>
@@ -936,7 +956,13 @@ export default function AdminSolutionsPanel({
             <select
               className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5"
               value={placeId}
-              onChange={(e) => setPlaceId(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPlaceId(next);
+                setSummary((prev) =>
+                  summaryWithPlace(prev, getPlaceLabel(next), getSpaceLabel(spaceId, next))
+                );
+              }}
             >
               {SOLUTION_PLACES.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -950,7 +976,13 @@ export default function AdminSolutionsPanel({
             <select
               className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5"
               value={spaceId}
-              onChange={(e) => setSpaceId(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSpaceId(next);
+                setSummary((prev) =>
+                  summaryWithPlace(prev, getPlaceLabel(placeId), getSpaceLabel(next, placeId))
+                );
+              }}
             >
               {SOLUTION_SPACES.map((p) => (
                 <option key={p.id} value={p.id}>

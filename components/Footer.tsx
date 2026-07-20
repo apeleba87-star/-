@@ -11,7 +11,7 @@ const FOOTER_LINK_CLASS =
   "text-slate-400 hover:text-teal-300 transition-colors touch-manipulation py-1 text-xs sm:min-h-[44px] sm:py-2 sm:text-sm";
 
 const GUIDE_LINKS: FooterLink[] = [
-  { href: "/services", label: "장소별 가이드" },
+  { href: "/places", label: "장소별 가이드" },
   { href: "/products", label: "세정 제품" },
   { href: "/pollution", label: "오염별" },
   { href: "/inquiry/regular", label: "정기청소 문의" },

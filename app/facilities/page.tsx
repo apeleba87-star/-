@@ -54,8 +54,8 @@ export default function FacilitiesHubPage() {
         <p className="mt-4 text-lg leading-8 text-slate-600">
           사무실·상가·공장·헬스장·입주청소 등 현장 유형별 방법·용품 가이드입니다.
         </p>
-        <Link href="/services" className="mt-3 inline-block text-sm font-bold text-teal-700 hover:underline">
-          전체 카테고리 허브 보기 →
+        <Link href="/places" className="mt-3 inline-block text-sm font-bold text-teal-700 hover:underline">
+          장소별 청소 방법 보기 →
         </Link>
       </header>
 

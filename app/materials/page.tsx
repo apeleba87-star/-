@@ -5,8 +5,9 @@ import { buildPageMetadata } from "@/lib/seo";
 export const revalidate = 86400;
 
 export const metadata = buildPageMetadata({
-  title: "재질별 청소 | 클린아이덱스",
-  description: "타일·유리·스테인레스 등 재질별 세정 방법과 주의사항.",
+  title: "재질별 청소 — 표면 안전 가이드 | 클린아이덱스",
+  description:
+    "타일·유리·스테인레스·대리석 등 재질별 금기·권장·일상 관리. 오염 제거는 오염으로 찾기에서.",
   path: "/materials",
 });
 

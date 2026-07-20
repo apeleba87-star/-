@@ -45,7 +45,7 @@ export default function KnowledgeHubHome() {
               </span>
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-2xl font-black text-slate-950">재질로 찾기</span>
-                <span className="mt-1 block text-base text-slate-600">유리 · 스테인리스 · 대리석 · 목재</span>
+                <span className="mt-1 block text-base text-slate-600">금기 · 권장 · 대리석 · 스테인레스</span>
               </span>
               <ChevronRight
                 className="mt-4 h-6 w-6 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-800"
@@ -71,7 +71,7 @@ export default function KnowledgeHubHome() {
             </Link>
 
             <Link
-              href="/services"
+              href="/places"
               className="group flex items-stretch gap-4 rounded-3xl border-2 border-slate-900 bg-white p-5 transition hover:bg-teal-50 active:scale-[0.99] sm:p-6"
             >
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-800 text-white transition group-hover:scale-105">
@@ -79,7 +79,7 @@ export default function KnowledgeHubHome() {
               </span>
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-2xl font-black text-slate-950">장소별로 찾기</span>
-                <span className="mt-1 block text-base text-slate-600">사무실 · 상가 · 입주 · 계단</span>
+                <span className="mt-1 block text-base text-slate-600">사무실 · 헬스장 · 학원 · 걸레질 루틴</span>
               </span>
               <ChevronRight
                 className="mt-4 h-6 w-6 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-800"

@@ -44,4 +44,5 @@ export type {
   SolutionViewContent,
   SolutionViewRecommendation,
 } from "@/lib/knowledge-hub/solutions/get-solutions";
+export { enrichPageFromSiblings, summaryWithPlace } from "@/lib/knowledge-hub/solutions/solution-inherit";
 export { buildSolutionJsonLd } from "@/lib/knowledge-hub/solutions/solution-jsonld";

@@ -84,7 +84,7 @@ type MobileDrawerRow =
 /** 데스크톱 가운데 */
 const primaryNavItems: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "홈", Icon: Home },
-  { kind: "link", href: "/services", label: "장소별", Icon: FileText },
+  { kind: "link", href: "/places", label: "장소별", Icon: FileText },
   {
     kind: "group",
     label: "분류별",

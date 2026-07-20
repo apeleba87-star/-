@@ -955,6 +955,8 @@ const COMMERCIAL: SolutionPlaceId[] = [
   "salon",
   "office",
   "hospital",
+  "gym",
+  "academy",
 ];
 
 const SPACE_CLONE_RULES: SpaceCloneRule[] = [
@@ -970,6 +972,8 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
       salon: "미용실 화장실·세면은 손님 동선과 가깝고 물때·비누찌꺼기가 잦습니다.",
       office: "사무실 화장실은 공용으로 요석·물때·악취를 주기적으로 관리하는 것이 좋습니다.",
       hospital: "병원·의원 화장실은 공용 빈도가 높아 위생·악취·요석 관리가 중요합니다.",
+      gym: "헬스장 화장실은 이용이 많아 물때·악취·요석 관리가 중요합니다.",
+      academy: "학원 화장실은 수업 사이 이용이 몰려 물때·악취 관리가 필요합니다.",
     },
   },
   {
@@ -984,7 +988,7 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
     },
   },
   {
-    toPlaces: ["restaurant", "cafe", "shop", "salon"],
+    toPlaces: ["restaurant", "cafe", "shop", "salon", "academy"],
     toSpace: "hall",
     fromPlace: "home",
     fromSpaces: ["living"],
@@ -993,6 +997,7 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
       cafe: "카페 홀·테이블 구역은 음료 얼룩·바닥 먼지가 쌓이기 쉽습니다.",
       shop: "상가 매장 홀은 바닥·유리 동선 관리가 필요합니다.",
       salon: "미용실 대기·홀 공간은 바닥·먼지가 눈에 잘 띕니다.",
+      academy: "학원 로비·홀은 대기·통행으로 바닥 먼지가 쌓이기 쉽습니다.",
     },
   },
   {
@@ -1031,6 +1036,8 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
       salon: "미용실 입구는 바닥·신발장 오염이 눈에 띕니다.",
       office: "사무실 현관·로비는 바닥 먼지가 쌓이기 쉽습니다.",
       hospital: "병원 로비·입구는 바닥 위생 관리가 중요합니다.",
+      gym: "헬스장 입구는 바닥 흙·땀·물기 관리가 필요합니다.",
+      academy: "학원 입구는 학생 통행으로 바닥 오염이 잦습니다.",
     },
   },
   {
@@ -1097,6 +1104,34 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
     partIds: ["mirror", "sink", "faucet", "floor", "tile", "chair", "drain"],
     contextByPlace: {
       salon: "시술·커트 공간은 거울·바닥·세면 오염이 잦습니다.",
+    },
+  },
+  {
+    toPlaces: ["gym"],
+    toSpace: "workout",
+    fromPlace: "home",
+    fromSpaces: ["living"],
+    contextByPlace: {
+      gym: "헬스장 운동 공간은 바닥·거울·땀 오염 관리가 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["gym"],
+    toSpace: "locker",
+    fromPlace: "home",
+    fromSpaces: ["restroom", "laundry"],
+    partIds: ["floor", "sink", "faucet", "mirror", "tile", "drain", "shower-booth"],
+    contextByPlace: {
+      gym: "락커·샤워는 물때·악취·바닥 물기 관리가 중요합니다.",
+    },
+  },
+  {
+    toPlaces: ["academy"],
+    toSpace: "classroom",
+    fromPlace: "home",
+    fromSpaces: ["study", "living"],
+    contextByPlace: {
+      academy: "학원 강의실은 책상·바닥·칠판 주변 먼지 관리가 기본입니다.",
     },
   },
 ];

@@ -13,6 +13,8 @@ export const SOLUTION_PLACES: SolutionPlace[] = [
   { id: "salon", name: "미용실" },
   { id: "office", name: "사무실" },
   { id: "hospital", name: "병원" },
+  { id: "gym", name: "헬스장" },
+  { id: "academy", name: "학원" },
   { id: "school", name: "학교" },
   { id: "public", name: "공중" },
   { id: "childcare", name: "어린이시설" },
@@ -27,6 +29,8 @@ export const PRIMARY_PLACE_ORDER: SolutionPlace["id"][] = [
   "salon",
   "office",
   "hospital",
+  "gym",
+  "academy",
 ];
 
 export const SOLUTION_SPACES: SolutionSpace[] = [
@@ -53,6 +57,9 @@ export const SOLUTION_SPACES: SolutionSpace[] = [
   { id: "meeting", name: "회의실" },
   { id: "treatment", name: "처치·검사실" },
   { id: "styling", name: "시술·커트 공간" },
+  { id: "workout", name: "운동 공간" },
+  { id: "classroom", name: "강의실" },
+  { id: "locker", name: "락커·샤워" },
 ];
 
 /** 가정집: 화장실·욕실 동일 */
@@ -101,6 +108,8 @@ export const PLACE_SPACE_ORDER: Partial<Record<SolutionPlace["id"], SolutionSpac
   salon: ["restroom", "styling", "counter", "entrance"],
   office: ["restroom", "office-floor", "pantry-office", "meeting", "entrance"],
   hospital: ["restroom", "waiting", "clinic", "treatment", "entrance"],
+  gym: ["restroom", "workout", "locker", "entrance"],
+  academy: ["restroom", "classroom", "hall", "entrance"],
 };
 
 export const SOLUTION_PARTS: SolutionPart[] = [
@@ -155,6 +164,8 @@ export function getSpaceLabel(id: string, placeId?: string): string {
     if (placeId === "home") return "화장실·욕실";
     return "화장실";
   }
+  if (id === "hall" && placeId === "academy") return "로비·홀";
+  if (id === "hall" && (placeId === "gym" || placeId === "salon")) return "홀";
   return SOLUTION_SPACES.find((s) => s.id === id)?.name ?? id;
 }
 

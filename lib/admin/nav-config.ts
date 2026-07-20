@@ -25,6 +25,16 @@ export const ADMIN_HUBS: AdminHub[] = [
         description: "장소·부위 검색어 페이지 목록·편집·새로 만들기",
       },
       {
+        href: "/admin/places",
+        label: "장소별 청소 방법",
+        description: "장소 → 할 일 · 루틴·동선 매뉴얼",
+      },
+      {
+        href: "/admin/materials",
+        label: "재질별 표면 안전",
+        description: "금기·권장·일상 관리 가이드 편집",
+      },
+      {
         href: "/admin/knowledge-hub",
         label: "지식 허브 (마스터)",
         description: "제품 판매 링크·마스터 조회·가이드 편집 링크",

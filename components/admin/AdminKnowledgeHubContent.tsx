@@ -271,8 +271,14 @@ export default async function AdminKnowledgeHubContent() {
           <Link href="/cleaning" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
             공개 · 레시피
           </Link>
-          <Link href="/services" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
-            공개 · 현장
+          <Link href="/places" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 장소별
+          </Link>
+          <Link href="/materials" className="rounded-lg border px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+            공개 · 재질
+          </Link>
+          <Link href="/admin/materials" className="rounded-lg border px-3 py-1.5 font-bold text-teal-800 hover:bg-teal-50">
+            관리 · 재질
           </Link>
         </div>
       </details>

@@ -9,6 +9,8 @@ import {
   getRecipesForGuidePath,
   listProductsForMaterial,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
+import { getMergedMaterialSurfaceGuide } from "@/lib/knowledge-hub/materials/get-merged-guides";
+import { getSolutionPath, listSolutionPages } from "@/lib/knowledge-hub/solutions/get-solutions";
 import type { GuideBodyJson, GuideBlock } from "@/lib/knowledge-hub/types";
 import { PH_DIRECTION_KO } from "@/lib/knowledge-hub/korean-labels";
 
@@ -461,17 +463,60 @@ export function generateProductPageBody(productId: string): GuideBodyJson | null
 }
 
 /** 재질 허브 — 문서(리스트업) 적용 재질·사례로 연결된 제품만 노출 */
-export function generateMaterialPageBody(materialId: string): GuideBodyJson | null {
+export async function generateMaterialPageBody(materialId: string): Promise<GuideBodyJson | null> {
   const material = getMaterialById(materialId);
   if (!material) return null;
 
+  const guide = await getMergedMaterialSurfaceGuide(materialId);
   const recipes = recipesForMaterial(materialId);
   const facts = factsForMaterial(materialId);
   const products = productsForMaterial(materialId);
   const forbiddenBy = productsForbiddingMaterial(materialId);
   const cases = casesForMaterial(materialId);
   const blocks: GuideBlock[] = [];
-  const isHighRisk = material.riskLevel === "high" || material.riskLevel === "very_high";
+
+  if (guide) {
+    blocks.push({
+      id: "principle",
+      type: "section",
+      title: "한줄로 보면",
+      tone: "summary",
+      paragraphs: [guide.principle],
+    });
+    if (guide.donts.length) {
+      blocks.push({
+        id: "donts",
+        type: "section",
+        title: "하면 안 됨",
+        tone: "caution",
+        paragraphs: guide.donts,
+      });
+    }
+    if (guide.okHints.length) {
+      blocks.push({
+        id: "ok-hints",
+        type: "checklist",
+        title: "권장 접근",
+        items: guide.okHints,
+      });
+    }
+    if (guide.care.length) {
+      blocks.push({
+        id: "care",
+        type: "checklist",
+        title: "일상 관리",
+        items: guide.care,
+      });
+    }
+  } else if (material.notes) {
+    blocks.push({
+      id: "overview",
+      type: "section",
+      title: "재질 특성",
+      tone: "summary",
+      paragraphs: [material.notes],
+    });
+  }
 
   const forbidNotes = [
     ...forbiddenBy.flatMap((p) =>
@@ -489,19 +534,15 @@ export function generateMaterialPageBody(materialId: string): GuideBodyJson | nu
     ),
   ];
   const caution = buildCautionBlock(forbidNotes);
-
-  if (isHighRisk && caution) blocks.push(caution);
-
-  if (material.notes) {
+  if (caution) {
     blocks.push({
-      id: "overview",
-      type: "section",
-      title: "재질 특성",
-      paragraphs: [material.notes],
+      ...caution,
+      id: "product-cautions",
+      title: "제품·문서상 주의",
     });
   }
 
-  const productBlock = buildLinkedProductsBlock(products, "적용 제품");
+  const productBlock = buildLinkedProductsBlock(products, "호환·연결 제품");
   if (productBlock) blocks.push(productBlock);
 
   // 관련 오염은 제품 합집합이 아니라, 이 재질 레시피에 쓰인 오염만
@@ -516,8 +557,21 @@ export function generateMaterialPageBody(materialId: string): GuideBodyJson | nu
     blocks.push({
       id: "related-contaminants",
       type: "links",
-      title: "관련 오염",
+      title: "이 재질에 자주 오는 오염",
       items: contLinks,
+    });
+  }
+
+  const solutionLinks = listSolutionPages()
+    .filter((p) => p.materialId === materialId)
+    .slice(0, 10)
+    .map((p) => ({ href: getSolutionPath(p), label: p.title }));
+  if (solutionLinks.length) {
+    blocks.push({
+      id: "related-solutions",
+      type: "links",
+      title: "검색어·처방 가이드",
+      items: solutionLinks,
     });
   }
 
@@ -540,7 +594,23 @@ export function generateMaterialPageBody(materialId: string): GuideBodyJson | nu
   const recipeBlock = buildRecipeListBlock(recipes, "이 재질 레시피");
   if (recipeBlock) blocks.push(recipeBlock);
 
-  if (!isHighRisk && caution) blocks.push(caution);
+  blocks.push({
+    id: "goto-pollution",
+    type: "links",
+    title: "더 보기",
+    items: [
+      {
+        href: "/pollution",
+        label: "오염으로 찾기 — 세제·희석·제거",
+        note: "묻은 것을 지울 때",
+      },
+      {
+        href: "/places",
+        label: "장소별 청소 방법 — 루틴·걸레질",
+        note: "동선·주기로 할 때",
+      },
+    ],
+  });
 
   if (blocks.length === 0) {
     blocks.push({
@@ -548,17 +618,19 @@ export function generateMaterialPageBody(materialId: string): GuideBodyJson | nu
       type: "section",
       title: "연결 데이터 없음",
       tone: "summary",
-      paragraphs: ["이 재질에 직접 연결된 제품·레시피가 아직 없습니다."],
+      paragraphs: ["이 재질에 대한 안전 가이드가 아직 없습니다."],
     });
   }
 
   const summary = [
+    guide ? "표면 안전" : null,
     products.length ? `제품 ${products.length}` : null,
-    recipes.length ? `레시피 ${recipes.length}` : null,
-    cases.length ? `사례 ${cases.length}` : null,
+    contLinks.length ? `오염 ${contLinks.length}` : null,
+    solutionLinks.length ? `처방 ${solutionLinks.length}` : null,
   ].filter(Boolean) as string[];
 
   return {
+    intro: "이 페이지는 재질을 다치지 않게 쓰기 위한 안내입니다. 오염 제거 순서는 「오염으로 찾기」를 이용하세요.",
     summary,
     toc: blocks.length > 3 ? blocks.map((b) => b.title) : undefined,
     blocks,

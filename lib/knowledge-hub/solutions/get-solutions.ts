@@ -7,7 +7,7 @@ import type { KnowledgeProduct } from "@/lib/knowledge-hub/cleaning-knowledge/ty
 import { listMergedProducts } from "@/lib/knowledge-hub/product-catalog";
 import { CONTAMINANT_TYPE_KO } from "@/lib/knowledge-hub/korean-labels";
 import { SOURCE_SOLUTIONS_DB } from "@/lib/knowledge-hub/solutions/seed";
-import { enrichPageFromSiblings } from "@/lib/knowledge-hub/solutions/solution-inherit";
+import { enrichPageFromSiblings, summaryWithPlace } from "@/lib/knowledge-hub/solutions/solution-inherit";
 import {
   getDbContaminantMasters,
   getDbSolutionPages,
@@ -266,7 +266,7 @@ function buildCautions(
 function buildIfFails(detail: SolutionDetailBody | undefined, siblings: SolutionPage[]): string[] {
   if (detail?.ifFails?.length) return detail.ifFails;
   return siblings.slice(0, 4).map((s) =>
-    s.title.replace(/^(가정집|상가|식당|카페|미용실|사무실|병원)\s+/u, "")
+    s.title.replace(/^(가정집|상가|식당|카페|미용실|사무실|병원|헬스장|학원)\s+/u, "")
   );
 }
 
@@ -274,6 +274,8 @@ function buildSolutionViewContent(args: {
   page: SolutionPage;
   contaminantName: string;
   contaminantType?: string;
+  placeLabel: string;
+  spaceLabel: string;
   partLabel: string;
   master?: ContaminantMasterExt;
   products: KnowledgeProduct[];
@@ -286,6 +288,8 @@ function buildSolutionViewContent(args: {
     page,
     contaminantName,
     contaminantType,
+    placeLabel,
+    spaceLabel,
     partLabel,
     master,
     products,
@@ -299,7 +303,7 @@ function buildSolutionViewContent(args: {
   const contaminantTypeLabel =
     (typeKey && CONTAMINANT_TYPE_KO[typeKey]) || "미분류";
 
-  const summary =
+  const rawSummary =
     detail?.summary?.trim() ||
     (page.placeContext ? firstSentence(page.placeContext) : "") ||
     (master?.baseGuide ? firstSentence(master.baseGuide) : "") ||
@@ -308,7 +312,7 @@ function buildSolutionViewContent(args: {
   const locations = detail?.locations?.length ? detail.locations : [partLabel];
 
   return {
-    summary,
+    summary: summaryWithPlace(rawSummary, placeLabel, spaceLabel),
     contaminantTypeLabel,
     difficulty: detail?.difficulty,
     locations,
@@ -374,6 +378,8 @@ export async function assembleSolution(
       page,
       contaminantName,
       contaminantType: contaminant?.type,
+      placeLabel,
+      spaceLabel,
       partLabel,
       master,
       products,
