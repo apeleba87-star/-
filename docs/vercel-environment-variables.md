@@ -35,6 +35,8 @@
 |-----|------|-----------|
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role 키 | Cron으로 자동 콘텐츠 생성·posts insert 시 **필수**. 없으면 generate-content 등 500 |
 | `CRON_SECRET` | Cron API 호출 시 사용할 비밀값 | Cron 사용 시 **권장**. 설정하면 `x-cron-secret` 헤더에 이 값을 넣어야 200 응답 |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL | **프로덕션 권장**. 없으면 rate limit이 인스턴스 메모리만 사용해 우회 가능 |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST 토큰 | 위와 함께 설정 |
 
 **SUPABASE_SERVICE_ROLE_KEY**  
 - Supabase → Settings → API → **service_role** (secret)  
@@ -44,6 +46,24 @@
 - 본인이 정한 랜덤 문자열(예: `openssl rand -hex 24` 결과)  
 - Vercel Cron 또는 외부 Cron에서 `POST /api/cron/...` 호출 시  
   요청 헤더: `x-cron-secret: (CRON_SECRET 값)`
+
+**UPSTASH_REDIS_REST_*** (남용·비용 방어)  
+- [Upstash](https://upstash.com/)에서 Redis 생성 후 REST URL·TOKEN을 Vercel에 넣습니다.  
+- `middleware`·문의/지원 API의 IP rate limit이 **분산**으로 동작합니다.  
+- 미설정 시에도 동작하지만, 서버리스 인스턴스마다 카운터가 따로라 한도가 느슨해질 수 있습니다.
+
+---
+
+## 비용·남용 알림 (대시보드)
+
+코드 밖 설정이지만 필수에 가깝습니다.
+
+1. **Vercel** → Project → Settings → Billing / Spend Management → 예산·알림  
+2. **Supabase** → Project Settings → Usage → 한도·알림  
+3. **공공데이터/네이버 등** 외부 API 사용량 대시보드 주기 확인  
+4. (선택) Cloudflare / Vercel Firewall · Bot Protection 활성화
+
+상세 적용 내역: `docs/abuse-hardening.md`
 
 ---
 
@@ -107,6 +127,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```
 SUPABASE_SERVICE_ROLE_KEY
 CRON_SECRET
+```
+
+**남용·비용 방어 (프로덕션 권장)**  
+```
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
 ```
 
 **입찰 수집까지 쓸 때**  

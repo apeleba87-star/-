@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Metadata } from "next";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/content/related-report-posts";
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import MoveSeoBlogPostView from "@/components/move/MoveSeoBlogPostView";
+import { EDU_BLOG_SOURCE_TYPE, eduBlogPath } from "@/lib/edu-blog/constants";
 import {
   guestDailyInsightTeaserLine,
   redactAwardMarketSnapshotForGuest,
@@ -30,6 +31,11 @@ import {
   type ReportSnapshotGuestContent,
 } from "@/lib/report/guest-teaser-redact";
 
+function redirectIfEduBlog(post: { source_type?: string | null; slug?: string | null }) {
+  if (post.source_type === EDU_BLOG_SOURCE_TYPE && post.slug) {
+    redirect(eduBlogPath(post.slug));
+  }
+}
 const DailyTenderReportDashboard = dynamic(
   () => import("@/components/report/DailyTenderReportDashboard"),
   {
@@ -104,6 +110,7 @@ export default async function PostPage({ params }: PostPageParams) {
 
   let reportData: { payload: DailyTenderPayload; insightSentence: string } | null = null;
   const resolvedPost = (error || !post ? null : post) ?? null;
+  if (resolvedPost) redirectIfEduBlog(resolvedPost);
 
   if (resolvedPost && isDailyTenderReportPost(resolvedPost)) {
     const snapshot = (resolvedPost as { report_snapshot?: DailyTenderPayload | null }).report_snapshot;
@@ -131,6 +138,7 @@ export default async function PostPage({ params }: PostPageParams) {
       .single();
     if (bySlug.error || !bySlug.data) notFound();
     const slugPost = bySlug.data;
+    redirectIfEduBlog(slugPost);
     if ((slugPost as { is_private?: boolean }).is_private && !user) notFound();
     if (user) await ensurePrivateAccess(slugPost, authSupabase, user.id);
     if (isDailyTenderReportPost(slugPost) && !reportData) {

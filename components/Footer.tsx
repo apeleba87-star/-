@@ -14,6 +14,7 @@ const GUIDE_LINKS: FooterLink[] = [
   { href: "/places", label: "장소별 가이드" },
   { href: "/products", label: "세정 제품" },
   { href: "/pollution", label: "오염별" },
+  { href: "/blog", label: "청소 지식" },
   { href: "/inquiry/regular", label: "정기청소 문의" },
   { href: "/inquiry/move-in", label: "입주청소 문의" },
 ];

@@ -1090,10 +1090,9 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
     toPlaces: ["hospital"],
     toSpace: "treatment",
     fromPlace: "home",
-    fromSpaces: ["living", "restroom"],
-    partIds: ["floor", "tile", "sink", "faucet", "mirror", "drain", "silicone"],
+    fromSpaces: ["living", "study"],
     contextByPlace: {
-      hospital: "처치·검사실은 바닥·세면 위생 관리가 중요합니다.",
+      hospital: "처치·검사실은 바닥·가구·손때 위생 관리가 중요합니다. 화장실 오염은 「병원 화장실」에서 다룹니다.",
     },
   },
   {
@@ -1112,7 +1111,7 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
     fromPlace: "home",
     fromSpaces: ["living"],
     contextByPlace: {
-      gym: "헬스장 운동 공간은 바닥·거울·땀 오염 관리가 중요합니다.",
+      gym: "헬스장 운동 공간은 바닥·거울·땀 오염 관리가 중요합니다. 화장실·샤워는 「헬스장 화장실」「락커·샤워」에서 다룹니다.",
     },
   },
   {
@@ -1131,7 +1130,7 @@ const SPACE_CLONE_RULES: SpaceCloneRule[] = [
     fromPlace: "home",
     fromSpaces: ["study", "living"],
     contextByPlace: {
-      academy: "학원 강의실은 책상·바닥·칠판 주변 먼지 관리가 기본입니다.",
+      academy: "학원 강의실은 책상·바닥·칠판 주변 먼지 관리가 기본입니다. 화장실은 「학원 화장실」에서 다룹니다.",
     },
   },
 ];
@@ -1141,19 +1140,61 @@ function pageKey(r: Pick<Row, "placeId" | "spaceId" | "partId" | "contaminantId"
   return `${r.placeId}__${r.spaceId}__${r.partId}__${slug}`;
 }
 
+/** 제목·설명에 쓰인 공간 표기 후보 (라벨 불일치 보정) */
+function spaceLabelAliases(spaceId: string, placeId: string, primary: string): string[] {
+  const aliases = new Set<string>([primary]);
+  if (spaceId === "restroom" || spaceId === "bathroom") {
+    aliases.add("화장실·욕실");
+    aliases.add("화장실");
+    aliases.add("욕실");
+  }
+  if (spaceId === "locker") {
+    aliases.add("락커·샤워");
+    aliases.add("락커");
+    aliases.add("샤워");
+  }
+  if (spaceId === "treatment") {
+    aliases.add("처치·검사실");
+    aliases.add("처치실");
+    aliases.add("검사실");
+  }
+  if (spaceId === "classroom") {
+    aliases.add("강의실");
+    aliases.add("교실");
+  }
+  if (spaceId === "workout") {
+    aliases.add("운동 공간");
+    aliases.add("운동공간");
+  }
+  // primary가 짧을수록 부분 치환이 안전해서 긴 것부터
+  return [...aliases].sort((a, b) => b.length - a.length);
+}
+
 function rewritePlaceTitle(
   title: string,
   fromPlaceName: string,
   toPlaceName: string,
   fromSpaceLabel: string,
-  toSpaceLabel: string
+  toSpaceLabel: string,
+  fromSpaceId?: string,
+  fromPlaceId?: string
 ): string {
   let t = title;
   if (t.startsWith(fromPlaceName)) {
     t = toPlaceName + t.slice(fromPlaceName.length);
   }
-  if (fromSpaceLabel !== toSpaceLabel && t.includes(fromSpaceLabel)) {
-    t = t.replace(fromSpaceLabel, toSpaceLabel);
+  if (fromSpaceLabel === toSpaceLabel) return t;
+
+  const fromAliases = spaceLabelAliases(
+    fromSpaceId ?? "",
+    fromPlaceId ?? "home",
+    fromSpaceLabel
+  );
+  for (const alias of fromAliases) {
+    if (alias && t.includes(alias)) {
+      t = t.replaceAll(alias, toSpaceLabel);
+      break;
+    }
   }
   return t;
 }
@@ -1196,7 +1237,9 @@ function cloneByRules(baseRows: Row[]): Row[] {
           fromPlaceName,
           placeName,
           fromSpaceLabel,
-          toSpaceLabel
+          toSpaceLabel,
+          src.spaceId,
+          rule.fromPlace
         );
         const description = src.description
           ? rewritePlaceTitle(
@@ -1204,13 +1247,22 @@ function cloneByRules(baseRows: Row[]): Row[] {
               fromPlaceName,
               placeName,
               fromSpaceLabel,
-              toSpaceLabel
+              toSpaceLabel,
+              src.spaceId,
+              rule.fromPlace
             )
           : undefined;
-        const placeContext =
+        let placeContext =
           src.placeContext
             ?.replaceAll(fromPlaceName, placeName)
             .replaceAll(fromSpaceLabel, toSpaceLabel) ?? defaultContext;
+        if (placeContext && fromSpaceLabel !== toSpaceLabel) {
+          for (const alias of spaceLabelAliases(src.spaceId, rule.fromPlace, fromSpaceLabel)) {
+            if (alias !== fromSpaceLabel) {
+              placeContext = placeContext.replaceAll(alias, toSpaceLabel);
+            }
+          }
+        }
 
         addClone({
           ...src,

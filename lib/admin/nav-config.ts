@@ -39,6 +39,11 @@ export const ADMIN_HUBS: AdminHub[] = [
         label: "지식 허브 (마스터)",
         description: "제품 판매 링크·마스터 조회·가이드 편집 링크",
       },
+      {
+        href: "/admin/blog",
+        label: "청소지식",
+        description: "직접 작성 · 다음 글·제품 연결 · /blog 발행",
+      },
       { href: "/admin/posts", label: "글 관리", description: "블로그·리포트 글 작성·수정" },
       { href: "/admin/newsletter", label: "뉴스레터 큐·발송", description: "큐 관리 및 발송" },
       { href: "/admin/ugc", label: "UGC 검수", description: "사용자 제출 콘텐츠 검수" },

@@ -31,6 +31,13 @@ export default async function AdminDashboardPage() {
         <h2 className="mb-3 text-sm font-semibold text-slate-500">콘텐츠 편집</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
+            href="/admin/blog"
+            className="block rounded-2xl border-2 border-violet-800 bg-violet-50 px-5 py-4 transition hover:bg-violet-100"
+          >
+            <h3 className="font-black text-violet-950">청소지식</h3>
+            <p className="mt-1 text-sm text-violet-900/80">직접 작성 · 다음 글·제품 연결 · /blog</p>
+          </Link>
+          <Link
             href="/admin/solutions"
             className="block rounded-2xl border-2 border-teal-800 bg-teal-50 px-5 py-4 transition hover:bg-teal-100"
           >

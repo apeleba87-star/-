@@ -88,7 +88,16 @@ export default function KnowledgeHubHome() {
             </Link>
           </nav>
 
-          <details className="group mt-8">
+          <div className="mt-5">
+            <Link
+              href="/blog"
+              className="flex min-h-[56px] w-full items-center justify-center rounded-2xl border-2 border-teal-800 bg-teal-800 px-5 py-4 text-xl font-black text-white transition hover:bg-teal-900 active:scale-[0.99] sm:min-h-[64px] sm:text-2xl"
+            >
+              청소지식
+            </Link>
+          </div>
+
+          <details className="group mt-6">
             <summary className="cursor-pointer list-none text-center text-sm font-bold text-slate-500 marker:content-none hover:text-teal-800 [&::-webkit-details-marker]:hidden">
               또는 검색하기
               <span className="ml-1 inline-block transition group-open:rotate-180">▾</span>

@@ -36,6 +36,13 @@ export interface Post {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  source_type?: string | null;
+  source_ref?: string | null;
+  edu_intent?: string | null;
+  next_slug?: string | null;
+  related_slugs?: string[];
+  product_ids?: string[];
+  is_private?: boolean;
   category?: ContentCategory | null;
 }
 

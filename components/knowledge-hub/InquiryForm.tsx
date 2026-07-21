@@ -17,6 +17,7 @@ export default function InquiryForm({ inquiryType, title, description }: Props) 
   const [region, setRegion] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [website, setWebsite] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +36,7 @@ export default function InquiryForm({ inquiryType, title, description }: Props) 
         message,
         ref_slug: ref,
         ref_path: refPath,
+        website,
       }),
     });
     const json = (await res.json()) as { ok?: boolean; error?: string };
@@ -56,7 +58,7 @@ export default function InquiryForm({ inquiryType, title, description }: Props) 
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="space-y-4">
+    <form onSubmit={(e) => void submit(e)} className="relative space-y-4">
       <div>
         <h1 className="text-2xl font-black text-slate-950 sm:text-3xl">{title}</h1>
         <p className="mt-2 text-base text-slate-600">{description}</p>
@@ -93,6 +95,20 @@ export default function InquiryForm({ inquiryType, title, description }: Props) 
           placeholder="평수, 희망 일정, 청소 주기 등"
         />
       </label>
+      {/* 봇 허니팟 — 사람 눈에는 숨김 */}
+      <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+        <label>
+          웹사이트
+          <input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+          />
+        </label>
+      </div>
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
       <button
         type="submit"

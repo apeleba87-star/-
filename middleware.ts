@@ -13,7 +13,7 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 /**
  * 매 요청마다 Supabase 세션을 갱신하고 쿠키를 응답에 반영.
- * 입주레이더 관리자 전용 경로는 role=admin 만 허용.
+ * 입주레이더 관리자 전용 경로·/api/admin 은 role=admin|editor 만 허용.
  */
 async function updateSession(req: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request: req });
@@ -42,6 +42,22 @@ async function updateSession(req: NextRequest): Promise<NextResponse> {
   } = await supabase.auth.getUser();
 
   const pathname = req.nextUrl.pathname;
+
+  if (pathname.startsWith("/api/admin")) {
+    if (!user) {
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profile?.role !== "admin" && profile?.role !== "editor") {
+      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+    }
+    return response;
+  }
+
   if (isDemandAdminOnlyPath(pathname)) {
     if (!user) {
       const login = new URL("/login", req.url);
@@ -62,9 +78,13 @@ async function updateSession(req: NextRequest): Promise<NextResponse> {
 }
 
 const RATE_WINDOW_MS = 60 * 1000;
+const WRITE_WINDOW_MS = 60 * 60 * 1000; // 1시간
 const AUTH_RATE_MAX = 30;
 const DEMAND_RATE_MAX = 120;
 const API_RATE_MAX = 60;
+const WRITE_RATE_MAX = 12; // 문의·지원 등 INSERT
+const EVENT_RATE_MAX = 90; // 광고·뷰 이벤트
+const HEAVY_GET_RATE_MAX = 20; // 무거운 공개 GET
 
 function getClientIp(req: NextRequest): string {
   const xff = req.headers.get("x-forwarded-for");
@@ -72,27 +92,60 @@ function getClientIp(req: NextRequest): string {
   return req.headers.get("x-real-ip") ?? "unknown";
 }
 
-function rateLimitBucket(pathname: string): { bucket: string; limit: number } | null {
+function rateLimitBucket(
+  pathname: string
+): { bucket: string; limit: number; windowMs: number } | null {
   if (pathname === "/login" || pathname === "/signup") {
-    return { bucket: "auth", limit: AUTH_RATE_MAX };
+    return { bucket: "auth", limit: AUTH_RATE_MAX, windowMs: RATE_WINDOW_MS };
   }
   if (
     pathname === "/" ||
     pathname.startsWith("/services/") ||
     pathname.startsWith("/inquiry/") ||
     pathname.startsWith("/guides") ||
+    pathname.startsWith("/blog") ||
     pathname === "/search" ||
     pathname.startsWith("/products") ||
     pathname.startsWith("/materials") ||
     pathname.startsWith("/pollution") ||
     pathname.startsWith("/cleaning") ||
     pathname.startsWith("/cases") ||
-    pathname.startsWith("/solutions")
+    pathname.startsWith("/solutions") ||
+    pathname.startsWith("/places")
   ) {
-    return { bucket: "demand", limit: DEMAND_RATE_MAX };
+    return { bucket: "demand", limit: DEMAND_RATE_MAX, windowMs: RATE_WINDOW_MS };
   }
+
+  // 쓰기·스팸 대상 — 시간당 상한
+  if (
+    pathname === "/api/inquiry" ||
+    pathname === "/api/beta-apply" ||
+    pathname === "/api/partners/contact" ||
+    pathname === "/api/demand/radar-ads/inquiry"
+  ) {
+    return { bucket: "write", limit: WRITE_RATE_MAX, windowMs: WRITE_WINDOW_MS };
+  }
+
+  // 이벤트 플러딩
+  if (
+    pathname === "/api/ads/event" ||
+    pathname === "/api/demand/radar-ads/event" ||
+    pathname === "/api/demand/region-views/event"
+  ) {
+    return { bucket: "event", limit: EVENT_RATE_MAX, windowMs: RATE_WINDOW_MS };
+  }
+
+  // 비용·DB 무거운 GET
+  if (
+    pathname === "/api/move/budget-candidates" ||
+    pathname === "/api/demand/region-scope" ||
+    pathname === "/api/test-g2b"
+  ) {
+    return { bucket: "heavy", limit: HEAVY_GET_RATE_MAX, windowMs: RATE_WINDOW_MS };
+  }
+
   if (pathname.startsWith("/api/")) {
-    return { bucket: "api", limit: API_RATE_MAX };
+    return { bucket: "api", limit: API_RATE_MAX, windowMs: RATE_WINDOW_MS };
   }
   return null;
 }
@@ -189,7 +242,12 @@ export async function middleware(req: NextRequest) {
   const limitRule = rateLimitBucket(pathname);
 
   if (limitRule) {
-    const result = await checkRateLimit(limitRule.bucket, ip, limitRule.limit, RATE_WINDOW_MS);
+    const result = await checkRateLimit(
+      limitRule.bucket,
+      ip,
+      limitRule.limit,
+      limitRule.windowMs
+    );
     if (!result.allowed) {
       return rateLimitResponse(result.retryAfterSec);
     }

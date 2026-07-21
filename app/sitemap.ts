@@ -17,6 +17,8 @@ import {
   getPlaceJobPath,
   listMergedPlaceJobs,
 } from "@/lib/knowledge-hub/place-jobs";
+import { EDU_BLOG_SOURCE_TYPE } from "@/lib/edu-blog/constants";
+import { listPublishedEduBlogPosts } from "@/lib/edu-blog/queries";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
@@ -24,6 +26,7 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/services", priority: 0.95, changeFrequency: "weekly" },
   { path: "/places", priority: 0.95, changeFrequency: "weekly" },
   { path: "/guides", priority: 0.95, changeFrequency: "weekly" },
+  { path: "/blog", priority: 0.9, changeFrequency: "weekly" },
   { path: "/products", priority: 0.92, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.92, changeFrequency: "weekly" },
   { path: "/pollution", priority: 0.92, changeFrequency: "weekly" },
@@ -174,13 +177,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const { data: posts } = await supabase
     .from("posts")
-    .select("id, updated_at")
+    .select("id, updated_at, source_type")
     .not("published_at", "is", null)
     .eq("is_private", false)
     .order("published_at", { ascending: false })
     .limit(2000);
   if (posts?.length) {
     for (const post of posts) {
+      if (post.source_type === EDU_BLOG_SOURCE_TYPE) continue;
       entries.push({
         url: `${base}/posts/${post.id}`,
         lastModified: post.updated_at ? new Date(post.updated_at).toISOString() : now,
@@ -188,6 +192,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       });
     }
+  }
+
+  const eduPosts = await listPublishedEduBlogPosts();
+  for (const post of eduPosts) {
+    entries.push({
+      url: `${base}/blog/${encodeURIComponent(post.slug)}`,
+      lastModified: post.updated_at,
+      changeFrequency: "weekly" as const,
+      priority: 0.78,
+    });
   }
 
   return entries;

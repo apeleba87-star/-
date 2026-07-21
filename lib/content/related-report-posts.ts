@@ -13,7 +13,7 @@ export type RelatedReportPostRow = {
   source_ref: string | null;
 };
 
-const PUBLIC_AUTO_BLOG_SOURCE_TYPES = new Set(["move_rtms_seo"]);
+const PUBLIC_AUTO_BLOG_SOURCE_TYPES = new Set(["move_rtms_seo", "edu_blog"]);
 
 /** posts 조회용: 일간 입찰·낙찰·스냅샷 리포트 전부 */
 export function buildReportPostsOrFilter(): string {

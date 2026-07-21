@@ -1,7 +1,16 @@
-import { createClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase-server";
+import { requireAdminEditorApi, isDebugApiAllowed } from "@/lib/api/require-admin-api";
 
+/** Supabase 연결 점검. 프로덕션: admin/editor만. */
 export async function GET() {
+  if (!isDebugApiAllowed()) {
+    const auth = await requireAdminEditorApi();
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -14,13 +23,10 @@ export async function GET() {
 
   try {
     const supabase = createClient();
-    const { data, error } = await supabase.auth.getSession();
+    const { error } = await supabase.auth.getSession();
 
     if (error) {
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 502 }
-      );
+      return NextResponse.json({ ok: false, error: error.message }, { status: 502 });
     }
 
     return NextResponse.json({
@@ -30,9 +36,6 @@ export async function GET() {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "연결 실패";
-    return NextResponse.json(
-      { ok: false, error: message },
-      { status: 502 }
-    );
+    return NextResponse.json({ ok: false, error: message }, { status: 502 });
   }
 }

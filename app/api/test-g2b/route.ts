@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
+import { requireAdminEditorApi, isDebugApiAllowed } from "@/lib/api/require-admin-api";
 import { safeFetch, G2B_ALLOWED_HOSTS } from "@/lib/safe-fetch";
 
 export const dynamic = "force-dynamic";
 
-/** 나라장터 API 연결 테스트 (개발용). SSRF 방지·5초 타임아웃 적용 */
+/**
+ * 나라장터 API 연결 테스트.
+ * 프로덕션: admin/editor만. 개발: 로그인 없이 가능.
+ */
 export async function GET() {
+  if (!isDebugApiAllowed()) {
+    const auth = await requireAdminEditorApi();
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+  }
+
   try {
     const pad = (n: number) => String(n).padStart(2, "0");
     const toYmdHm = (d: Date) =>
@@ -15,7 +26,11 @@ export async function GET() {
     const inqryBgnDt = toYmdHm(start);
     const inqryEndDt = toYmdHm(end);
     const url = `https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc?serviceKey=${encodeURIComponent(process.env.DATA_GO_KR_SERVICE_KEY ?? "")}&returnType=json&pageNo=1&numOfRows=5&inqryBgnDt=${inqryBgnDt}&inqryEndDt=${inqryEndDt}&inqryDiv=1`;
-    const res = await safeFetch(url, { allowedHosts: G2B_ALLOWED_HOSTS, timeoutMs: 5000, cache: "no-store" });
+    const res = await safeFetch(url, {
+      allowedHosts: G2B_ALLOWED_HOSTS,
+      timeoutMs: 5000,
+      cache: "no-store",
+    });
     const text = await res.text();
     const isJson = text.trim().startsWith("{");
     return NextResponse.json({
