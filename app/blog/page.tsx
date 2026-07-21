@@ -13,8 +13,8 @@ import { buildPageMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
 
-/** 청소지식 목록 — 페이지당 글 수 */
-export const EDU_BLOG_PAGE_SIZE = 12;
+/** 청소지식 목록 — 페이지당 글 수 (페이지 export 금지 → 파일 내부 상수) */
+const EDU_BLOG_PAGE_SIZE = 12;
 
 export const metadata: Metadata = buildPageMetadata({
   title: "청소지식 | 클린아이덱스",
