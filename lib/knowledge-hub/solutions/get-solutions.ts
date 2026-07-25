@@ -18,6 +18,7 @@ import {
   getPlaceLabel,
   getSpaceLabel,
 } from "@/lib/knowledge-hub/solutions/taxonomy";
+import { getSolutionPath } from "@/lib/knowledge-hub/solutions/paths";
 import type {
   ContaminantMasterExt,
   MaterialContaminantMaster,
@@ -27,6 +28,20 @@ import type {
   SolutionStarRating,
   SolutionsDb,
 } from "@/lib/knowledge-hub/solutions/types";
+import type {
+  AssembledSolution,
+  SolutionCardData,
+  SolutionViewContent,
+  SolutionViewRecommendation,
+} from "@/lib/knowledge-hub/solutions/view-types";
+
+export { getSolutionPath } from "@/lib/knowledge-hub/solutions/paths";
+export type {
+  AssembledSolution,
+  SolutionCardData,
+  SolutionViewContent,
+  SolutionViewRecommendation,
+} from "@/lib/knowledge-hub/solutions/view-types";
 
 let cache: SolutionsDb | null = null;
 
@@ -87,23 +102,6 @@ export async function getMergedSolutionPage(
   );
 }
 
-export function getSolutionPath(page: SolutionPage): string {
-  return `/solutions/${page.placeId}/${page.spaceId}/${page.partId}/${page.slug}`;
-}
-
-/** Catalog / hub card DTO — shared by /solutions and /pollution */
-export type SolutionCardData = {
-  id: string;
-  placeId: string;
-  spaceId: string;
-  partId: string;
-  placeLabel: string;
-  spaceLabel: string;
-  partLabel: string;
-  title: string;
-  path: string;
-};
-
 export function toSolutionCardData(page: SolutionPage): SolutionCardData {
   return {
     id: page.id,
@@ -160,37 +158,6 @@ export function listSolutionsByContaminant(contaminantId: string): SolutionPage[
   return listSolutionPages().filter((p) => p.contaminantId === contaminantId);
 }
 
-export type SolutionViewRecommendation = {
-  productId?: string;
-  label: string;
-  rating: SolutionStarRating;
-  dilution?: string;
-  href?: string;
-};
-
-/** Flattened, UI-ready content for the simplified detail layout */
-export type SolutionViewContent = {
-  summary: string;
-  contaminantTypeLabel: string;
-  difficulty?: SolutionStarRating;
-  locations: string[];
-  recommendations: SolutionViewRecommendation[];
-  methodSteps: string[];
-  cautions: string[];
-  ifFails: string[];
-};
-
-export type AssembledSolution = {
-  page: SolutionPage;
-  path: string;
-  placeLabel: string;
-  spaceLabel: string;
-  partLabel: string;
-  contaminantName: string;
-  siblings: SolutionPage[];
-  content: SolutionViewContent;
-};
-
 function confidenceToStars(confidence?: string): SolutionStarRating {
   if (confidence === "high") return 5;
   if (confidence === "low") return 2;
@@ -218,6 +185,9 @@ function buildRecommendations(
       return {
         productId: r.productId,
         label: r.label || product?.name || r.productId || "",
+        brand: product?.brand,
+        phApprox: product?.phApprox,
+        tip: product?.summary?.trim() || undefined,
         rating: r.rating,
         dilution,
         href: r.productId ? `/products/${r.productId}` : undefined,
@@ -227,6 +197,9 @@ function buildRecommendations(
   return products.map((p) => ({
     productId: p.id,
     label: p.name,
+    brand: p.brand,
+    phApprox: p.phApprox,
+    tip: p.summary?.trim() || undefined,
     rating: confidenceToStars(p.confidence),
     dilution: p.standardDilution?.trim() || undefined,
     href: `/products/${p.id}`,

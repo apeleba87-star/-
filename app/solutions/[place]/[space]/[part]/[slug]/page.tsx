@@ -50,14 +50,12 @@ export default async function SolutionDetailPage({ params }: Props) {
   const jsonLd = buildSolutionJsonLd(data, getBaseUrl());
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-[#f5f7fb]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="page-shell py-8 sm:py-10">
-        <SolutionDetailView data={data} />
-      </div>
+      <SolutionDetailView data={data} />
     </main>
   );
 }

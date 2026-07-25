@@ -1,4 +1,4 @@
-import type { AssembledSolution } from "@/lib/knowledge-hub/solutions/get-solutions";
+import type { AssembledSolution } from "@/lib/knowledge-hub/solutions/view-types";
 
 export function buildSolutionJsonLd(data: AssembledSolution, baseUrl: string) {
   const url = `${baseUrl}${data.path}`;

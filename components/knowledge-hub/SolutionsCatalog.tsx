@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { SolutionCardData } from "@/lib/knowledge-hub/solutions/get-solutions";
+import type { SolutionCardData } from "@/lib/knowledge-hub/solutions/view-types";
 import {
   HOME_SPACE_ORDER,
   KITCHEN_PART_ORDER,

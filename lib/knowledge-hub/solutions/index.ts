@@ -24,12 +24,18 @@ export {
   getSpaceLabel,
   spaceIdsForUiSelection,
 } from "@/lib/knowledge-hub/solutions/taxonomy";
+export type {
+  AssembledSolution,
+  SolutionCardData,
+  SolutionViewContent,
+  SolutionViewRecommendation,
+} from "@/lib/knowledge-hub/solutions/view-types";
+export { getSolutionPath } from "@/lib/knowledge-hub/solutions/paths";
 export {
   assembleSolution,
   getContaminantMaster,
   getMergedContaminantMaster,
   getMergedSolutionPage,
-  getSolutionPath,
   getSolutionsDb,
   listMergedSolutionPages,
   listSolutionCardData,
@@ -37,12 +43,6 @@ export {
   listSolutionsByContaminant,
   SOLUTIONS_FINDER_SUBTITLE,
   toSolutionCardData,
-} from "@/lib/knowledge-hub/solutions/get-solutions";
-export type {
-  AssembledSolution,
-  SolutionCardData,
-  SolutionViewContent,
-  SolutionViewRecommendation,
 } from "@/lib/knowledge-hub/solutions/get-solutions";
 export { enrichPageFromSiblings, summaryWithPlace } from "@/lib/knowledge-hub/solutions/solution-inherit";
 export { buildSolutionJsonLd } from "@/lib/knowledge-hub/solutions/solution-jsonld";
