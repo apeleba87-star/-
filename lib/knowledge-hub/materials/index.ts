@@ -13,3 +13,10 @@ export {
 } from "@/lib/knowledge-hub/materials/guides";
 export type { MaterialGuideRecord, MaterialGuideStatus } from "@/lib/knowledge-hub/materials/types";
 export { getMergedMaterialSurfaceGuide } from "@/lib/knowledge-hub/materials/get-merged-guides";
+export { getMaterialDetailData } from "@/lib/knowledge-hub/materials/get-material-detail";
+export type {
+  MaterialDetailData,
+  MaterialProductCard,
+  MaterialContaminantCard,
+  MaterialRecipeCard,
+} from "@/lib/knowledge-hub/materials/get-material-detail";
