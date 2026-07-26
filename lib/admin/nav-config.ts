@@ -100,6 +100,7 @@ export const ADMIN_HUBS: AdminHub[] = [
       { href: "/admin/listings/external", label: "현장거래 등록(외부)", description: "외부 현장거래 일괄·개별 등록" },
       { href: "/admin/jobs/external", label: "인력구인 등록(외부)", description: "외부 채용 공고 등록" },
       { href: "/admin/listings/deal-completions", label: "거래 완료 신고", description: "거래 완료 신고 확인" },
+      { href: "/admin/cleaning-inquiries", label: "견적 문의", description: "정기·입주 청소 견적 문의" },
       { href: "/admin/partners", label: "협력센터 관리", description: "협력 업체·포트폴리오" },
     ],
   },
