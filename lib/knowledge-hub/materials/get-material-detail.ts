@@ -113,27 +113,27 @@ export async function getMaterialDetailData(
   const products = listProductsForMaterial(materialId);
 
   const contaminantIds = [...new Set(recipes.map((r) => r.contaminantId).filter(Boolean))];
-  const contaminants: MaterialContaminantCard[] = contaminantIds
-    .map((cid) => {
-      const c = getContaminantById(cid);
-      if (!c) return null;
-      const recipe = recipes.find((r) => r.contaminantId === cid);
-      const product = recipe ? getProductById(recipe.productId) : undefined;
-      const prescription = recipe
-        ? `처방: ${shortName(product?.name ?? "")} ${recipe.dilution}${
-            recipe.tools?.[0] ? `, ${recipe.tools[0]}` : ""
-          }`.trim()
-        : c.notes?.slice(0, 48) || `${c.name} 제거 방법 확인`;
-      return {
+  const contaminants: MaterialContaminantCard[] = contaminantIds.flatMap((cid) => {
+    const c = getContaminantById(cid);
+    if (!c) return [];
+    const recipe = recipes.find((r) => r.contaminantId === cid);
+    const product = recipe ? getProductById(recipe.productId) : undefined;
+    const prescription = recipe
+      ? `처방: ${shortName(product?.name ?? "")} ${recipe.dilution}${
+          recipe.tools?.[0] ? `, ${recipe.tools[0]}` : ""
+        }`.trim()
+      : c.notes?.slice(0, 48) || `${c.name} 제거 방법 확인`;
+    return [
+      {
         id: cid,
         name: c.name,
         href: `/pollution/${cid}`,
         severity: severityForContaminant(cid),
         prescription,
         recipeHref: recipe ? `/cleaning/${recipe.slug}` : null,
-      };
-    })
-    .filter((x): x is MaterialContaminantCard => Boolean(x));
+      },
+    ];
+  });
 
   const recipeCards: MaterialRecipeCard[] = recipes.slice(0, 8).map((r: KnowledgeRecipe) => {
     const product = getProductById(r.productId);
