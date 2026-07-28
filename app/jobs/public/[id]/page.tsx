@@ -8,7 +8,6 @@ import PublicJobDetailRelatedList from "@/components/jobs/public/PublicJobDetail
 import PublicJobRadarNationalBanner from "@/components/jobs/public/PublicJobRadarNationalBanner";
 import PublicJobRadarRegionalBanner from "@/components/jobs/public/PublicJobRadarRegionalBanner";
 import PublicJobWorknetApplyBar from "@/components/jobs/public/PublicJobWorknetApplyBar";
-import PublicJobDetailRegionHubBridges from "@/components/region-hub/PublicJobDetailRegionHubBridges";
 import {
   getActiveJobsPublicDetailRelatedAd,
   getActiveJobsPublicDetailSummaryAd,
@@ -37,9 +36,6 @@ import {
 } from "@/lib/jobs-public/list-cache";
 import { jobPublicRegionKeysFromJob } from "@/lib/jobs-public/radar-ad-region";
 import { preferenceFromScope } from "@/lib/jobs-public/region-preference-shared";
-import { jobPublicDraftFromScope } from "@/lib/jobs-public/job-region-scope";
-import { getCachedJobWageHubTeaserRaw } from "@/lib/report/job-wage-hub-teaser-cache";
-import { toJobWageHubTeaserForTier } from "@/lib/report/job-wage-hub-teaser";
 import { createClient } from "@/lib/supabase-server";
 
 export const revalidate = 300;
@@ -106,16 +102,14 @@ export default async function PublicJobDetailPage({ params }: Props) {
     ? preferenceFromScope({ sido: jobSido, sigungu: jobSigungu })
     : preferenceFromScope({ sido: "전국", sigungu: null });
 
-  const [summaryAd, relatedAd, relatedJobs, payInsightData, regionalJobCount, rawJobWageTeaser] =
+  const [summaryAd, relatedAd, relatedJobs, payInsightData, regionalJobCount] =
     await Promise.all([
       getActiveJobsPublicDetailSummaryAd(),
       getActiveJobsPublicDetailRelatedAd(),
       getCachedRelatedPublicJobs(regionalPref, job.id, 4),
       getCachedRegionalPayInsightJobs(regionalPref),
       getPublicJobScopeCount(regionalPref),
-      getCachedJobWageHubTeaserRaw(),
     ]);
-  const jobWageTeaser = toJobWageHubTeaserForTier(rawJobWageTeaser, "guest");
 
   const region = parseWorkRegion(job.region_text ?? "", {
     title: job.title,
@@ -148,10 +142,6 @@ export default async function PublicJobDetailPage({ params }: Props) {
   const regionListHref = buildJobDetailRegionListHref(jobSido, jobSigungu);
   const regionalCount = regionalJobCount;
   const radarRegionKeys = jobPublicRegionKeysFromJob(job);
-  const shareDraft =
-    jobSido != null
-      ? jobPublicDraftFromScope({ sido: jobSido, sigungu: jobSigungu })
-      : null;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-5 pb-20 sm:py-6">
@@ -182,12 +172,6 @@ export default async function PublicJobDetailPage({ params }: Props) {
       />
 
       <PublicJobDetailChecklist items={applyGuide} />
-
-      <PublicJobDetailRegionHubBridges
-        regionLabel={region}
-        shareDraft={shareDraft}
-        jobWageTeaser={jobWageTeaser}
-      />
 
       {radarRegionKeys.length > 0 ? (
         <PublicJobRadarRegionalBanner regionKeys={radarRegionKeys} className="mt-6" />

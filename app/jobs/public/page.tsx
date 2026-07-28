@@ -5,7 +5,6 @@ import PublicJobsFeedSection from "@/components/jobs/public/PublicJobsFeedSectio
 import { PublicJobPayModeProvider } from "@/components/jobs/public/PublicJobPayModeProvider";
 import PublicJobRegionWithShare from "@/components/jobs/public/PublicJobRegionWithShare";
 import PublicJobRadarAdsSection from "@/components/jobs/public/PublicJobRadarAdsSection";
-import PublicJobsRegionHubBridges from "@/components/region-hub/PublicJobsRegionHubBridges";
 import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
 import { PUBLIC_JOBS_COPY } from "@/lib/jobs-public/copy";
 import {
@@ -31,8 +30,6 @@ import {
 } from "@/lib/jobs-public/public-job-pagination";
 import { parsePublicJobSort } from "@/lib/jobs-public/public-job-sort";
 import { formatSyncedAt } from "@/lib/jobs-public/queries";
-import { getCachedJobWageHubTeaserRaw } from "@/lib/report/job-wage-hub-teaser-cache";
-import { toJobWageHubTeaserForTier } from "@/lib/report/job-wage-hub-teaser";
 
 export const revalidate = 300;
 
@@ -80,11 +77,7 @@ export default async function PublicJobsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const [rawJobWageTeaser, pref] = await Promise.all([
-    getCachedJobWageHubTeaserRaw(),
-    resolveRegionPref(params),
-  ]);
-  const jobWageTeaser = toJobWageHubTeaserForTier(rawJobWageTeaser, "guest");
+  const pref = await resolveRegionPref(params);
   const shareDraft =
     jobPublicDraftFromSearchParams(params) ??
     jobPublicDraftFromScope({ sido: pref.sido, sigungu: pref.sigungu }) ?? {
@@ -142,8 +135,6 @@ export default async function PublicJobsPage({
         regionKeys={radarRegionKeys}
         className="mt-5"
       />
-
-      <PublicJobsRegionHubBridges shareDraft={shareDraft} jobWageTeaser={jobWageTeaser} />
 
       <PublicJobPayModeProvider>
         <Suspense fallback={<SortChipsFallback />}>
