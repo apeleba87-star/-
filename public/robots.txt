@@ -1,0 +1,13 @@
+User-Agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /mypage/
+Disallow: /jobs/manage
+Disallow: /onboarding
+
+Sitemap: https://cleanindex.kr/sitemap.xml
+
+#DaumWebMasterTool:72a99f4f8e0b61b6e2f15e02f7b687627689fd9ee0efb91532bb5e7276df590e:bKQkbJu3gAwxD8v6N8HiFQ==
