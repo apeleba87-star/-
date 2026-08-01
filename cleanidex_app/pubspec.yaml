@@ -1,0 +1,28 @@
+name: cleanidex_app
+description: 클린아이덱스 — 오염·세제 사용법을 바로 찾기
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  go_router: ^14.8.1
+  shared_preferences: ^2.5.3
+  url_launcher: ^6.3.2
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/mvp_bundle.json

@@ -13,7 +13,8 @@
     "generate:demand-regions": "node scripts/generate-demand-regions.mjs",
     "g2b:ping": "node scripts/g2b-ping.mjs",
     "build:magam-pwa": "node scripts/build-magam-pwa.mjs",
-    "generate:magam-icons": "node scripts/generate-magam-icons.mjs"
+    "generate:magam-icons": "node scripts/generate-magam-icons.mjs",
+    "export:cleanidex-app": "npx tsx scripts/export-cleanidex-app-bundle.ts"
   },
   "dependencies": {
     "@bootpay/backend-js": "^2.4.1",
