@@ -165,9 +165,21 @@ async function loadMergedProducts(): Promise<KnowledgeProduct[]> {
   );
 }
 
+/**
+ * 시드 제품 집합이 바뀌면 Data Cache 키도 바뀌게 한다.
+ * Vercel Data Cache는 배포 간에 유지되므로, 시드만 추가한 커밋에서
+ * 예전 목록(캐시 히트)으로 404가 나는 것을 막는다.
+ */
+function sourceProductsCacheKey(): string {
+  return listSourceProducts()
+    .map((p) => p.id)
+    .sort()
+    .join(",");
+}
+
 /** 공개·런타임용 병합 제품 목록 (삭제된 문서 제품 제외, 관리자 신규 포함) */
 export function listMergedProducts(): Promise<KnowledgeProduct[]> {
-  return unstable_cache(loadMergedProducts, ["cleaning-products-merged"], {
+  return unstable_cache(loadMergedProducts, ["cleaning-products-merged", sourceProductsCacheKey()], {
     revalidate: PRODUCT_CATALOG_REVALIDATE_SEC,
     tags: [PRODUCT_CATALOG_CACHE_TAG],
   })();
