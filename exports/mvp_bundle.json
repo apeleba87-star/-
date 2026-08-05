@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": 1,
-    "generatedAt": "2026-08-01T07:07:21.899Z",
+    "generatedAt": "2026-08-05T08:48:12.438Z",
     "purpose": "Cleanidex Flutter MVP offline content pack",
     "webBaseUrl": "https://cleanindex.kr"
   },
@@ -2050,6 +2050,79 @@
       ],
       "salesUrl": null,
       "searchText": "kiehl 비녹스 에코 (binoxin eco) 비녹스 에코 (binoxin eco) 비녹스에코 비녹스 에코 binoxin eco vinox eco 1:10~1:20 석회 시멘트 잔유물 유분 일반 오염 스테인리스 타일 줄눈 매지 수조 조리기구 조리대 주방기기 내산성 표면 바닥"
+    },
+    {
+      "id": "ticlean",
+      "brand": "티크린",
+      "name": "티크린",
+      "aliases": [
+        "티크린",
+        "티클린",
+        "T-Clean",
+        "Ticlean",
+        "T Clean"
+      ],
+      "phApprox": "강산성 (원액 기준)",
+      "standardDilution": "1:2 (약품1:물2)",
+      "strongDilution": "원액~1:1",
+      "summary": "화장실·욕실의 요석·석회·물때·비누때 제거에 널리 쓰이는 강산성 위생세정제. 자기·타일 세척이 본용도이며, 입주 현장에서는 백시멘트·흡착 분진을 녹여 제거할 때도 보조적으로 쓰인다. 일반 바닥 먼지를 잡는 중성·알칼리 세제와는 용도가 다르다.",
+      "warnings": [
+        "강산성이므로 반드시 보호장갑을 착용하고 환기한다.",
+        "눈에 띄지 않는 곳에서 사전 테스트한다. 일부 타일은 산성으로 탈색·변색될 수 있다.",
+        "초보·비전문가는 원액보다 희석 사용을 권장한다.",
+        "분무기 분사는 공기 중 비산 위험이 있어 비추천. 그릇에 덜어 수세미·솔에 묻혀 쓴다.",
+        "수전·배수구·금속은 작업 전 물로 충분히 적셔 보호하고, 원액이 오래 닿지 않게 한다.",
+        "도포 후 오래 방치하지 말고 바로 물로 충분히 헹군다(린스). 헹굼이 부족하면 타일 변색이 남을 수 있다.",
+        "작업 후 고무장갑을 물로 씻은 뒤 샤워기 등 금속을 잡는다(잔여 산으로 검게 변색될 수 있음).",
+        "스테인리스·크롬은 희석비를 맞추고 즉시 헹군다.",
+        "락스(알칼리·염소계)와 혼합하지 않는다.",
+        "일반 바닥 먼지·분진의 ‘일상 제거’ 목적이면 중성·알칼리 세제가 맞다. 티크린은 무기질·시멘트계를 녹이는 용도이다."
+      ],
+      "contaminantIds": [
+        "limescale",
+        "lime-deposit",
+        "water-spot",
+        "cement-residue",
+        "soap-scum",
+        "rust",
+        "stain-discoloration"
+      ],
+      "compatibleMaterialIds": [
+        "ceramic-tile",
+        "porcelain",
+        "grout",
+        "stainless"
+      ],
+      "forbiddenMaterialIds": [
+        "marble",
+        "ceramic-tile",
+        "chrome-faucet",
+        "brass-bronze"
+      ],
+      "materialsRaw": [
+        "타일",
+        "세라믹",
+        "도기",
+        "자기",
+        "변기",
+        "세면대",
+        "소변기",
+        "줄눈",
+        "스테인리스(희석·즉시 헹굼, 사전 테스트)"
+      ],
+      "contaminantsRaw": [
+        "요석",
+        "석회",
+        "물때",
+        "백화",
+        "백시멘트",
+        "흡착된 분진·시멘트 가루",
+        "비누때",
+        "녹(보조)",
+        "변기·소변기 찌든때"
+      ],
+      "salesUrl": null,
+      "searchText": "티크린 티크린 티크린 티클린 t-clean ticlean t clean 1:2 (약품1:물2) 요석 석회 물때 백화 백시멘트 흡착된 분진·시멘트 가루 비누때 녹(보조) 변기·소변기 찌든때 타일 세라믹 도기 자기 변기 세면대 소변기 줄눈 스테인리스(희석·즉시 헹굼, 사전 테스트)"
     }
   ],
   "contaminants": [
@@ -2060,7 +2133,8 @@
       "notes": "요석이 명시된 석회질. 석회·백화만이면 lime-deposit",
       "productIds": [
         "kiehl-powerfix-gel",
-        "kiehl-santex"
+        "kiehl-santex",
+        "ticlean"
       ],
       "recipeSlugs": [
         "sanikal-eco-regular-intensive-1-50-200",
@@ -2070,7 +2144,9 @@
         "santex-urinal-neat",
         "santex-wall-floor-1-100-200",
         "santex-wide-floor-drain",
-        "jet-active-window-glass-neat"
+        "jet-active-window-glass-neat",
+        "ticlean-toilet-urine-scale",
+        "ticlean-tile-white-cement"
       ],
       "searchText": "요석·석회·백화 요석이 명시된 석회질. 석회·백화만이면 lime-deposit inorganic"
     },
@@ -2088,12 +2164,14 @@
         "kiehl-jet-active",
         "kiehl-vinoxin",
         "kiehl-avenis-foam",
-        "kiehl-binoxin-eco"
+        "kiehl-binoxin-eco",
+        "ticlean"
       ],
       "recipeSlugs": [
         "ceramic-tile-lime-deposit-kobet",
         "stainless-lime-deposit-binoxin-eco",
-        "vinoxin-stainless-metal-neat"
+        "vinoxin-stainless-metal-neat",
+        "ticlean-faucet-water-spot"
       ],
       "searchText": "석회·백화 요석 없이 석회·백화만 문서에 있을 때. 「물때」만이면 water-spot inorganic"
     },
@@ -2112,7 +2190,8 @@
         "kiehl-jet-active",
         "kiehl-vinoxin",
         "kiehl-avenis-foam",
-        "kiehl-presto"
+        "kiehl-presto",
+        "ticlean"
       ],
       "recipeSlugs": [
         "glass-water-spot-jet",
@@ -2132,7 +2211,8 @@
         "kiehl-santex",
         "kiehl-jet",
         "kiehl-jet-active",
-        "kiehl-avenis-foam"
+        "kiehl-avenis-foam",
+        "ticlean"
       ],
       "recipeSlugs": [
         "sanikal-eco-daily-1-200",
@@ -2212,7 +2292,8 @@
         "kiehl-kallinex",
         "kiehl-powerfix-gel",
         "kiehl-jet-active",
-        "kiehl-ruginoff"
+        "kiehl-ruginoff",
+        "ticlean"
       ],
       "recipeSlugs": [],
       "searchText": "녹 inorganic"
@@ -2255,7 +2336,8 @@
         "kiehl-carp-deta",
         "kiehl-rivas",
         "kiehl-orange-pro",
-        "kiehl-presto"
+        "kiehl-presto",
+        "ticlean"
       ],
       "recipeSlugs": [
         "leather-stain-discoloration-tablefit",
@@ -2279,7 +2361,8 @@
       "notes": null,
       "productIds": [
         "kiehl-kallinex",
-        "kiehl-binoxin-eco"
+        "kiehl-binoxin-eco",
+        "ticlean"
       ],
       "recipeSlugs": [
         "binoxin-eco-limescale-neat-1-1",
@@ -4937,6 +5020,109 @@
       ],
       "searchText": "아베니스 폼 화장실 일상 세정 원액 거품형 일상 위생세정. 소량 분사·물걸레 마감, 약 1~5 ml/㎡. 원액 사용 아베니스 폼(avenis) kiehl 비누찌꺼기 도기·자기(변기·세면대) 제품 거품분무기 극세사 천 스펀지 물걸레 보호장갑",
       "webPath": "/cleaning/avenis-foam-daily-sanitary"
+    },
+    {
+      "id": "recipe-ticlean-toilet-urine",
+      "slug": "ticlean-toilet-urine-scale",
+      "title": "티크린 변기·소변기 요석 제거",
+      "summary": "변기·소변기 요석·누런 찌든때. 심하면 원액, 아니면 1:1~1:2. 분무기 비추천, 즉시 헹굼.",
+      "productId": "ticlean",
+      "productName": "티크린",
+      "brand": "티크린",
+      "materialId": "porcelain",
+      "materialName": "도기·자기(변기·세면대)",
+      "contaminantId": "limescale",
+      "contaminantName": "요석·석회·백화",
+      "dilution": "심한 요석: 원액 / 일반: 1:1~1:2",
+      "dwellTime": "짧게 반응 후 즉시 헹굼(장시간 방치 금지)",
+      "tools": [
+        "보호장갑",
+        "그릇(소분용)",
+        "수세미 또는 플라스틱 솔",
+        "매직블럭(선택)",
+        "물·샤워기"
+      ],
+      "steps": [
+        "환기하고 보호장갑을 착용한다. 수전·배수구 등 금속은 물로 충분히 적셔 둔다.",
+        "그릇에 티크린을 소량 덜어 쓴다. 분무기는 쓰지 않는 것이 안전하다.",
+        "요석이 심한 변기·소변기 내면은 원액 또는 1:1을 수세미·솔에 묻혀 바른다. 오염이 약하면 1:2(약품1:물2)로 희석한다.",
+        "짧게 반응시킨 뒤 문질러 요석을 제거하고, 바로 많은 물로 충분히 헹군다.",
+        "물기를 제거하고, 장갑을 물로 씻은 뒤 샤워기 등 금속을 만진다."
+      ],
+      "warnings": [
+        "산성 원액은 변색·부식 위험이 있으니 즉시 헹군다.",
+        "거친 수세미는 도기에 스크래치를 낼 수 있어 플라스틱 솔·매직블럭을 권장한다.",
+        "락스와 섞지 않는다."
+      ],
+      "searchText": "티크린 변기·소변기 요석 제거 변기·소변기 요석·누런 찌든때. 심하면 원액, 아니면 1:1~1:2. 분무기 비추천, 즉시 헹굼. 심한 요석: 원액 / 일반: 1:1~1:2 티크린 티크린 요석·석회·백화 도기·자기(변기·세면대) 보호장갑 그릇(소분용) 수세미 또는 플라스틱 솔 매직블럭(선택) 물·샤워기",
+      "webPath": "/cleaning/ticlean-toilet-urine-scale"
+    },
+    {
+      "id": "recipe-ticlean-tile-white-cement",
+      "slug": "ticlean-tile-white-cement",
+      "title": "티크린 타일 백시멘트·백화 제거",
+      "summary": "타일 백화·백시멘트·흡착 분진. 먼지 일상 제거용이 아님. 희석 도포 후 즉시 린스.",
+      "productId": "ticlean",
+      "productName": "티크린",
+      "brand": "티크린",
+      "materialId": "ceramic-tile",
+      "materialName": "타일(자기·포세린)",
+      "contaminantId": "limescale",
+      "contaminantName": "요석·석회·백화",
+      "dilution": "표준 1:2(약품1:물2) / 현장 3:7~5:5 / 오염 심하면 1:1",
+      "dwellTime": "짧게 도포·문지른 뒤 즉시 충분한 린스(장시간 방치 금지)",
+      "tools": [
+        "보호장갑",
+        "그릇",
+        "수세미·솔·매직블럭",
+        "물걸레",
+        "스퀴지(선택)"
+      ],
+      "steps": [
+        "타일·줄눈의 내산성을 눈에 띄지 않는 곳에서 테스트한다. 산에 약한 수입·코팅 타일은 사용을 피한다.",
+        "수전·금속을 물로 적셔 보호한다. 환기·장갑 필수.",
+        "밀대·청소기로 느슨한 먼지를 먼저 걷어낸 뒤, 남은 백시멘트·흡착 분진에만 티크린을 쓴다.",
+        "1:2(또는 현장 맞춤 3:7~5:5)로 희석한 액을 수세미·솔에 묻혀 골고루 바른다. 심하면 1:1.",
+        "문질러 오염을 제거한 뒤 물로 충분히 헹군다(린스). 마른 걸레·스퀴지로 물기를 제거한다."
+      ],
+      "warnings": [
+        "본용도는 위생도기·타일 세척이며, 백시멘트는 부가적으로 호전되는 경우가 많다. 전용 시멘트 제거제가 더 안전할 수 있다.",
+        "바르고 방치만 하면 타일 변색이 남을 수 있다. 반드시 충분한 물 린스.",
+        "염산·불산 대용으로 함부로 쓰지 않는다. 새 타일은 특히 신중히."
+      ],
+      "searchText": "티크린 타일 백시멘트·백화 제거 타일 백화·백시멘트·흡착 분진. 먼지 일상 제거용이 아님. 희석 도포 후 즉시 린스. 표준 1:2(약품1:물2) / 현장 3:7~5:5 / 오염 심하면 1:1 티크린 티크린 요석·석회·백화 타일(자기·포세린) 보호장갑 그릇 수세미·솔·매직블럭 물걸레 스퀴지(선택)",
+      "webPath": "/cleaning/ticlean-tile-white-cement"
+    },
+    {
+      "id": "recipe-ticlean-faucet-water-spot",
+      "slug": "ticlean-faucet-water-spot",
+      "title": "티크린 수전·스테인리스 물때 (희석)",
+      "summary": "수전·싱크 물때용 보조 사용. 희석·소량·즉시 헹굼.",
+      "productId": "ticlean",
+      "productName": "티크린",
+      "brand": "티크린",
+      "materialId": "chrome-faucet",
+      "materialName": "크롬·수전",
+      "contaminantId": "lime-deposit",
+      "contaminantName": "석회·백화",
+      "dilution": "희석액(남은 1:2 용액 등) — 원액 직접·장시간 금지",
+      "dwellTime": "즉시 닦고 바로 헹굼",
+      "tools": [
+        "보호장갑",
+        "수세미·천",
+        "물"
+      ],
+      "steps": [
+        "원액은 쓰지 않는다. 요석 작업 후 그릇에 남은 희석액 등 묽은 액을 준비한다.",
+        "수세미·천에 소량만 묻혀 물때를 닦는다.",
+        "즉시 물로 헹구고 마른 천으로 닦아 마감한다."
+      ],
+      "warnings": [
+        "스테인리스·크롬은 변색·부식 위험이 크다. 희석비와 즉시 헹굼을 지킨다.",
+        "사전 테스트 없이 넓은 면적에 바르지 않는다."
+      ],
+      "searchText": "티크린 수전·스테인리스 물때 (희석) 수전·싱크 물때용 보조 사용. 희석·소량·즉시 헹굼. 희석액(남은 1:2 용액 등) — 원액 직접·장시간 금지 티크린 티크린 석회·백화 크롬·수전 보호장갑 수세미·천 물",
+      "webPath": "/cleaning/ticlean-faucet-water-spot"
     }
   ],
   "quickContaminantIds": [
