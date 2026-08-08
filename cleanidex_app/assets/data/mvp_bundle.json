@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": 1,
-    "generatedAt": "2026-08-05T08:48:12.438Z",
+    "generatedAt": "2026-08-08T15:06:35.537Z",
     "purpose": "Cleanidex Flutter MVP offline content pack",
     "webBaseUrl": "https://cleanindex.kr"
   },
@@ -1993,6 +1993,45 @@
       "searchText": "kiehl presto (프레스토) presto (프레스토) 프레스토 presto presto  프레스토 원액 사용 물때 손자국 알코올 얼룩 생활 먼지 일반 생활 오염 가벼운 얼룩 처리된 목재 유약 처리 목재 광택 처리 목재 합성 목재 표면 목재 제품 책상 목재 벽면 목재 패널 플라스틱 플라스틱 가구 플라스틱 패널 플라스틱 표면 플라스틱 마감재"
     },
     {
+      "id": "kiehl-dopomat",
+      "brand": "Kiehl",
+      "name": "도포마트",
+      "aliases": [
+        "도포마트",
+        "Dopomat"
+      ],
+      "phApprox": null,
+      "standardDilution": "1:10 (사례 기재 · 공식 표준 없음)",
+      "strongDilution": null,
+      "summary": "건축마감청소·입주청소에서 강한 바닥 세정이 필요할 때 쓰는 세정 제품. 인테리어 시공 후 바닥에 남은 분진·일반 오염과 기름때 제거에 활용하며, 기본적으로 바닥 세정기 등 기계식 세정에 적합하다. 주방의 동물성·식물성 기름때 전용 제품과는 용도를 구분해 사용한다.",
+      "warnings": [
+        "코팅된 바닥·광택(폴리싱)타일은 코팅이 벗겨지거나 광택이 저하될 수 있어 사용하지 않는 것이 좋다.",
+        "목재·섬유는 흡수성 재질이므로 도포마트 대신 전용 제품을 사용한다.",
+        "심한 오염은 눈에 띄지 않는 작은 부위에서 먼저 테스트해 농도를 정한다.",
+        "기본적으로 바닥 세정기 등 기계식 세정을 중심으로 사용한다.",
+        "세정 후 오염과 세정액을 회수하고 깨끗한 물로 마무리(헹굼)한다."
+      ],
+      "contaminantIds": [
+        "grease",
+        "construction-dust"
+      ],
+      "compatibleMaterialIds": [],
+      "forbiddenMaterialIds": [
+        "laminate-wood",
+        "carpet"
+      ],
+      "materialsRaw": [
+        "석재",
+        "장판 등 내알칼리성 바닥(사전 테스트 후 사용)"
+      ],
+      "contaminantsRaw": [
+        "식용기름·일반 기름때",
+        "인테리어 시공 후 분진·일반 바닥 오염"
+      ],
+      "salesUrl": null,
+      "searchText": "kiehl 도포마트 도포마트 dopomat 1:10 (사례 기재 · 공식 표준 없음) 식용기름·일반 기름때 인테리어 시공 후 분진·일반 바닥 오염 석재 장판 등 내알칼리성 바닥(사전 테스트 후 사용)"
+    },
+    {
       "id": "kiehl-binoxin-eco",
       "brand": "Kiehl",
       "name": "비녹스 에코 (Binoxin Eco)",
@@ -2244,6 +2283,7 @@
         "kiehl-carp-deta",
         "kiehl-rivamat",
         "kiehl-orange-pro",
+        "kiehl-dopomat",
         "kiehl-binoxin-eco"
       ],
       "recipeSlugs": [
@@ -2387,7 +2427,8 @@
         "kiehl-econa",
         "kiehl-rivas",
         "kiehl-rivamat",
-        "kiehl-presto"
+        "kiehl-presto",
+        "kiehl-dopomat"
       ],
       "recipeSlugs": [
         "tornado-floor-daily-1-100",
