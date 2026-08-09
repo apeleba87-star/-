@@ -91,6 +91,10 @@
     {
       "path": "/api/cron/generate-move-rtms-seo",
       "schedule": "20 21 * * *"
+    },
+    {
+      "path": "/api/cron/publish-scheduled-edu-blog",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

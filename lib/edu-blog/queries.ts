@@ -50,14 +50,16 @@ function normalizePost(row: {
   };
 }
 
-/** 공개 목록 — 발행·비공개 제외 edu_blog만 */
+/** 공개 목록 — 발행·비공개 제외 edu_blog만. 예약 발행(미래 published_at)은 시각이 지나야 노출된다. */
 export async function listPublishedEduBlogPosts(): Promise<EduBlogPost[]> {
   const supabase = createClient();
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("posts")
     .select(SELECT_COLS)
     .eq("source_type", EDU_BLOG_SOURCE_TYPE)
     .not("published_at", "is", null)
+    .lte("published_at", nowIso)
     .eq("is_private", false)
     .not("slug", "is", null)
     .order("published_at", { ascending: false });
@@ -77,12 +79,14 @@ export async function getPublishedEduBlogBySlug(
 ): Promise<EduBlogPost | null> {
   const decoded = decodeURIComponent(slug);
   const supabase = createClient();
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("posts")
     .select(SELECT_COLS)
     .eq("source_type", EDU_BLOG_SOURCE_TYPE)
     .eq("slug", decoded)
     .not("published_at", "is", null)
+    .lte("published_at", nowIso)
     .eq("is_private", false)
     .maybeSingle();
 
@@ -102,12 +106,14 @@ export async function getPublishedEduBlogsBySlugs(
   if (!unique.length) return [];
 
   const supabase = createClient();
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("posts")
     .select(SELECT_COLS)
     .eq("source_type", EDU_BLOG_SOURCE_TYPE)
     .in("slug", unique)
     .not("published_at", "is", null)
+    .lte("published_at", nowIso)
     .eq("is_private", false);
 
   if (error) {

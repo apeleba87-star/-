@@ -27,6 +27,42 @@ type PostInput = {
   is_private?: boolean;
 };
 
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** UTC ISO → datetime-local 입력값(KST 벽시계 "YYYY-MM-DDTHH:mm") */
+function utcIsoToKstLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return "";
+  const kst = new Date(t.getTime() + KST_OFFSET_MS);
+  const y = kst.getUTCFullYear();
+  const mo = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  const h = String(kst.getUTCHours()).padStart(2, "0");
+  const mi = String(kst.getUTCMinutes()).padStart(2, "0");
+  return `${y}-${mo}-${d}T${h}:${mi}`;
+}
+
+/** datetime-local 입력값(KST로 해석) → UTC ISO */
+function kstLocalInputToUtcIso(local: string): string | null {
+  const m = local.trim().match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m;
+  const asIfUtc = Date.UTC(+y, +mo - 1, +d, +h, +mi, 0, 0);
+  return new Date(asIfUtc - KST_OFFSET_MS).toISOString();
+}
+
+/** 예약 시각 사람이 읽는 KST 표기 */
+function formatKstDisplay(local: string): string {
+  const iso = kstLocalInputToUtcIso(local);
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 /** 제목 → URL용 슬러그 초안 */
 function slugifyTitle(title: string): string {
   return title
@@ -75,6 +111,9 @@ export default function EduBlogForm({
   );
   const [productIds, setProductIds] = useState<string[]>(post?.product_ids ?? []);
   const [publish, setPublish] = useState(!!post?.published_at);
+  const [scheduledLocal, setScheduledLocal] = useState(() =>
+    utcIsoToKstLocalInput(post?.published_at)
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState("");
@@ -168,6 +207,9 @@ export default function EduBlogForm({
       product_ids: productIds,
       publish,
       existingPublishedAt: post?.published_at ?? null,
+      publishAt: publish && scheduledLocal.trim()
+        ? kstLocalInputToUtcIso(scheduledLocal)
+        : null,
     });
 
     if (!result.ok) {
@@ -181,6 +223,12 @@ export default function EduBlogForm({
   }
 
   const nextTitle = otherBlogs.find((b) => b.slug === nextSlug)?.title;
+
+  const scheduledIso = scheduledLocal.trim()
+    ? kstLocalInputToUtcIso(scheduledLocal)
+    : null;
+  const isScheduledFuture =
+    !!scheduledIso && new Date(scheduledIso).getTime() > Date.now();
 
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
@@ -382,14 +430,53 @@ export default function EduBlogForm({
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
-          checked={publish}
-          onChange={(e) => setPublish(e.target.checked)}
-        />
-        발행 (체크 시 /blog 공개 · 사이트맵 포함)
-      </label>
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+        <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
+          <input
+            type="checkbox"
+            checked={publish}
+            onChange={(e) => setPublish(e.target.checked)}
+          />
+          발행 (체크 시 /blog 공개 · 사이트맵 포함)
+        </label>
+
+        {publish ? (
+          <div>
+            <label className="label">예약 발행 시각 (KST · 선택)</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="datetime-local"
+                value={scheduledLocal}
+                onChange={(e) => setScheduledLocal(e.target.value)}
+                className="input max-w-xs"
+              />
+              {scheduledLocal ? (
+                <button
+                  type="button"
+                  onClick={() => setScheduledLocal("")}
+                  className="btn-secondary text-sm"
+                >
+                  즉시 발행으로
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              미래 시각을 지정하면 그 시각(KST)에 자동 공개됩니다. 비우면 저장 즉시 발행됩니다.
+            </p>
+            {scheduledLocal ? (
+              isScheduledFuture ? (
+                <p className="mt-1 text-xs font-medium text-amber-700">
+                  예약: {formatKstDisplay(scheduledLocal)} 에 자동 공개
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-teal-700">
+                  {formatKstDisplay(scheduledLocal)} · 이미 지난 시각이라 저장 즉시 공개됩니다.
+                </p>
+              )
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       {error ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">

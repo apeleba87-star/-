@@ -28,7 +28,20 @@ export default async function AdminBlogPage() {
         <p className="text-slate-500">아직 글이 없습니다. 새 글을 작성하세요.</p>
       ) : (
         <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
-          {posts.map((post) => (
+          {posts.map((post) => {
+            const scheduledMs = post.published_at
+              ? new Date(post.published_at).getTime()
+              : null;
+            const isScheduled = scheduledMs != null && scheduledMs > Date.now();
+            const isLive = scheduledMs != null && scheduledMs <= Date.now();
+            const scheduledLabel = isScheduled
+              ? new Date(post.published_at as string).toLocaleString("ko-KR", {
+                  timeZone: "Asia/Seoul",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })
+              : null;
+            return (
             <li
               key={post.id}
               className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
@@ -41,7 +54,9 @@ export default async function AdminBlogPage() {
                     ? ` · ${eduIntentLabel(post.edu_intent)}`
                     : ""}
                   {" · "}
-                  {post.published_at ? (
+                  {isScheduled ? (
+                    <span className="text-violet-700">예약 · {scheduledLabel}</span>
+                  ) : isLive ? (
                     <span className="text-teal-700">발행</span>
                   ) : (
                     <span className="text-amber-700">초안</span>
@@ -49,7 +64,7 @@ export default async function AdminBlogPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {post.slug && post.published_at ? (
+                {post.slug && isLive ? (
                   <Link
                     href={eduBlogPath(post.slug)}
                     className="rounded bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
@@ -66,7 +81,8 @@ export default async function AdminBlogPage() {
                 </Link>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>

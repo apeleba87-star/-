@@ -17,6 +17,8 @@ export type EduBlogSaveInput = {
   publish: boolean;
   /** 기존 발행 시각 유지용 */
   existingPublishedAt?: string | null;
+  /** 예약 발행 시각(UTC ISO). 미래면 그 시각에 자동 공개, 비우면 즉시 발행 */
+  publishAt?: string | null;
 };
 
 export type EduBlogSaveResult =
@@ -69,8 +71,16 @@ export async function saveEduBlogPost(input: EduBlogSaveInput): Promise<EduBlogS
     (s) => s && s !== slug && s !== (input.next_slug ?? "").trim()
   );
 
+  // 예약 발행: publish 체크 시 publishAt(예약 시각)이 있으면 그 시각, 없으면 기존 시각 또는 즉시.
+  // publishAt이 유효하지 않으면 즉시 발행으로 안전 처리.
+  const scheduledIso = (() => {
+    const raw = input.publishAt?.trim();
+    if (!raw) return null;
+    const t = new Date(raw);
+    return Number.isNaN(t.getTime()) ? null : t.toISOString();
+  })();
   const published_at = input.publish
-    ? input.existingPublishedAt ?? new Date().toISOString()
+    ? scheduledIso ?? input.existingPublishedAt ?? new Date().toISOString()
     : null;
 
   const payload = {
