@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { BookOpen } from "lucide-react";
 import EduBlogNextRelated from "@/components/edu-blog/EduBlogNextRelated";
 import EduBlogProducts from "@/components/edu-blog/EduBlogProducts";
+import EduBlogStickyNext from "@/components/edu-blog/EduBlogStickyNext";
 import { eduIntentLabel } from "@/lib/edu-blog/constants";
 import type { EduBlogPost } from "@/lib/edu-blog/queries";
 import type { KnowledgeProduct } from "@/lib/knowledge-hub/cleaning-knowledge/types";
@@ -131,6 +132,12 @@ export default function EduBlogArticleView({
 
       <EduBlogNextRelated nextPost={nextPost} relatedPosts={relatedPosts} />
       <EduBlogProducts products={products} />
+
+      {(() => {
+        const target = nextPost ?? relatedPosts[0] ?? null;
+        if (!target) return null;
+        return <EduBlogStickyNext targetId="edu-blog-next-section" title={target.title} />;
+      })()}
     </article>
   );
 }
