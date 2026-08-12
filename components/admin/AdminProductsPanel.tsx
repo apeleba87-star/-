@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import KnowledgeMediaUpload from "@/components/knowledge-hub/KnowledgeMediaUpload";
+import ProductBeforeAfterUpload from "@/components/knowledge-hub/ProductBeforeAfterUpload";
+import type { ProductBeforeAfterPair } from "@/lib/knowledge-hub/media/product-before-after-types";
 import type { Confidence, PHType } from "@/lib/knowledge-hub/cleaning-knowledge/types";
 
 type ProductRow = {
@@ -39,6 +42,7 @@ type Props = {
   products: ProductRow[];
   materials: Opt[];
   contaminants: Opt[];
+  beforeAfterByProductId?: Record<string, ProductBeforeAfterPair>;
 };
 
 type FormState = {
@@ -170,7 +174,12 @@ function Field({
 const inputClass = "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm";
 const taClass = `${inputClass} min-h-[88px]`;
 
-export default function AdminProductsPanel({ products, materials, contaminants }: Props) {
+export default function AdminProductsPanel({
+  products,
+  materials,
+  contaminants,
+  beforeAfterByProductId = {},
+}: Props) {
   const [rows, setRows] = useState(products);
   const [screen, setScreen] = useState<"list" | "edit">("list");
   const [isCreate, setIsCreate] = useState(false);
@@ -678,6 +687,35 @@ export default function AdminProductsPanel({ products, materials, contaminants }
             </Field>
           </div>
         </div>
+
+        {!isCreate && form.id ? (
+          <div className="border-t border-slate-100 pt-4">
+            <ProductBeforeAfterUpload
+              productId={form.id}
+              productName={form.name.trim() || form.id}
+              initial={beforeAfterByProductId[form.id]}
+            />
+          </div>
+        ) : null}
+
+        {!isCreate && form.id ? (
+          <div className="border-t border-slate-100 pt-4">
+            <KnowledgeMediaUpload
+              entityType="product"
+              entityId={form.id}
+              defaultAlt={`${form.brand} ${form.name}`.trim() || form.id}
+            />
+            <p className="mt-2 text-xs text-amber-800">
+              이미지 업로드 전 Supabase에{" "}
+              <code className="rounded bg-amber-50 px-1">199_knowledge_media.sql</code> ·{" "}
+              <code className="rounded bg-amber-50 px-1">201_knowledge_media_before_after.sql</code>
+            </p>
+          </div>
+        ) : (
+          <p className="border-t border-slate-100 pt-4 text-xs text-slate-500">
+            대표·전후 이미지는 제품을 먼저 저장한 뒤 편집 화면에서 업로드할 수 있습니다.
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-3 pt-2">
           <button

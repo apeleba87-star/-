@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Button from "@/components/Button";
 import { saveEduBlogPost } from "@/app/admin/blog/actions";
+import EduBlogImageToolbar, {
+  insertMarkdownAt,
+  type EduImagePlace,
+} from "@/components/edu-blog/EduBlogImageToolbar";
+import EduBlogImageManager from "@/components/edu-blog/EduBlogImageManager";
 import {
   EDU_BLOG_INTENTS,
   eduBlogPath,
@@ -52,15 +57,12 @@ function kstLocalInputToUtcIso(local: string): string | null {
   return new Date(asIfUtc - KST_OFFSET_MS).toISOString();
 }
 
-/** 예약 시각 사람이 읽는 KST 표기 */
+/** 예약 시각 사람이 읽는 KST 표기 — 로케일 의존 금지(하이드레이션 불일치 방지) */
 function formatKstDisplay(local: string): string {
-  const iso = kstLocalInputToUtcIso(local);
-  if (!iso) return "";
-  return new Date(iso).toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const m = local.trim().match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return "";
+  const [, y, mo, d, h, mi] = m;
+  return `${y}. ${Number(mo)}. ${Number(d)}. ${h}:${mi}`;
 }
 
 /** 제목 → URL용 슬러그 초안 */
@@ -95,6 +97,10 @@ export default function EduBlogForm({
   post?: PostInput | null;
 }) {
   const router = useRouter();
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const draftMediaId = useRef(
+    post?.id ?? `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  );
   const [title, setTitle] = useState(post?.title ?? "");
   const [slug, setSlug] = useState(post?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(!!post?.slug);
@@ -177,6 +183,24 @@ export default function EduBlogForm({
     if (value) {
       setRelatedSlugs((prev) => prev.filter((s) => s !== value));
     }
+  }
+
+  const mediaEntityId = post?.id || slug.trim() || draftMediaId.current;
+
+  function handleInsertImage(chunk: string, place: EduImagePlace) {
+    const el = bodyRef.current;
+    const cursor =
+      el && place === "cursor"
+        ? { start: el.selectionStart, end: el.selectionEnd }
+        : null;
+    const { next, cursor: nextCursor } = insertMarkdownAt(body, chunk, place, cursor);
+    setBody(next);
+    requestAnimationFrame(() => {
+      const ta = bodyRef.current;
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(nextCursor, nextCursor);
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -307,14 +331,28 @@ export default function EduBlogForm({
       <div>
         <label className="label">본문 (마크다운)</label>
         <p className="mb-1.5 text-xs text-slate-500">
-          제목은 ## 로 쓰세요. 예: ## 요석이란? / 목록은 - 또는 1. / 강조 인용은 &gt; 한 줄
+          글은 마크다운으로 작성하세요. 사진은 위에서 넣은 다음, 아래에서{" "}
+          <strong className="font-semibold text-slate-700">원하는 문단 칸으로 드래그</strong>해
+          위치를 정하세요.
         </p>
+        <div className="mb-2">
+          <EduBlogImageToolbar
+            entityId={mediaEntityId}
+            defaultAlt={title.trim() || "청소지식 이미지"}
+            disabled={loading}
+            onInsert={handleInsertImage}
+          />
+        </div>
         <textarea
+          ref={bodyRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           className="input min-h-[280px] font-mono text-sm"
           placeholder={"## 요석이란?\n\n정의 문단\n\n## 왜 생기는가?\n\n- 소변 미네랄\n- 수돗물 석회\n\n> 핵심 한 줄"}
         />
+        <div className="mt-2">
+          <EduBlogImageManager body={body} onChange={setBody} disabled={loading} />
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-4">

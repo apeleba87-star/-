@@ -17,6 +17,7 @@ import {
   getProductSalesMap,
   resolveProductPurchase,
 } from "@/lib/knowledge-hub/product-sales";
+import { getProductBeforeAfter } from "@/lib/knowledge-hub/media/product-before-after";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -115,6 +116,7 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
   const purchase = resolveProductPurchase(product);
   const db = getCleaningKnowledgeDb();
   const recipes = db.recipes.filter((r) => r.productId === id);
+  const productBeforeAfter = await getProductBeforeAfter(id);
 
   const sourceRecipeIds = recipeContaminantIds(db.recipes, id);
   const sourceProductIds = new Set(product.contaminantIds ?? []);
@@ -190,6 +192,7 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
         product={product}
         recipes={recipes}
         purchase={purchase}
+        productBeforeAfter={productBeforeAfter}
         relatedProducts={relatedProducts}
         relatedPollutions={relatedPollutions}
         relatedBlogs={relatedBlogs}

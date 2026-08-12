@@ -40,6 +40,11 @@ export const ADMIN_HUBS: AdminHub[] = [
         description: "제품 판매 링크·마스터 조회·가이드 편집 링크",
       },
       {
+        href: "/admin/equipment",
+        label: "청소장비",
+        description: "장비 마스터 조회 · 대표 이미지 업로드",
+      },
+      {
         href: "/admin/blog",
         label: "청소지식",
         description: "직접 작성 · 다음 글·제품 연결 · /blog 발행",

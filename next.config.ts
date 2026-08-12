@@ -70,6 +70,11 @@ const nextConfig: NextConfig = {
         hostname: supabaseStorageHostname(),
         pathname: "/storage/v1/object/public/partner-portfolio/**",
       },
+      {
+        protocol: "https",
+        hostname: supabaseStorageHostname(),
+        pathname: "/storage/v1/object/public/knowledge-media/**",
+      },
       /** 대표 이미지 URL로 네이버/카페 등 외부 CDN을 쓴 경우 */
       {
         protocol: "https",

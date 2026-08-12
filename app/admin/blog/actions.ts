@@ -71,17 +71,26 @@ export async function saveEduBlogPost(input: EduBlogSaveInput): Promise<EduBlogS
     (s) => s && s !== slug && s !== (input.next_slug ?? "").trim()
   );
 
-  // 예약 발행: publish 체크 시 publishAt(예약 시각)이 있으면 그 시각, 없으면 기존 시각 또는 즉시.
-  // publishAt이 유효하지 않으면 즉시 발행으로 안전 처리.
+  // 예약 발행: publishAt이 있으면 그 시각.
+  // 비우면(즉시 발행) — 이미 공개된 과거 published_at은 유지하고,
+  // 예약(미래)이었거나 초안이면 지금 시각으로 공개한다.
+  // (과거 버그: 예약→즉시 전환 시 existingPublishedAt(미래)을 그대로 써서 계속 비공개됨)
   const scheduledIso = (() => {
     const raw = input.publishAt?.trim();
     if (!raw) return null;
     const t = new Date(raw);
     return Number.isNaN(t.getTime()) ? null : t.toISOString();
   })();
-  const published_at = input.publish
-    ? scheduledIso ?? input.existingPublishedAt ?? new Date().toISOString()
-    : null;
+  const published_at = (() => {
+    if (!input.publish) return null;
+    if (scheduledIso) return scheduledIso;
+    const existing = input.existingPublishedAt?.trim() || null;
+    if (existing) {
+      const t = new Date(existing).getTime();
+      if (!Number.isNaN(t) && t <= Date.now()) return existing;
+    }
+    return new Date().toISOString();
+  })();
 
   const payload = {
     title,

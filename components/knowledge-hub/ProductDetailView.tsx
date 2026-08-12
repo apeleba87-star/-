@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import ProductPhBadge from "@/components/knowledge-hub/ProductPhBadge";
 import ProductPurchaseBar from "@/components/knowledge-hub/ProductPurchaseBar";
+import KnowledgeHeroImage from "@/components/knowledge-hub/KnowledgeHeroImage";
+import { BeforeAfterCompareComplete } from "@/components/knowledge-hub/BeforeAfterCompare";
+import type { ProductBeforeAfterPair } from "@/lib/knowledge-hub/media/product-before-after-types";
 import type {
   KnowledgeProduct,
   KnowledgeRecipe,
@@ -46,6 +49,7 @@ type Props = {
   product: KnowledgeProduct;
   recipes: KnowledgeRecipe[];
   purchase: ProductPurchaseLink | null;
+  productBeforeAfter?: ProductBeforeAfterPair | null;
   relatedProducts?: ProductExploreLink[];
   relatedPollutions?: ProductExploreLink[];
   relatedBlogs?: ProductExploreLink[];
@@ -247,6 +251,7 @@ export default function ProductDetailView({
   product,
   recipes,
   purchase,
+  productBeforeAfter = null,
   relatedProducts = [],
   relatedPollutions = [],
   relatedBlogs = [],
@@ -434,6 +439,12 @@ export default function ProductDetailView({
             color: heroTheme.fg,
           }}
         >
+          {product.imageUrl ? (
+            <KnowledgeHeroImage
+              src={product.imageUrl}
+              alt={product.imageAlt ?? `${product.brand} ${product.name}`}
+            />
+          ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, fontWeight: 700 }}>{product.brand}</span>
             <span
@@ -570,6 +581,22 @@ export default function ProductDetailView({
         {/* 상황별 사용법 — 흰 카드 + 컬러 아이콘 */}
         <section ref={setSectionRef(1)} id="situations" style={{ marginBottom: 22 }}>
           <SectionHead title="상황별 사용법" color="#5b6cff" />
+          {productBeforeAfter?.beforeUrl && productBeforeAfter?.afterUrl ? (
+            <div style={{ marginBottom: 14 }}>
+              <BeforeAfterCompareComplete
+                beforeUrl={productBeforeAfter.beforeUrl}
+                afterUrl={productBeforeAfter.afterUrl}
+                beforeCaption={productBeforeAfter.beforeCaption ?? undefined}
+                afterCaption={productBeforeAfter.afterCaption ?? undefined}
+                beforeAlt={productBeforeAfter.beforeCaption ?? `${product.name} 사용 전`}
+                afterAlt={productBeforeAfter.afterCaption ?? `${product.name} 사용 후`}
+                beforeFocalX={productBeforeAfter.beforeFocalX}
+                beforeFocalY={productBeforeAfter.beforeFocalY}
+                afterFocalX={productBeforeAfter.afterFocalX}
+                afterFocalY={productBeforeAfter.afterFocalY}
+              />
+            </div>
+          ) : null}
           <p style={{ margin: "-4px 0 14px", fontSize: 14, color: TEXT_SEC, lineHeight: 1.45 }}>
             맞는 경우를 클릭해 단계별 가이드 확인
           </p>

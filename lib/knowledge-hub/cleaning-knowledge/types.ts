@@ -93,6 +93,9 @@ export type KnowledgeProduct = {
   /** 운영자가 넣는 판매 URL — 없으면 구매 CTA 비노출 */
   salesUrl?: string | null;
   salesLabel?: string;
+  /** 대표 이미지(지식 미디어 오버레이 또는 시드) */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   sources?: KnowledgeSource[];
   sourceRefs?: SourceRef[];
 };

@@ -7,6 +7,7 @@ import type {
   PHType,
 } from "@/lib/knowledge-hub/cleaning-knowledge/types";
 import { upsertProductSales } from "@/lib/knowledge-hub/product-sales";
+import { getKnowledgeMediaMap } from "@/lib/knowledge-hub/media/media-store";
 
 export const PRODUCT_CATALOG_CACHE_TAG = "cleaning-products";
 const PRODUCT_CATALOG_REVALIDATE_SEC = 3600;
@@ -160,8 +161,17 @@ function mergeProducts(
 
 async function loadMergedProducts(): Promise<KnowledgeProduct[]> {
   const rows = await loadDbProductRows(false);
+  const media = await getKnowledgeMediaMap("product");
   return mergeProducts(listSourceProducts(), rows).map(
-    ({ catalogOrigin: _o, hasDbRow: _h, isDeleted: _d, ...p }) => p
+    ({ catalogOrigin: _o, hasDbRow: _h, isDeleted: _d, ...p }) => {
+      const m = media[p.id];
+      if (!m?.url) return p;
+      return {
+        ...p,
+        imageUrl: m.url,
+        imageAlt: m.alt ?? `${p.brand} ${p.name}`,
+      };
+    }
   );
 }
 

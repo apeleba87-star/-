@@ -1,0 +1,204 @@
+[
+  {
+    "id": "numatic-wv470",
+    "equipmentId": "wet-vac",
+    "brand": "Numatic",
+    "name": "WV470",
+    "aliases": ["누매틱 WV470", "Numatic WV470", "WV-470"],
+    "summary": "현장·입주에서 자주 보이는 중형 습식청소기. 오수 회수·바닥 세척 후 마무리에 쓰는 실무형 기종으로 알려져 있다.",
+    "bestFor": [
+      "입주·상가 바닥 오수 회수",
+      "돌돌이 작업 후 물기 제거",
+      "화장실·복도 물청소"
+    ],
+    "selectionNotes": [
+      "탱크 용량·이동성이 균형 잡혀 중형 현장에 무난하다",
+      "호스·필터 등 소모품 수급이 비교적 쉬운 편이다",
+      "전선 길이·바퀴 상태를 현장에서 꼭 확인한다"
+    ],
+    "cautions": [
+      "건식 전용 필터를 끼운 채 물을 흡입하지 않는다",
+      "오수를 탱크에 둔 채 보관하지 않는다",
+      "구체 스펙·부품은 유통 시점·시리얼에 따라 다를 수 있다"
+    ],
+    "relatedEquipmentIds": ["wet-vac-filter", "vac-hose", "floor-polisher"],
+    "confidence": "medium",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "현장 통용 기종 정리(스펙 단정 금지)" }]
+  },
+  {
+    "id": "nilfisk-vp300",
+    "equipmentId": "wet-vac",
+    "brand": "Nilfisk",
+    "name": "습식/건식 현장형",
+    "aliases": ["닐피스크 습식", "Nilfisk wet vac"],
+    "summary": "유럽계 브랜드의 현장용 습식·건식 라인. 상용·시설관리 현장에서 습식 회수기로 자주 언급된다. 모델 코드는 유통처별로 다를 수 있어 ‘라인’ 단위로 이해한다.",
+    "bestFor": [
+      "시설관리·상용 바닥",
+      "물청소 후 오수 회수",
+      "중대형 면적"
+    ],
+    "selectionNotes": [
+      "흡입력·탱크보다 부품·AS 네트워크를 함께 본다",
+      "습식 모드 필터·플로트 구성을 구매 전 확인한다",
+      "동일 브랜드라도 건식 전용 모델과 혼동하지 않는다"
+    ],
+    "cautions": [
+      "모델명이 유통처마다 달라 ‘Nilfisk=특정 한 기종’으로 단정하지 않는다",
+      "습식 사용 시 해당 기종의 습식 키트·필터를 확인한다"
+    ],
+    "relatedEquipmentIds": ["wet-vac-filter", "air-mover"],
+    "confidence": "low",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "브랜드 라인 안내(개별 SKU 미확정)" }]
+  },
+  {
+    "id": "karcher-wd",
+    "equipmentId": "wet-vac",
+    "brand": "Kärcher",
+    "name": "WD 시리즈 (습식/건식)",
+    "aliases": ["카처 WD", "케르허 WD", "Karcher WD"],
+    "summary": "가정·소규모 상가에서도 접하기 쉬운 습식/건식 진공 라인. 전문 입주 장비보다 접근성이 높고, 소량 오수·물청소 보조에 쓰이는 경우가 많다.",
+    "bestFor": [
+      "소규모 상가·가정 현장",
+      "소량 오수·물기 회수",
+      "보조 습식 작업"
+    ],
+    "selectionNotes": [
+      "대용량 입주 오수 회수에는 탱크·내구성 한계를 감안한다",
+      "WD 계열은 모델 숫자가 많아 용량·와트를 라벨로 확인한다",
+      "필터·백 호환을 미리 본다"
+    ],
+    "cautions": [
+      "대형 입주·다량 오수에는 전문 중형 습식기가 더 맞을 수 있다",
+      "액체 흡입 전 습식 설정·필터를 확인한다"
+    ],
+    "relatedEquipmentIds": ["wet-vac-filter"],
+    "confidence": "medium",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "접근성 높은 습식/건식 라인" }]
+  },
+  {
+    "id": "numatic-nru1500",
+    "equipmentId": "floor-polisher",
+    "brand": "Numatic",
+    "name": "단축·돌돌이 계열",
+    "aliases": ["누매틱 돌돌이", "Numatic polisher"],
+    "summary": "입주·바닥 현장에서 ‘돌돌이’로 통용되는 단축 마루광택기 계열. 패드·브러시 호환과 디스크 인치가 선택 핵심이다.",
+    "bestFor": [
+      "입주 바닥 분진·묵은때",
+      "세제 도포 후 기계 세정",
+      "패드 작업"
+    ],
+    "selectionNotes": [
+      "13·15·17인치 등 디스크 크기와 패드 수급을 같이 본다",
+      "전선 길이·무게·용액탱크 유무를 현장 동선에 맞게 고른다",
+      "구체 모델 코드는 유통·연식에 따라 다르므로 인치·용도로 고른다"
+    ],
+    "cautions": [
+      "코팅·왁스 바닥에 과도하게 거친 패드를 쓰지 않는다",
+      "전원·전선 상태를 확인하고 물기 있는 플러그를 쓰지 않는다"
+    ],
+    "relatedEquipmentIds": ["pad-floor", "wet-vac", "pad-driver"],
+    "confidence": "medium",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "돌돌이 현장 통용 브랜드 계열" }]
+  },
+  {
+    "id": "ipc-floor-machine",
+    "equipmentId": "floor-polisher",
+    "brand": "IPC",
+    "name": "단축 플로어머신",
+    "aliases": ["IPC 돌돌이", "IPC polisher"],
+    "summary": "상용 청소 장비로 유통되는 단축 플로어머신 라인. 입주·시설 바닥 기계 세정에 쓰이는 경우가 많다.",
+    "bestFor": [
+      "시설·상가 바닥",
+      "기계 세정·패드 작업"
+    ],
+    "selectionNotes": [
+      "디스크 인치·출력·패드 호환을 확인한다",
+      "부품·AS·국내 유통 여부를 미리 본다"
+    ],
+    "cautions": [
+      "재질·코팅에 맞지 않는 패드 조도를 쓰지 않는다"
+    ],
+    "relatedEquipmentIds": ["pad-floor", "wet-vac"],
+    "confidence": "low",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "상용 단축기 브랜드 언급" }]
+  },
+  {
+    "id": "karcher-hd",
+    "equipmentId": "pressure-washer",
+    "brand": "Kärcher",
+    "name": "HD / 고압세척 라인",
+    "aliases": ["카처 고압", "케르허 HD", "Karcher HD"],
+    "summary": "입주·외벽·화장실 고압세척에서 자주 거론되는 고압세척기 라인. bar·유량·건/노즐 구성으로 고른다.",
+    "bestFor": [
+      "입주·준공 고압세척",
+      "화장실·타일",
+      "외벽·바닥(적합 재질)"
+    ],
+    "selectionNotes": [
+      "압력(bar)·유량·호스 길이를 작업 면적에 맞게 본다",
+      "숏건·롱건·노즐 각도를 세트로 확인한다",
+      "전원형/엔진형을 현장 전원 여부에 따라 고른다"
+    ],
+    "cautions": [
+      "연약석·도장·줄눈에 근거리 고압을 쏘지 않는다",
+      "사람·유리·차량에 조준하지 않는다"
+    ],
+    "relatedEquipmentIds": ["pw-nozzle", "pw-hose", "pw-short-gun", "wet-vac"],
+    "confidence": "medium",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "고압세척 통용 브랜드 라인" }]
+  },
+  {
+    "id": "lava-pressure",
+    "equipmentId": "pressure-washer",
+    "brand": "Lavor",
+    "name": "고압세척 현장형",
+    "aliases": ["라보르 고압", "Lavor pressure washer"],
+    "summary": "청소·시설 현장에서 유통되는 고압세척기 브랜드 중 하나. 입주·외벽 작업용으로 선택지에 오른다.",
+    "bestFor": [
+      "입주 고압",
+      "외벽·바닥 강한 세정"
+    ],
+    "selectionNotes": [
+      "압력·호스·커플러 규격 호환을 확인한다",
+      "국내 부품 수급을 미리 본다"
+    ],
+    "cautions": [
+      "재질 확인 없이 고압을 쓰지 않는다"
+    ],
+    "relatedEquipmentIds": ["pw-hose", "pw-coupler", "air-mover"],
+    "confidence": "low",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "현장 유통 브랜드 언급" }]
+  },
+  {
+    "id": "phoenix-air-mover",
+    "equipmentId": "air-mover",
+    "brand": "Phoenix",
+    "name": "에어무버 / 송풍기",
+    "aliases": ["피닉스 송풍기", "Phoenix air mover"],
+    "summary": "침수·물청소 후 건조에 쓰이는 산업용 에어무버로 자주 언급되는 브랜드. 풍량·각도·적층성이 선택 포인트다.",
+    "bestFor": [
+      "물청소 후 건조",
+      "침수·누수 복구",
+      "카펫·패드 건조"
+    ],
+    "selectionNotes": [
+      "풍량(CFM)·소음·소비전력을 공간에 맞게 본다",
+      "각도 조절·적층 보관이 되는지 확인한다"
+    ],
+    "cautions": [
+      "고임물을 제거하지 않은 채 송풍만 하지 않는다",
+      "젖은 전원·플러그를 쓰지 않는다"
+    ],
+    "relatedEquipmentIds": ["wet-vac", "dehumidifier"],
+    "confidence": "medium",
+    "status": "active",
+    "sourceRefs": [{ "doc": "manual", "note": "건조 장비 통용 브랜드" }]
+  }
+]

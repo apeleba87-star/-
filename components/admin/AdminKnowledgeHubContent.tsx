@@ -9,6 +9,7 @@ import {
   listMaterials,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { listAdminCatalogProducts } from "@/lib/knowledge-hub/product-catalog";
+import { getProductBeforeAfterMap } from "@/lib/knowledge-hub/media/product-before-after";
 import { applySalesToProduct, getProductSalesMap } from "@/lib/knowledge-hub/product-sales";
 import { enrichedGuidePathsForRecipe } from "@/lib/knowledge-hub/recipe-guide-linker";
 
@@ -63,6 +64,7 @@ export default async function AdminKnowledgeHubContent() {
   const [salesMap, catalog] = await Promise.all([getProductSalesMap(), listAdminCatalogProducts()]);
   const materials = listMaterials();
   const contaminants = listContaminants();
+  const beforeAfterByProductId = await getProductBeforeAfterMap(catalog.map((p) => p.id));
 
   return (
     <div className="space-y-8">
@@ -124,6 +126,7 @@ export default async function AdminKnowledgeHubContent() {
         })}
         materials={materials.map((m) => ({ id: m.id, name: m.name }))}
         contaminants={contaminants.map((c) => ({ id: c.id, name: c.name }))}
+        beforeAfterByProductId={beforeAfterByProductId}
       />
 
       <details className="rounded-xl border border-slate-200 bg-white p-5">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Children, isValidElement, type ReactNode } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -7,6 +8,7 @@ import EduBlogNextRelated from "@/components/edu-blog/EduBlogNextRelated";
 import EduBlogProducts from "@/components/edu-blog/EduBlogProducts";
 import EduBlogStickyNext from "@/components/edu-blog/EduBlogStickyNext";
 import { eduIntentLabel } from "@/lib/edu-blog/constants";
+import { parseEduAlign, type EduImageAlign } from "@/lib/edu-blog/body-images";
 import type { EduBlogPost } from "@/lib/edu-blog/queries";
 import type { KnowledgeProduct } from "@/lib/knowledge-hub/cleaning-knowledge/types";
 
@@ -16,6 +18,24 @@ type Props = {
   relatedPosts: EduBlogPost[];
   products: KnowledgeProduct[];
 };
+
+function figureClass(align: EduImageAlign): string {
+  if (align === "left") {
+    return "edu-blog-figure my-5 sm:float-left sm:mr-5 sm:mb-3 sm:max-w-[46%]";
+  }
+  if (align === "right") {
+    return "edu-blog-figure my-5 sm:float-right sm:ml-5 sm:mb-3 sm:max-w-[46%]";
+  }
+  if (align === "full") {
+    return "edu-blog-figure my-6 w-full max-w-none";
+  }
+  return "edu-blog-figure mx-auto my-6 w-full max-w-xl";
+}
+
+function isEduImageWrap(node: ReactNode): boolean {
+  if (!isValidElement(node)) return false;
+  return (node.props as { "data-edu-img"?: string })["data-edu-img"] === "1";
+}
 
 const markdownComponents: Components = {
   h1: ({ children }) => (
@@ -33,9 +53,39 @@ const markdownComponents: Components = {
       {children}
     </h3>
   ),
-  p: ({ children }) => (
-    <p className="mt-4 text-base leading-8 text-slate-700 first:mt-0">{children}</p>
-  ),
+  p: ({ children }) => {
+    const kids = Children.toArray(children).filter(
+      (c) => !(typeof c === "string" && !c.trim())
+    );
+    // 이미지만 있는 문단은 <p>로 감싸지 않음
+    if (kids.length > 0 && kids.every(isEduImageWrap)) {
+      return <>{kids}</>;
+    }
+    return (
+      <p className="mt-4 clear-none text-base leading-8 text-slate-700 first:mt-0">{children}</p>
+    );
+  },
+  img: ({ src, alt, title }) => {
+    if (!src) return null;
+    const align = parseEduAlign(title);
+    // figure 금지: markdown이 p로 감쌀 때 하이드레이션 오류 발생
+    // span은 p 안에서도 유효한 HTML
+    return (
+      <span data-edu-img="1" className={`block ${figureClass(align)}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt || ""}
+          loading="lazy"
+          decoding="async"
+          className="h-auto w-full rounded-2xl border border-slate-100 object-cover shadow-sm"
+        />
+        {alt ? (
+          <span className="mt-2 block text-center text-xs font-medium text-slate-500">{alt}</span>
+        ) : null}
+      </span>
+    );
+  },
   ul: ({ children }) => (
     <ul className="mt-4 space-y-2.5 [&_li]:rounded-2xl [&_li]:border [&_li]:border-slate-100 [&_li]:bg-slate-50/90 [&_li]:px-4 [&_li]:py-3">
       {children}
@@ -65,7 +115,7 @@ const markdownComponents: Components = {
       {children}
     </a>
   ),
-  hr: () => <hr className="my-10 border-slate-200" />,
+  hr: () => <hr className="my-10 clear-both border-slate-200" />,
 };
 
 function formatDate(value: string): string {
@@ -120,7 +170,7 @@ export default function EduBlogArticleView({
         ) : null}
       </header>
 
-      <div className="edu-blog-body mt-2">
+      <div className="edu-blog-body mt-2 after:clear-both after:block after:content-['']">
         {post.body ? (
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {post.body}

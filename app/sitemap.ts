@@ -8,6 +8,10 @@ import {
   listRecipes,
 } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { listMergedProducts } from "@/lib/knowledge-hub/product-catalog";
+import {
+  listPublishedEquipment,
+  listPublishedEquipmentModels,
+} from "@/lib/knowledge-hub/equipment/catalog";
 import { listPublishedGuidePaths } from "@/lib/knowledge-hub/queries";
 import {
   getSolutionPath,
@@ -28,6 +32,7 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/guides", priority: 0.95, changeFrequency: "weekly" },
   { path: "/blog", priority: 0.9, changeFrequency: "weekly" },
   { path: "/products", priority: 0.92, changeFrequency: "weekly" },
+  { path: "/equipment", priority: 0.9, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.92, changeFrequency: "weekly" },
   { path: "/pollution", priority: 0.92, changeFrequency: "weekly" },
   { path: "/solutions", priority: 0.93, changeFrequency: "weekly" },
@@ -99,6 +104,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.8,
+    });
+  }
+
+  for (const e of await listPublishedEquipment()) {
+    entries.push({
+      url: `${base}/equipment/${e.id}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.78,
+    });
+  }
+
+  for (const m of await listPublishedEquipmentModels()) {
+    entries.push({
+      url: `${base}/equipment/${m.equipmentId}/models/${m.id}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.72,
     });
   }
 

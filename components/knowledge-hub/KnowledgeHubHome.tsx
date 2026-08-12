@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Beaker, Building2, ChevronRight, Droplets, Layers } from "lucide-react";
+import { Beaker, Building2, ChevronRight, Droplets, Layers, Wrench } from "lucide-react";
 import GuideSearch from "@/components/knowledge-hub/GuideSearch";
 
 /**
@@ -63,6 +63,23 @@ export default function KnowledgeHubHome() {
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-2xl font-black text-slate-950">청소 세제로 찾기</span>
                 <span className="mt-1 block text-base text-slate-600">토네이도 · 비노신 · 그라셋 등</span>
+              </span>
+              <ChevronRight
+                className="mt-4 h-6 w-6 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-800"
+                aria-hidden
+              />
+            </Link>
+
+            <Link
+              href="/equipment"
+              className="group flex items-stretch gap-4 rounded-3xl border-2 border-slate-900 bg-white p-5 transition hover:bg-teal-50 active:scale-[0.99] sm:p-6"
+            >
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-800 text-white transition group-hover:scale-105">
+                <Wrench className="h-7 w-7" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block text-2xl font-black text-slate-950">청소장비로 찾기</span>
+                <span className="mt-1 block text-base text-slate-600">습식청소기 · 돌돌이 · 고압세척기</span>
               </span>
               <ChevronRight
                 className="mt-4 h-6 w-6 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-800"
