@@ -24,6 +24,7 @@ const CATALOG = [
   { id: "kiehl-exonforte", names: ["엑손 포르테", "엑손포르테", "Xon Forte"], match: /엑손\s*포르테|Xon\s*forte/i },
   { id: "kiehl-kobet", names: ["코베트", "Corvett"], match: /^코베트|Corvett/i },
   { id: "kiehl-tablefit", names: ["테이블피트", "Tablefit"], match: /Tablefit|테이블피트/i },
+  { id: "kiehl-extrafit", names: ["엑스트라피트", "엑스트라 피트", "Extrafit", "Extra Fit"], match: /Extrafit|Extra\s*Fit|엑스트라\s*피트/i },
   { id: "kiehl-parketto-clean", names: ["파케토 클린", "파케토클린", "Parketto clean"], match: /파케토\s*클린|Parketto\s*clean/i },
   { id: "kiehl-torvan", names: ["토르반", "Torvan"], match: /토르반|Torvan/i },
   { id: "kiehl-powerfix-gel", names: ["파워픽스 젤", "Powerfix Gel"], match: /파워픽스\s*젤|Powerfix/i },
@@ -46,7 +47,6 @@ const CATALOG = [
 
 /** 사례만 있고 리스트업 상세 카드 없음 */
 const CASE_ONLY = [
-  { id: "kiehl-extrafit", name: "키엘 엑스트라피트", aliases: ["엑스트라피트", "Extrafit"] },
   { id: "kiehl-oxycal", name: "키엘 옥시칼", aliases: ["옥시칼", "Oxycal"] },
   { id: "kiehl-dopomat", name: "도포마트", aliases: ["도포마트", "Dopomat"] },
   { id: "kiehl-binoxin-eco", name: "비녹스에코", aliases: ["비녹스에코", "Binoxin Eco", "비녹스 에코"] },
@@ -343,6 +343,7 @@ const CARD_STARTS_1BASED = [
   { id: "kiehl-orange-pro", line: 7721 },
   { id: "kiehl-parketto-care", line: 7923 },
   { id: "kiehl-presto", line: 8086 },
+  { id: "kiehl-extrafit", line: 8230 },
 ];
 
 function findProductBlocks(allLines) {

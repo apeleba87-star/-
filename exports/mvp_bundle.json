@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": 1,
-    "generatedAt": "2026-08-08T15:06:35.537Z",
+    "generatedAt": "2026-08-18T01:19:46.099Z",
     "purpose": "Cleanidex Flutter MVP offline content pack",
     "webBaseUrl": "https://cleanindex.kr"
   },
@@ -1993,6 +1993,62 @@
       "searchText": "kiehl presto (프레스토) presto (프레스토) 프레스토 presto presto  프레스토 원액 사용 물때 손자국 알코올 얼룩 생활 먼지 일반 생활 오염 가벼운 얼룩 처리된 목재 유약 처리 목재 광택 처리 목재 합성 목재 표면 목재 제품 책상 목재 벽면 목재 패널 플라스틱 플라스틱 가구 플라스틱 패널 플라스틱 표면 플라스틱 마감재"
     },
     {
+      "id": "kiehl-extrafit",
+      "brand": "Kiehl",
+      "name": "키엘 엑스트라피트",
+      "aliases": [
+        "엑스트라피트",
+        "엑스트라 피트",
+        "Extrafit",
+        "Extra Fit"
+      ],
+      "phApprox": "원액 약 11 (알칼리성)",
+      "standardDilution": "원액 사용",
+      "strongDilution": null,
+      "summary": "스티커·라벨 등 접착 잔유물과 페인트 자국·잔유물 제거에 특화된 분무형 알칼리성 제거제. 뿌린 뒤 수 분 반응시키면 페인트 잔유물은 녹아 내려 닦아내기만 하면 되고, 스티커 잔유물은 천으로 닦거나 스크래퍼로 힘을 거의 주지 않고 밀어 제거할 수 있다. 물로 헹구지 않고 작업을 끝내는 제거제 컨셉이며, 표준 사용량은 약 2ml/㎡이다.",
+      "warnings": [
+        "사용 전 표기사항을 확인하고 사용방법·표준사용량을 지킨다.",
+        "변색·탈색 우려가 있으면 눈에 띄지 않는 곳에 소량 테스트 후 사용한다.",
+        "사용 전 표면의 알칼리 내성을 확인한다.",
+        "내용물을 마시지 않는다.",
+        "용기를 항상 밀봉하고 실온에 보관한다.",
+        "화기에 가까이하지 말고 직사광선·고온을 피한다.",
+        "권한이 있는 관리자만 접근할 수 있는 장소에 보관한다.",
+        "사용하고 남은 내용물을 원래 용기에 다시 넣지 않는다.",
+        "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+        "페인트·도장면은 벗겨질 수 있으므로 장시간 방치하지 말고 테스트 후 사용한다."
+      ],
+      "contaminantIds": [
+        "adhesive",
+        "paint-residue"
+      ],
+      "compatibleMaterialIds": [
+        "stainless",
+        "aluminum"
+      ],
+      "forbiddenMaterialIds": [
+        "plastic",
+        "laminate-wood",
+        "carpet",
+        "ceramic-tile"
+      ],
+      "materialsRaw": [
+        "스테인리스",
+        "알루미늄 등 금속",
+        "내용제성 플라스틱",
+        "플라스틱 코팅면"
+      ],
+      "contaminantsRaw": [
+        "스티커 접착제",
+        "라벨 접착제",
+        "접착 잔유물",
+        "페인트 잔유물",
+        "페인트 자국"
+      ],
+      "salesUrl": null,
+      "searchText": "kiehl 키엘 엑스트라피트 엑스트라피트 엑스트라 피트 extrafit extra fit 원액 사용 스티커 접착제 라벨 접착제 접착 잔유물 페인트 잔유물 페인트 자국 스테인리스 알루미늄 등 금속 내용제성 플라스틱 플라스틱 코팅면"
+    },
+    {
       "id": "kiehl-dopomat",
       "brand": "Kiehl",
       "name": "도포마트",
@@ -2162,6 +2218,130 @@
       ],
       "salesUrl": null,
       "searchText": "티크린 티크린 티크린 티클린 t-clean ticlean t clean 1:2 (약품1:물2) 요석 석회 물때 백화 백시멘트 흡착된 분진·시멘트 가루 비누때 녹(보조) 변기·소변기 찌든때 타일 세라믹 도기 자기 변기 세면대 소변기 줄눈 스테인리스(희석·즉시 헹굼, 사전 테스트)"
+    },
+    {
+      "id": "pb-1",
+      "brand": "파워피앤비",
+      "name": "피비원 (PB-1)",
+      "aliases": [
+        "피비원",
+        "PB-1",
+        "PB1",
+        "피비원 PB-1",
+        "파워피앤비 피비원"
+      ],
+      "phApprox": "알칼리성 (MSDS상 pH 자료없음)",
+      "standardDilution": null,
+      "strongDilution": null,
+      "summary": "주방 기름때·후드 찌든때·창틀·바닥 등 다양한 표면에 쓰는 강알칼리성 다목적 세정제. 수산화나트륨·메타규산나트륨이 들어 있어 유기성 기름 오염 분해력이 강하며, 도포 후 1~2분만 반응시킨 뒤 브러시·수세미·패드 등 물리력을 더해 충분히 헹구는 방식으로 사용한다. 부식성이 강해 알루미늄·도장·코팅·목재·천연석 등 알칼리에 약한 재질에는 사전 테스트가 필수다.",
+      "warnings": [
+        "MSDS상 피부 부식성 구분1·심한 눈 손상 구분1, 신호어 '위험'으로 분류된 강한 세정제다. 화학물질용 보호장갑·보안경·작업복을 착용하고 충분히 환기한다.",
+        "사용 전 눈에 띄지 않는 작은 부위에서 재질 테스트를 한다(특히 도장·코팅·금속·알루미늄·민감 플라스틱).",
+        "분사 후 약 1~2분만 반응시키고 장시간 방치하지 않는다(변색·표면 손상 위험).",
+        "단순 분사보다 브러시·수세미·극세사·패드·마루광택기 등 물리력을 함께 사용해야 효과가 좋다.",
+        "작업 후 깨끗한 물로 충분히 헹구고 세제를 표면에 그대로 말리지 않는다. 식품 접촉면은 잔류가 없도록 더 철저히 세척한다.",
+        "산성 물질과 혼합·동시 사용을 금지한다(MSDS '피해야 할 물질'에 산성 물질 명시). 세제를 바꿀 때는 앞 세제를 물로 충분히 제거한다.",
+        "알루미늄·크롬 휠 등 크롬 제품에는 사용하지 않는다. 차량 외부·도장면은 1:20 희석 안내 기준을 따른다(모든 현장 공용 만능 희석비 아님).",
+        "눈에 들어가면 즉시 20분 이상 흐르는 물로 씻고(가능하면 렌즈 제거) 의료조치를 받는다. 피부에 묻으면 오염된 의류를 벗고 충분히 물로 씻는다.",
+        "밀폐하여 서늘하고 건조한 곳, 음식·음료와 떨어진 곳, 어린이·일반인 손이 닿지 않는 곳에 보관한다.",
+        "MSDS 권고 용도(세정·세척)로만 사용하고 권고 용도 외 사용은 피한다. '어디에나 쓰는 만능세제'로 오해하지 않는다."
+      ],
+      "contaminantIds": [
+        "grease",
+        "stain-discoloration"
+      ],
+      "compatibleMaterialIds": [
+        "plastic"
+      ],
+      "forbiddenMaterialIds": [
+        "aluminum",
+        "chrome-faucet",
+        "painted-wall",
+        "laminate-wood",
+        "marble"
+      ],
+      "materialsRaw": [
+        "PVC 창틀",
+        "플라스틱 표면",
+        "PVC 계열 바닥",
+        "주방 벽면·후드 외부",
+        "방수 표면",
+        "자동차 외부(1:20 희석)",
+        "내알칼리성 표면(사전 테스트 후 사용)"
+      ],
+      "contaminantsRaw": [
+        "주방 기름때",
+        "후드 주변 찌든때",
+        "손때·매연·기름성 창틀 오염",
+        "바닥의 기름성 찌든때·묵은때",
+        "플라스틱·PVC 표면 오염"
+      ],
+      "salesUrl": null,
+      "searchText": "파워피앤비 피비원 (pb-1) 피비원 pb-1 pb1 피비원 pb-1 파워피앤비 피비원 주방 기름때 후드 주변 찌든때 손때·매연·기름성 창틀 오염 바닥의 기름성 찌든때·묵은때 플라스틱·pvc 표면 오염 pvc 창틀 플라스틱 표면 pvc 계열 바닥 주방 벽면·후드 외부 방수 표면 자동차 외부(1:20 희석) 내알칼리성 표면(사전 테스트 후 사용)"
+    },
+    {
+      "id": "daiso-urine-lime-remover",
+      "brand": "다이소",
+      "name": "요석·석회 강력 제거제",
+      "aliases": [
+        "요석·석회 강력 제거제",
+        "다이소 요석·석회 강력 제거제",
+        "다이소 요석제거제",
+        "다이소 석회제거제",
+        "1045002"
+      ],
+      "phApprox": "산성 (정확한 수치 미확인)",
+      "standardDilution": "원액 사용",
+      "strongDilution": null,
+      "summary": "변기 요석·욕실 석회·무기질 물때 제거용 글리콜산(Glycolic acid) 기반 산성 세정제. 500ml 분무기형으로 오염부에 분사한 뒤 약 5분 반응 → 솔·부드러운 수세미 → 충분한 헹굼이 기본이다. 염산계 강산 제품과 동일하게 설명하면 안 되며, 장시간 방치·휴지 팩보다는 짧게 반복하는 편이 안전하다. 가정용으로 접근성이 높다.",
+      "warnings": [
+        "글리콜산 기반 산성 세정제다. 염산계 강산 제품과 동일하게 취급·설명하지 않는다. 정확한 pH 수치는 공개 표시자료에서 확인되지 않았다.",
+        "사용 전 눈에 띄지 않는 곳에서 재질 테스트를 한다.",
+        "기본 사용: 분사 → 약 5분 반응 → 솔·부드러운 수세미로 문지르기 → 깨끗한 물로 충분히 헹군다.",
+        "심한 오염은 장시간 방치(30분·3시간 등)나 휴지 팩보다, 짧게 반응→세척→확인→반복하는 방식을 권장한다. 3시간 방치는 제조사 표준으로 확인되지 않은 개인 후기다.",
+        "천연 대리석은 사용하지 않는다(탄산칼슘이 산과 반응해 광택 소실·에칭 가능).",
+        "수전·금속은 크롬·니켈 도금·알루미늄·코팅일 수 있으니 부분 테스트·짧은 반응·즉시 헹굼을 기본으로 한다.",
+        "시멘트계 줄눈에 장시간·반복 산성 팩은 피한다.",
+        "락스 등 염소계·다른 세제와 절대 혼합하지 않는다. 다른 세제를 썼다면 충분히 물로 헹구고 환기한 뒤 별도 작업한다.",
+        "밀폐 공간에서는 충분히 환기하고, 장갑·마스크 등 보호구를 착용한다(제품 표시사항).",
+        "기름때·피지·단백질·곰팡이 색소·실리콘 내부 곰팡이·접착제·페인트 등은 본 제품 단독으로 해결되지 않을 수 있다. 곰팡이 제거제와 용도가 다르다.",
+        "오래 방치된 샤워부스가 뿌연 경우, 오염이 아니라 유리 표면 손상일 수 있어 세제를 계속 써도 투명해지지 않을 수 있다."
+      ],
+      "contaminantIds": [
+        "limescale",
+        "lime-deposit",
+        "water-spot"
+      ],
+      "compatibleMaterialIds": [
+        "porcelain",
+        "glass",
+        "ceramic-tile"
+      ],
+      "forbiddenMaterialIds": [
+        "marble",
+        "aluminum",
+        "brass-bronze",
+        "chrome-faucet",
+        "grout",
+        "silicone"
+      ],
+      "materialsRaw": [
+        "도기(변기·소변기·세면대)",
+        "유리(샤워부스)",
+        "산에 안전한 타일 표면",
+        "욕실 타일(사전 테스트)"
+      ],
+      "contaminantsRaw": [
+        "요석",
+        "석회",
+        "무기질 물때",
+        "수전 주변 하얀 미네랄 자국",
+        "변기 내부 누런 요석",
+        "소변기 요석",
+        "샤워부스 유리의 석회성 물때"
+      ],
+      "salesUrl": null,
+      "searchText": "다이소 요석·석회 강력 제거제 요석·석회 강력 제거제 다이소 요석·석회 강력 제거제 다이소 요석제거제 다이소 석회제거제 1045002 원액 사용 요석 석회 무기질 물때 수전 주변 하얀 미네랄 자국 변기 내부 누런 요석 소변기 요석 샤워부스 유리의 석회성 물때 도기(변기·소변기·세면대) 유리(샤워부스) 산에 안전한 타일 표면 욕실 타일(사전 테스트)"
     }
   ],
   "contaminants": [
@@ -2173,7 +2353,8 @@
       "productIds": [
         "kiehl-powerfix-gel",
         "kiehl-santex",
-        "ticlean"
+        "ticlean",
+        "daiso-urine-lime-remover"
       ],
       "recipeSlugs": [
         "sanikal-eco-regular-intensive-1-50-200",
@@ -2204,7 +2385,8 @@
         "kiehl-vinoxin",
         "kiehl-avenis-foam",
         "kiehl-binoxin-eco",
-        "ticlean"
+        "ticlean",
+        "daiso-urine-lime-remover"
       ],
       "recipeSlugs": [
         "ceramic-tile-lime-deposit-kobet",
@@ -2230,7 +2412,8 @@
         "kiehl-vinoxin",
         "kiehl-avenis-foam",
         "kiehl-presto",
-        "ticlean"
+        "ticlean",
+        "daiso-urine-lime-remover"
       ],
       "recipeSlugs": [
         "glass-water-spot-jet",
@@ -2284,7 +2467,8 @@
         "kiehl-rivamat",
         "kiehl-orange-pro",
         "kiehl-dopomat",
-        "kiehl-binoxin-eco"
+        "kiehl-binoxin-eco",
+        "pb-1"
       ],
       "recipeSlugs": [
         "ceramic-tile-grease-exonforte",
@@ -2377,7 +2561,8 @@
         "kiehl-rivas",
         "kiehl-orange-pro",
         "kiehl-presto",
-        "ticlean"
+        "ticlean",
+        "pb-1"
       ],
       "recipeSlugs": [
         "leather-stain-discoloration-tablefit",
@@ -2467,11 +2652,13 @@
       "notes": null,
       "productIds": [
         "kiehl-tablefit",
-        "kiehl-orange-pro"
+        "kiehl-orange-pro",
+        "kiehl-extrafit"
       ],
       "recipeSlugs": [
         "painted-wall-adhesive-extrafit",
-        "stainless-adhesive-vinoxin"
+        "stainless-adhesive-vinoxin",
+        "extrafit-adhesive-residue"
       ],
       "searchText": "스티커·접착 잔유물 surface_damage"
     },
@@ -2482,10 +2669,12 @@
       "notes": null,
       "productIds": [
         "kiehl-carp-deta",
-        "kiehl-orange-pro"
+        "kiehl-orange-pro",
+        "kiehl-extrafit"
       ],
       "recipeSlugs": [
-        "stainless-paint-residue-extrafit"
+        "stainless-paint-residue-extrafit",
+        "extrafit-paint-residue"
       ],
       "searchText": "페인트 잔유물 surface_damage"
     },
@@ -5164,6 +5353,73 @@
       ],
       "searchText": "티크린 수전·스테인리스 물때 (희석) 수전·싱크 물때용 보조 사용. 희석·소량·즉시 헹굼. 희석액(남은 1:2 용액 등) — 원액 직접·장시간 금지 티크린 티크린 석회·백화 크롬·수전 보호장갑 수세미·천 물",
       "webPath": "/cleaning/ticlean-faucet-water-spot"
+    },
+    {
+      "id": "recipe-extrafit-paint-residue",
+      "slug": "extrafit-paint-residue",
+      "title": "엑스트라피트 페인트 자국·잔유물 제거 (원액)",
+      "summary": "페인트 자국·잔유물 제거. 원액 분사 → 2~5분 반응 → 천으로 닦기.",
+      "productId": "kiehl-extrafit",
+      "productName": "키엘 엑스트라피트",
+      "brand": "Kiehl",
+      "materialId": "stainless",
+      "materialName": "스테인레스",
+      "contaminantId": "paint-residue",
+      "contaminantName": "페인트 잔유물",
+      "dilution": "원액 사용",
+      "dwellTime": "2~5분",
+      "tools": [
+        "분무기(제품)",
+        "천"
+      ],
+      "steps": [
+        "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+        "페인트 잔유물에 엑스트라피트를 직접 분사한다.",
+        "2~5분 반응시킨다. 페인트 잔유물은 수 분 이내에 녹아 내린다.",
+        "천으로 문질러 닦아낸다.",
+        "표준 사용량: 약 2ml/㎡."
+      ],
+      "warnings": [
+        "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+        "도장·페인트면은 벗겨질 수 있으므로 장시간 방치하지 않는다."
+      ],
+      "searchText": "엑스트라피트 페인트 자국·잔유물 제거 (원액) 페인트 자국·잔유물 제거. 원액 분사 → 2~5분 반응 → 천으로 닦기. 원액 사용 키엘 엑스트라피트 kiehl 페인트 잔유물 스테인레스 분무기(제품) 천",
+      "webPath": "/cleaning/extrafit-paint-residue"
+    },
+    {
+      "id": "recipe-extrafit-adhesive-residue",
+      "slug": "extrafit-adhesive-residue",
+      "title": "엑스트라피트 스티커·라벨 접착 잔유물 제거 (원액)",
+      "summary": "스티커·라벨 접착 잔유물 제거. 원액 분사 → 2~5분 → 천 또는 스크래퍼로 밀어 제거.",
+      "productId": "kiehl-extrafit",
+      "productName": "키엘 엑스트라피트",
+      "brand": "Kiehl",
+      "materialId": "painted-wall",
+      "materialName": "도장·페인트 벽면",
+      "contaminantId": "adhesive",
+      "contaminantName": "스티커·접착 잔유물",
+      "dilution": "원액 사용",
+      "dwellTime": "2~5분",
+      "tools": [
+        "분무기(제품)",
+        "천",
+        "스크래퍼"
+      ],
+      "steps": [
+        "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+        "스티커에 코팅층이 있으면 코팅층을 먼저 제거한다.",
+        "접착 잔유물에 엑스트라피트를 직접 분사한다.",
+        "2~5분 반응시킨다.",
+        "천으로 닦아낸다. 잘 안 지워지면 스크래퍼로 힘을 거의 주지 않고 밀어 제거한다.",
+        "표준 사용량: 약 2ml/㎡."
+      ],
+      "warnings": [
+        "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+        "페인트·도장면은 벗겨질 수 있으므로 장시간 방치하지 말고 테스트 후 사용한다.",
+        "스크래퍼는 낮은 각도로 살살 민다."
+      ],
+      "searchText": "엑스트라피트 스티커·라벨 접착 잔유물 제거 (원액) 스티커·라벨 접착 잔유물 제거. 원액 분사 → 2~5분 → 천 또는 스크래퍼로 밀어 제거. 원액 사용 키엘 엑스트라피트 kiehl 스티커·접착 잔유물 도장·페인트 벽면 분무기(제품) 천 스크래퍼",
+      "webPath": "/cleaning/extrafit-adhesive-residue"
     }
   ],
   "quickContaminantIds": [

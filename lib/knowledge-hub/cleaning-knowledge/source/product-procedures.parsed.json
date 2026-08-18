@@ -2297,5 +2297,84 @@
         "note": "티크린 — 수전 물때 주의 사용"
       }
     ]
+  },
+  {
+    "id": "recipe-extrafit-paint-residue",
+    "slug": "extrafit-paint-residue",
+    "seoTitle": "엑스트라피트 페인트 자국·잔유물 제거 (원액)",
+    "field": "특수오염",
+    "materialId": "stainless",
+    "contaminantId": "paint-residue",
+    "productId": "kiehl-extrafit",
+    "dilution": "원액 사용",
+    "dwellTime": "2~5분",
+    "tools": [
+      "분무기(제품)",
+      "천"
+    ],
+    "steps": [
+      "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+      "페인트 잔유물에 엑스트라피트를 직접 분사한다.",
+      "2~5분 반응시킨다. 페인트 잔유물은 수 분 이내에 녹아 내린다.",
+      "천으로 문질러 닦아낸다.",
+      "표준 사용량: 약 2ml/㎡."
+    ],
+    "warnings": [
+      "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+      "도장·페인트면은 벗겨질 수 있으므로 장시간 방치하지 않는다."
+    ],
+    "summary": "페인트 자국·잔유물 제거. 원액 분사 → 2~5분 반응 → 천으로 닦기.",
+    "confidence": "high",
+    "sourceRefs": [
+      {
+        "doc": "manual",
+        "note": "엑스트라피트 제품 라벨 — 페인트 잔유물"
+      },
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-PAINT-001"
+      }
+    ]
+  },
+  {
+    "id": "recipe-extrafit-adhesive-residue",
+    "slug": "extrafit-adhesive-residue",
+    "seoTitle": "엑스트라피트 스티커·라벨 접착 잔유물 제거 (원액)",
+    "field": "특수오염",
+    "materialId": "painted-wall",
+    "contaminantId": "adhesive",
+    "productId": "kiehl-extrafit",
+    "dilution": "원액 사용",
+    "dwellTime": "2~5분",
+    "tools": [
+      "분무기(제품)",
+      "천",
+      "스크래퍼"
+    ],
+    "steps": [
+      "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+      "스티커에 코팅층이 있으면 코팅층을 먼저 제거한다.",
+      "접착 잔유물에 엑스트라피트를 직접 분사한다.",
+      "2~5분 반응시킨다.",
+      "천으로 닦아낸다. 잘 안 지워지면 스크래퍼로 힘을 거의 주지 않고 밀어 제거한다.",
+      "표준 사용량: 약 2ml/㎡."
+    ],
+    "warnings": [
+      "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+      "페인트·도장면은 벗겨질 수 있으므로 장시간 방치하지 말고 테스트 후 사용한다.",
+      "스크래퍼는 낮은 각도로 살살 민다."
+    ],
+    "summary": "스티커·라벨 접착 잔유물 제거. 원액 분사 → 2~5분 → 천 또는 스크래퍼로 밀어 제거.",
+    "confidence": "high",
+    "sourceRefs": [
+      {
+        "doc": "manual",
+        "note": "엑스트라피트 제품 라벨 — 스티커·라벨"
+      },
+      {
+        "doc": "cleaning-cases",
+        "caseId": "CASE-STICKER-001"
+      }
+    ]
   }
 ]

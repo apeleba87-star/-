@@ -2,7 +2,7 @@
   "meta": {
     "title": "클린아이덱스 — 독일 키엘(Kiehl) 세제 지식 전체 내보내기",
     "purpose": "다른 AI/작업용 입력 데이터. 문서·파싱 소스 기준.",
-    "generatedAt": "2026-07-14T07:02:46.331Z",
+    "generatedAt": "2026-08-18T01:19:32.936Z",
     "sourceFiles": [
       "lib/knowledge-hub/cleaning-knowledge/source/products.parsed.json",
       "lib/knowledge-hub/cleaning-knowledge/source/product-procedures.parsed.json",
@@ -10,7 +10,7 @@
     ],
     "counts": {
       "products": 32,
-      "procedures": 60,
+      "procedures": 62,
       "cases": 22
     },
     "notes": [
@@ -3265,32 +3265,94 @@
       "name": "키엘 엑스트라피트",
       "aliases": [
         "엑스트라피트",
-        "Extrafit"
+        "엑스트라 피트",
+        "Extrafit",
+        "Extra Fit"
       ],
-      "summary": null,
-      "phApprox": null,
-      "phType": "unknown",
-      "dilutions": [],
-      "standardDilution": null,
+      "summary": "스티커·라벨 등 접착 잔유물과 페인트 자국·잔유물 제거에 특화된 분무형 알칼리성 제거제. 뿌린 뒤 수 분 반응시키면 페인트 잔유물은 녹아 내려 닦아내기만 하면 되고, 스티커 잔유물은 천으로 닦거나 스크래퍼로 힘을 거의 주지 않고 밀어 제거할 수 있다. 물로 헹구지 않고 작업을 끝내는 제거제 컨셉이며, 표준 사용량은 약 2ml/㎡이다.",
+      "phApprox": "원액 약 11 (알칼리성)",
+      "phType": "alkaline",
+      "dilutions": [
+        "원액"
+      ],
+      "standardDilution": "원액",
       "strongDilution": null,
-      "packSizes": [],
-      "mainUse": [],
-      "placeHints": [],
-      "materialsRaw": [],
-      "contaminantsRaw": [],
-      "forbiddenRaw": [],
+      "packSizes": [
+        "750ml"
+      ],
+      "mainUse": [
+        "스티커 잔유물 제거",
+        "라벨 접착 잔유물 제거",
+        "페인트 자국 제거",
+        "페인트 잔유물 제거"
+      ],
+      "placeHints": [
+        "금속 표면",
+        "엘리베이터",
+        "테이블",
+        "벽면 스티커 잔유물",
+        "도장·페인트면(사전 테스트)"
+      ],
+      "materialsRaw": [
+        "스테인리스",
+        "알루미늄 등 금속",
+        "내용제성 플라스틱",
+        "플라스틱 코팅면"
+      ],
+      "contaminantsRaw": [
+        "스티커 접착제",
+        "라벨 접착제",
+        "접착 잔유물",
+        "페인트 잔유물",
+        "페인트 자국"
+      ],
+      "forbiddenRaw": [
+        "ABS 플라스틱",
+        "ABS 휴대폰 케이스",
+        "일부 PC형 키보드",
+        "LCD 디스플레이",
+        "용제에 민감한 니스·광택제·수성 코팅",
+        "목재",
+        "섬유",
+        "고무",
+        "도자기"
+      ],
       "compatibleMaterialIds": [],
       "contaminantIds": [],
       "forbiddenMaterialIds": [],
-      "warnings": [],
+      "warnings": [
+        "사용 전 표기사항을 확인하고 사용방법·표준사용량을 지킨다.",
+        "변색·탈색 우려가 있으면 눈에 띄지 않는 곳에 소량 테스트 후 사용한다.",
+        "사용 전 표면의 알칼리 내성을 확인한다.",
+        "내용물을 마시지 않는다.",
+        "용기를 항상 밀봉하고 실온에 보관한다.",
+        "화기에 가까이하지 말고 직사광선·고온을 피한다.",
+        "권한이 있는 관리자만 접근할 수 있는 장소에 보관한다.",
+        "사용하고 남은 내용물을 원래 용기에 다시 넣지 않는다.",
+        "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+        "페인트·도장면은 벗겨질 수 있으므로 장시간 방치하지 말고 테스트 후 사용한다."
+      ],
       "sourceRefs": [
+        {
+          "doc": "manual",
+          "note": "엑스트라피트 제품 라벨·스펙 (750ml, pH≈11, 신고번호 제FB21-02-0444호)"
+        },
         {
           "doc": "cleaning-cases",
           "caseId": "CASE-STICKER-001",
-          "note": "사례에서 언급된 제품"
+          "note": "오래된 벽면 스티커 접착 잔유물 제거"
+        },
+        {
+          "doc": "cleaning-cases",
+          "caseId": "CASE-PAINT-001",
+          "note": "엘리베이터 및 테이블 페인트 잔유물 제거"
+        },
+        {
+          "doc": "cleaning-knowledge",
+          "note": "제거제 정의 예시(페인트·스티커 제거제)"
         }
       ],
-      "status": "draft"
+      "status": "active"
     },
     {
       "id": "kiehl-oxycal",
@@ -3333,30 +3395,63 @@
         "도포마트",
         "Dopomat"
       ],
-      "summary": null,
+      "summary": "건축마감청소·입주청소에서 강한 바닥 세정이 필요할 때 쓰는 세정 제품. 인테리어 시공 후 바닥에 남은 분진·일반 오염과 기름때 제거에 활용하며, 기본적으로 바닥 세정기 등 기계식 세정에 적합하다. 주방의 동물성·식물성 기름때 전용 제품과는 용도를 구분해 사용한다.",
       "phApprox": null,
       "phType": "unknown",
-      "dilutions": [],
-      "standardDilution": null,
+      "dilutions": [
+        "1:10"
+      ],
+      "standardDilution": "1:10 (사례 기재 · 공식 표준 없음)",
       "strongDilution": null,
       "packSizes": [],
-      "mainUse": [],
-      "placeHints": [],
-      "materialsRaw": [],
-      "contaminantsRaw": [],
-      "forbiddenRaw": [],
+      "mainUse": [
+        "건축마감청소",
+        "입주청소",
+        "인테리어 시공 후 바닥 세정",
+        "일반 기름때",
+        "강한 바닥 오염",
+        "기계식 세정"
+      ],
+      "placeHints": [
+        "바닥 청소",
+        "석재 계단",
+        "인테리어 현장",
+        "입주청소 현장"
+      ],
+      "materialsRaw": [
+        "석재",
+        "장판 등 내알칼리성 바닥(사전 테스트 후 사용)"
+      ],
+      "contaminantsRaw": [
+        "식용기름·일반 기름때",
+        "인테리어 시공 후 분진·일반 바닥 오염"
+      ],
+      "forbiddenRaw": [
+        "목재",
+        "섬유 재질"
+      ],
       "compatibleMaterialIds": [],
       "contaminantIds": [],
       "forbiddenMaterialIds": [],
-      "warnings": [],
+      "warnings": [
+        "코팅된 바닥·광택(폴리싱)타일은 코팅이 벗겨지거나 광택이 저하될 수 있어 사용하지 않는 것이 좋다.",
+        "목재·섬유는 흡수성 재질이므로 도포마트 대신 전용 제품을 사용한다.",
+        "심한 오염은 눈에 띄지 않는 작은 부위에서 먼저 테스트해 농도를 정한다.",
+        "기본적으로 바닥 세정기 등 기계식 세정을 중심으로 사용한다.",
+        "세정 후 오염과 세정액을 회수하고 깨끗한 물로 마무리(헹굼)한다."
+      ],
       "sourceRefs": [
         {
           "doc": "cleaning-cases",
           "caseId": "CASE-DOPOMAT-001",
-          "note": "사례에서 언급된 제품"
+          "note": "석재 계단 식용기름 제거 사례"
+        },
+        {
+          "doc": "manual",
+          "note": "Kiehl 도포마트 사용법 정리"
         }
       ],
-      "status": "draft"
+      "status": "active"
     },
     {
       "id": "kiehl-binoxin-eco",
@@ -5636,6 +5731,85 @@
         {
           "doc": "kiehl-list",
           "note": "아베니스 폼 — 직접 거품 분사·천 사용"
+        }
+      ]
+    },
+    {
+      "id": "recipe-extrafit-paint-residue",
+      "slug": "extrafit-paint-residue",
+      "seoTitle": "엑스트라피트 페인트 자국·잔유물 제거 (원액)",
+      "field": "특수오염",
+      "materialId": "stainless",
+      "contaminantId": "paint-residue",
+      "productId": "kiehl-extrafit",
+      "dilution": "원액 사용",
+      "dwellTime": "2~5분",
+      "tools": [
+        "분무기(제품)",
+        "천"
+      ],
+      "steps": [
+        "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+        "페인트 잔유물에 엑스트라피트를 직접 분사한다.",
+        "2~5분 반응시킨다. 페인트 잔유물은 수 분 이내에 녹아 내린다.",
+        "천으로 문질러 닦아낸다.",
+        "표준 사용량: 약 2ml/㎡."
+      ],
+      "warnings": [
+        "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+        "도장·페인트면은 벗겨질 수 있으므로 장시간 방치하지 않는다."
+      ],
+      "summary": "페인트 자국·잔유물 제거. 원액 분사 → 2~5분 반응 → 천으로 닦기.",
+      "confidence": "high",
+      "sourceRefs": [
+        {
+          "doc": "manual",
+          "note": "엑스트라피트 제품 라벨 — 페인트 잔유물"
+        },
+        {
+          "doc": "cleaning-cases",
+          "caseId": "CASE-PAINT-001"
+        }
+      ]
+    },
+    {
+      "id": "recipe-extrafit-adhesive-residue",
+      "slug": "extrafit-adhesive-residue",
+      "seoTitle": "엑스트라피트 스티커·라벨 접착 잔유물 제거 (원액)",
+      "field": "특수오염",
+      "materialId": "painted-wall",
+      "contaminantId": "adhesive",
+      "productId": "kiehl-extrafit",
+      "dilution": "원액 사용",
+      "dwellTime": "2~5분",
+      "tools": [
+        "분무기(제품)",
+        "천",
+        "스크래퍼"
+      ],
+      "steps": [
+        "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+        "스티커에 코팅층이 있으면 코팅층을 먼저 제거한다.",
+        "접착 잔유물에 엑스트라피트를 직접 분사한다.",
+        "2~5분 반응시킨다.",
+        "천으로 닦아낸다. 잘 안 지워지면 스크래퍼로 힘을 거의 주지 않고 밀어 제거한다.",
+        "표준 사용량: 약 2ml/㎡."
+      ],
+      "warnings": [
+        "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+        "페인트·도장면은 벗겨질 수 있으므로 장시간 방치하지 말고 테스트 후 사용한다.",
+        "스크래퍼는 낮은 각도로 살살 민다."
+      ],
+      "summary": "스티커·라벨 접착 잔유물 제거. 원액 분사 → 2~5분 → 천 또는 스크래퍼로 밀어 제거.",
+      "confidence": "high",
+      "sourceRefs": [
+        {
+          "doc": "manual",
+          "note": "엑스트라피트 제품 라벨 — 스티커·라벨"
+        },
+        {
+          "doc": "cleaning-cases",
+          "caseId": "CASE-STICKER-001"
         }
       ]
     }
@@ -13083,34 +13257,176 @@
         "name": "키엘 엑스트라피트",
         "aliases": [
           "엑스트라피트",
-          "Extrafit"
+          "엑스트라 피트",
+          "Extrafit",
+          "Extra Fit"
         ],
-        "summary": null,
-        "phApprox": null,
-        "phType": "unknown",
-        "dilutions": [],
-        "standardDilution": null,
+        "summary": "스티커·라벨 등 접착 잔유물과 페인트 자국·잔유물 제거에 특화된 분무형 알칼리성 제거제. 뿌린 뒤 수 분 반응시키면 페인트 잔유물은 녹아 내려 닦아내기만 하면 되고, 스티커 잔유물은 천으로 닦거나 스크래퍼로 힘을 거의 주지 않고 밀어 제거할 수 있다. 물로 헹구지 않고 작업을 끝내는 제거제 컨셉이며, 표준 사용량은 약 2ml/㎡이다.",
+        "phApprox": "원액 약 11 (알칼리성)",
+        "phType": "alkaline",
+        "dilutions": [
+          "원액"
+        ],
+        "standardDilution": "원액",
         "strongDilution": null,
-        "packSizes": [],
-        "mainUse": [],
-        "placeHints": [],
-        "materialsRaw": [],
-        "contaminantsRaw": [],
-        "forbiddenRaw": [],
+        "packSizes": [
+          "750ml"
+        ],
+        "mainUse": [
+          "스티커 잔유물 제거",
+          "라벨 접착 잔유물 제거",
+          "페인트 자국 제거",
+          "페인트 잔유물 제거"
+        ],
+        "placeHints": [
+          "금속 표면",
+          "엘리베이터",
+          "테이블",
+          "벽면 스티커 잔유물",
+          "도장·페인트면(사전 테스트)"
+        ],
+        "materialsRaw": [
+          "스테인리스",
+          "알루미늄 등 금속",
+          "내용제성 플라스틱",
+          "플라스틱 코팅면"
+        ],
+        "contaminantsRaw": [
+          "스티커 접착제",
+          "라벨 접착제",
+          "접착 잔유물",
+          "페인트 잔유물",
+          "페인트 자국"
+        ],
+        "forbiddenRaw": [
+          "ABS 플라스틱",
+          "ABS 휴대폰 케이스",
+          "일부 PC형 키보드",
+          "LCD 디스플레이",
+          "용제에 민감한 니스·광택제·수성 코팅",
+          "목재",
+          "섬유",
+          "고무",
+          "도자기"
+        ],
         "compatibleMaterialIds": [],
         "contaminantIds": [],
         "forbiddenMaterialIds": [],
-        "warnings": [],
+        "warnings": [
+          "사용 전 표기사항을 확인하고 사용방법·표준사용량을 지킨다.",
+          "변색·탈색 우려가 있으면 눈에 띄지 않는 곳에 소량 테스트 후 사용한다.",
+          "사용 전 표면의 알칼리 내성을 확인한다.",
+          "내용물을 마시지 않는다.",
+          "용기를 항상 밀봉하고 실온에 보관한다.",
+          "화기에 가까이하지 말고 직사광선·고온을 피한다.",
+          "권한이 있는 관리자만 접근할 수 있는 장소에 보관한다.",
+          "사용하고 남은 내용물을 원래 용기에 다시 넣지 않는다.",
+          "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+          "페인트·도장면은 벗겨질 수 있으므로 장시간 방치하지 말고 테스트 후 사용한다."
+        ],
         "sourceRefs": [
+          {
+            "doc": "manual",
+            "note": "엑스트라피트 제품 라벨·스펙 (750ml, pH≈11, 신고번호 제FB21-02-0444호)"
+          },
           {
             "doc": "cleaning-cases",
             "caseId": "CASE-STICKER-001",
-            "note": "사례에서 언급된 제품"
+            "note": "오래된 벽면 스티커 접착 잔유물 제거"
+          },
+          {
+            "doc": "cleaning-cases",
+            "caseId": "CASE-PAINT-001",
+            "note": "엘리베이터 및 테이블 페인트 잔유물 제거"
+          },
+          {
+            "doc": "cleaning-knowledge",
+            "note": "제거제 정의 예시(페인트·스티커 제거제)"
           }
         ],
-        "status": "draft"
+        "status": "active"
       },
-      "procedures": [],
+      "procedures": [
+        {
+          "id": "recipe-extrafit-paint-residue",
+          "slug": "extrafit-paint-residue",
+          "seoTitle": "엑스트라피트 페인트 자국·잔유물 제거 (원액)",
+          "field": "특수오염",
+          "materialId": "stainless",
+          "contaminantId": "paint-residue",
+          "productId": "kiehl-extrafit",
+          "dilution": "원액 사용",
+          "dwellTime": "2~5분",
+          "tools": [
+            "분무기(제품)",
+            "천"
+          ],
+          "steps": [
+            "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+            "페인트 잔유물에 엑스트라피트를 직접 분사한다.",
+            "2~5분 반응시킨다. 페인트 잔유물은 수 분 이내에 녹아 내린다.",
+            "천으로 문질러 닦아낸다.",
+            "표준 사용량: 약 2ml/㎡."
+          ],
+          "warnings": [
+            "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+            "도장·페인트면은 벗겨질 수 있으므로 장시간 방치하지 않는다."
+          ],
+          "summary": "페인트 자국·잔유물 제거. 원액 분사 → 2~5분 반응 → 천으로 닦기.",
+          "confidence": "high",
+          "sourceRefs": [
+            {
+              "doc": "manual",
+              "note": "엑스트라피트 제품 라벨 — 페인트 잔유물"
+            },
+            {
+              "doc": "cleaning-cases",
+              "caseId": "CASE-PAINT-001"
+            }
+          ]
+        },
+        {
+          "id": "recipe-extrafit-adhesive-residue",
+          "slug": "extrafit-adhesive-residue",
+          "seoTitle": "엑스트라피트 스티커·라벨 접착 잔유물 제거 (원액)",
+          "field": "특수오염",
+          "materialId": "painted-wall",
+          "contaminantId": "adhesive",
+          "productId": "kiehl-extrafit",
+          "dilution": "원액 사용",
+          "dwellTime": "2~5분",
+          "tools": [
+            "분무기(제품)",
+            "천",
+            "스크래퍼"
+          ],
+          "steps": [
+            "사용 전 표면의 알칼리 내성을 확인하고, 변색 우려 시 눈에 띄지 않는 곳에 소량 테스트한다.",
+            "스티커에 코팅층이 있으면 코팅층을 먼저 제거한다.",
+            "접착 잔유물에 엑스트라피트를 직접 분사한다.",
+            "2~5분 반응시킨다.",
+            "천으로 닦아낸다. 잘 안 지워지면 스크래퍼로 힘을 거의 주지 않고 밀어 제거한다.",
+            "표준 사용량: 약 2ml/㎡."
+          ],
+          "warnings": [
+            "ABS·LCD·용제 민감 코팅·목재·섬유·고무·도자기에는 사용하지 않는다.",
+            "페인트·도장면은 벗겨질 수 있으므로 장시간 방치하지 말고 테스트 후 사용한다.",
+            "스크래퍼는 낮은 각도로 살살 민다."
+          ],
+          "summary": "스티커·라벨 접착 잔유물 제거. 원액 분사 → 2~5분 → 천 또는 스크래퍼로 밀어 제거.",
+          "confidence": "high",
+          "sourceRefs": [
+            {
+              "doc": "manual",
+              "note": "엑스트라피트 제품 라벨 — 스티커·라벨"
+            },
+            {
+              "doc": "cleaning-cases",
+              "caseId": "CASE-STICKER-001"
+            }
+          ]
+        }
+      ],
       "cases": [
         {
           "id": "CASE-STICKER-001",
@@ -13431,30 +13747,63 @@
           "도포마트",
           "Dopomat"
         ],
-        "summary": null,
+        "summary": "건축마감청소·입주청소에서 강한 바닥 세정이 필요할 때 쓰는 세정 제품. 인테리어 시공 후 바닥에 남은 분진·일반 오염과 기름때 제거에 활용하며, 기본적으로 바닥 세정기 등 기계식 세정에 적합하다. 주방의 동물성·식물성 기름때 전용 제품과는 용도를 구분해 사용한다.",
         "phApprox": null,
         "phType": "unknown",
-        "dilutions": [],
-        "standardDilution": null,
+        "dilutions": [
+          "1:10"
+        ],
+        "standardDilution": "1:10 (사례 기재 · 공식 표준 없음)",
         "strongDilution": null,
         "packSizes": [],
-        "mainUse": [],
-        "placeHints": [],
-        "materialsRaw": [],
-        "contaminantsRaw": [],
-        "forbiddenRaw": [],
+        "mainUse": [
+          "건축마감청소",
+          "입주청소",
+          "인테리어 시공 후 바닥 세정",
+          "일반 기름때",
+          "강한 바닥 오염",
+          "기계식 세정"
+        ],
+        "placeHints": [
+          "바닥 청소",
+          "석재 계단",
+          "인테리어 현장",
+          "입주청소 현장"
+        ],
+        "materialsRaw": [
+          "석재",
+          "장판 등 내알칼리성 바닥(사전 테스트 후 사용)"
+        ],
+        "contaminantsRaw": [
+          "식용기름·일반 기름때",
+          "인테리어 시공 후 분진·일반 바닥 오염"
+        ],
+        "forbiddenRaw": [
+          "목재",
+          "섬유 재질"
+        ],
         "compatibleMaterialIds": [],
         "contaminantIds": [],
         "forbiddenMaterialIds": [],
-        "warnings": [],
+        "warnings": [
+          "코팅된 바닥·광택(폴리싱)타일은 코팅이 벗겨지거나 광택이 저하될 수 있어 사용하지 않는 것이 좋다.",
+          "목재·섬유는 흡수성 재질이므로 도포마트 대신 전용 제품을 사용한다.",
+          "심한 오염은 눈에 띄지 않는 작은 부위에서 먼저 테스트해 농도를 정한다.",
+          "기본적으로 바닥 세정기 등 기계식 세정을 중심으로 사용한다.",
+          "세정 후 오염과 세정액을 회수하고 깨끗한 물로 마무리(헹굼)한다."
+        ],
         "sourceRefs": [
           {
             "doc": "cleaning-cases",
             "caseId": "CASE-DOPOMAT-001",
-            "note": "사례에서 언급된 제품"
+            "note": "석재 계단 식용기름 제거 사례"
+          },
+          {
+            "doc": "manual",
+            "note": "Kiehl 도포마트 사용법 정리"
           }
         ],
-        "status": "draft"
+        "status": "active"
       },
       "procedures": [],
       "cases": [
