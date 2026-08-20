@@ -20,6 +20,7 @@ import NotificationBell from "./notifications/NotificationBell";
 import TenderFocusNavChip from "./TenderFocusNavChip";
 import {
   PRIMARY_NAV_ITEMS,
+  sanitizePrimaryNavItems,
   type NavGroup,
   type NavItem,
   type NavMegaGroup,
@@ -34,7 +35,8 @@ type MobileDrawerRow =
   | ({ kind: "groupItem" } & { href: string; label: string; Icon: typeof Home })
   | { kind: "disabledItem"; label: string; Icon: typeof Home };
 
-const primaryNavItems: PrimaryNavEntry[] = PRIMARY_NAV_ITEMS;
+const primaryNavItems: PrimaryNavEntry[] =
+  sanitizePrimaryNavItems(PRIMARY_NAV_ITEMS);
 
 /** 모바일 드로어 + 데스크톱 오른쪽 (관리자·편집자) */
 const adminNavItems: NavItem[] = [

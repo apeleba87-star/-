@@ -63,6 +63,61 @@ function isSiblingLabel(label: string): boolean {
   return (SIBLING_LABELS as readonly string[]).includes(label);
 }
 
+function stripNestedKnowledgePractice(items: PrimaryNavEntry[]): PrimaryNavEntry[] {
+  const out: PrimaryNavEntry[] = [];
+  for (const entry of items) {
+    if (entry.kind === "link") {
+      if (!isSiblingLabel(entry.label)) out.push(entry);
+      continue;
+    }
+    if (isSiblingLabel(entry.label)) continue;
+    if (entry.kind === "group") {
+      out.push({
+        ...entry,
+        items: entry.items.filter((item) => !isSiblingLabel(item.label)),
+      });
+      continue;
+    }
+    out.push({
+      ...entry,
+      columns: entry.columns.map((col) => ({
+        ...col,
+        items: col.items.filter((item) => !isSiblingLabel(item.label)),
+      })),
+    });
+  }
+  return out;
+}
+
+/** 드롭다운에 묶여 있어도 상단 형제 링크로 다시 펼친다. */
+export function sanitizePrimaryNavItems(items: PrimaryNavEntry[]): PrimaryNavEntry[] {
+  const cleaned = stripNestedKnowledgePractice(items);
+  const knowledge: PrimaryNavEntry = {
+    kind: "link",
+    href: KNOWLEDGE_NAV.href,
+    label: KNOWLEDGE_NAV.label,
+    Icon: BookOpen,
+  };
+  const practice: PrimaryNavEntry = {
+    kind: "link",
+    href: PRACTICE_NAV.href,
+    label: PRACTICE_NAV.label,
+    Icon: Briefcase,
+  };
+  const categoryIdx = cleaned.findIndex(
+    (entry) => entry.kind === "group" && entry.label === "분류별",
+  );
+  const insertAt = categoryIdx >= 0 ? categoryIdx + 1 : Math.min(2, cleaned.length);
+  const next = [
+    ...cleaned.slice(0, insertAt),
+    knowledge,
+    practice,
+    ...cleaned.slice(insertAt),
+  ];
+  assertKnowledgeAndPracticeAreSiblingLinks(next);
+  return next;
+}
+
 /** 청소지식·청소업 실무를 드롭다운 자식으로 넣으면 앱이 바로 실패한다. */
 export function assertKnowledgeAndPracticeAreSiblingLinks(
   items: PrimaryNavEntry[],
@@ -101,7 +156,7 @@ export function assertKnowledgeAndPracticeAreSiblingLinks(
  * 데스크톱 가운데 메뉴.
  * 청소지식(/blog)과 청소업 실무(/practice)는 형제 링크 — 한쪽을 다른 쪽 아래로 넣지 말 것.
  */
-export const PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
+const RAW_PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "홈", Icon: Home },
   { kind: "link", href: "/places", label: "장소별", Icon: FileText },
   {
@@ -115,18 +170,6 @@ export const PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
       { href: "/cleaning", label: "레시피", Icon: FlaskConical },
       { href: "/cases", label: "사례", Icon: ClipboardList },
     ],
-  },
-  {
-    kind: "link",
-    href: KNOWLEDGE_NAV.href,
-    label: KNOWLEDGE_NAV.label,
-    Icon: BookOpen,
-  },
-  {
-    kind: "link",
-    href: PRACTICE_NAV.href,
-    label: PRACTICE_NAV.label,
-    Icon: Briefcase,
   },
   {
     kind: "mega",
@@ -181,4 +224,5 @@ export const PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
   },
 ];
 
-assertKnowledgeAndPracticeAreSiblingLinks(PRIMARY_NAV_ITEMS);
+export const PRIMARY_NAV_ITEMS: PrimaryNavEntry[] =
+  sanitizePrimaryNavItems(RAW_PRIMARY_NAV_ITEMS);
