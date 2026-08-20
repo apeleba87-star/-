@@ -6,9 +6,14 @@ import type { EduBlogPost } from "@/lib/edu-blog/queries";
 type Props = {
   nextPost: EduBlogPost | null;
   relatedPosts: EduBlogPost[];
+  postPath?: (slug: string) => string;
 };
 
-export default function EduBlogNextRelated({ nextPost, relatedPosts }: Props) {
+export default function EduBlogNextRelated({
+  nextPost,
+  relatedPosts,
+  postPath = eduBlogPath,
+}: Props) {
   if (!nextPost && relatedPosts.length === 0) return null;
 
   return (
@@ -27,7 +32,7 @@ export default function EduBlogNextRelated({ nextPost, relatedPosts }: Props) {
         {nextPost ? (
           <li>
             <Link
-              href={eduBlogPath(nextPost.slug)}
+              href={postPath(nextPost.slug)}
               className="group flex min-h-[44px] flex-col gap-1.5 rounded-2xl border border-teal-500 bg-gradient-to-br from-teal-600 to-emerald-600 p-4 text-white shadow-md shadow-emerald-900/15 transition hover:shadow-lg hover:brightness-105"
             >
               <span className="inline-flex w-fit rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold text-white">
@@ -48,7 +53,7 @@ export default function EduBlogNextRelated({ nextPost, relatedPosts }: Props) {
         {relatedPosts.map((post) => (
           <li key={post.id}>
             <Link
-              href={eduBlogPath(post.slug)}
+              href={postPath(post.slug)}
               className="group flex min-h-[44px] flex-col gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition hover:border-teal-300 hover:bg-white hover:shadow-md"
             >
               <span className="text-xs font-bold text-slate-500">관련</span>

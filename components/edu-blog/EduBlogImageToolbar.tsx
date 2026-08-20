@@ -48,6 +48,7 @@ export function insertMarkdownAt(
 
 type Props = {
   entityId: string;
+  entityType?: "edu_blog" | "practice_blog";
   defaultAlt?: string;
   disabled?: boolean;
   onInsert: (chunk: string, place: EduImagePlace) => void;
@@ -59,6 +60,7 @@ type Props = {
  */
 export default function EduBlogImageToolbar({
   entityId,
+  entityType = "edu_blog",
   defaultAlt,
   disabled,
   onInsert,
@@ -74,7 +76,7 @@ export default function EduBlogImageToolbar({
   async function uploadOne(file: File): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
     const fd = new FormData();
     fd.set("file", file);
-    fd.set("entity_type", "edu_blog");
+    fd.set("entity_type", entityType);
     fd.set("entity_id", entityId);
     fd.set("role", "inline");
     fd.set("alt", defaultAlt?.trim() || file.name.replace(/\.[^.]+$/, "") || "청소지식 이미지");

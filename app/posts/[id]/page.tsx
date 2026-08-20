@@ -22,6 +22,7 @@ import {
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import MoveSeoBlogPostView from "@/components/move/MoveSeoBlogPostView";
 import { EDU_BLOG_SOURCE_TYPE, eduBlogPath } from "@/lib/edu-blog/constants";
+import { PRACTICE_BLOG_SOURCE_TYPE, practiceBlogPath } from "@/lib/practice-blog/constants";
 import {
   guestDailyInsightTeaserLine,
   redactAwardMarketSnapshotForGuest,
@@ -34,6 +35,9 @@ import {
 function redirectIfEduBlog(post: { source_type?: string | null; slug?: string | null }) {
   if (post.source_type === EDU_BLOG_SOURCE_TYPE && post.slug) {
     redirect(eduBlogPath(post.slug));
+  }
+  if (post.source_type === PRACTICE_BLOG_SOURCE_TYPE && post.slug) {
+    redirect(practiceBlogPath(post.slug));
   }
 }
 const DailyTenderReportDashboard = dynamic(

@@ -17,6 +17,10 @@ type Props = {
   nextPost: EduBlogPost | null;
   relatedPosts: EduBlogPost[];
   products: KnowledgeProduct[];
+  hubHref?: string;
+  hubLabel?: string;
+  postPath?: (slug: string) => string;
+  category?: { name: string; href: string } | null;
 };
 
 function figureClass(align: EduImageAlign): string {
@@ -131,6 +135,10 @@ export default function EduBlogArticleView({
   nextPost,
   relatedPosts,
   products,
+  hubHref = "/blog",
+  hubLabel = "청소지식",
+  postPath,
+  category,
 }: Props) {
   const intent = eduIntentLabel(post.edu_intent);
 
@@ -139,12 +147,20 @@ export default function EduBlogArticleView({
       <header className="border-b border-slate-100 pb-7">
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href="/blog"
+            href={hubHref}
             className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800 ring-1 ring-teal-100 transition hover:bg-teal-100"
           >
             <BookOpen className="h-3.5 w-3.5" aria-hidden />
-            청소지식
+            {hubLabel}
           </Link>
+          {category ? (
+            <Link
+              href={category.href}
+              className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-200"
+            >
+              {category.name}
+            </Link>
+          ) : null}
           {intent ? (
             <span className="inline-flex rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-800 ring-1 ring-violet-100">
               {intent}
@@ -180,7 +196,11 @@ export default function EduBlogArticleView({
         )}
       </div>
 
-      <EduBlogNextRelated nextPost={nextPost} relatedPosts={relatedPosts} />
+      <EduBlogNextRelated
+        nextPost={nextPost}
+        relatedPosts={relatedPosts}
+        postPath={postPath}
+      />
       <EduBlogProducts products={products} />
 
       {(() => {
