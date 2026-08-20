@@ -2,6 +2,10 @@
 
 export const EDU_BLOG_SOURCE_TYPE = "edu_blog";
 
+/** 상단·푸터 메뉴. 두 항목은 형제 링크 — 한쪽을 다른 쪽 드롭다운 아래로 넣지 말 것. */
+export const KNOWLEDGE_NAV = { href: "/blog", label: "청소지식" } as const;
+export const PRACTICE_NAV = { href: "/practice", label: "청소업 실무" } as const;
+
 export const EDU_BLOG_INTENTS = [
   { value: "cause", label: "원인" },
   { value: "how-to", label: "제거·방법" },

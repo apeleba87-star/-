@@ -27,6 +27,7 @@ import {
   Beaker,
   FlaskConical,
   ClipboardList,
+  BookOpen,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { withAdminNavLabel } from "@/lib/admin-nav-label";
@@ -34,6 +35,7 @@ import HeaderAuth from "./HeaderAuth";
 import NotificationBell from "./notifications/NotificationBell";
 import TenderFocusNavChip from "./TenderFocusNavChip";
 import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
+import { KNOWLEDGE_NAV, PRACTICE_NAV } from "@/lib/edu-blog/constants";
 
 type NavItem = {
   href: string;
@@ -97,6 +99,8 @@ const primaryNavItems: PrimaryNavEntry[] = [
       { href: "/cases", label: "사례", Icon: ClipboardList },
     ],
   },
+  { kind: "link", href: KNOWLEDGE_NAV.href, label: KNOWLEDGE_NAV.label, Icon: BookOpen },
+  { kind: "link", href: PRACTICE_NAV.href, label: PRACTICE_NAV.label, Icon: Briefcase },
   {
     kind: "mega",
     label: "청소업체 전용관",
@@ -381,7 +385,7 @@ export default function Header() {
                   );
                   return (
                     <Link
-                      key={entry.href}
+                      key={`${entry.label}:${entry.href}`}
                       href={entry.href}
                       className="inline-flex shrink-0 cursor-pointer items-center"
                       prefetch={true}

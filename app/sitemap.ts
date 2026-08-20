@@ -31,6 +31,7 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/places", priority: 0.95, changeFrequency: "weekly" },
   { path: "/guides", priority: 0.95, changeFrequency: "weekly" },
   { path: "/blog", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/practice", priority: 0.88, changeFrequency: "weekly" },
   { path: "/products", priority: 0.92, changeFrequency: "weekly" },
   { path: "/equipment", priority: 0.9, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.92, changeFrequency: "weekly" },

@@ -104,6 +104,7 @@ function rateLimitBucket(
     pathname.startsWith("/inquiry/") ||
     pathname.startsWith("/guides") ||
     pathname.startsWith("/blog") ||
+    pathname.startsWith("/practice") ||
     pathname === "/search" ||
     pathname.startsWith("/products") ||
     pathname.startsWith("/materials") ||

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import FooterAdminLinks from "@/components/FooterAdminLinks";
 import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
+import { KNOWLEDGE_NAV, PRACTICE_NAV } from "@/lib/edu-blog/constants";
 import { siteTagline } from "@/lib/seo";
 import { SITE_OPERATOR, operatorSupportEmail } from "@/lib/site/operator";
 
@@ -14,7 +15,8 @@ const GUIDE_LINKS: FooterLink[] = [
   { href: "/places", label: "장소별 가이드" },
   { href: "/products", label: "세정 제품" },
   { href: "/pollution", label: "오염별" },
-  { href: "/blog", label: "청소 지식" },
+  { href: KNOWLEDGE_NAV.href, label: KNOWLEDGE_NAV.label },
+  { href: PRACTICE_NAV.href, label: PRACTICE_NAV.label },
   { href: "/inquiry/regular", label: "정기청소 문의" },
   { href: "/inquiry/move-in", label: "입주청소 문의" },
 ];
