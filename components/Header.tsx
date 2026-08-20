@@ -20,12 +20,15 @@ import NotificationBell from "./notifications/NotificationBell";
 import TenderFocusNavChip from "./TenderFocusNavChip";
 import {
   PRIMARY_NAV_ITEMS,
+  clusterKnowledgePracticeLinks,
+  knowledgePracticeHref,
   sanitizePrimaryNavItems,
   type NavGroup,
   type NavItem,
   type NavMegaGroup,
   type NavSubItem,
   type PrimaryNavEntry,
+  type PrimaryNavLink,
 } from "@/lib/site/public-primary-nav";
 
 type MobileDrawerRow =
@@ -53,6 +56,50 @@ function NavDisabledMenuLabel({ label }: { label: string }) {
       <span>{label}</span>
       <span className="ml-1.5 shrink-0 text-xs font-normal text-slate-400">(준비중)</span>
     </>
+  );
+}
+
+function NavLabel({ label, shortLabel }: { label: string; shortLabel?: string }) {
+  if (!shortLabel || shortLabel === label) return <>{label}</>;
+  return (
+    <>
+      <span className="2xl:hidden">{shortLabel}</span>
+      <span className="hidden 2xl:inline">{label}</span>
+    </>
+  );
+}
+
+function navItemClass(active: boolean) {
+  return `flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-[0.8125rem] font-medium xl:gap-1.5 xl:px-2 xl:text-sm ${
+    active
+      ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm"
+      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+  }`;
+}
+
+function NavTextLink({
+  item,
+  pathname,
+}: {
+  item: Pick<PrimaryNavLink, "href" | "label" | "Icon" | "shortLabel">;
+  pathname: string;
+}) {
+  const isActive = navLinkActive(pathname, item.href);
+  return (
+    <Link
+      href={item.href}
+      className="inline-flex shrink-0 cursor-pointer items-center"
+      prefetch={true}
+    >
+      <motion.span
+        className={navItemClass(isActive)}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <item.Icon className="h-3.5 w-3.5 shrink-0 xl:h-4 xl:w-4" />
+        <NavLabel label={item.label} shortLabel={item.shortLabel} />
+      </motion.span>
+    </Link>
   );
 }
 
@@ -243,7 +290,7 @@ export default function Header() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <div className="page-shell flex h-14 min-h-[56px] items-center justify-between gap-2 lg:grid lg:min-h-[56px] lg:h-auto lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-3 lg:py-1.5 xl:h-14 xl:py-0">
+        <div className="page-shell flex h-14 min-h-[56px] items-center justify-between gap-2 lg:grid lg:min-h-[56px] lg:h-auto lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-3 lg:py-1.5">
           <div className="flex min-w-0 shrink-0 items-center gap-2 justify-self-start">
             <Link
               href="/"
@@ -264,37 +311,53 @@ export default function Header() {
           </div>
 
           <nav
-            className="hidden min-w-0 w-full justify-center justify-self-stretch lg:flex"
+            className="hidden min-w-0 w-full justify-center justify-self-stretch overflow-visible lg:flex"
             aria-label="메인 메뉴"
           >
-            {/* PC: 가로 스크롤 없음 — 중앙 열 전체 너비를 쓰고, 매우 좁을 때만 줄바꿈(xl↑ 한 줄 고정) */}
-            <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 xl:flex-nowrap xl:gap-x-1">
-              {visiblePrimaryNavItems.map((entry) => {
-                if (entry.kind === "link") {
-                  const isActive = navLinkActive(
-                    pathname,
-                    entry.href,
-                  );
+            {/* 한 줄에 안 들어가면 다음 줄로 — nowrap 오버플로는 메뉴가 겹쳐 드롭다운처럼 보인다 */}
+            <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-0.5 gap-y-1">
+              {clusterKnowledgePracticeLinks(visiblePrimaryNavItems).map((entry) => {
+                if (entry.kind === "siblingCluster") {
                   return (
-                    <Link
-                      key={`${entry.label}:${entry.href}`}
-                      href={entry.href}
-                      className="inline-flex shrink-0 cursor-pointer items-center"
-                      prefetch={true}
+                    <div
+                      key={entry.items.map((item) => item.label).join("+")}
+                      className="flex shrink-0 flex-nowrap items-center gap-x-0.5"
+                      role="group"
+                      aria-label="청소지식과 청소업 실무"
                     >
-                      <motion.span
-                        className={`flex items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 text-[0.8125rem] font-medium xl:gap-1.5 xl:px-2.5 xl:text-sm ${
-                          isActive
-                            ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm"
-                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                        }`}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <entry.Icon className="h-3.5 w-3.5 shrink-0 xl:h-4 xl:w-4" />
-                        {entry.label}
-                      </motion.span>
-                    </Link>
+                      {entry.items.map((item) => (
+                        <NavTextLink
+                          key={`${item.label}:${item.href}`}
+                          item={item}
+                          pathname={pathname}
+                        />
+                      ))}
+                    </div>
+                  );
+                }
+                const forcedHref = knowledgePracticeHref(entry.label);
+                if (forcedHref) {
+                  return (
+                    <NavTextLink
+                      key={`${entry.label}:${forcedHref}`}
+                      item={{
+                        href: forcedHref,
+                        label: entry.label,
+                        Icon: entry.Icon,
+                        shortLabel:
+                          entry.kind === "link" ? entry.shortLabel : undefined,
+                      }}
+                      pathname={pathname}
+                    />
+                  );
+                }
+                if (entry.kind === "link") {
+                  return (
+                    <NavTextLink
+                      key={`${entry.label}:${entry.href}`}
+                      item={entry}
+                      pathname={pathname}
+                    />
                   );
                 }
                 const groupActive = navEntryActive(
@@ -308,15 +371,16 @@ export default function Header() {
                     className="group/item relative inline-flex shrink-0"
                   >
                     <div
-                      className={`flex cursor-default items-center gap-0.5 whitespace-nowrap rounded-lg px-1.5 py-2 text-[0.8125rem] font-medium xl:gap-1.5 xl:px-2.5 xl:text-sm ${
-                        groupActive
-                          ? "bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`}
+                      className={`${navItemClass(groupActive)} cursor-default gap-0.5`}
                       role="presentation"
                     >
                       <entry.Icon className="h-3.5 w-3.5 shrink-0 xl:h-4 xl:w-4" />
-                      <span>{entry.label}</span>
+                      <span>
+                        <NavLabel
+                          label={entry.label}
+                          shortLabel={entry.shortLabel}
+                        />
+                      </span>
                       <ChevronDown
                         className={`h-3 w-3 shrink-0 opacity-70 xl:h-3.5 xl:w-3.5 ${
                           groupActive ? "text-white" : ""
@@ -343,7 +407,9 @@ export default function Header() {
                                 {col.title}
                               </p>
                               <div className="flex flex-col">
-                                {col.items.map((sub) => {
+                                {col.items
+                                  .filter((sub) => !knowledgePracticeHref(sub.label))
+                                  .map((sub) => {
                                   const subActive = navSubItemActive(
                                     pathname,
                                     sub,
@@ -388,7 +454,9 @@ export default function Header() {
                               </div>
                             </div>
                           ))
-                        : entry.items.map((sub) => {
+                        : entry.items
+                            .filter((sub) => !knowledgePracticeHref(sub.label))
+                            .map((sub) => {
                             const subActive = navSubItemActive(
                               pathname,
                               sub,

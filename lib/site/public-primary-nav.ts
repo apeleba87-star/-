@@ -40,6 +40,7 @@ export type NavColumn = { title: string; items: NavSubItem[] };
 export type NavGroup = {
   kind: "group";
   label: string;
+  shortLabel?: string;
   Icon: typeof Home;
   items: NavSubItem[];
   adminOnly?: boolean;
@@ -48,19 +49,58 @@ export type NavGroup = {
 export type NavMegaGroup = {
   kind: "mega";
   label: string;
+  shortLabel?: string;
   Icon: typeof Home;
   columns: NavColumn[];
 };
 
-export type PrimaryNavEntry =
-  | ({ kind: "link"; adminOnly?: boolean } & NavItem)
-  | NavGroup
-  | NavMegaGroup;
+export type PrimaryNavLink = { kind: "link"; adminOnly?: boolean } & NavItem;
+
+export type PrimaryNavEntry = PrimaryNavLink | NavGroup | NavMegaGroup;
+
+/** 렌더용: 청소지식·청소업 실무는 한 덩어리로 붙여서 줄바꿈돼도 서로 아래로 안 떨어지게 한다. */
+export type ClusteredPrimaryNavEntry =
+  | PrimaryNavEntry
+  | { kind: "siblingCluster"; items: PrimaryNavLink[] };
 
 const SIBLING_LABELS = [KNOWLEDGE_NAV.label, PRACTICE_NAV.label] as const;
 
-function isSiblingLabel(label: string): boolean {
+export function isKnowledgeOrPracticeLabel(label: string): boolean {
   return (SIBLING_LABELS as readonly string[]).includes(label);
+}
+
+function isSiblingLabel(label: string): boolean {
+  return isKnowledgeOrPracticeLabel(label);
+}
+
+export function knowledgePracticeHref(label: string): string | null {
+  if (label === KNOWLEDGE_NAV.label) return KNOWLEDGE_NAV.href;
+  if (label === PRACTICE_NAV.label) return PRACTICE_NAV.href;
+  return null;
+}
+
+export function clusterKnowledgePracticeLinks(
+  items: PrimaryNavEntry[],
+): ClusteredPrimaryNavEntry[] {
+  const out: ClusteredPrimaryNavEntry[] = [];
+  let i = 0;
+  while (i < items.length) {
+    const entry = items[i];
+    if (entry.kind === "link" && isSiblingLabel(entry.label)) {
+      const cluster: PrimaryNavLink[] = [];
+      while (i < items.length) {
+        const cur = items[i];
+        if (cur.kind !== "link" || !isSiblingLabel(cur.label)) break;
+        cluster.push(cur);
+        i += 1;
+      }
+      out.push({ kind: "siblingCluster", items: cluster });
+      continue;
+    }
+    out.push(entry);
+    i += 1;
+  }
+  return out;
 }
 
 function stripNestedKnowledgePractice(items: PrimaryNavEntry[]): PrimaryNavEntry[] {
@@ -174,6 +214,7 @@ const RAW_PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
   {
     kind: "mega",
     label: "청소업체 전용관",
+    shortLabel: "전용관",
     Icon: Sparkles,
     columns: [
       {
