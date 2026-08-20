@@ -8,73 +8,24 @@ import {
   Bell,
   Menu,
   X,
-  Droplets,
   Home,
   FileText,
-  Gavel,
-  Trophy,
-  Briefcase,
-  UserPlus,
-  Calculator,
   Shield,
-  Landmark,
   ChevronDown,
-  BarChart3,
-  Layers,
-  Sparkles,
-  Handshake,
-  Radio,
-  Beaker,
-  FlaskConical,
-  ClipboardList,
-  BookOpen,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { withAdminNavLabel } from "@/lib/admin-nav-label";
 import HeaderAuth from "./HeaderAuth";
 import NotificationBell from "./notifications/NotificationBell";
 import TenderFocusNavChip from "./TenderFocusNavChip";
-import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
-import { KNOWLEDGE_NAV, PRACTICE_NAV } from "@/lib/edu-blog/constants";
-
-type NavItem = {
-  href: string;
-  label: string;
-  Icon: typeof Home;
-  /** 데스크톱 오른쪽 관리자 영역용 짧은 라벨 */
-  shortLabel?: string;
-  adminOnly?: boolean;
-};
-
-type NavSubItem = {
-  href?: string;
-  label: string;
-  Icon: typeof Home;
-  disabled?: boolean;
-};
-
-type NavColumn = { title: string; items: NavSubItem[] };
-
-type NavGroup = {
-  kind: "group";
-  label: string;
-  Icon: typeof Home;
-  items: NavSubItem[];
-  /** true — 관리자만 노출, 라벨에 [관] 접두 */
-  adminOnly?: boolean;
-};
-
-type NavMegaGroup = {
-  kind: "mega";
-  label: string;
-  Icon: typeof Home;
-  columns: NavColumn[];
-};
-
-type PrimaryNavEntry =
-  | ({ kind: "link"; adminOnly?: boolean } & NavItem)
-  | NavGroup
-  | NavMegaGroup;
+import {
+  PRIMARY_NAV_ITEMS,
+  type NavGroup,
+  type NavItem,
+  type NavMegaGroup,
+  type NavSubItem,
+  type PrimaryNavEntry,
+} from "@/lib/site/public-primary-nav";
 
 type MobileDrawerRow =
   | ({ kind: "link" } & NavItem)
@@ -83,68 +34,7 @@ type MobileDrawerRow =
   | ({ kind: "groupItem" } & { href: string; label: string; Icon: typeof Home })
   | { kind: "disabledItem"; label: string; Icon: typeof Home };
 
-/** 데스크톱 가운데 */
-const primaryNavItems: PrimaryNavEntry[] = [
-  { kind: "link", href: "/", label: "홈", Icon: Home },
-  { kind: "link", href: "/places", label: "장소별", Icon: FileText },
-  {
-    kind: "group",
-    label: "분류별",
-    Icon: Beaker,
-    items: [
-      { href: "/products", label: "세정 제품", Icon: Beaker },
-      { href: "/materials", label: "재질별", Icon: Layers },
-      { href: "/pollution", label: "오염별", Icon: Droplets },
-      { href: "/cleaning", label: "레시피", Icon: FlaskConical },
-      { href: "/cases", label: "사례", Icon: ClipboardList },
-    ],
-  },
-  { kind: "link", href: KNOWLEDGE_NAV.href, label: KNOWLEDGE_NAV.label, Icon: BookOpen },
-  { kind: "link", href: PRACTICE_NAV.href, label: PRACTICE_NAV.label, Icon: Briefcase },
-  {
-    kind: "mega",
-    label: "청소업체 전용관",
-    Icon: Sparkles,
-    columns: [
-      {
-        title: "주요 기능",
-        items: [
-          { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집", Icon: Radio },
-          { href: "/estimate", label: "견적 계산기", Icon: Calculator },
-          { href: "/inquiry/regular", label: "정기청소 문의", Icon: Briefcase },
-        ],
-      },
-      {
-        title: "데이터분석",
-        items: [
-          { href: "/tenders", label: "입찰공고", Icon: Gavel },
-          { href: "/tender-awards", label: "낙찰공고", Icon: Trophy },
-          { href: "/jobs/public", label: "채용 공고", Icon: Landmark },
-        ],
-      },
-      {
-        title: "리포트",
-        items: [
-          { href: "/news?section=report&category=report", label: "입찰", Icon: Gavel },
-          { href: "/news?section=report&category=award_report", label: "낙찰", Icon: Trophy },
-          { href: "/marketing-report", label: "마케팅", Icon: Sparkles },
-          { href: "/job-market-report", label: "일당", Icon: Landmark },
-        ],
-      },
-    ],
-  },
-  {
-    kind: "group",
-    label: "서비스",
-    Icon: Layers,
-    adminOnly: true,
-    items: [
-      { href: "/listings", label: "현장 마켓", Icon: Briefcase },
-      { href: "/partners", label: "협력 센터", Icon: Handshake },
-      { href: "/jobs", label: "인력 센터", Icon: UserPlus },
-    ],
-  },
-];
+const primaryNavItems: PrimaryNavEntry[] = PRIMARY_NAV_ITEMS;
 
 /** 모바일 드로어 + 데스크톱 오른쪽 (관리자·편집자) */
 const adminNavItems: NavItem[] = [
