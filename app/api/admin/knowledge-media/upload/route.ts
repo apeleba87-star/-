@@ -21,6 +21,7 @@ const ENTITY_TYPES = new Set<KnowledgeMediaEntityType>([
   "equipment",
   "edu_blog",
   "guide",
+  "practice_blog",
 ]);
 
 function slugifyEntityId(id: string): string {
@@ -126,6 +127,8 @@ export async function POST(req: NextRequest) {
         ? `${entityId} 청소장비`
         : entityType === "edu_blog"
           ? "청소지식 이미지"
+          : entityType === "practice_blog"
+            ? "청소업 실무 이미지"
           : entityId);
 
   if (role === "cover" || role === "before" || role === "after") {
@@ -183,6 +186,10 @@ export async function POST(req: NextRequest) {
   if (entityType === "edu_blog") {
     revalidatePath("/blog");
     revalidatePath("/admin/blog");
+  }
+  if (entityType === "practice_blog") {
+    revalidatePath("/practice");
+    revalidatePath("/admin/practice");
   }
 
   return NextResponse.json({

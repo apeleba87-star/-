@@ -13,6 +13,6 @@ export const KNOWLEDGE_MEDIA_MAX_BYTES = 8 * 1024 * 1024;
 export const KNOWLEDGE_MEDIA_DISPLAY_MAX = 1400;
 export const KNOWLEDGE_MEDIA_THUMB_MAX = 400;
 
-export type KnowledgeMediaEntityType = "product" | "equipment" | "edu_blog" | "guide";
+export type KnowledgeMediaEntityType = "product" | "equipment" | "edu_blog" | "guide" | "practice_blog";
 
 export type KnowledgeMediaRole = "cover" | "gallery" | "inline" | "before" | "after";

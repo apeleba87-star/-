@@ -42,6 +42,7 @@ export interface Post {
   next_slug?: string | null;
   related_slugs?: string[];
   product_ids?: string[];
+  practice_category_id?: string | null;
   is_private?: boolean;
   category?: ContentCategory | null;
 }

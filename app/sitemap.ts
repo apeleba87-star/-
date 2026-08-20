@@ -23,6 +23,15 @@ import {
 } from "@/lib/knowledge-hub/place-jobs";
 import { EDU_BLOG_SOURCE_TYPE } from "@/lib/edu-blog/constants";
 import { listPublishedEduBlogPosts } from "@/lib/edu-blog/queries";
+import {
+  PRACTICE_BLOG_SOURCE_TYPE,
+  practiceBlogPath,
+  practiceCategoryPath,
+} from "@/lib/practice-blog/constants";
+import {
+  listPublishedPracticeCategories,
+  listPublishedPracticePosts,
+} from "@/lib/practice-blog/queries";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
@@ -31,6 +40,7 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/places", priority: 0.95, changeFrequency: "weekly" },
   { path: "/guides", priority: 0.95, changeFrequency: "weekly" },
   { path: "/blog", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/practice", priority: 0.88, changeFrequency: "weekly" },
   { path: "/products", priority: 0.92, changeFrequency: "weekly" },
   { path: "/equipment", priority: 0.9, changeFrequency: "weekly" },
   { path: "/materials", priority: 0.92, changeFrequency: "weekly" },
@@ -208,6 +218,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (posts?.length) {
     for (const post of posts) {
       if (post.source_type === EDU_BLOG_SOURCE_TYPE) continue;
+      if (post.source_type === PRACTICE_BLOG_SOURCE_TYPE) continue;
       entries.push({
         url: `${base}/posts/${post.id}`,
         lastModified: post.updated_at ? new Date(post.updated_at).toISOString() : now,
@@ -221,6 +232,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const post of eduPosts) {
     entries.push({
       url: `${base}/blog/${encodeURIComponent(post.slug)}`,
+      lastModified: post.updated_at,
+      changeFrequency: "weekly" as const,
+      priority: 0.78,
+    });
+  }
+
+  const practiceCategories = await listPublishedPracticeCategories();
+  for (const cat of practiceCategories) {
+    entries.push({
+      url: `${base}${practiceCategoryPath(cat.slug)}`,
+      lastModified: cat.updated_at,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    });
+  }
+
+  const practicePosts = await listPublishedPracticePosts();
+  for (const post of practicePosts) {
+    entries.push({
+      url: `${base}${practiceBlogPath(post.slug)}`,
       lastModified: post.updated_at,
       changeFrequency: "weekly" as const,
       priority: 0.78,
