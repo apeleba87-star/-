@@ -15,8 +15,16 @@ export const EDU_BLOG_INTENTS = [
 
 export type EduBlogIntent = (typeof EDU_BLOG_INTENTS)[number]["value"];
 
+export const EDU_BLOG_NAV_LABEL = "청소지식";
+export const EDU_BLOG_KNOWLEDGE_LABEL = "청소지식";
+export const EDU_BLOG_RESERVED_CATEGORY_SLUGS = new Set(["c"]);
+
 export function eduBlogPath(slug: string): string {
   return `/blog/${encodeURIComponent(slug)}`;
+}
+
+export function eduBlogCategoryPath(slug: string): string {
+  return `/blog/c/${encodeURIComponent(slug)}`;
 }
 
 export function eduIntentLabel(intent: string | null | undefined): string | null {

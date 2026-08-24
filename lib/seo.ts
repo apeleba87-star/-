@@ -3,15 +3,33 @@ import { DEMAND_REGION_REGISTRY } from "@/lib/demand/region-registry.generated";
 
 const SITE_NAME = "클린아이덱스";
 
-/** 프로덕션 도메인 또는 Vercel URL. 설정 없으면 상대 경로만 사용 */
+/** Google·네이버 색인 기준 호스트. apex는 www로 정규화 */
+export const CANONICAL_ORIGIN = "https://www.cleanidex.co.kr";
+
+function normalizeSiteUrl(raw: string): string {
+  const trimmed = raw.replace(/\/$/, "");
+  try {
+    const u = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "cleanidex.co.kr") return CANONICAL_ORIGIN;
+    return `${u.protocol}//${u.host}`.replace(/\/$/, "");
+  } catch {
+    return trimmed;
+  }
+}
+
+/** 프로덕션 canonical·sitemap·OG URL. 미리보기는 Vercel URL 유지 */
 export function getBaseUrl(): string {
   if (typeof process.env.NEXT_PUBLIC_SITE_URL === "string" && process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+    return normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  }
+  if (process.env.VERCEL_ENV === "production") {
+    return CANONICAL_ORIGIN;
   }
   if (typeof process.env.VERCEL_URL === "string" && process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
   }
-  return "https://cleanindex.kr";
+  return CANONICAL_ORIGIN;
 }
 
 /** layout fallback — 지식 허브 */
@@ -98,12 +116,12 @@ export function buildPageMetadata(opts: {
   description: string;
   path: string;
 }): Metadata {
-  const canonical = opts.path.startsWith("/") ? opts.path : `/${opts.path}`;
-  const url = `${getBaseUrl()}${canonical}`;
+  const canonicalPath = opts.path.startsWith("/") ? opts.path : `/${opts.path}`;
+  const url = `${getBaseUrl()}${canonicalPath}`;
   return {
     title: opts.title,
     description: opts.description,
-    alternates: { canonical },
+    alternates: { canonical: url },
     openGraph: {
       title: opts.title,
       description: opts.description,

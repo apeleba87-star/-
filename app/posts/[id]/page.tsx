@@ -22,6 +22,7 @@ import {
 import RelatedReportsSection from "@/components/report/RelatedReportsSection";
 import MoveSeoBlogPostView from "@/components/move/MoveSeoBlogPostView";
 import { EDU_BLOG_SOURCE_TYPE, eduBlogPath } from "@/lib/edu-blog/constants";
+import { buildPageMetadata } from "@/lib/seo";
 import { PRACTICE_BLOG_SOURCE_TYPE, practiceBlogPath } from "@/lib/practice-blog/constants";
 import {
   guestDailyInsightTeaserLine,
@@ -60,13 +61,22 @@ type PostPageParams = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: PostPageParams): Promise<Metadata> {
   const { id } = await params;
   const supabase = createClient();
-  const byId = await supabase.from("posts").select("title, excerpt, is_private").eq("id", id).not("published_at", "is", null).single();
-  const post = byId.data ?? (await supabase.from("posts").select("title, excerpt, is_private").eq("slug", id).not("published_at", "is", null).single()).data;
+  const select = "id, title, excerpt, is_private";
+  const byId = await supabase.from("posts").select(select).eq("id", id).not("published_at", "is", null).single();
+  const post =
+    byId.data ??
+    (await supabase.from("posts").select(select).eq("slug", id).not("published_at", "is", null).single()).data;
   if (!post) return {};
-  if ((post as { is_private?: boolean }).is_private) return { title: "비공개", robots: { index: false, follow: false } };
+  if ((post as { is_private?: boolean }).is_private) {
+    return { title: "비공개", robots: { index: false, follow: false } };
+  }
   const title = (post.title ?? "").trim() || "글";
-  const description = (post.excerpt ?? "").trim().slice(0, 160) || undefined;
-  return { title, description };
+  const description = (post.excerpt ?? "").trim().slice(0, 160) || title;
+  return buildPageMetadata({
+    title,
+    description,
+    path: `/posts/${post.id}`,
+  });
 }
 
 function getReportDate(post: { source_ref?: string | null; slug?: string | null }): string | null {

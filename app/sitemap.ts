@@ -15,13 +15,19 @@ import {
 import { listPublishedGuidePaths } from "@/lib/knowledge-hub/queries";
 import {
   getSolutionPath,
+  listMergedSolutionPages,
   listSolutionPages,
 } from "@/lib/knowledge-hub/solutions/get-solutions";
 import {
   getPlaceJobPath,
   listMergedPlaceJobs,
 } from "@/lib/knowledge-hub/place-jobs";
-import { EDU_BLOG_SOURCE_TYPE } from "@/lib/edu-blog/constants";
+import {
+  EDU_BLOG_SOURCE_TYPE,
+  eduBlogCategoryPath,
+  eduBlogPath,
+} from "@/lib/edu-blog/constants";
+import { listPublishedEduBlogCategories } from "@/lib/edu-blog/categories";
 import { listPublishedEduBlogPosts } from "@/lib/edu-blog/queries";
 import {
   PRACTICE_BLOG_SOURCE_TYPE,
@@ -58,8 +64,6 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/job-market-report", priority: 0.75, changeFrequency: "daily" },
   { path: "/jobs", priority: 0.8, changeFrequency: "daily" },
   { path: "/jobs/public", priority: 0.82, changeFrequency: "daily" },
-  { path: "/magam/live", priority: 0.8, changeFrequency: "daily" },
-  { path: "/magam/support", priority: 0.4, changeFrequency: "monthly" },
   { path: "/beta", priority: 0.7, changeFrequency: "weekly" },
   { path: "/estimate", priority: 0.6, changeFrequency: "monthly" },
   { path: "/contracts", priority: 0.5, changeFrequency: "monthly" },
@@ -68,195 +72,224 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/about", priority: 0.4, changeFrequency: "monthly" },
   { path: "/contact", priority: 0.4, changeFrequency: "monthly" },
 ];
+
+export const revalidate = 3600;
+
+type SitemapRow = MetadataRoute.Sitemap[number];
+
+function pushUnique(
+  byUrl: Map<string, SitemapRow>,
+  url: string,
+  rest: Omit<SitemapRow, "url">
+) {
+  if (byUrl.has(url)) return;
+  byUrl.set(url, { url, ...rest });
+}
+
+async function safeList<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`[sitemap] ${label}`, err);
+    return fallback;
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getBaseUrl();
   const now = new Date().toISOString();
+  const byUrl = new Map<string, SitemapRow>();
 
-  const entries: MetadataRoute.Sitemap = STATIC_PATHS.map(({ path, priority = 0.5, changeFrequency }) => ({
-    url: `${base}${path}`,
-    lastModified: now,
-    changeFrequency,
-    priority,
-  }));
+  for (const { path, priority = 0.5, changeFrequency } of STATIC_PATHS) {
+    pushUnique(byUrl, `${base}${path}`, { lastModified: now, changeFrequency, priority });
+  }
 
   for (const cat of HUB_CATEGORIES) {
-    entries.push({
-      url: `${base}${cat.hubPath}`,
+    pushUnique(byUrl, `${base}${cat.hubPath}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.9,
     });
   }
 
   for (const path of ALL_CATALOG_PATHS) {
     const topic = CATALOG_TOPICS.find((t) => t.path === path);
-    entries.push({
-      url: `${base}${path}`,
+    pushUnique(byUrl, `${base}${path}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: topic?.guideType === "service_method" || topic?.guideType === "problem" ? 0.85 : 0.8,
     });
   }
 
   for (const r of listRecipes()) {
-    entries.push({
-      url: `${base}/cleaning/${r.slug}`,
+    pushUnique(byUrl, `${base}/cleaning/${r.slug}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.82,
     });
   }
 
-  for (const p of await listMergedProducts()) {
+  const products = await safeList("products", () => listMergedProducts(), []);
+  for (const p of products) {
     if (p.status === "draft") continue;
-    entries.push({
-      url: `${base}/products/${p.id}`,
+    pushUnique(byUrl, `${base}/products/${p.id}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.8,
     });
   }
 
-  for (const e of await listPublishedEquipment()) {
-    entries.push({
-      url: `${base}/equipment/${e.id}`,
+  const equipment = await safeList("equipment", () => listPublishedEquipment(), []);
+  for (const e of equipment) {
+    pushUnique(byUrl, `${base}/equipment/${e.id}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.78,
     });
   }
 
-  for (const m of await listPublishedEquipmentModels()) {
-    entries.push({
-      url: `${base}/equipment/${m.equipmentId}/models/${m.id}`,
+  const equipmentModels = await safeList("equipment-models", () => listPublishedEquipmentModels(), []);
+  for (const m of equipmentModels) {
+    pushUnique(byUrl, `${base}/equipment/${m.equipmentId}/models/${m.id}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.72,
     });
   }
 
   for (const c of listCases()) {
-    entries.push({
-      url: `${base}/cases/${c.id}`,
+    pushUnique(byUrl, `${base}/cases/${c.id}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.75,
     });
   }
 
   for (const m of listMaterials()) {
-    entries.push({
-      url: `${base}/materials/${m.id}`,
+    pushUnique(byUrl, `${base}/materials/${m.id}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.8,
     });
   }
 
   for (const c of listContaminants()) {
-    entries.push({
-      url: `${base}/pollution/${c.id}`,
+    pushUnique(byUrl, `${base}/pollution/${c.id}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.8,
     });
   }
 
-  for (const s of listSolutionPages()) {
-    entries.push({
-      url: `${base}${getSolutionPath(s)}`,
+  const solutionPages = await safeList("solutions", () => listMergedSolutionPages(), listSolutionPages());
+  for (const s of solutionPages) {
+    pushUnique(byUrl, `${base}${getSolutionPath(s)}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.86,
     });
   }
 
-  for (const j of await listMergedPlaceJobs()) {
-    entries.push({
-      url: `${base}${getPlaceJobPath(j)}`,
+  const placeJobs = await safeList("place-jobs", () => listMergedPlaceJobs(), []);
+  for (const j of placeJobs) {
+    pushUnique(byUrl, `${base}${getPlaceJobPath(j)}`, {
       lastModified: now,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.86,
     });
   }
 
-  const guidePaths = await listPublishedGuidePaths();
+  const guidePaths = await safeList("guides", () => listPublishedGuidePaths(), []);
   for (const g of guidePaths) {
-    if (entries.some((e) => e.url === `${base}${g.path}`)) continue;
-    entries.push({
-      url: `${base}${g.path}`,
+    pushUnique(byUrl, `${base}${g.path}`, {
       lastModified: g.updated_at,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.8,
     });
   }
 
   const supabase = createClient();
 
-  const { data: categories } = await supabase
-    .from("content_categories")
-    .select("slug, created_at")
-    .order("sort_order", { ascending: true });
-  if (categories?.length) {
-    for (const cat of categories) {
-      entries.push({
-        url: `${base}/categories/${cat.slug}`,
-        lastModified: cat.created_at ? new Date(cat.created_at).toISOString() : now,
-        changeFrequency: "daily" as const,
-        priority: 0.7,
-      });
+  try {
+    const { data: categories } = await supabase
+      .from("content_categories")
+      .select("slug, created_at")
+      .order("sort_order", { ascending: true });
+    if (categories?.length) {
+      for (const cat of categories) {
+        pushUnique(byUrl, `${base}/categories/${cat.slug}`, {
+          lastModified: cat.created_at ? new Date(cat.created_at).toISOString() : now,
+          changeFrequency: "daily",
+          priority: 0.7,
+        });
+      }
     }
+  } catch (err) {
+    console.error("[sitemap] content-categories", err);
   }
 
-  const { data: posts } = await supabase
-    .from("posts")
-    .select("id, updated_at, source_type")
-    .not("published_at", "is", null)
-    .eq("is_private", false)
-    .order("published_at", { ascending: false })
-    .limit(2000);
-  if (posts?.length) {
-    for (const post of posts) {
-      if (post.source_type === EDU_BLOG_SOURCE_TYPE) continue;
-      if (post.source_type === PRACTICE_BLOG_SOURCE_TYPE) continue;
-      entries.push({
-        url: `${base}/posts/${post.id}`,
-        lastModified: post.updated_at ? new Date(post.updated_at).toISOString() : now,
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      });
+  try {
+    const { data: posts } = await supabase
+      .from("posts")
+      .select("id, updated_at, source_type")
+      .not("published_at", "is", null)
+      .eq("is_private", false)
+      .order("published_at", { ascending: false })
+      .limit(2000);
+    if (posts?.length) {
+      for (const post of posts) {
+        if (post.source_type === EDU_BLOG_SOURCE_TYPE) continue;
+        if (post.source_type === PRACTICE_BLOG_SOURCE_TYPE) continue;
+        pushUnique(byUrl, `${base}/posts/${post.id}`, {
+          lastModified: post.updated_at ? new Date(post.updated_at).toISOString() : now,
+          changeFrequency: "weekly",
+          priority: 0.6,
+        });
+      }
     }
+  } catch (err) {
+    console.error("[sitemap] posts", err);
   }
 
-  const eduPosts = await listPublishedEduBlogPosts();
+  const eduCategories = await safeList("edu-blog-categories", () => listPublishedEduBlogCategories(), []);
+  for (const cat of eduCategories) {
+    pushUnique(byUrl, `${base}${eduBlogCategoryPath(cat.slug)}`, {
+      lastModified: cat.updated_at,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    });
+  }
+
+  const eduPosts = await safeList("edu-blog", () => listPublishedEduBlogPosts(), []);
   for (const post of eduPosts) {
-    entries.push({
-      url: `${base}/blog/${encodeURIComponent(post.slug)}`,
+    pushUnique(byUrl, `${base}${eduBlogPath(post.slug)}`, {
       lastModified: post.updated_at,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.78,
     });
   }
 
-  const practiceCategories = await listPublishedPracticeCategories();
+  const practiceCategories = await safeList(
+    "practice-categories",
+    () => listPublishedPracticeCategories(),
+    []
+  );
   for (const cat of practiceCategories) {
-    entries.push({
-      url: `${base}${practiceCategoryPath(cat.slug)}`,
+    pushUnique(byUrl, `${base}${practiceCategoryPath(cat.slug)}`, {
       lastModified: cat.updated_at,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.8,
     });
   }
 
-  const practicePosts = await listPublishedPracticePosts();
+  const practicePosts = await safeList("practice-posts", () => listPublishedPracticePosts(), []);
   for (const post of practicePosts) {
-    entries.push({
-      url: `${base}${practiceBlogPath(post.slug)}`,
+    pushUnique(byUrl, `${base}${practiceBlogPath(post.slug)}`, {
       lastModified: post.updated_at,
-      changeFrequency: "weekly" as const,
+      changeFrequency: "weekly",
       priority: 0.78,
     });
   }
 
-  return entries;
+  return [...byUrl.values()];
 }

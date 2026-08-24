@@ -34,6 +34,12 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "cleanidex.co.kr" }],
+        destination: "https://www.cleanidex.co.kr/:path*",
+        permanent: true,
+      },
       { source: "/facilities", destination: "/services", permanent: true },
       {
         source: "/solutions/home/bathroom/:part/:slug",

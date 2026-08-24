@@ -163,8 +163,27 @@ function isMagamPwaStaticAsset(pathname: string): boolean {
   return /\.(?:js|wasm|json|bin|frag|symbols|otf|ttf|woff2?|map)$/i.test(pathname);
 }
 
+function canonicalWwwRedirect(req: NextRequest): NextResponse | null {
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") return null;
+  if (process.env.NODE_ENV !== "production") return null;
+  const host = req.headers.get("host")?.split(":")[0]?.toLowerCase();
+  if (host !== "cleanidex.co.kr") return null;
+  const pathname = req.nextUrl.pathname;
+  // PKCE 쿠키는 호스트에 묶여 있어 OAuth 콜백은 apex에 그대로 둔다
+  if (pathname === "/auth/callback") return null;
+  if (pathname === "/" && req.nextUrl.searchParams.has("code")) return null;
+  const url = req.nextUrl.clone();
+  url.protocol = "https:";
+  url.hostname = "www.cleanidex.co.kr";
+  url.port = "";
+  return NextResponse.redirect(url, 301);
+}
+
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+
+  const wwwRedirect = canonicalWwwRedirect(req);
+  if (wwwRedirect) return wwwRedirect;
 
   if (isMagamPwaStaticAsset(pathname)) {
     return NextResponse.next();
