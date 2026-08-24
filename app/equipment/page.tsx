@@ -13,7 +13,7 @@ export const revalidate = 3600;
 export const metadata = buildPageMetadata({
   title: "청소장비 | 클린아이덱스",
   description:
-    "습식청소기·마루광택기·고압세척기 등 청소장비 선택·사용·실수 예방. 작업에 맞는 장비를 고르는 가이드.",
+    "건습식 청소기·마루광택기·고압세척기 등 청소장비 선택·사용·실수 예방. 작업에 맞는 장비를 고르는 가이드.",
   path: "/equipment",
 });
 

@@ -58,6 +58,8 @@ export default async function AdminEquipmentPage() {
         bestFor: m.bestFor,
         selectionNotes: m.selectionNotes,
         cautions: m.cautions,
+        specs: m.specs ?? [],
+        recommendedUsers: m.recommendedUsers ?? [],
         relatedEquipmentIds: m.relatedEquipmentIds ?? [],
         salesUrl: m.salesUrl ?? null,
         salesLabel: m.salesLabel ?? null,

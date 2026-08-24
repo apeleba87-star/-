@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import KnowledgeMediaUpload from "@/components/knowledge-hub/KnowledgeMediaUpload";
 import type { Confidence } from "@/lib/knowledge-hub/cleaning-knowledge/types";
-import type { EquipmentCategoryId } from "@/lib/knowledge-hub/equipment/types";
+import type { EquipmentCategoryId, EquipmentModelSpec } from "@/lib/knowledge-hub/equipment/types";
+import { parseSpecsText, specsToText } from "@/lib/knowledge-hub/equipment/model-specs";
 
 type EquipmentRow = {
   id: string;
@@ -38,6 +39,8 @@ type ModelRow = {
   bestFor: string[];
   selectionNotes: string[];
   cautions: string[];
+  specs: EquipmentModelSpec[];
+  recommendedUsers: string[];
   relatedEquipmentIds: string[];
   salesUrl: string | null;
   salesLabel: string | null;
@@ -88,6 +91,8 @@ type ModelForm = {
   bestFor: string;
   selectionNotes: string;
   cautions: string;
+  specs: string;
+  recommendedUsers: string;
   relatedEquipmentIds: string;
   salesUrl: string;
   salesLabel: string;
@@ -159,6 +164,8 @@ function emptyModelForm(equipmentId = ""): ModelForm {
     bestFor: "",
     selectionNotes: "",
     cautions: "",
+    specs: "",
+    recommendedUsers: "",
     relatedEquipmentIds: "",
     salesUrl: "",
     salesLabel: "",
@@ -178,6 +185,8 @@ function fromModel(m: ModelRow): ModelForm {
     bestFor: listToLines(m.bestFor),
     selectionNotes: listToLines(m.selectionNotes),
     cautions: listToLines(m.cautions),
+    specs: specsToText(m.specs),
+    recommendedUsers: listToLines(m.recommendedUsers),
     relatedEquipmentIds: listToLines(m.relatedEquipmentIds),
     salesUrl: m.salesUrl ?? "",
     salesLabel: m.salesLabel ?? "",
@@ -396,6 +405,8 @@ export default function AdminEquipmentPanel({
           bestFor: linesToList(modelForm.bestFor),
           selectionNotes: linesToList(modelForm.selectionNotes),
           cautions: linesToList(modelForm.cautions),
+          specs: parseSpecsText(modelForm.specs),
+          recommendedUsers: linesToList(modelForm.recommendedUsers),
           relatedEquipmentIds: linesToList(modelForm.relatedEquipmentIds),
           salesUrl: modelForm.salesUrl.trim() || null,
           salesLabel: modelForm.salesLabel.trim() || null,
@@ -425,6 +436,8 @@ export default function AdminEquipmentPanel({
           bestFor: linesToList(modelForm.bestFor),
           selectionNotes: linesToList(modelForm.selectionNotes),
           cautions: linesToList(modelForm.cautions),
+          specs: parseSpecsText(modelForm.specs),
+          recommendedUsers: linesToList(modelForm.recommendedUsers),
           relatedEquipmentIds: linesToList(modelForm.relatedEquipmentIds),
           salesUrl: modelForm.salesUrl.trim() || null,
           salesLabel: modelForm.salesLabel.trim() || null,
@@ -799,6 +812,21 @@ export default function AdminEquipmentPanel({
                 className={taClass}
                 value={modelForm.cautions}
                 onChange={(e) => setModelForm((f) => ({ ...f, cautions: e.target.value }))}
+              />
+            </Field>
+            <Field label="상세 스펙 (줄바꿈, 라벨|값)">
+              <textarea
+                className={taClass}
+                value={modelForm.specs}
+                onChange={(e) => setModelForm((f) => ({ ...f, specs: e.target.value }))}
+                placeholder={"소비전력|1,400W\n분사압력|20~110bar"}
+              />
+            </Field>
+            <Field label="추천 사용자 (줄바꿈)">
+              <textarea
+                className={taClass}
+                value={modelForm.recommendedUsers}
+                onChange={(e) => setModelForm((f) => ({ ...f, recommendedUsers: e.target.value }))}
               />
             </Field>
             <Field label="관련 장비 ID (줄바꿈)">

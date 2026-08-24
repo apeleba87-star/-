@@ -29,7 +29,7 @@
   ],
   "items": [
     { "id": "pressure-washer", "categoryId": "heavy", "name": "고압세척기", "aliases": ["고압세척", "압력세척기", "pressure washer"], "status": "active" },
-    { "id": "wet-vac", "categoryId": "heavy", "name": "습식청소기", "aliases": ["물청소기", "습식진공", "wet vac", "wet vacuum"], "status": "active" },
+    { "id": "wet-vac", "categoryId": "heavy", "name": "건습식 청소기", "aliases": ["습식청소기", "건습식", "물청소기", "습식진공", "건습식 진공청소기", "wet vac", "wet vacuum", "wet dry vac"], "status": "active" },
     { "id": "dry-vac", "categoryId": "heavy", "name": "건식청소기", "aliases": ["진공청소기", "드라이진공", "dry vac"], "status": "planned" },
     { "id": "floor-polisher", "categoryId": "heavy", "name": "마루광택기", "aliases": ["돌돌이", "폴리셔", "floor machine", "단축기"], "status": "active" },
     { "id": "air-mover", "categoryId": "heavy", "name": "송풍기", "aliases": ["에어무버", "건조기", "air mover", "블로워"], "status": "active" },
@@ -80,7 +80,7 @@
     { "id": "scraper-blade", "categoryId": "consumable", "name": "스크래퍼 칼날", "aliases": ["헤라날", "교체날"], "status": "planned" },
     { "id": "squeegee-rubber", "categoryId": "consumable", "name": "스퀴지 고무", "aliases": ["채널 고무", "교체고무"], "status": "planned" },
     { "id": "vacuum-bag", "categoryId": "consumable", "name": "청소기 필터·백", "aliases": ["진공백", "헤파필터"], "status": "planned" },
-    { "id": "wet-vac-filter", "categoryId": "consumable", "name": "습식청소기 필터", "aliases": ["카트리지필터", "플로트"], "status": "planned" },
+    { "id": "wet-vac-filter", "categoryId": "consumable", "name": "건습식 청소기 필터", "aliases": ["습식청소기 필터", "카트리지필터", "폼필터", "플로트"], "status": "planned" },
     { "id": "polisher-brush", "categoryId": "consumable", "name": "광택기 브러시", "aliases": ["나일론브러시", "바닥브러시"], "status": "planned" },
     { "id": "abrasive-disc", "categoryId": "consumable", "name": "연마디스크", "aliases": ["다이아몬드패드", "연마석"], "status": "planned" },
     { "id": "trash-bag", "categoryId": "consumable", "name": "쓰레기봉투", "aliases": ["폐기물봉투"], "status": "planned" },

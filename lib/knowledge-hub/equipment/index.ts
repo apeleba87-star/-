@@ -2,6 +2,7 @@ export type {
   EquipmentCatalogItem,
   EquipmentCategory,
   EquipmentCategoryId,
+  EquipmentModelSpec,
   KnowledgeEquipment,
   KnowledgeEquipmentModel,
 } from "@/lib/knowledge-hub/equipment/types";

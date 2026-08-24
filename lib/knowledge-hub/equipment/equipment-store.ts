@@ -3,11 +3,13 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import type { Confidence } from "@/lib/knowledge-hub/cleaning-knowledge/types";
 import type {
   EquipmentCategoryId,
+  EquipmentModelSpec,
   KnowledgeEquipment,
   KnowledgeEquipmentModel,
 } from "@/lib/knowledge-hub/equipment/types";
 import equipmentSeed from "@/lib/knowledge-hub/equipment/source/equipment.parsed.json";
 import modelsSeed from "@/lib/knowledge-hub/equipment/source/equipment-models.parsed.json";
+import { normalizeSpecs } from "@/lib/knowledge-hub/equipment/model-specs";
 
 export const EQUIPMENT_CATALOG_CACHE_TAG = "cleaning-equipment";
 const REVALIDATE_SEC = 3600;
@@ -30,7 +32,7 @@ const EQUIPMENT_SELECT =
   "id, origin, category_id, name, aliases, summary, what_is, place_hints, job_hints, selection_criteria, use_steps, beginner_mistakes, warnings, related_product_ids, related_equipment_ids, contaminant_ids, material_ids, place_job_hints, confidence, status, deleted_at";
 
 const MODEL_SELECT =
-  "id, origin, equipment_id, brand, name, aliases, summary, best_for, selection_notes, cautions, related_equipment_ids, sales_url, sales_label, confidence, status, deleted_at";
+  "id, origin, equipment_id, brand, name, aliases, summary, best_for, selection_notes, cautions, specs, recommended_users, related_equipment_ids, sales_url, sales_label, confidence, status, deleted_at";
 
 const CATEGORIES: EquipmentCategoryId[] = ["heavy", "hand", "consumable", "accessory"];
 const CONFIDENCES: Confidence[] = ["high", "medium", "low"];
@@ -72,6 +74,8 @@ type DbModelRow = {
   best_for: string[] | null;
   selection_notes: string[] | null;
   cautions: string[] | null;
+  specs: unknown;
+  recommended_users: string[] | null;
   related_equipment_ids: string[] | null;
   sales_url: string | null;
   sales_label: string | null;
@@ -141,6 +145,8 @@ function rowToModel(row: DbModelRow): KnowledgeEquipmentModel {
     bestFor: strArr(row.best_for),
     selectionNotes: strArr(row.selection_notes),
     cautions: strArr(row.cautions),
+    specs: normalizeSpecs(row.specs),
+    recommendedUsers: strArr(row.recommended_users),
     relatedEquipmentIds: strArr(row.related_equipment_ids),
     salesUrl: row.sales_url,
     salesLabel: row.sales_label,
@@ -168,7 +174,22 @@ async function loadDbModels(includeDeleted: boolean): Promise<DbModelRow[]> {
     let q = supabase.from("cleaning_equipment_models").select(MODEL_SELECT);
     if (!includeDeleted) q = q.is("deleted_at", null);
     const { data, error } = await q;
-    if (error || !data) return [];
+    if (error || !data) {
+      // 마이그레이션 전 환경: 신규 컬럼 없이 재시도
+      let q2 = supabase
+        .from("cleaning_equipment_models")
+        .select(
+          "id, origin, equipment_id, brand, name, aliases, summary, best_for, selection_notes, cautions, related_equipment_ids, sales_url, sales_label, confidence, status, deleted_at"
+        );
+      if (!includeDeleted) q2 = q2.is("deleted_at", null);
+      const retry = await q2;
+      if (retry.error || !retry.data) return [];
+      return (retry.data as Omit<DbModelRow, "specs" | "recommended_users">[]).map((row) => ({
+        ...row,
+        specs: [],
+        recommended_users: [],
+      }));
+    }
     return data as DbModelRow[];
   } catch {
     return [];
@@ -325,6 +346,8 @@ export type EquipmentModelUpsertInput = {
   bestFor?: string[];
   selectionNotes?: string[];
   cautions?: string[];
+  specs?: EquipmentModelSpec[];
+  recommendedUsers?: string[];
   relatedEquipmentIds?: string[];
   salesUrl?: string | null;
   salesLabel?: string | null;
@@ -411,6 +434,8 @@ export async function upsertEquipmentModel(
       best_for: strArr(input.bestFor),
       selection_notes: strArr(input.selectionNotes),
       cautions: strArr(input.cautions),
+      specs: normalizeSpecs(input.specs),
+      recommended_users: strArr(input.recommendedUsers),
       related_equipment_ids: strArr(input.relatedEquipmentIds),
       sales_url: input.salesUrl?.trim() || null,
       sales_label: input.salesLabel?.trim() || null,
@@ -521,6 +546,8 @@ export async function softDeleteEquipmentModel(
         best_for: source.bestFor,
         selection_notes: source.selectionNotes,
         cautions: source.cautions,
+        specs: normalizeSpecs(source.specs),
+        recommended_users: strArr(source.recommendedUsers),
         related_equipment_ids: source.relatedEquipmentIds ?? [],
         sales_url: source.salesUrl ?? null,
         sales_label: source.salesLabel ?? null,

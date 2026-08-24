@@ -57,9 +57,15 @@ export type KnowledgeEquipment = {
   sourceRefs?: SourceRef[];
 };
 
+/** 기종 스펙표 한 행 (라벨·값) */
+export type EquipmentModelSpec = {
+  label: string;
+  value: string;
+};
+
 /**
- * 장비 종류(습식청소기) 아래의 브랜드·기종.
- * 쇼핑 스펙표가 아니라 「현장에서 보는 대표 모델」 판단용.
+ * 장비 종류(건습식 청소기) 아래의 브랜드·기종.
+ * 「현장에서 보는 대표 모델」 판단용 + 선택적 스펙·추천 사용자.
  */
 export type KnowledgeEquipmentModel = {
   id: string;
@@ -75,6 +81,10 @@ export type KnowledgeEquipmentModel = {
   selectionNotes: string[];
   /** 주의·한계 */
   cautions: string[];
+  /** 상세 스펙표 (소비전력·bar·토출량 등) */
+  specs?: EquipmentModelSpec[];
+  /** 추천 사용자·업체 유형 */
+  recommendedUsers?: string[];
   /** 관련 소모품·액세서리 장비 id */
   relatedEquipmentIds?: string[];
   imageUrl?: string | null;

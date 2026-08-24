@@ -79,7 +79,7 @@ export default function KnowledgeHubHome() {
               </span>
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-2xl font-black text-slate-950">청소장비로 찾기</span>
-                <span className="mt-1 block text-base text-slate-600">습식청소기 · 돌돌이 · 고압세척기</span>
+                <span className="mt-1 block text-base text-slate-600">건습식 청소기 · 돌돌이 · 고압세척기</span>
               </span>
               <ChevronRight
                 className="mt-4 h-6 w-6 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-800"

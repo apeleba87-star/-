@@ -73,10 +73,14 @@ export default function EquipmentModelDetailView({ model, equipment, relatedEqui
   const cautions = model.cautions.filter(Boolean);
   const visibleCautions = showAllCautions ? cautions : cautions.slice(0, 4);
   const hiddenCautionCount = Math.max(0, cautions.length - 4);
+  const specs = (model.specs ?? []).filter((s) => s.label && s.value);
+  const recommendedUsers = (model.recommendedUsers ?? []).filter(Boolean);
 
   const tabs = [
     { id: "bestfor", label: "적합 현장" },
+    ...(specs.length ? [{ id: "specs", label: "상세 스펙" }] : []),
     { id: "notes", label: "선택 메모" },
+    ...(recommendedUsers.length ? [{ id: "users", label: "추천 사용자" }] : []),
     ...(cautions.length ? [{ id: "cautions", label: "주의·한계" }] : []),
     { id: "explore", label: "탐색하기" },
   ];
@@ -261,6 +265,54 @@ export default function EquipmentModelDetailView({ model, equipment, relatedEqui
           </WhiteCard>
         </section>
 
+        {specs.length ? (
+          <section ref={setSectionRef(sectionIndex("specs"))} id="specs" style={{ marginBottom: 22 }}>
+            <SectionHead title="상세 스펙" color="#0984e3" />
+            <WhiteCard style={{ padding: 0, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <tbody>
+                  {specs.map((row, i) => (
+                    <tr
+                      key={`${row.label}-${i}`}
+                      style={{
+                        borderTop: i === 0 ? "none" : `1px solid ${BORDER}`,
+                        background: i % 2 === 0 ? "#fff" : "#fafbfd",
+                      }}
+                    >
+                      <th
+                        style={{
+                          textAlign: "left",
+                          padding: "12px 14px",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: TEXT_SEC,
+                          width: "42%",
+                          verticalAlign: "top",
+                          wordBreak: "keep-all",
+                        }}
+                      >
+                        {row.label}
+                      </th>
+                      <td
+                        style={{
+                          padding: "12px 14px",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: TEXT,
+                          lineHeight: 1.45,
+                          wordBreak: "keep-all",
+                        }}
+                      >
+                        {row.value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </WhiteCard>
+          </section>
+        ) : null}
+
         <section ref={setSectionRef(sectionIndex("notes"))} id="notes" style={{ marginBottom: 22 }}>
           <SectionHead title="고를 때 메모" color="#5b6cff" />
           <WhiteCard style={{ padding: 16 }}>
@@ -288,6 +340,32 @@ export default function EquipmentModelDetailView({ model, equipment, relatedEqui
             </ul>
           </WhiteCard>
         </section>
+
+        {recommendedUsers.length ? (
+          <section ref={setSectionRef(sectionIndex("users"))} id="users" style={{ marginBottom: 22 }}>
+            <SectionHead title="추천 사용자" color="#6c5ce7" />
+            <WhiteCard style={{ padding: 16 }}>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                {recommendedUsers.map((x) => (
+                  <li
+                    key={x}
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      marginBottom: 10,
+                      fontSize: 14,
+                      lineHeight: 1.55,
+                      color: TEXT,
+                    }}
+                  >
+                    <span style={{ color: "#6c5ce7", fontWeight: 900 }}>•</span>
+                    <span style={{ wordBreak: "keep-all" }}>{x}</span>
+                  </li>
+                ))}
+              </ul>
+            </WhiteCard>
+          </section>
+        ) : null}
 
         {cautions.length ? (
           <section ref={setSectionRef(sectionIndex("cautions"))} id="cautions" style={{ marginBottom: 22 }}>
