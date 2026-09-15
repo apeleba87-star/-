@@ -16,6 +16,7 @@ import {
   FileText,
   FlaskConical,
   Home,
+  MessageCircleQuestion,
   Microscope,
   Sparkles,
   Wrench,
@@ -32,6 +33,7 @@ import type {
 import { parseProductPh, phColor, type PhInfo } from "@/lib/knowledge-hub/ph-scale";
 import type { ProductPurchaseLink } from "@/lib/knowledge-hub/product-sales";
 import ProductQuestionsBlock from "@/components/questions/ProductQuestionsBlock";
+import { questionNewPath } from "@/lib/questions/constants";
 import type { QuestionListItem } from "@/lib/questions/types";
 
 export type ProductExploreLink = {
@@ -1184,8 +1186,8 @@ export default function ProductDetailView({
         </section>
       </article>
 
-      {/* 하단 다음 추천 */}
-      {nextProduct && showNextBar ? (
+      {/* 하단: 질문하기 + 다음 제품 (스크롤 시 따라다님) */}
+      {showNextBar ? (
         <div
           style={{
             position: "fixed",
@@ -1207,58 +1209,98 @@ export default function ProductDetailView({
               background: "#fff",
               borderRadius: 14,
               boxShadow: "0 -4px 20px rgba(0,0,0,0.1)",
-              padding: "12px 16px",
+              padding: "10px 12px",
               display: "flex",
               alignItems: "center",
-              gap: 12,
+              gap: 10,
               border: `1px solid ${BORDER}`,
             }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: TEXT_SEC }}>다음으로 볼 제품</div>
-              <div
-                style={{
-                  marginTop: 2,
-                  fontSize: 14,
-                  fontWeight: 800,
-                  color: TEXT,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {nextProduct.title}
-              </div>
-              <div
-                style={{
-                  marginTop: 2,
-                  fontSize: 11,
-                  color: TEXT_SEC,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {nextProduct.phApprox
-                  ? `pH · ${nextProduct.useHint ?? nextProduct.brand ?? ""}`
-                  : nextProduct.useHint ?? nextProduct.brand}
-              </div>
-            </div>
             <Link
-              href={withFrom(nextProduct.href)}
+              href={questionNewPath(product.id)}
               style={{
                 flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
                 borderRadius: 12,
-                padding: "10px 14px",
+                padding: "10px 12px",
                 fontSize: 13,
                 fontWeight: 800,
-                color: "#fff",
+                color: PRIMARY,
                 textDecoration: "none",
-                background: PRIMARY,
+                background: "#e8faf5",
+                border: `1px solid ${PRIMARY}44`,
               }}
             >
-              보러가기 →
+              <MessageCircleQuestion size={16} strokeWidth={2.2} aria-hidden />
+              질문하기
             </Link>
+
+            {nextProduct ? (
+              <>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: TEXT_SEC }}>
+                    다음으로 볼 제품
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 2,
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: TEXT,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {nextProduct.title}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 2,
+                      fontSize: 11,
+                      color: TEXT_SEC,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {nextProduct.phApprox
+                      ? `pH · ${nextProduct.useHint ?? nextProduct.brand ?? ""}`
+                      : nextProduct.useHint ?? nextProduct.brand}
+                  </div>
+                </div>
+                <Link
+                  href={withFrom(nextProduct.href)}
+                  style={{
+                    flexShrink: 0,
+                    borderRadius: 12,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: "#fff",
+                    textDecoration: "none",
+                    background: PRIMARY,
+                  }}
+                >
+                  보러가기 →
+                </Link>
+              </>
+            ) : (
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: TEXT_SEC,
+                  lineHeight: 1.4,
+                }}
+              >
+                이 제품에 대해 궁금한 점을 남겨 보세요.
+              </div>
+            )}
           </div>
         </div>
       ) : null}

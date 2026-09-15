@@ -22,6 +22,30 @@ export type EduBlogPost = {
 const SELECT_COLS =
   "id, title, slug, body, excerpt, edu_intent, edu_category_id, next_slug, related_slugs, product_ids, published_at, updated_at";
 
+/** 마이그레이션 202 미적용 환경용 */
+const SELECT_COLS_LEGACY =
+  "id, title, slug, body, excerpt, edu_intent, next_slug, related_slugs, product_ids, published_at, updated_at";
+
+function isMissingEduCategoryColumn(message: string | undefined): boolean {
+  return Boolean(message?.includes("edu_category_id"));
+}
+
+type PostSelectResult = {
+  data: unknown[] | null;
+  error: { message: string } | null;
+};
+
+/** edu_category_id 없으면 legacy select로 재시도 */
+async function selectEduPosts(
+  run: (cols: string) => PromiseLike<PostSelectResult>,
+): Promise<PostSelectResult> {
+  const first = await run(SELECT_COLS);
+  if (!first.error || !isMissingEduCategoryColumn(first.error.message)) {
+    return first;
+  }
+  return run(SELECT_COLS_LEGACY);
+}
+
 function normalizePost(row: {
   id: string;
   title: string;
@@ -57,15 +81,18 @@ function normalizePost(row: {
 export async function listPublishedEduBlogPosts(): Promise<EduBlogPost[]> {
   const supabase = createClient();
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("posts")
-    .select(SELECT_COLS)
-    .eq("source_type", EDU_BLOG_SOURCE_TYPE)
-    .not("published_at", "is", null)
-    .lte("published_at", nowIso)
-    .eq("is_private", false)
-    .not("slug", "is", null)
-    .order("published_at", { ascending: false });
+  const { data, error } = await selectEduPosts(async (cols) => {
+    const result = await supabase
+      .from("posts")
+      .select(cols)
+      .eq("source_type", EDU_BLOG_SOURCE_TYPE)
+      .not("published_at", "is", null)
+      .lte("published_at", nowIso)
+      .eq("is_private", false)
+      .not("slug", "is", null)
+      .order("published_at", { ascending: false });
+    return { data: result.data as unknown[] | null, error: result.error };
+  });
 
   if (error) {
     console.error("[edu-blog] listPublishedEduBlogPosts:", error.message);
@@ -98,6 +125,10 @@ export async function listPublishedEduBlogPostsByCategory(
     .limit(limit);
 
   if (error) {
+    if (isMissingEduCategoryColumn(error.message)) {
+      // 칸 컬럼 미적용 — 카테고리 필터 불가
+      return [];
+    }
     console.error("[edu-blog] listPublishedEduBlogPostsByCategory:", error.message);
     return [];
   }
@@ -113,22 +144,29 @@ export async function getPublishedEduBlogBySlug(
   const decoded = decodeURIComponent(slug);
   const supabase = createClient();
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("posts")
-    .select(SELECT_COLS)
-    .eq("source_type", EDU_BLOG_SOURCE_TYPE)
-    .eq("slug", decoded)
-    .not("published_at", "is", null)
-    .lte("published_at", nowIso)
-    .eq("is_private", false)
-    .maybeSingle();
+  const { data, error } = await selectEduPosts(async (cols) => {
+    const result = await supabase
+      .from("posts")
+      .select(cols)
+      .eq("source_type", EDU_BLOG_SOURCE_TYPE)
+      .eq("slug", decoded)
+      .not("published_at", "is", null)
+      .lte("published_at", nowIso)
+      .eq("is_private", false)
+      .maybeSingle();
+    return {
+      data: result.data ? [result.data as unknown] : null,
+      error: result.error,
+    };
+  });
 
   if (error) {
     console.error("[edu-blog] getPublishedEduBlogBySlug:", error.message);
     return null;
   }
-  if (!data) return null;
-  return normalizePost(data as Parameters<typeof normalizePost>[0]);
+  const row = data?.[0];
+  if (!row) return null;
+  return normalizePost(row as Parameters<typeof normalizePost>[0]);
 }
 
 /** slug 목록으로 발행 글 조회 (다음·관련용) */
@@ -140,14 +178,17 @@ export async function getPublishedEduBlogsBySlugs(
 
   const supabase = createClient();
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("posts")
-    .select(SELECT_COLS)
-    .eq("source_type", EDU_BLOG_SOURCE_TYPE)
-    .in("slug", unique)
-    .not("published_at", "is", null)
-    .lte("published_at", nowIso)
-    .eq("is_private", false);
+  const { data, error } = await selectEduPosts(async (cols) => {
+    const result = await supabase
+      .from("posts")
+      .select(cols)
+      .eq("source_type", EDU_BLOG_SOURCE_TYPE)
+      .in("slug", unique)
+      .not("published_at", "is", null)
+      .lte("published_at", nowIso)
+      .eq("is_private", false);
+    return { data: result.data as unknown[] | null, error: result.error };
+  });
 
   if (error) {
     console.error("[edu-blog] getPublishedEduBlogsBySlugs:", error.message);
@@ -171,11 +212,14 @@ export async function listAdminEduBlogPosts(): Promise<
   })[]
 > {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("posts")
-    .select(`${SELECT_COLS}, is_private`)
-    .eq("source_type", EDU_BLOG_SOURCE_TYPE)
-    .order("updated_at", { ascending: false });
+  const { data, error } = await selectEduPosts(async (cols) => {
+    const result = await supabase
+      .from("posts")
+      .select(`${cols}, is_private`)
+      .eq("source_type", EDU_BLOG_SOURCE_TYPE)
+      .order("updated_at", { ascending: false });
+    return { data: result.data as unknown[] | null, error: result.error };
+  });
 
   if (error) {
     console.error("[edu-blog] listAdminEduBlogPosts:", error.message);
@@ -218,28 +262,41 @@ export async function listAdminEduBlogPosts(): Promise<
 
 export async function getAdminEduBlogById(id: string) {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("posts")
-    .select(`${SELECT_COLS}, is_private, created_at`)
-    .eq("id", id)
-    .eq("source_type", EDU_BLOG_SOURCE_TYPE)
-    .maybeSingle();
+  const { data, error } = await selectEduPosts(async (cols) => {
+    const result = await supabase
+      .from("posts")
+      .select(`${cols}, is_private, created_at`)
+      .eq("id", id)
+      .eq("source_type", EDU_BLOG_SOURCE_TYPE)
+      .maybeSingle();
+    return {
+      data: result.data ? [result.data as unknown] : null,
+      error: result.error,
+    };
+  });
 
-  if (error || !data) return null;
-  return data as {
-    id: string;
-    title: string;
-    slug: string | null;
-    body: string | null;
-    excerpt: string | null;
-    edu_intent: string | null;
-    edu_category_id: string | null;
-    next_slug: string | null;
-    related_slugs: string[] | null;
-    product_ids: string[] | null;
-    published_at: string | null;
-    updated_at: string;
-    created_at: string;
-    is_private: boolean;
+  const row = data?.[0] as
+    | {
+        id: string;
+        title: string;
+        slug: string | null;
+        body: string | null;
+        excerpt: string | null;
+        edu_intent: string | null;
+        edu_category_id?: string | null;
+        next_slug: string | null;
+        related_slugs: string[] | null;
+        product_ids: string[] | null;
+        published_at: string | null;
+        updated_at: string;
+        created_at: string;
+        is_private: boolean;
+      }
+    | undefined;
+
+  if (error || !row) return null;
+  return {
+    ...row,
+    edu_category_id: row.edu_category_id ?? null,
   };
 }
