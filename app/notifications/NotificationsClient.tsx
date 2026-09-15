@@ -22,12 +22,12 @@ export default function NotificationsClient({ initialItems }: { initialItems: No
   const reload = useCallback(async () => {
     setBusy(true);
     try {
-      await fetch("/api/notifications", { method: "POST", credentials: "include" });
       const res = await fetch("/api/notifications?limit=100", { credentials: "include" });
       if (res.ok) {
         const j = await res.json();
         if (Array.isArray(j.items)) setItems(j.items);
       }
+      void fetch("/api/notifications", { method: "POST", credentials: "include" });
     } finally {
       setBusy(false);
       router.refresh();
@@ -63,7 +63,7 @@ export default function NotificationsClient({ initialItems }: { initialItems: No
           <div>
             <h1 className="text-2xl font-bold text-slate-900">알림</h1>
             <p className="mt-1 text-sm text-slate-600">
-              입찰·구인·구독·청소 질문 답변 알림입니다.
+              구독·청소 질문 답변 등 알림입니다.
             </p>
           </div>
           <div className="flex gap-2">

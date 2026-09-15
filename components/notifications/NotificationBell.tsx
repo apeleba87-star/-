@@ -48,13 +48,11 @@ export default function NotificationBell({ isLoggedIn }: { isLoggedIn: boolean }
   }, []);
 
   const refreshAndOpen = useCallback(async () => {
-    setLoading(true);
-    try {
-      await fetch("/api/notifications", { method: "POST", credentials: "include" });
-      await loadList();
-    } finally {
-      setLoading(false);
-    }
+    // 목록을 먼저 보여 주고, 가벼운 갱신(구독 등)은 백그라운드
+    await loadList();
+    void fetch("/api/notifications", { method: "POST", credentials: "include" }).then(() =>
+      loadList(),
+    );
   }, [loadList]);
 
   useEffect(() => {
