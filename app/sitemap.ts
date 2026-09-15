@@ -38,6 +38,8 @@ import {
   listPublishedPracticeCategories,
   listPublishedPracticePosts,
 } from "@/lib/practice-blog/queries";
+import { questionPath } from "@/lib/questions/constants";
+import { listSitemapQuestions } from "@/lib/questions/queries";
 import type { MetadataRoute } from "next";
 
 const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily" | "weekly" | "monthly" }[] = [
@@ -54,6 +56,7 @@ const STATIC_PATHS: { path: string; priority?: number; changeFrequency?: "daily"
   { path: "/solutions", priority: 0.93, changeFrequency: "weekly" },
   { path: "/cases", priority: 0.85, changeFrequency: "weekly" },
   { path: "/cleaning", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/questions", priority: 0.88, changeFrequency: "daily" },
   { path: "/inquiry/regular", priority: 0.85, changeFrequency: "monthly" },
   { path: "/inquiry/move-in", priority: 0.85, changeFrequency: "monthly" },
   { path: "/categories", priority: 0.8, changeFrequency: "weekly" },
@@ -288,6 +291,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: post.updated_at,
       changeFrequency: "weekly",
       priority: 0.78,
+    });
+  }
+
+  const questions = await safeList("questions", () => listSitemapQuestions(), []);
+  for (const q of questions) {
+    pushUnique(byUrl, `${base}${questionPath(q.id, q.slug)}`, {
+      lastModified: q.updated_at,
+      changeFrequency: "weekly",
+      priority: 0.8,
     });
   }
 

@@ -57,6 +57,11 @@ export const ADMIN_HUBS: AdminHub[] = [
       { href: "/admin/posts", label: "글 관리", description: "블로그·리포트 글 작성·수정" },
       { href: "/admin/newsletter", label: "뉴스레터 큐·발송", description: "큐 관리 및 발송" },
       { href: "/admin/ugc", label: "UGC 검수", description: "사용자 제출 콘텐츠 검수" },
+      {
+        href: "/admin/questions",
+        label: "질문 게시판",
+        description: "태그 지정 · 삭제 · 계정 정지",
+      },
       { href: "/admin/content-runs", label: "자동 생성 로그", description: "AI 자동 생성 실행 기록" },
       { href: "/admin/report-snapshots", label: "리포트 스냅샷", description: "리포트 발행 스냅샷" },
     ],
@@ -68,6 +73,11 @@ export const ADMIN_HUBS: AdminHub[] = [
     description: "콘텐츠 신고 및 노쇼 신고 처리",
     items: [
       { href: "/admin/reports", label: "신고", description: "콘텐츠·댓글 신고 검토" },
+      {
+        href: "/admin/questions",
+        label: "질문 게시판",
+        description: "태그 지정 · 스팸 삭제 · 작성 정지",
+      },
       { href: "/admin/magam-listings", label: "마감링크 공고", description: "공고 신고·강제 마감·이용 정지" },
       { href: "/admin/job-reports", label: "노쇼 신고", description: "일자리 노쇼 신고 처리" },
     ],

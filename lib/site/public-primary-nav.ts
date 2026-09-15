@@ -2,23 +2,20 @@ import {
   Beaker,
   BookOpen,
   Briefcase,
-  ClipboardList,
   Droplets,
   FileText,
-  FlaskConical,
   Gavel,
   Handshake,
   Home,
   Landmark,
   Layers,
-  Radio,
+  MessageCircleQuestion,
   Sparkles,
   Trophy,
   UserPlus,
   Calculator,
 } from "lucide-react";
 import { KNOWLEDGE_NAV, PRACTICE_NAV } from "@/lib/edu-blog/constants";
-import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
 
 export type NavItem = {
   href: string;
@@ -198,19 +195,18 @@ export function assertKnowledgeAndPracticeAreSiblingLinks(
  */
 const RAW_PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "홈", Icon: Home },
-  { kind: "link", href: "/places", label: "장소별", Icon: FileText },
   {
     kind: "group",
     label: "분류별",
     Icon: Beaker,
     items: [
-      { href: "/products", label: "세정 제품", Icon: Beaker },
+      { href: "/products", label: "청소 제품", Icon: Beaker },
       { href: "/materials", label: "재질별", Icon: Layers },
       { href: "/pollution", label: "오염별", Icon: Droplets },
-      { href: "/cleaning", label: "레시피", Icon: FlaskConical },
-      { href: "/cases", label: "사례", Icon: ClipboardList },
+      { href: "/places", label: "장소별", Icon: FileText },
     ],
   },
+  { kind: "link", href: "/questions", label: "청소 질문", Icon: MessageCircleQuestion },
   {
     kind: "mega",
     label: "청소업체 전용관",
@@ -220,13 +216,7 @@ const RAW_PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
       {
         title: "주요 기능",
         items: [
-          {
-            href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX),
-            label: "실시간 모집",
-            Icon: Radio,
-          },
           { href: "/estimate", label: "견적 계산기", Icon: Calculator },
-          { href: "/inquiry/regular", label: "정기청소 문의", Icon: Briefcase },
         ],
       },
       {

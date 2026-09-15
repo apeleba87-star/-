@@ -31,6 +31,8 @@ import type {
 } from "@/lib/knowledge-hub/cleaning-knowledge/types";
 import { parseProductPh, phColor, type PhInfo } from "@/lib/knowledge-hub/ph-scale";
 import type { ProductPurchaseLink } from "@/lib/knowledge-hub/product-sales";
+import ProductQuestionsBlock from "@/components/questions/ProductQuestionsBlock";
+import type { QuestionListItem } from "@/lib/questions/types";
 
 export type ProductExploreLink = {
   href: string;
@@ -53,6 +55,7 @@ type Props = {
   relatedProducts?: ProductExploreLink[];
   relatedPollutions?: ProductExploreLink[];
   relatedBlogs?: ProductExploreLink[];
+  relatedQuestions?: QuestionListItem[];
 };
 
 const PRIMARY = "#00b894";
@@ -255,6 +258,7 @@ export default function ProductDetailView({
   relatedProducts = [],
   relatedPollutions = [],
   relatedBlogs = [],
+  relatedQuestions = [],
 }: Props) {
   const [activeSection, setActiveSection] = useState(0);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -315,6 +319,7 @@ export default function ProductDetailView({
     { id: "situations", label: "상황별 사용법" },
     { id: "cautions", label: "주의·금지" },
     { id: "info", label: "제품 정보" },
+    { id: "questions", label: "질문" },
     { id: "explore", label: "탐색하기" },
   ];
 
@@ -1018,8 +1023,16 @@ export default function ProductDetailView({
           )}
         </section>
 
+        <div ref={setSectionRef(4)}>
+          <ProductQuestionsBlock
+            productId={product.id}
+            productName={product.name}
+            questions={relatedQuestions}
+          />
+        </div>
+
         {/* 이어서 탐색하기 */}
-        <section ref={setSectionRef(4)} id="explore" style={{ marginBottom: 22 }}>
+        <section ref={setSectionRef(5)} id="explore" style={{ marginBottom: 22 }}>
           <SectionHead title="이어서 탐색하기" color="#e67e22" />
 
           {relatedProducts.length ? (

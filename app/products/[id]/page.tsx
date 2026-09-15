@@ -18,6 +18,7 @@ import {
   resolveProductPurchase,
 } from "@/lib/knowledge-hub/product-sales";
 import { getProductBeforeAfter } from "@/lib/knowledge-hub/media/product-before-after";
+import { listQuestionsForProduct } from "@/lib/questions/queries";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -186,6 +187,13 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
     relatedBlogs = [];
   }
 
+  let relatedQuestions: Awaited<ReturnType<typeof listQuestionsForProduct>> = [];
+  try {
+    relatedQuestions = await listQuestionsForProduct(id);
+  } catch {
+    relatedQuestions = [];
+  }
+
   return (
     <div className="px-0 py-0 sm:py-0">
       <ProductDetailView
@@ -196,6 +204,7 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
         relatedProducts={relatedProducts}
         relatedPollutions={relatedPollutions}
         relatedBlogs={relatedBlogs}
+        relatedQuestions={relatedQuestions}
       />
     </div>
   );

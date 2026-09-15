@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import FooterAdminLinks from "@/components/FooterAdminLinks";
-import { magamLiveHref, MAGAM_LIVE_FROM_CLEANIDEX } from "@/lib/magam/live-entry";
 import { KNOWLEDGE_NAV, PRACTICE_NAV } from "@/lib/edu-blog/constants";
 import { siteTagline } from "@/lib/seo";
 import { SITE_OPERATOR, operatorSupportEmail } from "@/lib/site/operator";
@@ -12,19 +11,19 @@ const FOOTER_LINK_CLASS =
   "text-slate-400 hover:text-teal-300 transition-colors touch-manipulation py-1 text-xs sm:min-h-[44px] sm:py-2 sm:text-sm";
 
 const GUIDE_LINKS: FooterLink[] = [
-  { href: "/places", label: "장소별 가이드" },
-  { href: "/products", label: "세정 제품" },
+  { href: "/products", label: "청소 제품" },
+  { href: "/materials", label: "재질별" },
   { href: "/pollution", label: "오염별" },
+  { href: "/places", label: "장소별" },
+  { href: "/questions", label: "청소 질문" },
   { href: KNOWLEDGE_NAV.href, label: KNOWLEDGE_NAV.label },
   { href: PRACTICE_NAV.href, label: PRACTICE_NAV.label },
-  { href: "/inquiry/regular", label: "정기청소 문의" },
   { href: "/inquiry/move-in", label: "입주청소 문의" },
 ];
 
 const CLEANING_BUSINESS_LINKS: FooterLink[] = [
   { href: "/tenders", label: "입찰 공고" },
   { href: "/estimate", label: "견적 계산기" },
-  { href: magamLiveHref(MAGAM_LIVE_FROM_CLEANIDEX), label: "실시간 모집" },
 ];
 
 const LEGAL_LINKS: FooterLink[] = [
@@ -90,7 +89,7 @@ export default function Footer() {
           </details>
 
           <div className="hidden flex-col gap-4 sm:flex sm:gap-5">
-            <FooterSection title="장소별·분류" links={GUIDE_LINKS} />
+            <FooterSection title="분류별" links={GUIDE_LINKS} />
             <FooterSection title="청소업체 전용관" links={CLEANING_BUSINESS_LINKS} />
             <FooterAdminLinks />
           </div>
