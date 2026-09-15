@@ -63,7 +63,7 @@ export default function NotificationsClient({ initialItems }: { initialItems: No
           <div>
             <h1 className="text-2xl font-bold text-slate-900">알림</h1>
             <p className="mt-1 text-sm text-slate-600">
-              입찰·구인·구독 관련 알림입니다. &quot;내 관심&quot;을 저장한 경우에만 입찰 알림이 생성됩니다.
+              입찰·구인·구독·청소 질문 답변 알림입니다.
             </p>
           </div>
           <div className="flex gap-2">

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getContaminantById, getMaterialById } from "@/lib/knowledge-hub/cleaning-knowledge/get-knowledge";
 import { getMergedProductById } from "@/lib/knowledge-hub/product-catalog";
 import {
@@ -123,7 +124,7 @@ export async function createQuestionAction(input: {
     return { ok: false, error: "외부 링크는 최대 3개까지 넣을 수 있습니다." };
   }
 
-  const limit = await assertCanPostQuestion(auth.user.id);
+  const limit = await assertCanPostQuestion(auth.user.id, auth.supabase);
   if (!limit.ok) return limit;
 
   const draftEntities: EntityInput[] = [...(input.entities ?? [])];
@@ -191,13 +192,20 @@ export async function createQuestionAction(input: {
     }
   }
 
-  revalidatePath("/questions");
   revalidatePath(questionPath(questionId, slug));
-  revalidatePath("/admin/questions");
-  revalidatePath("/sitemap.xml");
-  for (const e of entities.entities) {
-    if (e.type === "product") revalidatePath(`/products/${e.id}`);
-  }
+  revalidatePath("/questions");
+  // 목록 외 무효화는 응답 이후 (체감 지연 감소)
+  const productIds = entities.entities
+    .filter((e) => e.type === "product")
+    .map((e) => e.id);
+  after(() => {
+    revalidatePath("/admin/questions");
+    revalidatePath("/sitemap.xml");
+    revalidatePath("/mypage");
+    for (const id of productIds) {
+      revalidatePath(`/products/${id}`);
+    }
+  });
 
   return { ok: true, questionId, slug };
 }
@@ -218,7 +226,7 @@ export async function createAnswerAction(input: {
     return { ok: false, error: "외부 링크는 최대 3개까지 넣을 수 있습니다." };
   }
 
-  const limit = await assertCanPostAnswer(auth.user.id);
+  const limit = await assertCanPostAnswer(auth.user.id, auth.supabase);
   if (!limit.ok) return limit;
 
   const { data: profile } = await auth.supabase
@@ -237,7 +245,7 @@ export async function createAnswerAction(input: {
 
   const { data: q } = await auth.supabase
     .from("questions")
-    .select("id, slug, status, deleted_at")
+    .select("id, slug, title, status, deleted_at, author_id")
     .eq("id", questionId)
     .maybeSingle();
 
@@ -265,6 +273,22 @@ export async function createAnswerAction(input: {
   const path = questionPath(questionId, String(q.slug));
   revalidatePath(path);
   revalidatePath("/questions");
+  after(() => {
+    revalidatePath("/mypage");
+    revalidatePath("/notifications");
+  });
+
+  const { notifyQuestionAnswered } = await import("@/lib/questions/notify");
+  // 알림은 응답과 무관 — 기다리지 않음
+  void notifyQuestionAnswered({
+    questionAuthorId: String(q.author_id),
+    answerAuthorId: auth.user.id,
+    answerId: String(row.id),
+    questionId,
+    questionSlug: String(q.slug),
+    questionTitle: String(q.title ?? ""),
+    isOfficial,
+  });
 
   return { ok: true, answerId: String(row.id) };
 }

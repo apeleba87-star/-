@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "알림",
-  description: "입찰·구인·구독 알림을 확인합니다.",
+  description: "입찰·구인·구독·청소 질문 답변 알림을 확인합니다.",
 };
 
 export default async function NotificationsPage() {

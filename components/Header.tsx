@@ -12,6 +12,7 @@ import {
   FileText,
   Shield,
   ChevronDown,
+  UserRound,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { withAdminNavLabel } from "@/lib/admin-nav-label";
@@ -206,7 +207,8 @@ export default function Header() {
   const [showAdminNav, setShowAdminNav] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [email, setEmail] = useState<string | null>(null);
+  /** 로그인 시 헤더·메뉴에 표시할 별명. null이면 비로그인 */
+  const [accountLabel, setAccountLabel] = useState<string | null>(null);
 
   const visiblePrimaryNavItems = primaryNavForUser(primaryNavItems, isAdmin);
   const visibleAdminNavItems = adminNavForUser(adminNavItems);
@@ -236,23 +238,23 @@ export default function Header() {
     const supabase = createClient();
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const user = session?.user ?? null;
-      setEmail(user?.email ?? null);
       setIsLoggedIn(!!user);
       if (!user) {
+        setAccountLabel(null);
         setShowAdminNav(false);
         setIsAdmin(false);
         return;
       }
-      await supabase
+      const { data } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, display_name")
         .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          const admin = data?.role === "admin";
-          setIsAdmin(admin);
-          setShowAdminNav(admin || data?.role === "editor");
-        });
+        .single();
+      const admin = data?.role === "admin";
+      setIsAdmin(admin);
+      setShowAdminNav(admin || data?.role === "editor");
+      const name = (data?.display_name as string | null)?.trim();
+      setAccountLabel(name || "마이페이지");
     });
   }, []);
 
@@ -265,16 +267,18 @@ export default function Header() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setEmail(session?.user?.email ?? null);
       setIsLoggedIn(!!session?.user);
-      if (event === "SIGNED_OUT") {
+      if (event === "SIGNED_OUT" || !session?.user) {
+        setAccountLabel(null);
         setShowAdminNav(false);
         setIsAdmin(false);
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        void fetchProfileRole();
       }
       router.refresh();
     });
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, [router, fetchProfileRole]);
 
   useEffect(() => {
     const onFocus = () => fetchProfileRole();
@@ -537,9 +541,9 @@ export default function Header() {
             <span className="hidden min-h-[44px] shrink-0 items-center md:flex">
               <motion.span className="contents" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <HeaderAuth
-                  email={email}
+                  label={accountLabel}
                   onSignedOut={() => {
-                    setEmail(null);
+                    setAccountLabel(null);
                     setIsLoggedIn(false);
                     setShowAdminNav(false);
                     setIsAdmin(false);
@@ -547,6 +551,16 @@ export default function Header() {
                 />
               </motion.span>
             </span>
+            {isLoggedIn ? (
+              <Link
+                href="/mypage"
+                className={`${iconBtnClass} md:hidden`}
+                aria-label="마이페이지"
+                title="마이페이지"
+              >
+                <UserRound className="h-5 w-5" />
+              </Link>
+            ) : null}
             <motion.button
               type="button"
               className={`${iconBtnClass} md:hidden`}
@@ -655,28 +669,62 @@ export default function Header() {
                     </Link>
                   );
                 })}
-              </nav>
-              {isLoggedIn ? (
-                <div className="px-4 pb-2 md:hidden">
-                  <Link
-                    href="/notifications"
-                    className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <Bell className="h-5 w-5 shrink-0 text-slate-500" />
-                    <span className="font-medium">알림</span>
-                  </Link>
+
+                <div className="mt-4 border-t border-slate-200/80 pt-3">
+                  <div className="flex min-h-[40px] items-center gap-2 px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <UserRound className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                    계정
+                  </div>
+                  {isLoggedIn ? (
+                    <>
+                      <Link
+                        href="/mypage"
+                        prefetch={true}
+                        className={`flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 touch-manipulation ${
+                          pathname.startsWith("/mypage")
+                            ? "bg-gradient-to-r from-teal-500/90 to-emerald-600/90 text-white"
+                            : "text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
+                        }`}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <UserRound
+                          className={`h-5 w-5 shrink-0 ${
+                            pathname.startsWith("/mypage") ? "text-white" : "text-slate-500"
+                          }`}
+                        />
+                        <span className="font-medium">마이페이지</span>
+                      </Link>
+                      <Link
+                        href="/notifications"
+                        className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <Bell className="h-5 w-5 shrink-0 text-slate-500" />
+                        <span className="font-medium">알림</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <Link
+                      href="/login"
+                      className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-slate-700 hover:bg-slate-100/80 active:bg-slate-200/80"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <UserRound className="h-5 w-5 shrink-0 text-slate-500" />
+                      <span className="font-medium">로그인</span>
+                    </Link>
+                  )}
                 </div>
-              ) : null}
+              </nav>
               <div className="border-t border-slate-200/80 p-4">
-                <div className="flex min-h-[44px] items-center md:hidden">
+                <div className="flex min-h-[44px] items-center">
                   <HeaderAuth
-                    email={email}
+                    label={accountLabel}
                     onSignedOut={() => {
-                      setEmail(null);
+                      setAccountLabel(null);
                       setIsLoggedIn(false);
                       setShowAdminNav(false);
                       setIsAdmin(false);
+                      setMenuOpen(false);
                     }}
                   />
                 </div>

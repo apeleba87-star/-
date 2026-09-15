@@ -443,3 +443,153 @@ export async function listAdminRecentQuestions(limit = 50): Promise<
     ),
   }));
 }
+
+export type MyQuestionItem = {
+  id: number;
+  title: string;
+  slug: string;
+  answer_count: number;
+  view_count: number;
+  created_at: string;
+};
+
+export type MyAnswerItem = {
+  id: string;
+  body: string;
+  is_official: boolean;
+  created_at: string;
+  question_id: number;
+  question_title: string;
+  question_slug: string;
+};
+
+/** 마이페이지 — 내가 쓴 질문 */
+export async function listMyQuestions(
+  userId: string,
+  limit = 30,
+): Promise<MyQuestionItem[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("questions")
+    .select("id, title, slug, answer_count, view_count, created_at")
+    .eq("author_id", userId)
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[questions] listMyQuestions", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((r) => ({
+    id: Number(r.id),
+    title: String(r.title),
+    slug: String(r.slug),
+    answer_count: Number(r.answer_count ?? 0),
+    view_count: Number((r as { view_count?: number }).view_count ?? 0),
+    created_at: String(r.created_at),
+  }));
+}
+
+/** 마이페이지 — 내가 쓴 답변 */
+export async function listMyAnswers(
+  userId: string,
+  limit = 30,
+): Promise<MyAnswerItem[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("question_answers")
+    .select(
+      "id, body, is_official, created_at, question_id, questions!inner(id, title, slug, status, deleted_at)",
+    )
+    .eq("author_id", userId)
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    // join 실패 시 단순 조회 후 질문 보강
+    console.error("[questions] listMyAnswers", error.message);
+    const fallback = await supabase
+      .from("question_answers")
+      .select("id, body, is_official, created_at, question_id")
+      .eq("author_id", userId)
+      .eq("status", "published")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (fallback.error || !fallback.data?.length) return [];
+
+    const qids = [...new Set(fallback.data.map((a) => Number(a.question_id)))];
+    const { data: qs } = await supabase
+      .from("questions")
+      .select("id, title, slug")
+      .in("id", qids)
+      .eq("status", "published")
+      .is("deleted_at", null);
+    const qmap = new Map(
+      (qs ?? []).map((q) => [
+        Number(q.id),
+        { title: String(q.title), slug: String(q.slug) },
+      ]),
+    );
+
+    return fallback.data
+      .map((a) => {
+        const q = qmap.get(Number(a.question_id));
+        if (!q) return null;
+        return {
+          id: String(a.id),
+          body: String(a.body),
+          is_official: Boolean(a.is_official),
+          created_at: String(a.created_at),
+          question_id: Number(a.question_id),
+          question_title: q.title,
+          question_slug: q.slug,
+        };
+      })
+      .filter((x): x is MyAnswerItem => x != null);
+  }
+
+  return (data ?? [])
+    .map((row) => {
+      const r = row as {
+        id: string;
+        body: string;
+        is_official: boolean;
+        created_at: string;
+        question_id: number;
+        questions:
+          | {
+              id: number;
+              title: string;
+              slug: string;
+              status: string;
+              deleted_at: string | null;
+            }
+          | {
+              id: number;
+              title: string;
+              slug: string;
+              status: string;
+              deleted_at: string | null;
+            }[]
+          | null;
+      };
+      const q = Array.isArray(r.questions) ? r.questions[0] : r.questions;
+      if (!q || q.status !== "published" || q.deleted_at) return null;
+      return {
+        id: String(r.id),
+        body: String(r.body),
+        is_official: Boolean(r.is_official),
+        created_at: String(r.created_at),
+        question_id: Number(r.question_id),
+        question_title: String(q.title),
+        question_slug: String(q.slug),
+      };
+    })
+    .filter((x): x is MyAnswerItem => x != null);
+}

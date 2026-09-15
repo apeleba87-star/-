@@ -7,6 +7,7 @@ import {
   QUESTIONS_NEW_ACCOUNT_DAYS,
 } from "@/lib/questions/constants";
 import { createServerSupabase } from "@/lib/supabase-server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function startOfKstDayIso(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -29,10 +30,24 @@ function isNewAccount(createdAt: string | null | undefined): boolean {
   return ageMs < QUESTIONS_NEW_ACCOUNT_DAYS * 24 * 60 * 60 * 1000;
 }
 
-export async function assertCanPostQuestion(userId: string): Promise<
-  { ok: true; dailyLimit: number } | { ok: false; error: string }
-> {
-  const supabase = await createServerSupabase();
+type RateLimitClient = SupabaseClient;
+
+async function resolveClient(
+  client?: RateLimitClient,
+): Promise<RateLimitClient> {
+  return client ?? (await createServerSupabase());
+}
+
+/**
+ * 일일 한도·쿨다운 유지.
+ * 프로필 1회 + 최근 글 N건 1회로 검사 (이전 3~4회 왕복 → 2회).
+ */
+export async function assertCanPostQuestion(
+  userId: string,
+  client?: RateLimitClient,
+): Promise<{ ok: true; dailyLimit: number } | { ok: false; error: string }> {
+  const supabase = await resolveClient(client);
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, questions_suspended_at, created_at")
@@ -52,36 +67,34 @@ export async function assertCanPostQuestion(userId: string): Promise<
     : QUESTIONS_DAILY_LIMIT;
 
   const since = startOfKstDayIso();
-  const { count, error } = await supabase
-    .from("questions")
-    .select("id", { count: "exact", head: true })
-    .eq("author_id", userId)
-    .eq("status", "published")
-    .is("deleted_at", null)
-    .gte("created_at", since);
-
-  if (error) {
-    return { ok: false, error: "작성 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요." };
-  }
-  if ((count ?? 0) >= dailyLimit) {
-    return {
-      ok: false,
-      error: `하루 질문 한도(${dailyLimit}개)에 도달했습니다. 내일 다시 작성해 주세요.`,
-    };
-  }
-
-  const { data: last } = await supabase
+  const { data: recent, error } = await supabase
     .from("questions")
     .select("created_at")
     .eq("author_id", userId)
     .eq("status", "published")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(dailyLimit);
 
-  if (last?.created_at) {
-    const elapsed = (Date.now() - new Date(last.created_at).getTime()) / 1000;
+  if (error) {
+    return {
+      ok: false,
+      error: "작성 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요.",
+    };
+  }
+
+  const rows = recent ?? [];
+  const todayCount = rows.filter((r) => String(r.created_at) >= since).length;
+  if (todayCount >= dailyLimit) {
+    return {
+      ok: false,
+      error: `하루 질문 한도(${dailyLimit}개)에 도달했습니다. 내일 다시 작성해 주세요.`,
+    };
+  }
+
+  const lastAt = rows[0]?.created_at ? String(rows[0].created_at) : null;
+  if (lastAt) {
+    const elapsed = (Date.now() - new Date(lastAt).getTime()) / 1000;
     if (elapsed < QUESTIONS_COOLDOWN_SEC) {
       const wait = Math.ceil(QUESTIONS_COOLDOWN_SEC - elapsed);
       return {
@@ -94,10 +107,12 @@ export async function assertCanPostQuestion(userId: string): Promise<
   return { ok: true, dailyLimit };
 }
 
-export async function assertCanPostAnswer(userId: string): Promise<
-  { ok: true } | { ok: false; error: string }
-> {
-  const supabase = await createServerSupabase();
+export async function assertCanPostAnswer(
+  userId: string,
+  client?: RateLimitClient,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await resolveClient(client);
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, questions_suspended_at")
@@ -113,36 +128,34 @@ export async function assertCanPostAnswer(userId: string): Promise<
   if (isStaff) return { ok: true };
 
   const since = startOfKstDayIso();
-  const { count, error } = await supabase
-    .from("question_answers")
-    .select("id", { count: "exact", head: true })
-    .eq("author_id", userId)
-    .eq("status", "published")
-    .is("deleted_at", null)
-    .gte("created_at", since);
-
-  if (error) {
-    return { ok: false, error: "작성 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요." };
-  }
-  if ((count ?? 0) >= ANSWERS_DAILY_LIMIT) {
-    return {
-      ok: false,
-      error: `하루 답변 한도(${ANSWERS_DAILY_LIMIT}개)에 도달했습니다.`,
-    };
-  }
-
-  const { data: last } = await supabase
+  const { data: recent, error } = await supabase
     .from("question_answers")
     .select("created_at")
     .eq("author_id", userId)
     .eq("status", "published")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(ANSWERS_DAILY_LIMIT);
 
-  if (last?.created_at) {
-    const elapsed = (Date.now() - new Date(last.created_at).getTime()) / 1000;
+  if (error) {
+    return {
+      ok: false,
+      error: "작성 한도를 확인할 수 없습니다. 잠시 후 다시 시도하세요.",
+    };
+  }
+
+  const rows = recent ?? [];
+  const todayCount = rows.filter((r) => String(r.created_at) >= since).length;
+  if (todayCount >= ANSWERS_DAILY_LIMIT) {
+    return {
+      ok: false,
+      error: `하루 답변 한도(${ANSWERS_DAILY_LIMIT}개)에 도달했습니다.`,
+    };
+  }
+
+  const lastAt = rows[0]?.created_at ? String(rows[0].created_at) : null;
+  if (lastAt) {
+    const elapsed = (Date.now() - new Date(lastAt).getTime()) / 1000;
     if (elapsed < ANSWERS_COOLDOWN_SEC) {
       const wait = Math.ceil(ANSWERS_COOLDOWN_SEC - elapsed);
       return {

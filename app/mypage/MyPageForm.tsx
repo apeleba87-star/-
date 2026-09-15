@@ -69,7 +69,7 @@ export default function MyPageForm({ initial }: Props) {
         </div>
       )}
       <p className="text-sm text-slate-600">
-        인력 구인에 지원할 때 구인자에게 보이는 정보입니다. 나이와 성별은 필수이며, 잘못 입력한 정보로 인한 피해는 본인에게 있습니다.
+        프로필에 표시·저장되는 기본 정보입니다. 생일과 성별은 정확히 입력해 주세요.
       </p>
 
       <div>
@@ -132,7 +132,7 @@ export default function MyPageForm({ initial }: Props) {
           onChange={(e) => { setSaved(false); setBio(e.target.value); }}
           rows={2}
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-800"
-          placeholder="구인자에게 보일 간단한 소개"
+          placeholder="간단한 소개"
         />
       </div>
 
@@ -147,8 +147,8 @@ export default function MyPageForm({ initial }: Props) {
         />
       </div>
 
-      <div className="rounded-lg bg-amber-50 border border-amber-200/60 p-3 text-sm text-amber-900">
-        <strong>안내:</strong> 나이·성별 등 지원 시 입력한 정보가 잘못되어 발생한 불이익이나 피해는 본인이 책임지셔야 합니다. 정확히 입력해 주세요.
+      <div className="rounded-lg bg-slate-50 border border-slate-200/80 p-3 text-sm text-slate-600">
+        일부 서비스에서 이 정보가 사용될 수 있습니다. 잘못 입력한 정보로 인한 불이익은 본인에게 있습니다.
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

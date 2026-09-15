@@ -6,10 +6,11 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase";
 
 export default function HeaderAuth({
-  email,
+  label,
   onSignedOut,
 }: {
-  email: string | null;
+  /** 헤더에 보일 이름 (별명). 없으면「마이페이지」 */
+  label: string | null;
   onSignedOut?: () => void;
 }) {
   const router = useRouter();
@@ -31,15 +32,16 @@ export default function HeaderAuth({
     }
   }
 
-  if (email) {
+  if (label !== null) {
+    const display = label.trim() || "마이페이지";
     return (
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 md:flex-nowrap">
         <Link
           href="/mypage"
-          className="max-w-[140px] truncate whitespace-nowrap hover:text-slate-700 md:max-w-[min(14rem,22vw)] lg:max-w-[min(16rem,18vw)] xl:max-w-[min(18rem,16vw)]"
-          title={email}
+          className="max-w-[140px] truncate whitespace-nowrap font-medium text-slate-700 hover:text-teal-800 md:max-w-[min(14rem,22vw)]"
+          title="마이페이지"
         >
-          {email}
+          {display}
         </Link>
         {!logoutInMypageOnly ? (
           <button
@@ -54,5 +56,9 @@ export default function HeaderAuth({
       </span>
     );
   }
-  return <Link href="/login" className="hover:text-slate-900">로그인</Link>;
+  return (
+    <Link href="/login" className="hover:text-slate-900">
+      로그인
+    </Link>
+  );
 }

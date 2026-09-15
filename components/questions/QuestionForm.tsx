@@ -33,7 +33,6 @@ export default function QuestionForm({ productId }: Props) {
       }
       if (res.questionId && res.slug) {
         router.push(questionPath(res.questionId, res.slug));
-        router.refresh();
       }
     });
   }
