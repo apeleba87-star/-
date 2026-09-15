@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { questionNewPath, questionPath } from "@/lib/questions/constants";
+import { questionPath } from "@/lib/questions/constants";
 import type { QuestionListItem } from "@/lib/questions/types";
 
 type Props = {
@@ -28,16 +28,10 @@ export default function ProductQuestionsBlock({
 
         <div className="mt-4">
           <Link
-            href={questionNewPath(productId)}
+            href="/questions"
             className="inline-flex rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-800"
           >
             질문하기
-          </Link>
-          <Link
-            href={`/questions?product=${encodeURIComponent(productId)}`}
-            className="ml-3 inline-flex text-sm font-bold text-teal-800 hover:underline"
-          >
-            관련 질문 전체
           </Link>
         </div>
 

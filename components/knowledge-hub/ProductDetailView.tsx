@@ -33,7 +33,6 @@ import type {
 import { parseProductPh, phColor, type PhInfo } from "@/lib/knowledge-hub/ph-scale";
 import type { ProductPurchaseLink } from "@/lib/knowledge-hub/product-sales";
 import ProductQuestionsBlock from "@/components/questions/ProductQuestionsBlock";
-import { questionNewPath } from "@/lib/questions/constants";
 import type { QuestionListItem } from "@/lib/questions/types";
 
 export type ProductExploreLink = {
@@ -1217,7 +1216,7 @@ export default function ProductDetailView({
             }}
           >
             <Link
-              href={questionNewPath(product.id)}
+              href="/questions"
               style={{
                 flexShrink: 0,
                 display: "inline-flex",
