@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
@@ -15,7 +14,6 @@ export type NotifRow = {
 };
 
 export default function NotificationsClient({ initialItems }: { initialItems: NotifRow[] }) {
-  const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [busy, setBusy] = useState(false);
 
@@ -30,30 +28,33 @@ export default function NotificationsClient({ initialItems }: { initialItems: No
       void fetch("/api/notifications", { method: "POST", credentials: "include" });
     } finally {
       setBusy(false);
-      router.refresh();
     }
-  }, [router]);
+  }, []);
 
-  const markRead = async (id: string) => {
-    await fetch("/api/notifications/read", {
+  const markReadOptimistic = (id: string) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, read_at: it.read_at ?? new Date().toISOString() } : it,
+      ),
+    );
+    void fetch("/api/notifications/read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ ids: [id] }),
     });
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, read_at: new Date().toISOString() } : it)));
-    router.refresh();
   };
 
-  const markAll = async () => {
-    await fetch("/api/notifications/read", {
+  const markAll = () => {
+    setItems((prev) =>
+      prev.map((it) => ({ ...it, read_at: it.read_at ?? new Date().toISOString() })),
+    );
+    void fetch("/api/notifications/read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ all: true }),
     });
-    setItems((prev) => prev.map((it) => ({ ...it, read_at: it.read_at ?? new Date().toISOString() })));
-    router.refresh();
   };
 
   return (
@@ -63,21 +64,21 @@ export default function NotificationsClient({ initialItems }: { initialItems: No
           <div>
             <h1 className="text-2xl font-bold text-slate-900">알림</h1>
             <p className="mt-1 text-sm text-slate-600">
-              구독·청소 질문 답변 등 알림입니다.
+              구독·질문 답변·답글 알림입니다.
             </p>
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               disabled={busy}
-              onClick={() => reload()}
+              onClick={() => void reload()}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
             >
               {busy ? "갱신 중…" : "새로고침"}
             </button>
             <button
               type="button"
-              onClick={() => void markAll()}
+              onClick={markAll}
               className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-teal-700"
             >
               모두 읽음
@@ -95,7 +96,7 @@ export default function NotificationsClient({ initialItems }: { initialItems: No
               <li key={it.id}>
                 <Link
                   href={it.link_path}
-                  onClick={() => void markRead(it.id)}
+                  onClick={() => markReadOptimistic(it.id)}
                   className={`block rounded-xl border px-4 py-3 transition hover:border-teal-200 hover:bg-teal-50/50 ${
                     !it.read_at ? "border-teal-200/80 bg-teal-50/30" : "border-slate-200 bg-white"
                   }`}

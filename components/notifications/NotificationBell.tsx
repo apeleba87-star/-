@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 
@@ -20,7 +19,6 @@ const iconBtnClass =
   "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-white/60 hover:text-slate-900 touch-manipulation";
 
 export default function NotificationBell({ isLoggedIn }: { isLoggedIn: boolean }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<NotifItem[]>([]);
@@ -73,19 +71,20 @@ export default function NotificationBell({ isLoggedIn }: { isLoggedIn: boolean }
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const markRead = async (ids: string[]) => {
+  const markReadOptimistic = (ids: string[]) => {
     if (ids.length === 0) return;
-    await fetch("/api/notifications/read", {
+    setUnread((u) => Math.max(0, u - ids.length));
+    setItems((prev) =>
+      prev.map((it) =>
+        ids.includes(it.id) ? { ...it, read_at: it.read_at ?? new Date().toISOString() } : it,
+      ),
+    );
+    void fetch("/api/notifications/read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ ids }),
     });
-    setUnread((u) => Math.max(0, u - ids.length));
-    setItems((prev) =>
-      prev.map((it) => (ids.includes(it.id) ? { ...it, read_at: new Date().toISOString() } : it))
-    );
-    router.refresh();
   };
 
   if (!isLoggedIn) return null;
@@ -130,16 +129,20 @@ export default function NotificationBell({ isLoggedIn }: { isLoggedIn: boolean }
               <button
                 type="button"
                 className="text-xs font-medium text-teal-600 hover:underline"
-                onClick={async () => {
-                  await fetch("/api/notifications/read", {
+                onClick={() => {
+                  setUnread(0);
+                  setItems((prev) =>
+                    prev.map((it) => ({
+                      ...it,
+                      read_at: it.read_at ?? new Date().toISOString(),
+                    })),
+                  );
+                  void fetch("/api/notifications/read", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify({ all: true }),
                   });
-                  setUnread(0);
-                  setItems((prev) => prev.map((it) => ({ ...it, read_at: it.read_at ?? new Date().toISOString() })));
-                  router.refresh();
                 }}
               >
                 모두 읽음
@@ -159,7 +162,10 @@ export default function NotificationBell({ isLoggedIn }: { isLoggedIn: boolean }
                         className={`block px-3 py-2.5 text-left transition hover:bg-slate-50 ${
                           !it.read_at ? "bg-teal-50/40" : ""
                         }`}
-                        onClick={() => void markRead([it.id])}
+                        onClick={() => {
+                          setOpen(false);
+                          markReadOptimistic([it.id]);
+                        }}
                       >
                         <p className="line-clamp-2 text-sm font-medium text-slate-900">{it.title}</p>
                         {it.body ? (

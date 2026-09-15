@@ -314,6 +314,7 @@ export async function getPublishedQuestionById(
       id: String(a.id),
       question_id: Number(a.question_id),
       author_id: String(a.author_id),
+      parent_id: (a.parent_id as string | null) ?? null,
       body: String(a.body),
       is_official: Boolean(a.is_official),
       status: a.status as QuestionAnswerRow["status"],
@@ -331,6 +332,26 @@ export async function getPublishedQuestionById(
   const author = profiles.get(question.author_id);
   const resolved_links = await resolveEntityLinks(links);
 
+  const withNames = answersRaw.map((a) => {
+    const p = profiles.get(a.author_id);
+    return {
+      ...a,
+      author_display_name: a.is_official
+        ? OFFICIAL_ANSWER_DISPLAY_NAME
+        : p?.display_name?.trim() || null,
+      author_role: p?.role ?? null,
+    };
+  });
+
+  const topLevel = withNames.filter((a) => !a.parent_id);
+  const repliesByParent = new Map<string, typeof withNames>();
+  for (const a of withNames) {
+    if (!a.parent_id) continue;
+    const list = repliesByParent.get(a.parent_id) ?? [];
+    list.push(a);
+    repliesByParent.set(a.parent_id, list);
+  }
+
   return {
     ...question,
     author_display_name: resolveAuthorLabel(
@@ -340,16 +361,10 @@ export async function getPublishedQuestionById(
     author_role: author?.role ?? null,
     links,
     resolved_links,
-    answers: answersRaw.map((a) => {
-      const p = profiles.get(a.author_id);
-      return {
-        ...a,
-        author_display_name: a.is_official
-          ? OFFICIAL_ANSWER_DISPLAY_NAME
-          : p?.display_name?.trim() || null,
-        author_role: p?.role ?? null,
-      };
-    }),
+    answers: topLevel.map((a) => ({
+      ...a,
+      replies: repliesByParent.get(a.id) ?? [],
+    })),
   };
 }
 

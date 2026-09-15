@@ -6,9 +6,8 @@ import {
   MessageCircle,
   UserRound,
 } from "lucide-react";
-import AnswerForm from "@/components/questions/AnswerForm";
+import QuestionAnswersSection from "@/components/questions/QuestionAnswersSection";
 import RecordQuestionView from "@/components/questions/RecordQuestionView";
-import { questionPath } from "@/lib/questions/constants";
 import type { QuestionDetail } from "@/lib/questions/types";
 
 function formatDateTime(iso: string): string {
@@ -136,80 +135,12 @@ export default function QuestionDetailView({
           </div>
         </article>
 
-        <section id="answers" className="mt-8 scroll-mt-24">
-          <div className="mb-4 flex items-center gap-2">
-            <MessageCircle
-              className={`h-5 w-5 ${q.answers.length > 0 ? "text-teal-700" : "text-slate-400"}`}
-              aria-hidden
-            />
-            <h2 className="text-lg font-black text-slate-900">
-              답변 {q.answers.length}개
-            </h2>
-          </div>
-
-          {q.answers.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
-              아직 답변이 없습니다. 첫 답변을 남겨 보세요.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {q.answers.map((a) => (
-                <li
-                  key={a.id}
-                  className={`rounded-2xl border px-4 py-4 sm:px-5 ${
-                    a.is_official
-                      ? "border-teal-300 bg-teal-50/70"
-                      : "border-slate-200 bg-white"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-700"
-                      aria-hidden
-                    >
-                      {authorInitial(a.author_display_name)}
-                    </span>
-                    <span className="font-semibold text-slate-800">
-                      {a.author_display_name ?? "회원"}
-                    </span>
-                    {a.is_official ? (
-                      <span className="rounded-md bg-teal-700 px-1.5 py-0.5 font-bold text-white">
-                        클린아이덱스 공식
-                      </span>
-                    ) : null}
-                    {(a.author_role === "admin" || a.author_role === "editor") &&
-                    !a.is_official ? (
-                      <span className="font-medium text-slate-600">관리자</span>
-                    ) : null}
-                    <span>{formatDateTime(a.created_at)}</span>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 sm:text-[15px]">
-                    {a.body}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="mt-6">
-            {isLoggedIn && canAnswer ? (
-              <AnswerForm questionId={q.id} canMarkOfficial={canMarkOfficial} />
-            ) : isLoggedIn && !canAnswer ? (
-              <p className="text-sm text-slate-500">답변 작성이 정지된 계정입니다.</p>
-            ) : (
-              <p className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-                답변하려면{" "}
-                <Link
-                  href={`/login?next=${encodeURIComponent(questionPath(q.id, q.slug))}`}
-                  className="font-bold text-teal-800 hover:underline"
-                >
-                  로그인
-                </Link>
-                해 주세요.
-              </p>
-            )}
-          </div>
-        </section>
+        <QuestionAnswersSection
+          question={q}
+          canAnswer={canAnswer}
+          canMarkOfficial={canMarkOfficial}
+          isLoggedIn={isLoggedIn}
+        />
 
         {q.resolved_links.length > 0 ? (
           <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">

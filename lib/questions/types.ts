@@ -21,6 +21,7 @@ export type QuestionAnswerRow = {
   id: string;
   question_id: number;
   author_id: string;
+  parent_id: string | null;
   body: string;
   is_official: boolean;
   status: QuestionStatus;
@@ -66,5 +67,9 @@ export type QuestionDetail = QuestionRow & {
   answers: (QuestionAnswerRow & {
     author_display_name: string | null;
     author_role: string | null;
+    replies: (QuestionAnswerRow & {
+      author_display_name: string | null;
+      author_role: string | null;
+    })[];
   })[];
 };

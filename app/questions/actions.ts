@@ -214,6 +214,8 @@ export async function createAnswerAction(input: {
   questionId: number;
   body: string;
   isOfficial?: boolean;
+  /** 대댓글 — 최상위 답변 id만 허용 */
+  parentAnswerId?: string;
 }): Promise<ActionResult> {
   const auth = await requireUser();
   if (!auth.ok) return auth;
@@ -236,12 +238,44 @@ export async function createAnswerAction(input: {
     .maybeSingle();
   const isStaff =
     profile?.role === "admin" || profile?.role === "editor";
-  const isOfficial = Boolean(input.isOfficial) && isStaff;
 
   const questionId = Number(input.questionId);
   if (!Number.isFinite(questionId) || questionId < 1) {
     return { ok: false, error: "잘못된 질문입니다." };
   }
+
+  const parentId = input.parentAnswerId?.trim() || null;
+  let parentAuthorId: string | null = null;
+
+  if (parentId) {
+    const { data: parent, error: parentErr } = await auth.supabase
+      .from("question_answers")
+      .select("id, question_id, author_id, parent_id, status, deleted_at")
+      .eq("id", parentId)
+      .maybeSingle();
+
+    if (parentErr?.message?.includes("parent_id")) {
+      return {
+        ok: false,
+        error: "대댓글 기능을 위해 DB 마이그레이션(210)을 적용해 주세요.",
+      };
+    }
+    if (
+      !parent ||
+      Number(parent.question_id) !== questionId ||
+      parent.status !== "published" ||
+      parent.deleted_at
+    ) {
+      return { ok: false, error: "답글을 달 수 없는 댓글입니다." };
+    }
+    if (parent.parent_id) {
+      return { ok: false, error: "답글에는 다시 답글을 달 수 없습니다." };
+    }
+    parentAuthorId = String(parent.author_id);
+  }
+
+  // 대댓글은 공식 표시 불가
+  const isOfficial = !parentId && Boolean(input.isOfficial) && isStaff;
 
   const { data: q } = await auth.supabase
     .from("questions")
@@ -253,20 +287,29 @@ export async function createAnswerAction(input: {
     return { ok: false, error: "답변할 수 없는 질문입니다." };
   }
 
+  const insertRow: Record<string, unknown> = {
+    question_id: questionId,
+    author_id: auth.user.id,
+    body,
+    is_official: isOfficial,
+    status: "published",
+  };
+  if (parentId) insertRow.parent_id = parentId;
+
   const { data: row, error } = await auth.supabase
     .from("question_answers")
-    .insert({
-      question_id: questionId,
-      author_id: auth.user.id,
-      body,
-      is_official: isOfficial,
-      status: "published",
-    })
+    .insert(insertRow)
     .select("id")
     .single();
 
   if (error || !row) {
     console.error("[questions] answer", error?.message);
+    if (error?.message?.includes("parent_id")) {
+      return {
+        ok: false,
+        error: "대댓글 기능을 위해 DB 마이그레이션(210)을 적용해 주세요.",
+      };
+    }
     return { ok: false, error: "답변을 저장하지 못했습니다." };
   }
 
@@ -278,17 +321,30 @@ export async function createAnswerAction(input: {
     revalidatePath("/notifications");
   });
 
-  const { notifyQuestionAnswered } = await import("@/lib/questions/notify");
-  // 알림은 응답과 무관 — 기다리지 않음
-  void notifyQuestionAnswered({
-    questionAuthorId: String(q.author_id),
-    answerAuthorId: auth.user.id,
-    answerId: String(row.id),
-    questionId,
-    questionSlug: String(q.slug),
-    questionTitle: String(q.title ?? ""),
-    isOfficial,
-  });
+  const { notifyQuestionAnswered, notifyAnswerReplied } = await import(
+    "@/lib/questions/notify"
+  );
+
+  if (parentId && parentAuthorId) {
+    void notifyAnswerReplied({
+      parentAuthorId,
+      replyAuthorId: auth.user.id,
+      replyId: String(row.id),
+      questionId,
+      questionSlug: String(q.slug),
+      questionTitle: String(q.title ?? ""),
+    });
+  } else {
+    void notifyQuestionAnswered({
+      questionAuthorId: String(q.author_id),
+      answerAuthorId: auth.user.id,
+      answerId: String(row.id),
+      questionId,
+      questionSlug: String(q.slug),
+      questionTitle: String(q.title ?? ""),
+      isOfficial,
+    });
+  }
 
   return { ok: true, answerId: String(row.id) };
 }
