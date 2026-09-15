@@ -5,7 +5,7 @@ import {
   deleteEduBlogCategory,
   saveEduBlogCategory,
 } from "@/app/admin/blog/category-actions";
-import { slugifyEduCategoryName, type EduBlogCategory } from "@/lib/edu-blog/categories";
+import { slugifyEduCategoryName, type EduBlogCategory } from "@/lib/edu-blog/category-shared";
 import { eduBlogCategoryPath } from "@/lib/edu-blog/constants";
 
 type Props = {

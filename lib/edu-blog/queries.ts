@@ -11,6 +11,7 @@ export type EduBlogPost = {
   body: string | null;
   excerpt: string | null;
   edu_intent: EduBlogIntent | string | null;
+  edu_category_id: string | null;
   next_slug: string | null;
   related_slugs: string[];
   product_ids: string[];
@@ -19,7 +20,7 @@ export type EduBlogPost = {
 };
 
 const SELECT_COLS =
-  "id, title, slug, body, excerpt, edu_intent, next_slug, related_slugs, product_ids, published_at, updated_at";
+  "id, title, slug, body, excerpt, edu_intent, edu_category_id, next_slug, related_slugs, product_ids, published_at, updated_at";
 
 function normalizePost(row: {
   id: string;
@@ -28,6 +29,7 @@ function normalizePost(row: {
   body: string | null;
   excerpt: string | null;
   edu_intent: string | null;
+  edu_category_id?: string | null;
   next_slug: string | null;
   related_slugs: string[] | null;
   product_ids: string[] | null;
@@ -42,6 +44,7 @@ function normalizePost(row: {
     body: row.body,
     excerpt: row.excerpt,
     edu_intent: row.edu_intent,
+    edu_category_id: row.edu_category_id ?? null,
     next_slug: row.next_slug,
     related_slugs: row.related_slugs ?? [],
     product_ids: row.product_ids ?? [],
@@ -66,6 +69,36 @@ export async function listPublishedEduBlogPosts(): Promise<EduBlogPost[]> {
 
   if (error) {
     console.error("[edu-blog] listPublishedEduBlogPosts:", error.message);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((row) => normalizePost(row as Parameters<typeof normalizePost>[0]))
+    .filter((p): p is EduBlogPost => p != null);
+}
+
+/** 공개 칸(카테고리)별 목록 */
+export async function listPublishedEduBlogPostsByCategory(
+  categoryId: string,
+  opts?: { limit?: number },
+): Promise<EduBlogPost[]> {
+  const supabase = createClient();
+  const nowIso = new Date().toISOString();
+  const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 200);
+  const { data, error } = await supabase
+    .from("posts")
+    .select(SELECT_COLS)
+    .eq("source_type", EDU_BLOG_SOURCE_TYPE)
+    .eq("edu_category_id", categoryId)
+    .not("published_at", "is", null)
+    .lte("published_at", nowIso)
+    .eq("is_private", false)
+    .not("slug", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[edu-blog] listPublishedEduBlogPostsByCategory:", error.message);
     return [];
   }
 
@@ -157,6 +190,7 @@ export async function listAdminEduBlogPosts(): Promise<
       body: string | null;
       excerpt: string | null;
       edu_intent: string | null;
+      edu_category_id?: string | null;
       next_slug: string | null;
       related_slugs: string[] | null;
       product_ids: string[] | null;
@@ -171,6 +205,7 @@ export async function listAdminEduBlogPosts(): Promise<
       body: r.body,
       excerpt: r.excerpt,
       edu_intent: r.edu_intent,
+      edu_category_id: r.edu_category_id ?? null,
       next_slug: r.next_slug,
       related_slugs: r.related_slugs ?? [],
       product_ids: r.product_ids ?? [],
@@ -198,6 +233,7 @@ export async function getAdminEduBlogById(id: string) {
     body: string | null;
     excerpt: string | null;
     edu_intent: string | null;
+    edu_category_id: string | null;
     next_slug: string | null;
     related_slugs: string[] | null;
     product_ids: string[] | null;

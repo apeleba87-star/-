@@ -31,6 +31,7 @@ function toEduShape(post: PracticeBlogPost): EduBlogPost {
     body: post.body,
     excerpt: post.excerpt,
     edu_intent: null,
+    edu_category_id: null,
     next_slug: post.next_slug,
     related_slugs: post.related_slugs,
     product_ids: post.product_ids,
