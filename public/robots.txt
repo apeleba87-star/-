@@ -5,6 +5,7 @@ Disallow: /api/
 Disallow: /login
 Disallow: /signup
 Disallow: /mypage/
+Disallow: /ai-blog
 Disallow: /jobs/manage
 Disallow: /onboarding
 
