@@ -87,6 +87,11 @@ const nextConfig: NextConfig = {
         hostname: "search.pstatic.net",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "shop-phinf.pstatic.net",
+        pathname: "/**",
+      },
     ],
   },
 };
