@@ -13,7 +13,7 @@ export function PhotoSourceBar({ state }: { state: LocalPhotosState }) {
         {supported ? (
           <>
             <button type="button" className={btnPrimary} disabled={loading} onClick={() => void addFolder()}>
-              {photos.length ? "+ 사진 폴더 추가" : "사진 폴더 선택"}
+              {photos.length ? "+ 사진 폴더 추가" : "사진 폴더 열기"}
             </button>
             {pendingRemembered.length ? (
               <button type="button" className={btnSecondary} disabled={loading} onClick={() => void reopen()}>
@@ -23,7 +23,7 @@ export function PhotoSourceBar({ state }: { state: LocalPhotosState }) {
           </>
         ) : null}
         <label className={`${supported ? btnSecondary : btnPrimary} cursor-pointer`}>
-          + 사진 파일 추가
+          사진 파일만 고르기
           <input
             type="file"
             accept="image/*,.heic,.heif,.jfif"
@@ -84,8 +84,9 @@ export function PhotoThumb({
   className?: string;
 }) {
   if (photo && isPreviewable(photo.name)) {
+    const fit = /\bobject-(contain|cover|fill|none|scale-down)\b/.test(className) ? "" : "object-cover";
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={photo.url} alt={photo.name} className={`object-cover ${className}`} draggable={false} />;
+    return <img src={photo.url} alt={photo.name} className={`${fit} ${className}`.trim()} draggable={false} />;
   }
   return (
     <div

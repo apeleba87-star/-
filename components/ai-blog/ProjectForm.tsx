@@ -42,10 +42,13 @@ export default function ProjectForm({
   project,
   attributes,
   serviceOptions,
+  onSavedNext,
 }: {
   project: Project | null;
   attributes: ProjectAttribute[];
   serviceOptions: string[];
+  /** 기존 작업 저장 후 다음 단계로 */
+  onSavedNext?: () => void;
 }) {
   const router = useRouter();
   const services = [...new Set([...serviceOptions, ...SERVICE_TYPES])];
@@ -77,6 +80,7 @@ export default function ProjectForm({
         await apiJson(`/api/ai-blog/projects/${project.id}`, { method: "PATCH", body: JSON.stringify(body) });
         setSaved(true);
         router.refresh();
+        onSavedNext?.();
       } else {
         const created = await apiJson<Project>("/api/ai-blog/projects", { method: "POST", body: JSON.stringify(body) });
         router.push(`/ai-blog/projects/${created.id}?tab=photos`);
@@ -125,7 +129,7 @@ export default function ProjectForm({
         <Field label="작업 인원">
           <input {...text("worker_count")} inputMode="numeric" placeholder="3" />
         </Field>
-        <Field label="1인 작업시간(시간)">
+        <Field label="작업시간" hint="시간 단위. 인시 계산은 인원과 함께 나중에 합니다.">
           <input {...text("work_hours")} inputMode="decimal" placeholder="1.5" />
         </Field>
         <Field label="작업일">
@@ -151,8 +155,8 @@ export default function ProjectForm({
       {error ? <Notice tone="error">{error}</Notice> : null}
       {saved ? <Notice tone="success">저장했습니다.</Notice> : null}
       <div className="flex justify-end">
-        <button type="button" className={btnPrimary} disabled={saving || !f.service_type} onClick={save}>
-          {saving ? "저장 중…" : project ? "저장" : "저장하고 사진 정렬"}
+        <button type="button" className={`${btnPrimary} px-5 py-2.5 text-base`} disabled={saving || !f.service_type} onClick={save}>
+          {saving ? "저장 중…" : project ? "저장하고 사진으로 →" : "저장하고 사진으로 →"}
         </button>
       </div>
     </div>

@@ -7,9 +7,9 @@ import { apiJson } from "@/lib/ai-blog/messages";
 import { SERVICE_TYPES, type BusinessProfile, type WritingStyle } from "@/lib/ai-blog/types";
 
 const STYLES: { id: WritingStyle; label: string; desc: string }[] = [
-  { id: "story", label: "친근한 후기형", desc: "기본 모드 1" },
-  { id: "expert", label: "전문가 설명형", desc: "기본 모드 2" },
-  { id: "checkpoint", label: "짧고 간결하게", desc: "기본 모드 3" },
+  { id: "story", label: "후기처럼", desc: "이웃에게 말하는 듯한 글" },
+  { id: "expert", label: "전문가처럼", desc: "노하우가 돋보이는 글" },
+  { id: "checkpoint", label: "짧게", desc: "핵심만 짧게" },
 ];
 
 type Form = Omit<BusinessProfile, "company_id" | "career_years"> & { career_years: string };
@@ -111,10 +111,15 @@ export default function ProfileForm({ initial }: { initial: BusinessProfile | nu
 
       <section className="grid gap-4 sm:grid-cols-2">
         <Field label="업체 소개">
-          <textarea {...text("intro")} rows={3} placeholder="어떤 업체인지 두세 줄로" />
+          <textarea {...text("intro")} rows={8} className={`${input} min-h-[160px]`} placeholder="어떤 업체인지 두세 줄로" />
         </Field>
         <Field label="업체 강점">
-          <textarea {...text("strengths")} rows={3} placeholder="예: 공사 후 분진 제거, 3인 1팀 반나절 마무리" />
+          <textarea
+            {...text("strengths")}
+            rows={8}
+            className={`${input} min-h-[160px]`}
+            placeholder="예: 공사 후 분진 제거, 3인 1팀 반나절 마무리"
+          />
         </Field>
         <Field label="주요 고객층">
           <input {...text("target_customers")} placeholder="예: 신혼부부, 아이 있는 집" />

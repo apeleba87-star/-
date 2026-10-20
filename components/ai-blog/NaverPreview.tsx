@@ -4,7 +4,7 @@ import { PhotoThumb } from "@/components/ai-blog/PhotoSource";
 import { groupBlocks, type PhotoLayout, type ResolvedImage } from "@/components/ai-blog/content-helpers";
 import type { ContentBlock, ImageBlock } from "@/lib/ai-blog/types";
 
-/** 네이버 블로그 본문과 비슷한 모양의 미리보기. 실제 네이버 화면과 글꼴·여백은 조금 다를 수 있다. */
+/** 네이버 블로그 본문과 비슷한 모양의 미리보기. 꾸밈은 사용자가 네이버에서 따라 하면 된다. */
 export default function NaverPreview({
   title,
   blocks,
@@ -12,6 +12,7 @@ export default function NaverPreview({
   businessName,
   layout,
   onLayout,
+  showFollowHints = false,
 }: {
   title: string;
   blocks: ContentBlock[];
@@ -19,6 +20,8 @@ export default function NaverPreview({
   businessName: string;
   layout: PhotoLayout;
   onLayout: (l: PhotoLayout) => void;
+  /** 옮기기 화면: 네이버에서 어떻게 꾸밀지 힌트 표시 */
+  showFollowHints?: boolean;
 }) {
   const photo = (b: ImageBlock, className: string) => {
     const img = images.get(b.id);
@@ -42,6 +45,11 @@ export default function NaverPreview({
           </button>
         ))}
       </div>
+      {showFollowHints ? (
+        <p className="border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-600">
+          글자는 <b>텍스트만</b> 붙여 넣습니다. 꾸미고 싶으면 이 미리보기를 보고 네이버에서 따라 하세요. 안 꾸며도 됩니다.
+        </p>
+      ) : null}
       <article className="px-6 py-6">
         <h1 className="text-[22px] font-bold leading-snug text-[#222]">{title || "제목을 입력해 주세요"}</h1>
         <p className="mt-2 border-b border-slate-100 pb-4 text-xs text-slate-400">{businessName}</p>

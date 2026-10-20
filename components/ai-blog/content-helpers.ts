@@ -14,7 +14,7 @@ export function newBlockId(): string {
   return `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** 이미지 블록 → 미디어·로컬 사진·내보내기 파일명 (블로그 등장 순서대로 번호) */
+/** 이미지 블록 → 미디어·로컬 사진·내보내기 파일명 (전후 세트 번호 공유: 01 전 / 01 후) */
 export function resolveImages(
   blocks: ContentBlock[],
   media: ProjectMedia[],
@@ -23,6 +23,8 @@ export function resolveImages(
 ): Map<string, ResolvedImage> {
   const mediaById = new Map(media.map((m) => [m.id, m]));
   const pairById = new Map(pairs.map((p) => [p.id, p]));
+  const pairNoById = new Map<string, number>();
+  let nextPairNo = 0;
   const out = new Map<string, ResolvedImage>();
   let order = 0;
   for (const b of blocks) {
@@ -30,16 +32,63 @@ export function resolveImages(
     order += 1;
     const m = b.media_id ? (mediaById.get(b.media_id) ?? null) : null;
     const pair = b.pair_id ? pairById.get(b.pair_id) : undefined;
+    let pairNo: number;
+    if (b.pair_id) {
+      const existing = pairNoById.get(b.pair_id);
+      if (existing != null) pairNo = existing;
+      else {
+        nextPairNo += 1;
+        pairNo = nextPairNo;
+        pairNoById.set(b.pair_id, pairNo);
+      }
+    } else {
+      nextPairNo += 1;
+      pairNo = nextPairNo;
+    }
     out.set(b.id, {
       block: b,
       media: m,
       photo: m ? matchPhoto(m, photos) : null,
       label: pair?.label ?? "",
       order,
-      fileName: exportFileName(order, b.role, m?.local_name ?? "photo.jpg"),
+      fileName: exportFileName(pairNo, b.role, m?.local_name ?? "photo.jpg"),
     });
   }
   return out;
+}
+
+/** 전후 세트 기준 업로드·미사용 목록 (폴더 정리용) */
+export function buildFieldExport(
+  pairs: MediaPair[],
+  media: ProjectMedia[],
+  photos: LocalPhoto[],
+): { upload: { fileName: string; photo: LocalPhoto }[]; unused: LocalPhoto[]; usedKeys: Set<string> } {
+  const mediaById = new Map(media.map((m) => [m.id, m]));
+  const usedKeys = new Set<string>();
+  const upload: { fileName: string; photo: LocalPhoto }[] = [];
+  let pairNo = 0;
+  for (const p of pairs) {
+    const slots: { role: "BEFORE" | "AFTER"; id: string | null }[] = [
+      { role: "BEFORE", id: p.before_media_id },
+      { role: "AFTER", id: p.after_media_id },
+    ];
+    const resolved = slots.flatMap(({ role, id }) => {
+      if (!id) return [];
+      const m = mediaById.get(id);
+      if (!m) return [];
+      const photo = matchPhoto(m, photos);
+      if (!photo) return [];
+      return [{ role, photo, name: m.local_name }];
+    });
+    if (!resolved.length) continue;
+    pairNo += 1;
+    for (const r of resolved) {
+      usedKeys.add(r.photo.key);
+      upload.push({ fileName: exportFileName(pairNo, r.role, r.name), photo: r.photo });
+    }
+  }
+  const unused = photos.filter((p) => !usedKeys.has(p.key));
+  return { upload, unused, usedKeys };
 }
 
 export type PhotoLayout = "side" | "stack";

@@ -216,9 +216,20 @@ function extOf(name: string): string {
   return m ? m[0].toLowerCase().replace(".jpeg", ".jpg") : ".jpg";
 }
 
-export function exportFileName(order: number, role: "BEFORE" | "AFTER", originalName: string): string {
-  return `${String(order).padStart(2, "0")}_${role === "BEFORE" ? "before" : "after"}${extOf(originalName)}`;
+function stemOf(name: string): string {
+  const stem = name.replace(/\.[^.]+$/, "") || "photo";
+  return stem.replace(/[\\/:*?"<>|]/g, "_").trim() || "photo";
 }
+
+/** 전후 세트 번호 + 원본명 유지. 예: 01.20261011 전.jpg / 01.20261012 후.jpg */
+export function exportFileName(pairNo: number, role: "BEFORE" | "AFTER", originalName: string): string {
+  const label = role === "BEFORE" ? "전" : "후";
+  return `${String(pairNo).padStart(2, "0")}.${stemOf(originalName)} ${label}${extOf(originalName)}`;
+}
+
+/** 블로그업로드 폴더에 우리가 쓴 파일인지 (새·구 형식 모두) */
+const BLOG_UPLOAD_NAME = /^\d{2}\..+ (전|후)\.[a-z0-9]+$/i;
+const LEGACY_STAGED_NAME = /^\d{2}_(before|after)\.[a-z0-9]+$/i;
 
 async function exportBytes(photo: LocalPhoto, removeGps: boolean): Promise<Blob> {
   if (!removeGps || !/\.jpe?g$/i.test(photo.name)) return photo.file;
@@ -254,12 +265,28 @@ export async function exportToFolder(
 }
 
 /*
- * 옮기기 폴더: 사용자가 탐색기로 열어 두는 폴더 하나.
- * 사진을 누를 때마다 우리가 만든 파일(01_before.jpg 형식)만 지우고 그 사진 원본만 넣는다.
- * 탐색기에서 끌어 넣으면 크롬이 진짜 파일로 넘겨주므로 네이버에 원본이 그대로 올라간다.
+ * 옮기기 폴더(레거시): 한 장씩 넣는 스테이징.
+ * 현장 폴더(권장): 블로그업로드 / 원본_미사용 으로 한 번에 정리.
  */
 const STAGE_KEY = "__stage__";
-const STAGED_NAME = /^\d{2}_(before|after)\.[a-z0-9]+$/i;
+const FIELD_PREFIX = "field:";
+const UPLOAD_DIR = "블로그업로드";
+const UNUSED_DIR = "원본_미사용";
+const STAGED_NAME = LEGACY_STAGED_NAME;
+
+/** 탐색기용 현장 폴더명. 예: 자양동 34평 입주청소 */
+export function siteFolderName(p: {
+  region_dong?: string | null;
+  region_sigungu?: string | null;
+  area_pyeong?: number | null;
+  service_type?: string | null;
+}): string {
+  const place = (p.region_dong || p.region_sigungu || "현장").trim();
+  const size = p.area_pyeong != null && Number.isFinite(p.area_pyeong) ? `${p.area_pyeong}평` : "";
+  const service = (p.service_type || "청소").trim();
+  const raw = [place, size, service].filter(Boolean).join(" ");
+  return raw.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "현장";
+}
 
 async function stageHandle(): Promise<DirHandle | null> {
   try {
@@ -327,4 +354,108 @@ export async function downloadOne(item: ExportItem, removeGps: boolean) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+async function fieldHandle(projectId: string): Promise<DirHandle | null> {
+  try {
+    return (await idb<DirHandle | undefined>("readonly", (s) => s.get(FIELD_PREFIX + projectId))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fieldFolderInfo(projectId: string): Promise<{ name: string; granted: boolean } | null> {
+  const h = await fieldHandle(projectId);
+  if (!h) return null;
+  const state = await h.queryPermission?.({ mode: "readwrite" }).catch(() => "prompt" as PermissionState);
+  return { name: h.name, granted: state === "granted" };
+}
+
+/** 현장 사진을 모을 상위 폴더 선택 (안에 블로그업로드 / 원본_미사용 생성) */
+export async function pickFieldFolder(projectId: string): Promise<string | null> {
+  const picker = (window as PickerWindow).showDirectoryPicker;
+  if (!picker) return null;
+  try {
+    const h = await picker({ mode: "readwrite", id: "ai-blog-field" });
+    await idb("readwrite", (s) => s.put(h, FIELD_PREFIX + projectId));
+    return h.name;
+  } catch (e) {
+    if ((e as DOMException)?.name === "AbortError") return null;
+    throw e;
+  }
+}
+
+async function ensureWritable(dir: DirHandle): Promise<boolean> {
+  let state = (await dir.queryPermission?.({ mode: "readwrite" })) ?? "prompt";
+  if (state !== "granted") state = (await dir.requestPermission?.({ mode: "readwrite" })) ?? "denied";
+  return state === "granted";
+}
+
+async function clearManagedFiles(dir: DirHandle, pattern: RegExp) {
+  const stale: string[] = [];
+  for await (const entry of dir.values()) {
+    if (entry.kind === "file" && pattern.test(entry.name)) stale.push(entry.name);
+  }
+  await Promise.all(stale.map((n) => dir.removeEntry(n).catch(() => undefined)));
+}
+
+async function writeItems(dir: DirHandle, items: ExportItem[], removeGps: boolean) {
+  for (const item of items) {
+    const handle = await dir.getFileHandle(item.fileName, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(await exportBytes(item.photo, removeGps));
+    await writable.close();
+  }
+}
+
+export type FieldOrganizeResult =
+  | { ok: true; folderName: string; parentName: string; uploadCount: number; unusedCount: number }
+  | { ok: false; reason: "no_folder" | "denied" | "unsupported" };
+
+/**
+ * 사용자가 고른 상위 폴더 안에
+ *   {현장명}/블로그업로드 , {현장명}/원본_미사용
+ * 을 만들고 사진을 복사한다.
+ * 예전에 루트에 남아 있던 01_before.jpg 같은 옮기기용 파일도 지운다.
+ */
+export async function organizeFieldFolder(
+  projectId: string,
+  upload: ExportItem[],
+  unused: LocalPhoto[],
+  removeGps: boolean,
+  siteName: string,
+): Promise<FieldOrganizeResult> {
+  if (!supportsFolderAccess()) return { ok: false, reason: "unsupported" };
+  const parent = await fieldHandle(projectId);
+  if (!parent) return { ok: false, reason: "no_folder" };
+  if (!(await ensureWritable(parent))) return { ok: false, reason: "denied" };
+
+  const folder = (siteName || "현장").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim() || "현장";
+  // 예전 방식: 상위 폴더 루트에 바로 두던 레거시 파일·폴더 잔여 정리
+  await clearManagedFiles(parent, LEGACY_STAGED_NAME);
+  await clearManagedFiles(parent, BLOG_UPLOAD_NAME);
+
+  const siteDir = (await parent.getDirectoryHandle(folder, { create: true })) as DirHandle;
+  const uploadDir = (await siteDir.getDirectoryHandle(UPLOAD_DIR, { create: true })) as DirHandle;
+  const unusedDir = (await siteDir.getDirectoryHandle(UNUSED_DIR, { create: true })) as DirHandle;
+
+  await clearManagedFiles(uploadDir, BLOG_UPLOAD_NAME);
+  await clearManagedFiles(uploadDir, LEGACY_STAGED_NAME);
+  await clearManagedFiles(siteDir, LEGACY_STAGED_NAME);
+  await clearManagedFiles(unusedDir, /./);
+
+  await writeItems(uploadDir, upload, removeGps);
+  await writeItems(
+    unusedDir,
+    unused.map((p) => ({ fileName: p.name, photo: p })),
+    removeGps,
+  );
+
+  return {
+    ok: true,
+    folderName: folder,
+    parentName: parent.name,
+    uploadCount: upload.length,
+    unusedCount: unused.length,
+  };
 }

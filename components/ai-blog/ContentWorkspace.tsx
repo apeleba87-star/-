@@ -15,8 +15,9 @@ import {
   resolveImages,
   type PhotoLayout,
 } from "@/components/ai-blog/content-helpers";
-import { Notice } from "@/components/ai-blog/ui";
+import { Notice, btnPrimary } from "@/components/ai-blog/ui";
 import { useLocalPhotos } from "@/components/ai-blog/useLocalPhotos";
+import { siteFolderName } from "@/lib/ai-blog/local-media";
 import { getMode } from "@/lib/ai-blog/modes";
 import { apiJson } from "@/lib/ai-blog/messages";
 import { findBannedPhrases } from "@/lib/ai-blog/sanitize";
@@ -43,6 +44,7 @@ export default function ContentWorkspace({
   knowledgePreview,
   businessName = "",
   aiLocked = false,
+  initialStep,
 }: {
   aiLocked?: boolean;
   initial: Content;
@@ -51,13 +53,19 @@ export default function ContentWorkspace({
   bannedPhrases: string[];
   knowledgePreview: { title: string; basis: string }[];
   businessName?: string;
+  initialStep?: Step;
 }) {
   const router = useRouter();
   const { project } = bundle;
   const [content, setContent] = useState<Content>(initial);
   const [title, setTitle] = useState(initial.title);
   const [blocks, setBlocks] = useState<ContentBlock[]>(initial.blocks);
-  const [step, setStep] = useState<Step>(initial.blocks.length ? "edit" : "generate");
+  const [step, setStep] = useState<Step>(() => {
+    if (initialStep === "transfer" && initial.blocks.length) return "transfer";
+    if (initialStep === "edit" && initial.blocks.length) return "edit";
+    if (initialStep === "generate") return "generate";
+    return initial.blocks.length ? "edit" : "generate";
+  });
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [generating, setGenerating] = useState(false);
   const [rewritingId, setRewritingId] = useState<string | null>(null);
@@ -198,7 +206,7 @@ export default function ContentWorkspace({
   };
 
   const removeDraft = async () => {
-    if (!window.confirm("이 초안을 삭제할까요?")) return;
+    if (!window.confirm("이 글을 삭제할까요?")) return;
     try {
       await apiJson(`/api/ai-blog/contents/${content.id}`, { method: "DELETE" });
       router.push(`/ai-blog/projects/${project.id}?tab=blog`);
@@ -213,22 +221,43 @@ export default function ContentWorkspace({
   const saveLabel = { saved: "저장됨", dirty: "저장 대기", saving: "저장 중…", error: "저장 실패" }[saveState];
 
   const steps: { id: Step; label: string; enabled: boolean }[] = [
-    { id: "generate", label: "1. 초안 생성", enabled: true },
-    { id: "edit", label: "2. 편집 · 미리보기", enabled: hasDraft },
-    { id: "transfer", label: "3. 네이버로 옮기기", enabled: hasDraft },
+    { id: "generate", label: "글 만들기", enabled: true },
+    { id: "edit", label: "고치기", enabled: hasDraft },
+    { id: "transfer", label: "네이버에 올리기", enabled: hasDraft },
   ];
 
   return (
     <div className="space-y-4">
       <div className="text-xs text-slate-500">
         <Link href="/ai-blog" className="hover:underline">
-          내 현장
+          내 블로그 글
         </Link>{" "}
         /{" "}
         <Link href={`/ai-blog/projects/${project.id}?tab=blog`} className="hover:underline">
           {projectName(project)}
         </Link>{" "}
-        / 블로그 초안
+        / 글 쓰기
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+        <Link
+          href={`/ai-blog/projects/${project.id}?tab=info`}
+          className="rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-800 hover:bg-emerald-100"
+          title="작업 정보 수정"
+        >
+          1 작업 정보
+        </Link>
+        <span className="text-slate-300">→</span>
+        <Link
+          href={`/ai-blog/projects/${project.id}?tab=photos`}
+          className="rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-800 hover:bg-emerald-100"
+          title="사진 전·후 다시 맞추기"
+        >
+          2 사진
+        </Link>
+        <span className="text-slate-300">→</span>
+        <span className="rounded-full bg-slate-900 px-2.5 py-0.5 font-medium text-white">3·4 글 · 네이버</span>
+        <span className="ml-1 text-xs text-slate-500">실수했으면 위 1·2를 눌러 돌아가 고치세요.</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -252,7 +281,7 @@ export default function ContentWorkspace({
           {hasDraft ? ` · ${saveLabel}` : ""}
         </span>
         <button type="button" className="text-xs text-slate-400 hover:text-rose-600" onClick={removeDraft}>
-          초안 삭제
+          글 삭제
         </button>
       </div>
 
@@ -271,71 +300,91 @@ export default function ContentWorkspace({
       ) : null}
 
       {step === "edit" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-              <span>본문 {text.length.toLocaleString()}자 (공백 제외 {text.replace(/\s/g, "").length.toLocaleString()}자)</span>
-              <span>
-                키워드 &ldquo;{content.keyword}&rdquo; {keywordCount}회
-              </span>
-              <span>사진 {images.size}장</span>
-              <span>
-                문단 다시쓰기 {content.partial_rewrite_count}/{maxRewrites}회
-              </span>
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                <span>
+                  본문 {text.length.toLocaleString()}자 (공백 제외 {text.replace(/\s/g, "").length.toLocaleString()}자)
+                </span>
+                <span>
+                  키워드 &ldquo;{content.keyword}&rdquo; {keywordCount}회
+                </span>
+                <span>사진 {images.size}장</span>
+                <span>
+                  문단 다시쓰기 {content.partial_rewrite_count}/{maxRewrites}회
+                </span>
+              </div>
+              <BlockEditor
+                title={title}
+                titleCandidates={content.title_candidates}
+                blocks={blocks}
+                images={images}
+                rewriteLeft={aiLocked ? 0 : Math.max(maxRewrites - content.partial_rewrite_count, 0)}
+                rewritingId={rewritingId}
+                bannedFound={bannedFound}
+                onTitle={(t) => {
+                  setTitle(t);
+                  schedule(t, blocks);
+                }}
+                onBlocks={(b) => {
+                  setBlocks(b);
+                  schedule(title, b);
+                }}
+                onRewrite={rewrite}
+              />
             </div>
-            <BlockEditor
-              title={title}
-              titleCandidates={content.title_candidates}
-              blocks={blocks}
-              images={images}
-              rewriteLeft={aiLocked ? 0 : Math.max(maxRewrites - content.partial_rewrite_count, 0)}
-              rewritingId={rewritingId}
-              bannedFound={bannedFound}
-              onTitle={(t) => {
-                setTitle(t);
-                schedule(t, blocks);
-              }}
-              onBlocks={(b) => {
-                setBlocks(b);
-                schedule(title, b);
-              }}
-              onRewrite={rewrite}
-            />
+            <div className="space-y-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto">
+              {!photosState.photos.length && images.size ? (
+                <Notice tone="info">
+                  사진 폴더를 열면 미리보기에 실제 사진이 보입니다.{" "}
+                  <button
+                    type="button"
+                    className="font-semibold underline"
+                    onClick={() =>
+                      void (photosState.pendingRemembered.length ? photosState.reopen() : photosState.addFolder())
+                    }
+                  >
+                    {photosState.pendingRemembered.length ? "이전 폴더 열기" : "폴더 선택"}
+                  </button>
+                </Notice>
+              ) : null}
+              <NaverPreview
+                title={title}
+                blocks={blocks}
+                images={images}
+                businessName={businessName}
+                layout={layout}
+                onLayout={changeLayout}
+              />
+              <p className="text-center text-sm text-slate-600">글이 괜찮으면 아래로 → 네이버에 올리기</p>
+            </div>
           </div>
-          <div className="space-y-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto">
-            {!photosState.photos.length && images.size ? (
-              <Notice tone="info">
-                사진 폴더를 열면 미리보기에 실제 사진이 보입니다.{" "}
-                <button
-                  type="button"
-                  className="font-semibold underline"
-                  onClick={() =>
-                    void (photosState.pendingRemembered.length ? photosState.reopen() : photosState.addFolder())
-                  }
-                >
-                  {photosState.pendingRemembered.length ? "이전 폴더 열기" : "폴더 선택"}
-                </button>
-              </Notice>
-            ) : null}
-            <NaverPreview
-              title={title}
-              blocks={blocks}
-              images={images}
-              businessName={businessName}
-              layout={layout}
-              onLayout={changeLayout}
-            />
+          <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white/95 px-1 py-3 backdrop-blur">
+            <span className="text-xs text-slate-500">{saveLabel === "저장됨" ? "글이 저장되어 있습니다" : saveLabel}</span>
+            <div className="flex-1" />
+            <button
+              type="button"
+              className={`${btnPrimary} px-6 py-3 text-base`}
+              onClick={() => void goStep("transfer")}
+            >
+              다음: 네이버에 올리기 →
+            </button>
           </div>
         </div>
       ) : null}
 
       {step === "transfer" ? (
         <TransferPanel
+          projectId={project.id}
+          siteFolderLabel={siteFolderName(project)}
           title={title}
           blocks={blocks}
           images={images}
           photosState={photosState}
+          businessName={businessName}
           layout={layout}
+          onLayout={changeLayout}
           status={content.status}
           onStatus={(s) => void setStatus(s)}
         />

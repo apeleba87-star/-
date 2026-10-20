@@ -13,8 +13,15 @@ import type { Content } from "@/lib/ai-blog/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContentPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ContentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ step?: string }>;
+}) {
   const { id } = await params;
+  const { step: stepQ } = await searchParams;
   if (!isUuid(id)) notFound();
   const got = await getAiBlogUser();
   if (!got) redirect(`/login?next=/ai-blog/contents/${id}`);
@@ -36,9 +43,12 @@ export default async function ContentPage({ params }: { params: Promise<{ id: st
   ]);
   if (!bundle) notFound();
   const knowledge = await buildKnowledgeContext(bundle.attributes);
+  const initialStep =
+    stepQ === "transfer" || stepQ === "edit" || stepQ === "generate" ? stepQ : undefined;
 
   return (
     <ContentWorkspace
+      initialStep={initialStep}
       initial={content}
       bundle={bundle}
       usage={usage}

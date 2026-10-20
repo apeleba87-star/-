@@ -11,8 +11,8 @@ export type ModeDefinition = {
 export const BLOG_MODES: ModeDefinition[] = [
   {
     id: 1,
-    name: "현장 후기형",
-    description: "고객 상황 → 작업 과정 → 결과를 이야기처럼. 친근한 말투",
+    name: "후기처럼",
+    description: "이웃에게 말하는 듯한 글",
     sample: "이사 날짜가 코앞이라 급하게 연락 주신 고객님 댁이었습니다.",
     prompt: [
       "[모드 1: 현장 후기형]",
@@ -23,8 +23,8 @@ export const BLOG_MODES: ModeDefinition[] = [
   },
   {
     id: 2,
-    name: "전문가 노하우형",
-    description: "오염이 생기는 이유와 재질별 처리법을 설명. 신뢰감 있는 말투",
+    name: "전문가처럼",
+    description: "노하우가 돋보이는 글",
     sample: "욕실 물때는 수돗물 속 미네랄이 굳은 것이라 일반 세제로는 잘 지워지지 않습니다.",
     prompt: [
       "[모드 2: 전문가 노하우형]",
@@ -35,8 +35,8 @@ export const BLOG_MODES: ModeDefinition[] = [
   },
   {
     id: 3,
-    name: "체크포인트형",
-    description: "꼭 확인할 포인트를 질문형 소제목으로 짧게 정리. 읽기 쉬운 구성",
+    name: "짧게",
+    description: "핵심만 짧게",
     sample: "입주 전에 창틀 레일, 꼭 확인해 보셨나요?",
     prompt: [
       "[모드 3: 체크포인트형]",

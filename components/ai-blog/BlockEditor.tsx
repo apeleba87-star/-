@@ -122,7 +122,7 @@ export default function BlockEditor({
                     b.role === "BEFORE" ? "bg-slate-700" : "bg-emerald-600"
                   }`}
                 >
-                  {b.role}
+                  {b.role === "BEFORE" ? "사진 (전)" : "사진 (후)"}
                 </span>
                 {img?.label || "사진"} · {img?.fileName}
               </div>
@@ -154,7 +154,7 @@ export default function BlockEditor({
                   setHint("");
                 }}
               >
-                {busy ? "AI가 다시 쓰는 중…" : `AI로 이 문단 다시 쓰기 (남은 ${rewriteLeft}회)`}
+                {busy ? "AI가 다시 쓰는 중…" : `이 부분만 AI가 다시 (남은 ${rewriteLeft}회)`}
               </button>
             </div>
             {hintFor === b.id ? (
