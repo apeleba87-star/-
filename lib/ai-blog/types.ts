@@ -59,6 +59,9 @@ export type ProjectMedia = {
   taken_at: string | null;
   width: number | null;
   height: number | null;
+  storage_path: string | null;
+  preview_path: string | null;
+  original_expires_at: string | null;
 };
 
 export type MediaPair = {

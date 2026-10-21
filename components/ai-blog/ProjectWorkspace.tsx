@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import PhotoSorter from "@/components/ai-blog/PhotoSorter";
+import AppFieldPhotos from "@/components/ai-blog/AppFieldPhotos";
 import ProjectForm from "@/components/ai-blog/ProjectForm";
 import { Notice, btnPrimary, btnSecondary, card } from "@/components/ai-blog/ui";
 import { useLocalPhotos } from "@/components/ai-blog/useLocalPhotos";
@@ -147,12 +148,15 @@ export default function ProjectWorkspace({
   };
 
   const usablePairs = pairs.filter((p) => p.before_media_id || p.after_media_id).length;
+  const fromApp = bundle.media.some((item) => item.storage_path || item.preview_path);
   const stepNum: 1 | 2 | 3 = tab === "info" ? 1 : tab === "photos" ? 2 : 3;
   const stepHint =
     tab === "info"
       ? "지금: 어디에, 무슨 청소를 했는지 알려 주세요."
       : tab === "photos"
-        ? "지금: 사진을 크게 보고 전·후를 맞춰 주세요."
+        ? fromApp
+          ? "지금: 앱에서 올린 전·후 사진을 확인하세요."
+          : "지금: 사진을 크게 보고 전·후를 맞춰 주세요."
         : "지금: AI로 글을 만들고, 네이버에 올리세요.";
 
   const tabs: { id: Tab; label: string }[] = [
@@ -209,21 +213,25 @@ export default function ProjectWorkspace({
       ) : null}
 
       <div hidden={tab !== "photos"}>
-        <PhotoSorter
-          projectId={project.id}
-          media={bundle.media}
-          pairs={pairs}
-          photosState={photosState}
-          labelSuggestions={labelSuggestions}
-          onSaved={(_media, nextPairs) => {
-            setPairs(nextPairs);
-            router.refresh();
-          }}
-          onContinue={() => {
-            go("blog");
-            if (!contents.length && canCreate) void createDraft();
-          }}
-        />
+        {fromApp ? (
+          <AppFieldPhotos projectId={project.id} media={bundle.media} pairs={pairs} />
+        ) : (
+          <PhotoSorter
+            projectId={project.id}
+            media={bundle.media}
+            pairs={pairs}
+            photosState={photosState}
+            labelSuggestions={labelSuggestions}
+            onSaved={(_media, nextPairs) => {
+              setPairs(nextPairs);
+              router.refresh();
+            }}
+            onContinue={() => {
+              go("blog");
+              if (!contents.length && canCreate) void createDraft();
+            }}
+          />
+        )}
       </div>
 
       {tab === "blog" ? (

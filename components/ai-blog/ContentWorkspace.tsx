@@ -387,6 +387,7 @@ export default function ContentWorkspace({
           onLayout={changeLayout}
           status={content.status}
           onStatus={(s) => void setStatus(s)}
+          serverOriginals={bundle.media.some((item) => Boolean(item.storage_path))}
         />
       ) : null}
     </div>

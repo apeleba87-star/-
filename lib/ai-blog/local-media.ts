@@ -264,6 +264,35 @@ export async function exportToFolder(
   return { folderName: dir.name, written };
 }
 
+/** 서버에서 받은 원본을 사용자가 고른 폴더에 그대로 저장한다. */
+export async function writeBlobsToFolder(
+  items: { fileName: string; blob: Blob }[],
+  removeGps: boolean,
+): Promise<{ folderName: string; written: number } | null> {
+  const picker = (window as PickerWindow).showDirectoryPicker;
+  if (!picker) return null;
+  let dir: DirHandle;
+  try {
+    dir = await picker({ mode: "readwrite", id: "ai-blog-export" });
+  } catch (e) {
+    if ((e as DOMException)?.name === "AbortError") return null;
+    throw e;
+  }
+  let written = 0;
+  for (const item of items) {
+    let body: Blob | ArrayBuffer = item.blob;
+    if (removeGps && /\.jpe?g$/i.test(item.fileName)) {
+      body = new Blob([stripGps(await item.blob.arrayBuffer())], { type: "image/jpeg" });
+    }
+    const handle = await dir.getFileHandle(item.fileName, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(body);
+    await writable.close();
+    written++;
+  }
+  return { folderName: dir.name, written };
+}
+
 /*
  * 옮기기 폴더(레거시): 한 장씩 넣는 스테이징.
  * 현장 폴더(권장): 블로그업로드 / 원본_미사용 으로 한 번에 정리.

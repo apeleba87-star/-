@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeUserText } from "@/lib/ai-blog/sanitize";
+import { purgeProjectOriginals } from "@/lib/ai-blog/field-photos";
 import { CONTENT_SELECT, cleanText, isUuid, jsonError, requireAiAdmin, textArray } from "@/lib/ai-blog/server";
 import type { BlogMode, ContentBlock, ContentStatus } from "@/lib/ai-blog/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,6 +103,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .maybeSingle();
   if (error) return jsonError(error.message);
   if (!data) return jsonError("content_not_found", 404);
+  if (updates.status === "DONE" && data.project_id) {
+    try {
+      await purgeProjectOriginals(guard.supabase as unknown as SupabaseClient, data.project_id);
+    } catch {
+      // 완료 표시는 유지한다. 원본 삭제는 보관 기간이 지나도 다시 시도된다.
+    }
+  }
   return NextResponse.json({ ok: true, data });
 }
 

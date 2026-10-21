@@ -27,7 +27,7 @@ type Supabase = Awaited<ReturnType<typeof createServerSupabase>>;
 export const PROJECT_SELECT =
   "id, company_id, service_type, region_sido, region_sigungu, region_dong, property_type, area_pyeong, worker_count, work_minutes, price, work_date, description, created_at, updated_at";
 export const MEDIA_SELECT =
-  "id, media_type, sort_order, space_type, local_name, local_size, local_modified_at, taken_at, width, height";
+  "id, media_type, sort_order, space_type, local_name, local_size, local_modified_at, taken_at, width, height, storage_path, preview_path, original_expires_at";
 export const PAIR_SELECT = "id, label, memo, before_media_id, after_media_id, sort_order";
 export const CONTENT_SELECT =
   "id, company_id, project_id, channel, keyword, secondary_keywords, extra_request, mode, variant, title, title_candidates, blocks, status, ai_model, prompt_version, generation_count, partial_rewrite_count, created_at, updated_at";

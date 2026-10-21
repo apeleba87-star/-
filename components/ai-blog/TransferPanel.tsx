@@ -71,6 +71,7 @@ export default function TransferPanel({
   onLayout,
   status,
   onStatus,
+  serverOriginals = false,
 }: {
   projectId: string;
   /** 예: 자양동 34평 입주청소 */
@@ -84,6 +85,7 @@ export default function TransferPanel({
   onLayout: (l: PhotoLayout) => void;
   status: ContentStatus;
   onStatus: (s: ContentStatus) => void;
+  serverOriginals?: boolean;
 }) {
   const [removeGps, setRemoveGps] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -187,7 +189,14 @@ export default function TransferPanel({
       onStatus("READY");
       return;
     }
-    if (!window.confirm("네이버에 글을 붙여 넣고 사진까지 넣으셨나요?")) return;
+    if (
+      !window.confirm(
+        serverOriginals
+          ? "네이버에 원본 사진을 다 올리셨나요? 완료하면 서버의 원본은 지워지고 미리보기만 남습니다."
+          : "네이버에 글을 붙여 넣고 사진까지 넣으셨나요?",
+      )
+    )
+      return;
     onStatus("DONE");
   };
 
