@@ -3,11 +3,13 @@ import { isMagamFromQuery } from "@/lib/magam/brand";
 /**
  * 클린아이덱스 헤더·푸터·사이트 브랜딩(JSON-LD)을 숨기는 경로
  * - /p/* 공유 링크 (확인자)
+ * - /report/* 고객 청소 보고서
  * - /magam/* 마감링크 웹 (올리는 사람·관리)
  * - /login|/signup|/terms|/privacy ?from=magam (마감 흐름에서 빠져나온 인증·약관)
  */
 export function isNeutralMagamSurface(pathname: string, fromQuery?: string | null): boolean {
   if (pathname === "/p" || pathname.startsWith("/p/")) return true;
+  if (pathname === "/report" || pathname.startsWith("/report/")) return true;
   if (pathname === "/magam/live" && fromQuery === "cleanidex") return false;
   if (pathname === "/magam" || pathname.startsWith("/magam/")) return true;
   if (

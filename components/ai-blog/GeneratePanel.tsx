@@ -144,7 +144,7 @@ export default function GeneratePanel({
             </p>
             <p>
               <span className="text-slate-500">전·후 사진</span> · {usablePairs.length}세트
-              {usablePairs.length ? " (이름·메모만 전달, 사진 파일은 안 보냄)" : ""}
+              {usablePairs.length ? " (장소·오염 상태만 전달, 사진 파일은 안 보냄)" : ""}
             </p>
             <p className="border-t border-slate-200 pt-3 text-xs text-slate-500">
               끝나면 자동으로 「고치기」 화면으로 넘어갑니다.
@@ -269,7 +269,7 @@ export default function GeneratePanel({
           ) : (
             <p className="text-sm text-slate-500">정렬된 사진 짝이 없습니다. 사진 없이 글만 작성됩니다.</p>
           )}
-          <p className="mt-2 text-xs text-slate-400">사진 파일은 보내지 않습니다. 짝 이름과 메모만 전달됩니다.</p>
+          <p className="mt-2 text-xs text-slate-400">사진 파일은 보내지 않습니다. 장소와 오염 상태만 전달됩니다.</p>
         </section>
 
         <section className={`${card} p-4`}>

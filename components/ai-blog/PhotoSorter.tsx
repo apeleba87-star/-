@@ -652,16 +652,16 @@ export default function PhotoSorter({
                 />
                 <details className="rounded-lg bg-slate-50 px-2 py-1.5" open={Boolean(d.memo)}>
                   <summary className="cursor-pointer text-xs text-slate-600">
-                    AI에게 더 알려주기 (선택) · 안 적어도 됩니다
+                    오염 상태 (선택) · 안 적어도 됩니다
                   </summary>
                   <input
                     className={`${input} mt-1.5`}
-                    placeholder="예: 수전 주변 하얀 물때, 고객이 제일 신경 쓴 곳"
+                    placeholder="예: 물때, 곰팡이, 수전 주변 하얀 때"
                     value={d.memo}
                     maxLength={200}
                     onChange={(e) => setField(d.uid, "memo", e.target.value)}
                   />
-                  <p className="mt-1 text-[11px] text-slate-500">이 내용을 AI가 이 사진 구절을 쓸 때 참고합니다.</p>
+                  <p className="mt-1 text-[11px] text-slate-500">이 오염이 그 사진 문단에 들어갑니다. 앱에서 고른 내용도 여기 보입니다.</p>
                 </details>
                 <div className="flex flex-wrap gap-1">
                   <button type="button" className={btnGhost} disabled={i === 0} onClick={() => move(d.uid, -1)}>

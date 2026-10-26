@@ -125,7 +125,10 @@ export default function AppFieldPhotos({
           const after = urls.get(pair.after_media_id ?? "");
           return (
             <div key={pair.id} className={`${card} p-3`}>
-              <p className="mb-2 text-sm font-semibold text-slate-900">{pair.label || "장소"}</p>
+              <p className="text-sm font-semibold text-slate-900">{pair.label || "장소"}</p>
+              <p className={`mb-2 text-xs ${pair.memo ? "text-slate-600" : "text-slate-400"}`}>
+                {pair.memo ? `오염 상태 · ${pair.memo}` : "오염 상태 없음"}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <Shot url={before?.url} label="전" missing={!pair.before_media_id} />
                 <Shot url={after?.url} label="후" missing={!pair.after_media_id} />

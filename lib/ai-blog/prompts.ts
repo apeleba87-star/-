@@ -33,8 +33,8 @@ export const BASE_SYSTEM_PROMPT = `너는 청소업체 대표를 대신해 네�
 - 소제목 바로 다음에는 반드시 문단이 온다. 소제목을 연달아 두지 않는다.
 
 [사진 배치]
-- 사진 짝마다: 그 짝의 이름을 주제로 한 소제목 → 설명 문단 → 사진 짝 블록 순서로 배치한다.
-- 짝 메모가 있으면 그 내용을 해당 문단에 반드시 반영한다.
+- 사진 짝마다: 그 짝의 장소 이름을 주제로 한 소제목 → 설명 문단 → 사진 짝 블록 순서로 배치한다.
+- 짝에 오염 상태가 있으면 그 공간 문단에 그 오염을 구체적으로 반영한다. 적히지 않은 오염은 지어내지 않는다.
 - 모든 사진 짝을 정확히 한 번씩, 주어진 번호 순서대로 배치한다.
 
 [구성]
@@ -163,7 +163,7 @@ export function buildBlogUserPrompt(input: BlogPromptInput): string {
   const pairLines = input.pairs.length
     ? input.pairs.map(
         (x) =>
-          `${x.no}. ${x.label || "이름 없음"}${x.memo ? ` — 메모: ${x.memo}` : ""} (${[
+          `${x.no}. 장소: ${x.label || "이름 없음"}${x.memo ? ` / 오염 상태: ${x.memo}` : ""} (${[
             x.hasBefore ? "BEFORE" : null,
             x.hasAfter ? "AFTER" : null,
           ]
