@@ -25,20 +25,32 @@ export type ProductPurchaseLink = {
   isProductLink: boolean;
 };
 
+/** 클릭 추적용 공개 경로 (서버에서 로그 후 스토어로 리다이렉트) */
+export function productBuyTrackPath(productId: string, source?: string | null): string {
+  const base = `/go/buy/${encodeURIComponent(productId)}`;
+  if (!source?.trim()) return base;
+  return `${base}?from=${encodeURIComponent(source.trim().slice(0, 64))}`;
+}
+
 /**
  * 제품 전용 구매 링크만 반환.
+ * url은 클릭 추적용 `/go/buy/{id}` 경로 (실제 스토어는 리다이렉트).
  * 링크 없으면 null — UI는 「상품 준비중입니다」로 안내.
  */
-export function resolveProductPurchase(product: {
-  id: string;
-  name: string;
-  salesUrl?: string | null;
-  salesLabel?: string | null;
-}): ProductPurchaseLink | null {
+export function resolveProductPurchase(
+  product: {
+    id: string;
+    name: string;
+    salesUrl?: string | null;
+    salesLabel?: string | null;
+  },
+  opts?: { source?: string },
+): ProductPurchaseLink | null {
   const productUrl = product.salesUrl?.trim();
   if (productUrl && /^https?:\/\//i.test(productUrl)) {
+    const source = opts?.source ?? "product_detail";
     return {
-      url: productUrl,
+      url: productBuyTrackPath(product.id, source),
       label: product.salesLabel?.trim() || `${product.name} 구매하기`,
       isProductLink: true,
     };
@@ -133,9 +145,12 @@ export function applySalesToProduct<T extends { id: string; salesUrl?: string | 
 }
 
 /** 관리자 미등록 시 사용하는 제품별 스마트스토어 URL */
-const STATIC_PRODUCT_SALES: Record<string, { url: string; label?: string }> = {
+export const STATIC_PRODUCT_SALES_FALLBACK: Record<string, { url: string; label?: string }> = {
   "kiehl-tornado": {
     url: "https://smartstore.naver.com/home_carry/products/7825156407",
     label: "토네이도 구매하기",
   },
 };
+
+/** @deprecated use STATIC_PRODUCT_SALES_FALLBACK */
+const STATIC_PRODUCT_SALES = STATIC_PRODUCT_SALES_FALLBACK;

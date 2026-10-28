@@ -40,6 +40,11 @@ export const ADMIN_HUBS: AdminHub[] = [
         description: "제품 판매 링크·마스터 조회·가이드 편집 링크",
       },
       {
+        href: "/admin/product-sales-clicks",
+        label: "구매하기 클릭",
+        description: "제품별·기간별 구매 CTA 클릭 수",
+      },
+      {
         href: "/admin/equipment",
         label: "청소장비",
         description: "장비 마스터 조회 · 대표 이미지 업로드",
@@ -93,6 +98,8 @@ export const ADMIN_HUBS: AdminHub[] = [
       { href: "/admin/magam-stats", label: "마감앱 통계", description: "마감앱 사용자·광고 성과(기간별)" },
       { href: "/admin/subscriptions", label: "구독 관리", description: "프리미엄 구독자 목록" },
       { href: "/admin/subscription-config", label: "구독 금액", description: "요금·프로모 설정" },
+      { href: "/admin/ai-blog-billing", label: "AI 블로그 결제", description: "체험·프로모·정상가" },
+      { href: "/admin/product-sales-clicks", label: "구매하기 클릭", description: "제품 구매 CTA 클릭 집계" },
       { href: "/admin/share-unlocks", label: "공유 열람권 로그", description: "공유 링크 열람 기록" },
       { href: "/admin/beta-applications", label: "베타 지원", description: "베타 신청 검토" },
     ],

@@ -24,8 +24,9 @@ function renderBlock(
   block: GuideBlock,
   guide: CleaningGuideWithProducts,
   canEdit: boolean,
-  coupangUrls: Record<string, string>
+  _coupangUrls: Record<string, string>
 ) {
+  void _coupangUrls;
   if (block.type === "section") {
     return (
       <section
@@ -125,12 +126,11 @@ function renderBlock(
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {guide.products.map((p) => {
             const isInternal = p.source_url?.startsWith("/");
+            // 외부 스토어는 /go/p 경유 → 구매 클릭 집계
             const href =
               isInternal && p.source_url
                 ? p.source_url
-                : p.source_type === "smartstore" && p.source_url
-                  ? p.source_url
-                  : coupangUrls[p.id] ?? `/go/p/${p.id}?from=guide&slug=${guide.slug}`;
+                : `/go/p/${p.id}?from=guide&slug=${encodeURIComponent(guide.slug)}`;
             return (
               <GuideProductCard
                 key={p.id}

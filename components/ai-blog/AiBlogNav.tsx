@@ -25,8 +25,9 @@ export default function AiBlogNav({ usage, access }: { usage: UsageSummary | nul
           AI 블로그
         </Link>
         <nav className="flex items-center gap-1">
-          {tab("/ai-blog", "내 블로그 글", !inProfile)}
+          {tab("/ai-blog", "내 블로그 글", !inProfile && !pathname.startsWith("/ai-blog/subscribe"))}
           {tab("/ai-blog/profile", "업체 소개", inProfile)}
+          {tab("/ai-blog/subscribe", "구독", pathname.startsWith("/ai-blog/subscribe"))}
         </nav>
         <div className="flex-1" />
         {access.expires_on ? (

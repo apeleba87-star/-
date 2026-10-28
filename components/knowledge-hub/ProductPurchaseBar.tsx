@@ -51,7 +51,6 @@ export default function ProductPurchaseBar(props: Props) {
         ) : (
           <a
             href={props.href}
-            target="_blank"
             rel="noopener noreferrer"
             className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-5 text-base font-bold text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-900"
           >

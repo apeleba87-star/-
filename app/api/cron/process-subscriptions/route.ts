@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { requestBillingPayment, isBootpayConfigured } from "@/lib/bootpay-server";
 import { getSubscriptionPromoAmountCents } from "@/lib/app-settings";
+import { getAiBlogPromoAmountCents } from "@/lib/ai-blog/billing-settings";
+import { extendAiBlogAccessAfterBilling } from "@/lib/ai-blog/activate-paid";
+import { addMonths } from "@/lib/ai-blog/access";
 import { sendEmail, subscriptionPaymentFailedEmailBody } from "@/lib/email";
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -20,6 +23,17 @@ export async function GET(req: Request) {
   const supabase = createServiceSupabase();
   const today = new Date().toISOString().slice(0, 10);
 
+  const premium = await processPremium(supabase, today);
+  const aiBlog = await processAiBlog(supabase, today);
+
+  return NextResponse.json({
+    processed: premium.results.length + aiBlog.results.length,
+    premium,
+    ai_blog: aiBlog,
+  });
+}
+
+async function processPremium(supabase: ReturnType<typeof createServiceSupabase>, today: string) {
   const { data: due, error: fetchError } = await supabase
     .from("subscriptions")
     .select("id, user_id, billing_key, amount_cents, next_billing_at, promo_remaining_months")
@@ -27,7 +41,7 @@ export async function GET(req: Request) {
     .lte("next_billing_at", today);
 
   if (fetchError) {
-    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    return { error: fetchError.message, results: [] as { id: string; ok: boolean; error?: string }[] };
   }
 
   const results: { id: string; ok: boolean; error?: string }[] = [];
@@ -47,8 +61,7 @@ export async function GET(req: Request) {
     });
 
     if (payment.success && payment.receipt_id) {
-      const next = new Date();
-      next.setMonth(next.getMonth() + 1);
+      const next = addMonths(today, 1);
       const newPromoRemaining =
         usePromo && sub.promo_remaining_months != null
           ? Math.max(0, sub.promo_remaining_months - 1)
@@ -56,7 +69,7 @@ export async function GET(req: Request) {
       await supabase
         .from("subscriptions")
         .update({
-          next_billing_at: next.toISOString().slice(0, 10),
+          next_billing_at: next,
           last_receipt_id: payment.receipt_id,
           last_billed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -77,7 +90,7 @@ export async function GET(req: Request) {
         action: "past_due",
         previous_status: "active",
         next_status: "past_due",
-        meta: { error: payment.error, next_billing_at: (sub as { next_billing_at?: string }).next_billing_at },
+        meta: { error: payment.error, next_billing_at: sub.next_billing_at },
       });
 
       const { data: profile } = await supabase.from("profiles").select("email").eq("id", sub.user_id).maybeSingle();
@@ -86,11 +99,83 @@ export async function GET(req: Request) {
         await sendEmail({
           to: email,
           subject: "[클린아이덱스] 구독 결제에 실패했습니다",
-          html: subscriptionPaymentFailedEmailBody("결제 수단을 확인해 주시거나 구독 페이지에서 다시 결제해 주세요."),
+          html: subscriptionPaymentFailedEmailBody(
+            "결제 수단을 확인해 주시거나 구독 페이지에서 다시 결제해 주세요.",
+          ),
         });
       }
     }
   }
 
-  return NextResponse.json({ processed: results.length, results });
+  return { results };
+}
+
+async function processAiBlog(supabase: ReturnType<typeof createServiceSupabase>, today: string) {
+  const { data: due, error: fetchError } = await supabase
+    .from("ai_blog_subscriptions")
+    .select("id, user_id, billing_key, amount_cents, next_billing_at, promo_remaining_months")
+    .eq("status", "active")
+    .lte("next_billing_at", today);
+
+  if (fetchError) {
+    return { error: fetchError.message, results: [] as { id: string; ok: boolean; error?: string }[] };
+  }
+
+  const results: { id: string; ok: boolean; error?: string }[] = [];
+  const promoAmount = await getAiBlogPromoAmountCents(supabase);
+
+  for (const sub of due ?? []) {
+    const usePromo =
+      sub.promo_remaining_months != null && sub.promo_remaining_months > 0 && promoAmount > 0;
+    const price = usePromo ? promoAmount : sub.amount_cents;
+
+    const orderId = `ai_blog_${sub.id}_${Date.now()}`;
+    const payment = await requestBillingPayment({
+      billing_key: sub.billing_key,
+      order_id: orderId,
+      order_name: "클린아이덱스 AI 블로그 월 구독",
+      price,
+    });
+
+    if (payment.success && payment.receipt_id) {
+      const next = addMonths(today, 1);
+      const newPromoRemaining =
+        usePromo && sub.promo_remaining_months != null
+          ? Math.max(0, sub.promo_remaining_months - 1)
+          : sub.promo_remaining_months;
+      await supabase
+        .from("ai_blog_subscriptions")
+        .update({
+          next_billing_at: next,
+          last_receipt_id: payment.receipt_id,
+          last_billed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ...(newPromoRemaining !== undefined && { promo_remaining_months: newPromoRemaining }),
+        })
+        .eq("id", sub.id);
+
+      await extendAiBlogAccessAfterBilling(supabase, sub.user_id, next);
+      results.push({ id: sub.id, ok: true });
+    } else {
+      await supabase
+        .from("ai_blog_subscriptions")
+        .update({ status: "past_due", updated_at: new Date().toISOString() })
+        .eq("id", sub.id);
+      results.push({ id: sub.id, ok: false, error: payment.error });
+
+      const { data: profile } = await supabase.from("profiles").select("email").eq("id", sub.user_id).maybeSingle();
+      const email = (profile as { email?: string | null } | null)?.email;
+      if (email?.trim()) {
+        await sendEmail({
+          to: email,
+          subject: "[클린아이덱스] AI 블로그 구독 결제에 실패했습니다",
+          html: subscriptionPaymentFailedEmailBody(
+            "결제 수단을 확인해 주시거나 AI 블로그 구독 페이지에서 다시 결제해 주세요.",
+          ),
+        });
+      }
+    }
+  }
+
+  return { results };
 }

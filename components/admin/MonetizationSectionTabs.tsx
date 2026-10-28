@@ -6,7 +6,9 @@ const TABS = [
   { href: "/admin/magam-stats", label: "마감앱 통계" },
   { href: "/admin/subscriptions", label: "구독 관리" },
   { href: "/admin/subscription-config", label: "구독 금액" },
+  { href: "/admin/ai-blog-billing", label: "AI 블로그 결제" },
   { href: "/admin/ai-blog", label: "AI 블로그 권한" },
+  { href: "/admin/product-sales-clicks", label: "구매하기 클릭" },
   { href: "/admin/share-unlocks", label: "공유 열람권" },
   { href: "/admin/beta-applications", label: "베타 지원" },
 ];

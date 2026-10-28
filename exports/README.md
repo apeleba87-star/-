@@ -1,20 +1,26 @@
 # 키엘 내보내기 파일
 
-파일이 **안 보이면** Cursor/VS Code의 Markdown **미리보기(Preview)** 가 빈 화면인 경우가 많습니다.
+## 교육용 (추천)
+폴더: `exports/kiehl-education/`
 
-## 바로 보는 방법
-1. 오른쪽 위 **Preview** 버튼을 끄고 원본 텍스트로 보기
-2. 또는 `kiehl-knowledge-full.json` 열기 (다른 AI 입력용으로 더 적합)
-3. 탐색기에서 파일 우클릭 → Open With → Text Editor
-
-## 파일
 | 파일 | 용도 |
 |------|------|
-| `kiehl-knowledge-full.json` | AI/스크립트 입력용 (제품 32 · 절차 60 · 사례 22) |
+| `kiehl-education/00-교육가이드.md` | 분류별 교육 가이드 |
+| `kiehl-education/01-제품카탈로그.csv` | 전 제품 DB (엑셀) |
+| `kiehl-education/02-교육용빠른참조.csv` | 교안용 요약 |
+| `kiehl-education/03-사용절차.csv` | 사용 절차 |
+| `kiehl-education/04-현장사례.csv` | 현장 사례 |
+| `kiehl-education/05-희석비매트릭스.csv` | 희석비표 |
+| `kiehl-education/kiehl-education-full.json` | 전체 JSON |
+
+제품 32 · 절차 62 · 사례 22
+
+## 기존 전체 지식 내보내기
+| 파일 | 용도 |
+|------|------|
+| `kiehl-knowledge-full.json` | AI/스크립트 입력용 |
 | `kiehl-knowledge-full.md` | 사람이 읽기용 정리본 |
 
 다시 만들기:
-
-```bash
-node scripts/export-kiehl-knowledge.mjs
-```
+- 교육용: `python scripts/export-kiehl-education.py`
+- 전체 지식: `node scripts/export-kiehl-knowledge.mjs`
