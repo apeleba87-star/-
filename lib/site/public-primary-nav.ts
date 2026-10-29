@@ -10,6 +10,7 @@ import {
   Landmark,
   Layers,
   MessageCircleQuestion,
+  PenLine,
   Sparkles,
   Trophy,
   UserPlus,
@@ -195,6 +196,13 @@ export function assertKnowledgeAndPracticeAreSiblingLinks(
  */
 const RAW_PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
   { kind: "link", href: "/", label: "홈", Icon: Home },
+  {
+    kind: "link",
+    href: "/ai-blog",
+    label: "AI 블로그",
+    shortLabel: "AI블로그",
+    Icon: PenLine,
+  },
   {
     kind: "group",
     label: "분류별",

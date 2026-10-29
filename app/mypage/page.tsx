@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase-server";
 
@@ -8,7 +7,13 @@ import SignOutButton from "@/components/SignOutButton";
 import MyPageQuestionsActivity from "@/components/mypage/MyPageQuestionsActivity";
 import { listMyAnswers, listMyQuestions } from "@/lib/questions/queries";
 import { computeAccess, SITE_ADMIN_ACCESS, type AccessRow } from "@/lib/ai-blog/access";
+import MyPageAiBlogCard from "./MyPageAiBlogCard";
 import MyPageForm from "./MyPageForm";
+
+type AiBlogSubRow = {
+  status: string | null;
+  next_billing_at: string | null;
+};
 
 export default async function MypagePage() {
   const supabase = await createServerSupabase();
@@ -19,7 +24,14 @@ export default async function MypagePage() {
     redirect("/login?next=/mypage");
   }
 
-  const [{ data: worker }, myQuestions, myAnswers, { data: aiAccessRow }, { data: siteProfile }] = await Promise.all([
+  const [
+    { data: worker },
+    myQuestions,
+    myAnswers,
+    { data: aiAccessRow },
+    { data: siteProfile },
+    { data: aiSub },
+  ] = await Promise.all([
     supabase
       .from("worker_profiles")
       .select("nickname, birth_date, gender, bio, contact_phone")
@@ -34,6 +46,11 @@ export default async function MypagePage() {
       .eq("user_id", user.id)
       .maybeSingle<AccessRow>(),
     supabase.from("profiles").select("role").eq("id", user.id).maybeSingle<{ role: string | null }>(),
+    supabase
+      .from("ai_blog_subscriptions")
+      .select("status, next_billing_at")
+      .eq("user_id", user.id)
+      .maybeSingle<AiBlogSubRow>(),
   ]);
   const aiAccess = siteProfile?.role === "admin" ? SITE_ADMIN_ACCESS : computeAccess(aiAccessRow ?? null);
 
@@ -60,22 +77,12 @@ export default async function MypagePage() {
         </p>
       </section>
 
-      <Link
-        href="/ai-blog"
-        className={`${glassCard} mb-6 block p-5 transition hover:border-emerald-300`}
-      >
-        <p className="text-sm font-semibold text-slate-900">AI 블로그 초안 작성 (업체용)</p>
-        <p className="mt-1 text-sm text-slate-600">
-          현장 사진과 정보로 네이버 블로그 초안을 만들고, 그대로 옮길 수 있게 정리합니다. 크롬 PC 권장.
-        </p>
-        <p className={`mt-2 text-xs ${aiAccess.state === "active" ? "text-slate-500" : "font-medium text-rose-600"}`}>
-          {aiAccess.state === "none"
-            ? "사용 권한 없음 · 관리자에게 문의해 주세요"
-            : !aiAccess.expires_on
-              ? "관리자 계정 · 기간 제한 없음"
-              : `${aiAccess.state === "suspended" ? "사용 정지" : aiAccess.state === "expired" ? "이용 기간 만료" : "이용 기간"} ~ ${aiAccess.expires_on}`}
-        </p>
-      </Link>
+      <MyPageAiBlogCard
+        accessState={aiAccess.state}
+        expiresOn={aiAccess.expires_on}
+        subscriptionStatus={aiSub?.status ?? null}
+        nextBillingAt={aiSub?.next_billing_at ?? null}
+      />
 
       <section className="mb-10">
         <MyPageQuestionsActivity questions={myQuestions} answers={myAnswers} />
