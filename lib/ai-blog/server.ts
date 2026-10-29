@@ -69,7 +69,7 @@ export async function getAiBlogUser(): Promise<{ supabase: Supabase; user: AiBlo
 
 /**
  * AI 블로그 API 공통 가드: 로그인 + 회사 소속 + admin(대표).
- * requireActive: 새 현장·초안 생성, AI 호출처럼 유효한 사용 권한이 필요한 작업.
+ * requireActive: AI 생성·문단 다시쓰기처럼 유료(또는 체험) 권한이 필요한 작업만.
  */
 export async function requireAiAdmin(opts: { requireActive?: boolean } = {}): Promise<
   { ok: true; supabase: Supabase; ctx: AiBlogAdmin } | { ok: false; response: NextResponse }

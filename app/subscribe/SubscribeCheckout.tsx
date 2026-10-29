@@ -66,6 +66,8 @@ export default function SubscribeCheckout({
   const [error, setError] = useState<string | null>(null);
   const [bootpayReady, setBootpayReady] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedMonthlyBilling, setAgreedMonthlyBilling] = useState(false);
+  const canPay = agreedToTerms && agreedMonthlyBilling;
 
   // PG redirect 복귀 시 페이지가 새로 열리며 체크박스가 초기화됨 → 이미 결제 전에 동의한 상태로 표시
   useEffect(() => {
@@ -79,7 +81,10 @@ export default function SubscribeCheckout({
       redirectStatus === "11" ||
       redirectStatus === "42" ||
       redirectStatus === "1";
-    if (cameFromPayment) setAgreedToTerms(true);
+    if (cameFromPayment) {
+      setAgreedToTerms(true);
+      setAgreedMonthlyBilling(true);
+    }
   }, [redirectReceiptId, redirectEvent, redirectStatus]);
 
   // 스크립트 onLoad가 클라이언트 네비게이션 시 안 불릴 수 있음 → 이미 로드됐거나 나중에 로드되면 감지
@@ -178,6 +183,10 @@ export default function SubscribeCheckout({
   }, [redirectReceiptId, redirectBillingKey, redirectEvent, redirectStatus, router]);
 
   const handleSubscribe = useCallback(async () => {
+    if (!agreedToTerms || !agreedMonthlyBilling) {
+      setError("결제 전 안내와 매달 자동결제·전체 동의에 모두 체크해 주세요.");
+      return;
+    }
     const Bootpay = window.Bootpay ?? (window as unknown as { bootpay?: typeof window.Bootpay }).bootpay;
     if (!Bootpay?.requestSubscription) {
       setError("결제 창을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.");
@@ -241,7 +250,7 @@ export default function SubscribeCheckout({
     } finally {
       setLoading(false);
     }
-  }, [applicationId, userEmail, amountCents, router]);
+  }, [agreedToTerms, agreedMonthlyBilling, applicationId, userEmail, amountCents, router]);
 
   return (
     <>
@@ -261,32 +270,71 @@ export default function SubscribeCheckout({
           <li>• 평균 계약 금액</li>
         </ul>
 
-        <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-          <p className="font-medium text-slate-700">결제 전 안내</p>
-          <ul className="mt-2 space-y-1">
-            <li>· 본 상품은 정기구독 상품이며, 해지하지 않으면 결제 주기마다 자동으로 갱신됩니다.</li>
-            <li>· 구독 해지는 마이페이지에서 언제든지 신청할 수 있으며, 해지 시 다음 결제일부터 적용됩니다.</li>
-            <li>· 서비스 특성상 결제 후 즉시 이용이 개시된 디지털 서비스는 단순 변심 환불이 제한될 수 있습니다.</li>
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
+          <p className="font-semibold text-amber-950">결제 전 필수 안내 (꼭 읽어 주세요)</p>
+          <ul className="mt-2 list-none space-y-1.5">
+            <li>
+              · <strong>매달 자동 결제</strong>되는 정기구독입니다. 해지하지 않으면 매월{" "}
+              {amountCents.toLocaleString("ko-KR")}원이 등록 카드로 청구됩니다.
+            </li>
+            <li>
+              · <strong>환불되지 않습니다.</strong> 결제 즉시 이용이 시작되며, 단순 변심·이용 중단·중도 해지만으로는
+              이미 결제된 금액을 돌려드리지 않습니다.
+            </li>
+            <li>
+              · <strong>해지(중지)해도 그 달은 이용됩니다.</strong> 이미 결제한 이용 기간이 끝날 때까지 서비스는
+              유지되고, <strong>다음 결제일부터</strong> 자동결제가 중단됩니다. 일할 환불은 없습니다.
+            </li>
+            <li>· 해지는 마이페이지·구독 페이지에서 직접 신청할 수 있습니다.</li>
             <li>· 입찰·리포트·거래 관련 정보는 참고용이며, 회사는 특정 결과를 보장하지 않습니다.</li>
+            <li>· 결제 오류·중복 결제 등 회사 귀책으로 판단되는 경우에만 별도 안내합니다.</li>
           </ul>
           <p className="mt-2">
-            <Link href="/subscribe/terms" target="_blank" rel="noopener noreferrer" className="text-amber-600 underline hover:text-amber-700">
+            <Link
+              href="/subscribe/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-amber-700 underline hover:text-amber-900"
+            >
               유료구독 약관 전문 보기
             </Link>
           </p>
         </div>
 
-        <label className="mb-4 flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
-          />
-          <span className="text-sm text-slate-700">
-            <strong>유료구독 약관</strong> 및 위 결제 안내에 동의합니다. (동의하지 않으면 구독 결제를 진행할 수 없습니다.)
-          </span>
-        </label>
+        <div className="mb-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <span className="text-sm leading-snug text-slate-800">
+              <Link
+                href="/subscribe/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-amber-700 underline"
+              >
+                유료구독 약관
+              </Link>
+              과 위 <strong>결제 전 필수 안내</strong>(매달 자동결제·환불 불가·해지 시 당월 이용 후 종료)를 모두
+              확인했습니다.
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreedMonthlyBilling}
+              onChange={(e) => setAgreedMonthlyBilling(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <span className="text-sm leading-snug text-slate-800">
+              <strong>매달 자동 결제</strong>되며, 해지하지 않으면 계속 청구되는 점과 환불·해지 조건을 포함한{" "}
+              <strong>위 모든 상황에 동의</strong>합니다. (체크하지 않으면 결제할 수 없습니다.)
+            </span>
+          </label>
+        </div>
 
         {error != null && error !== "" && (() => {
           const msg = typeof error === "string" ? error : toErrorString(error);
@@ -298,7 +346,7 @@ export default function SubscribeCheckout({
         <button
           type="button"
           onClick={handleSubscribe}
-          disabled={loading || !bootpayReady || !agreedToTerms}
+          disabled={loading || !bootpayReady || !canPay}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 font-medium text-white shadow-lg hover:from-amber-600 hover:to-orange-600 disabled:opacity-60"
         >
           {loading ? (
@@ -308,15 +356,14 @@ export default function SubscribeCheckout({
           )}
           {loading ? "처리 중…" : `구독하기 (월 ${amountCents.toLocaleString("ko-KR")}원)`}
         </button>
-        {!agreedToTerms && !loading && (
-          <p className="mt-2 text-center text-xs text-amber-600">약관에 동의해 주세요.</p>
+        {!canPay && !loading && (
+          <p className="mt-2 text-center text-xs font-medium text-amber-700">
+            위 두 항목에 모두 체크해야 결제를 진행할 수 있습니다.
+          </p>
         )}
-        {agreedToTerms && !bootpayReady && !loading && (
+        {canPay && !bootpayReady && !loading && (
           <p className="mt-2 text-center text-xs text-slate-500">결제 창을 불러오는 중…</p>
         )}
-        <p className="mt-4 text-center text-xs text-slate-400">
-          결제 수단 등록 후 매월 자동 결제됩니다. 해지는 구독 페이지에서 취소할 수 있습니다.
-        </p>
       </div>
       <p className="mt-6 text-center">
         <Link href="/" className="text-sm text-slate-500 underline hover:text-slate-700">

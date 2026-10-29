@@ -59,7 +59,17 @@ type Props = {
   redirectEvent?: string | null;
   redirectStatus?: string | null;
   redirectPromoMonths?: number | null;
+  /** 구독 완료 후 돌아갈 경로 (AI 작성 화면 등) */
+  returnNext?: string | null;
 };
+
+function safeAiBlogNext(path: string | null | undefined): string {
+  if (!path || typeof path !== "string") return "/ai-blog?subscribed=1";
+  const p = path.trim();
+  if (!p.startsWith("/ai-blog") || p.startsWith("//")) return "/ai-blog?subscribed=1";
+  const sep = p.includes("?") ? "&" : "?";
+  return `${p}${sep}subscribed=1`;
+}
 
 export default function AiBlogSubscribeCheckout({
   applicationId,
@@ -73,12 +83,14 @@ export default function AiBlogSubscribeCheckout({
   redirectEvent,
   redirectStatus,
   redirectPromoMonths,
+  returnNext,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bootpayReady, setBootpayReady] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedMonthlyBilling, setAgreedMonthlyBilling] = useState(false);
   const defaultMonths = monthOptions[0] ?? 1;
   const [selectedMonths, setSelectedMonths] = useState<number>(
     redirectPromoMonths && monthOptions.includes(redirectPromoMonths)
@@ -87,6 +99,7 @@ export default function AiBlogSubscribeCheckout({
   );
 
   const chargeCents = promoEnabled ? promoAmountCents : normalAmountCents;
+  const canPay = agreedToTerms && agreedMonthlyBilling;
 
   useEffect(() => {
     if (!redirectReceiptId) return;
@@ -99,7 +112,11 @@ export default function AiBlogSubscribeCheckout({
       redirectStatus === "11" ||
       redirectStatus === "42" ||
       redirectStatus === "1";
-    if (cameFromPayment) setAgreedToTerms(true);
+    // 결제창 리다이렉트 복귀: 결제 직전 이미 동의한 상태로 등록 진행
+    if (cameFromPayment) {
+      setAgreedToTerms(true);
+      setAgreedMonthlyBilling(true);
+    }
   }, [redirectReceiptId, redirectEvent, redirectStatus]);
 
   useEffect(() => {
@@ -170,7 +187,7 @@ export default function AiBlogSubscribeCheckout({
       }
 
       if (res.ok) {
-        router.replace("/ai-blog?subscribed=1");
+        router.replace(safeAiBlogNext(returnNext));
         router.refresh();
         return;
       }
@@ -196,9 +213,13 @@ export default function AiBlogSubscribeCheckout({
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- redirect 1회 처리
-  }, [redirectReceiptId, redirectBillingKey, redirectEvent, redirectStatus, redirectPromoMonths, router]);
+  }, [redirectReceiptId, redirectBillingKey, redirectEvent, redirectStatus, redirectPromoMonths, returnNext, router]);
 
   const handleSubscribe = useCallback(async () => {
+    if (!agreedToTerms || !agreedMonthlyBilling) {
+      setError("결제 전 안내와 매달 자동결제·전체 동의에 모두 체크해 주세요.");
+      return;
+    }
     const Bootpay = window.Bootpay ?? (window as unknown as { bootpay?: typeof window.Bootpay }).bootpay;
     if (!Bootpay?.requestSubscription) {
       setError("결제 창을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.");
@@ -208,9 +229,13 @@ export default function AiBlogSubscribeCheckout({
     setError(null);
     try {
       const subscriptionId = `ai_blog_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const nextQs =
+        returnNext && returnNext.startsWith("/ai-blog")
+          ? `&next=${encodeURIComponent(returnNext)}`
+          : "";
       const redirectUrl =
         typeof window !== "undefined"
-          ? `${window.location.origin}/ai-blog/subscribe?promo_months=${selectedMonths}`
+          ? `${window.location.origin}/ai-blog/subscribe?promo_months=${selectedMonths}${nextQs}`
           : "";
       const orderName = promoEnabled
         ? `AI 블로그 ${selectedMonths}개월 특가 후 월 구독`
@@ -262,7 +287,7 @@ export default function AiBlogSubscribeCheckout({
         return;
       }
 
-      router.push("/ai-blog?subscribed=1");
+      router.push(safeAiBlogNext(returnNext));
       router.refresh();
     } catch (err: unknown) {
       if (err !== undefined) console.error("[Bootpay AI Blog] 결제 오류:", err);
@@ -275,11 +300,14 @@ export default function AiBlogSubscribeCheckout({
       setLoading(false);
     }
   }, [
+    agreedToTerms,
+    agreedMonthlyBilling,
     applicationId,
     userEmail,
     chargeCents,
     promoEnabled,
     selectedMonths,
+    returnNext,
     router,
   ]);
 
@@ -335,31 +363,76 @@ export default function AiBlogSubscribeCheckout({
           <li>• 프로 요금제 월 작성 한도 적용</li>
         </ul>
 
-        <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-          <p className="font-medium text-slate-700">결제 전 안내</p>
-          <ul className="mt-2 space-y-1">
-            <li>· 정기구독이며, 해지하지 않으면 매월 자동 갱신됩니다.</li>
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
+          <p className="font-semibold text-amber-950">결제 전 필수 안내 (꼭 읽어 주세요)</p>
+          <ul className="mt-2 list-none space-y-1.5">
+            <li>
+              · <strong>매달 자동 결제</strong>되는 정기구독입니다. 해지하지 않으면 매월{" "}
+              {normalAmountCents.toLocaleString("ko-KR")}원이 등록 카드로 청구됩니다.
+            </li>
             {promoEnabled && (
               <li>
-                · 선택하신 {selectedMonths}개월은 {promoAmountCents.toLocaleString("ko-KR")}원, 이후에는 월{" "}
-                {normalAmountCents.toLocaleString("ko-KR")}원이 청구됩니다.
+                · 선택하신 {selectedMonths}개월은 {promoAmountCents.toLocaleString("ko-KR")}원/월이며, 이후에는 월{" "}
+                {normalAmountCents.toLocaleString("ko-KR")}원이 자동 청구됩니다.
               </li>
             )}
-            <li>· 해지는 구독 페이지에서 언제든 가능하며, 다음 결제일부터 적용됩니다.</li>
+            <li>
+              · <strong>환불되지 않습니다.</strong> 결제 즉시 이용이 시작되며, 단순 변심·이용 중단·중도 해지만으로는
+              이미 결제된 금액을 돌려드리지 않습니다.
+            </li>
+            <li>
+              · <strong>해지(중지)해도 그 달은 이용됩니다.</strong> 해지해도 이미 결제한 이용 기간이 끝날 때까지
+              서비스는 유지되고, <strong>다음 결제일부터</strong> 자동결제가 중단됩니다. 일할 환불은 없습니다.
+            </li>
+            <li>· 해지는 AI 블로그 구독 페이지·마이페이지에서 직접 신청할 수 있습니다.</li>
+            <li>· 결제 오류·중복 결제 등 회사 귀책으로 판단되는 경우에만 별도 안내합니다.</li>
           </ul>
+          <p className="mt-2">
+            <Link
+              href="/subscribe/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-sky-700 underline hover:text-sky-900"
+            >
+              유료구독 약관 전문 보기
+            </Link>
+          </p>
         </div>
 
-        <label className="mb-4 flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-          />
-          <span className="text-sm text-slate-700">
-            <strong>유료구독 약관</strong> 및 위 결제 안내에 동의합니다.
-          </span>
-        </label>
+        <div className="mb-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            <span className="text-sm leading-snug text-slate-800">
+              <Link
+                href="/subscribe/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-sky-700 underline"
+              >
+                유료구독 약관
+              </Link>
+              과 위 <strong>결제 전 필수 안내</strong>(매달 자동결제·환불 불가·해지 시 당월 이용 후 종료)를 모두
+              확인했습니다.
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreedMonthlyBilling}
+              onChange={(e) => setAgreedMonthlyBilling(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            <span className="text-sm leading-snug text-slate-800">
+              <strong>매달 자동 결제</strong>되며, 해지하지 않으면 계속 청구되는 점과 환불·해지 조건을 포함한{" "}
+              <strong>위 모든 상황에 동의</strong>합니다. (체크하지 않으면 결제할 수 없습니다.)
+            </span>
+          </label>
+        </div>
 
         {error != null && error !== "" && (
           <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{toErrorString(error)}</p>
@@ -368,7 +441,7 @@ export default function AiBlogSubscribeCheckout({
         <button
           type="button"
           onClick={handleSubscribe}
-          disabled={loading || !bootpayReady || !agreedToTerms}
+          disabled={loading || !bootpayReady || !canPay}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 py-3.5 font-medium text-white shadow-lg hover:from-sky-600 hover:to-blue-700 disabled:opacity-60"
         >
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
@@ -378,10 +451,12 @@ export default function AiBlogSubscribeCheckout({
               ? `${chargeCents.toLocaleString("ko-KR")}원으로 ${selectedMonths}개월 시작`
               : `구독하기 (월 ${chargeCents.toLocaleString("ko-KR")}원)`}
         </button>
-        {!agreedToTerms && !loading && (
-          <p className="mt-2 text-center text-xs text-amber-600">약관에 동의해 주세요.</p>
+        {!canPay && !loading && (
+          <p className="mt-2 text-center text-xs font-medium text-amber-700">
+            위 두 항목에 모두 체크해야 결제를 진행할 수 있습니다.
+          </p>
         )}
-        {agreedToTerms && !bootpayReady && !loading && (
+        {canPay && !bootpayReady && !loading && (
           <p className="mt-2 text-center text-xs text-slate-500">결제 창을 불러오는 중…</p>
         )}
       </div>

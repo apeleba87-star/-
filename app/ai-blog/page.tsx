@@ -153,16 +153,15 @@ export default async function AiBlogHomePage({ searchParams }: { searchParams: P
   const got = await getAiBlogUser();
   if (!got) redirect("/login?next=/ai-blog");
   const { supabase, user } = got;
-  const active = user.access.state === "active";
-  if (!user.companyId && active) redirect("/ai-blog/profile?welcome=1");
-  if (user.companyId && user.roleCode !== "admin") {
+  if (!user.companyId) redirect("/ai-blog/profile?welcome=1");
+  if (user.roleCode !== "admin") {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         AI 블로그는 업체 대표(관리자) 계정만 사용할 수 있습니다.
       </div>
     );
   }
-  if (user.companyId && active && !(await loadProfile(supabase, user.companyId))) {
+  if (!(await loadProfile(supabase, user.companyId))) {
     redirect("/ai-blog/profile?welcome=1");
   }
 
@@ -233,14 +232,12 @@ export default async function AiBlogHomePage({ searchParams }: { searchParams: P
             작업 등록 → 사진 맞추기 → 네이버에 올리기. 하나씩만 따라가면 됩니다.
           </p>
         </div>
-        {active ? (
-          <Link
-            href="/ai-blog/projects/new"
-            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 hover:shadow-xl"
-          >
-            + 새 블로그 쓰기
-          </Link>
-        ) : null}
+        <Link
+          href="/ai-blog/projects/new"
+          className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 hover:shadow-xl"
+        >
+          + 새 블로그 쓰기
+        </Link>
       </div>
 
       <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">

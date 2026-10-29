@@ -45,7 +45,6 @@ export async function PUT(req: NextRequest) {
   let companyId = user.companyId;
   if (companyId && user.roleCode !== "admin") return jsonError("admin_required", 403);
   if (!companyId) {
-    if (user.access.state !== "active") return jsonError(`ai_access_${user.access.state}`, 403);
     const { data, error } = await supabase.rpc("cleanidex_ai_bootstrap_company", { p_business_name: businessName });
     if (error || !data) return jsonError(error?.message ?? "company_bootstrap_failed");
     companyId = data as string;

@@ -18,29 +18,30 @@ function AccessBanner({ access }: { access: AiAccess }) {
   if (access.state === "none") {
     return (
       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        아직 AI 블로그 사용 권한이 없습니다.{" "}
+        현장 등록·사진 맞추기까지는 바로 할 수 있습니다. AI로 글을 만들 때만{" "}
         <Link href="/ai-blog/subscribe" className="font-semibold underline hover:text-amber-950">
-          구독하기
+          구독
         </Link>
-        에서 시작하거나, 무료 체험이 남아 있으면 자동으로 부여됩니다.
+        이 필요합니다. 무료 체험이 남아 있으면 자동으로 부여됩니다.
       </div>
     );
   }
   if (access.state === "suspended") {
     return (
       <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-        AI 블로그 사용이 정지되었습니다. 기존 현장·초안 보기와 네이버로 옮기기만 가능합니다. 클린아이덱스 관리자에게
-        문의해 주세요.
+        AI 글 생성이 정지되었습니다. 현장·사진 편집과 네이버로 옮기기는 계속 가능합니다. 클린아이덱스 관리자에게 문의해
+        주세요.
       </div>
     );
   }
   if (access.state === "expired") {
     return (
       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        AI 블로그 이용 기간이 {access.expires_on}에 끝났습니다. 기존 현장·초안 보기와 네이버로 옮기기만 가능합니다.{" "}
+        AI 블로그 이용 기간이 {access.expires_on}에 끝났습니다. 현장·사진 편집은 계속 가능하고, AI 글 만들기는{" "}
         <Link href="/ai-blog/subscribe" className="font-semibold underline hover:text-amber-950">
-          구독 연장하기
+          구독 연장
         </Link>
+        후 이용할 수 있습니다.
       </div>
     );
   }

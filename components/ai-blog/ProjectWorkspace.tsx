@@ -252,7 +252,6 @@ export default function ProjectWorkspace({
                 type="button"
                 className={btnPrimary}
                 disabled={creating || !canCreate}
-                title={canCreate ? undefined : "AI 블로그 이용 기간에만 새 글을 만들 수 있습니다."}
                 onClick={() => void createDraft()}
               >
                 {creating ? "만드는 중…" : contents.length ? "새 글 만들기" : "AI로 글 만들기"}

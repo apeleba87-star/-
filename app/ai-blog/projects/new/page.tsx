@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function NewProjectPage() {
   const got = await getAiBlogUser();
   if (!got) redirect("/login?next=/ai-blog/projects/new");
-  if (!got.user.companyId && got.user.access.state === "active") redirect("/ai-blog/profile?welcome=1");
+  if (!got.user.companyId) redirect("/ai-blog/profile?welcome=1");
   const profile = got.user.companyId ? await loadProfile(got.supabase, got.user.companyId) : null;
 
   return (

@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const guard = await requireAiAdmin({ requireActive: true });
+  const guard = await requireAiAdmin();
   if (!guard.ok) return guard.response;
   const { supabase, ctx } = guard;
 

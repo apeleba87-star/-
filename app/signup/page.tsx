@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase";
 import Button from "@/components/Button";
 import MagamAppPitch from "@/components/magam/MagamAppPitch";
 import { MagamPageHeader, MagamSectionCard } from "@/components/magam/ui/MagamUi";
+import { authErrorMessage } from "@/lib/auth/auth-error-message";
 import { MAGAM_APP_NAME } from "@/lib/magam/brand";
 import { isMagamFromQuery } from "@/lib/magam/brand";
 import { MAGAM_DEFAULT_AUTH_NEXT, magamAuthCallbackUrl, setMagamAuthNextCookie } from "@/lib/magam/auth-cookie";
@@ -124,7 +125,7 @@ function SignupPageInner() {
       },
     });
     if (err) {
-      setError(err.message);
+      setError(authErrorMessage(err.message, "회원가입에 실패했습니다. 잠시 후 다시 시도해 주세요."));
       setLoading(false);
       return;
     }

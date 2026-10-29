@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** 현장에서 새 블로그 초안(빈 상태) 생성. AI 생성은 /contents/[id]/generate 에서. */
 export async function POST(req: NextRequest) {
-  const guard = await requireAiAdmin({ requireActive: true });
+  const guard = await requireAiAdmin();
   if (!guard.ok) return guard.response;
   const { supabase, ctx } = guard;
 

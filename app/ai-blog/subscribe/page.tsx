@@ -48,6 +48,11 @@ export default async function AiBlogSubscribePage({ searchParams }: { searchPara
   const redirectStatus = first(sp.status);
   const promoMonthsRaw = first(sp.promo_months);
   const redirectPromoMonths = promoMonthsRaw ? Number(promoMonthsRaw) : null;
+  const returnNextRaw = first(sp.next);
+  const returnNext =
+    returnNextRaw && returnNextRaw.startsWith("/ai-blog") && !returnNextRaw.startsWith("//")
+      ? returnNextRaw
+      : null;
 
   return (
     <div className="mx-auto max-w-lg px-4 py-10">
@@ -55,7 +60,8 @@ export default async function AiBlogSubscribePage({ searchParams }: { searchPara
       <h1 className="mt-1 text-2xl font-bold text-slate-900">유료 구독</h1>
       <p className="mt-2 text-sm text-slate-600">
         무료 체험(3일 · 블로그 3개) 이후에는 구독이 필요합니다. 특가 기간을 고른 뒤 카드 등록하면, 이후 정상 금액이
-        자동 결제됩니다.
+        <strong> 매달 자동 결제</strong>됩니다. 결제 전 안내와 동의 체크를 모두 확인한 뒤에만 결제를 진행할 수
+        있습니다.
       </p>
 
       {sub && (sub as { status: string }).status === "active" && (
@@ -92,6 +98,7 @@ export default async function AiBlogSubscribePage({ searchParams }: { searchPara
               ? redirectPromoMonths
               : null
           }
+          returnNext={returnNext}
         />
       )}
 

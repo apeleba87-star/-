@@ -1,7 +1,10 @@
 /** OAuth 콜백 실패 → 로그인 화면용 (내부 메시지는 노출하지 않음) */
 
+import { authErrorMessage } from "@/lib/auth/auth-error-message";
+
 const PKCE_HINT =
   "브라우저 쿠키가 차단되었거나 로그인 창이 바뀌었을 수 있습니다. Safari·Chrome에서 다시 시도해 주세요.";
+const KAKAO_FAIL = "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
 
 export function oauthLoginErrorMessage(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -14,7 +17,7 @@ export function oauthLoginErrorMessage(raw: string | null | undefined): string |
   }
 
   if (decoded === "auth") {
-    return "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+    return KAKAO_FAIL;
   }
 
   const lower = decoded.toLowerCase();
@@ -31,10 +34,5 @@ export function oauthLoginErrorMessage(raw: string | null | undefined): string |
     return "카카오 로그인이 취소되었습니다.";
   }
 
-  // 개발·운영 디버그용 — Supabase/Kakao가 넘긴 짧은 메시지
-  if (decoded.length <= 120 && !/^https?:\/\//i.test(decoded)) {
-    return decoded;
-  }
-
-  return "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+  return authErrorMessage(decoded, KAKAO_FAIL);
 }

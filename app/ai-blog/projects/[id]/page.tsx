@@ -45,7 +45,7 @@ export default async function ProjectPage({
       contents={(contents ?? []) as ContentSummary[]}
       labelSuggestions={labelSuggestions}
       initialTab={tab === "photos" || tab === "blog" ? tab : "info"}
-      canCreate={got.user.access.state === "active"}
+      canCreate
     />
   );
 }

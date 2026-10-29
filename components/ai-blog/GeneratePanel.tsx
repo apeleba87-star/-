@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Chip, Field, Notice, TagInput, btnPrimary, card, input } from "@/components/ai-blog/ui";
 import { BLOG_MODES } from "@/lib/ai-blog/modes";
@@ -47,6 +49,8 @@ export default function GeneratePanel({
   onGenerate: (req: GenerateRequest) => void;
   locked?: boolean;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [mode, setMode] = useState<BlogMode>(content.mode ?? 1);
   const [random, setRandom] = useState(false);
   const [keyword, setKeyword] = useState(content.keyword);
@@ -67,8 +71,13 @@ export default function GeneratePanel({
   const monthlyFull = Boolean(usage && isFirst && usage.contents_used >= usage.monthly_content_limit);
   const genFull = used >= maxGen;
   const usablePairs = pairs.filter((p) => p.before_media_id || p.after_media_id);
+  const subscribeHref = `/ai-blog/subscribe?next=${encodeURIComponent(pathname || `/ai-blog/contents/${content.id}`)}`;
 
   const submit = () => {
+    if (locked) {
+      router.push(subscribeHref);
+      return;
+    }
     if (!isFirst && content.blocks.length && !window.confirm("지금 글을 지우고 새로 만들까요?")) return;
     onGenerate({ keyword, secondary_keywords: secondary, extra_request: extra, mode, random });
   };
@@ -223,7 +232,12 @@ export default function GeneratePanel({
 
         <section className={`${card} space-y-3 p-4`}>
           {locked ? (
-            <Notice tone="warning">AI 블로그 이용 기간이 아니어서 AI 생성을 할 수 없습니다. 기존 글 편집과 네이버로 옮기기는 계속 가능합니다.</Notice>
+            <Notice tone="warning">
+              키워드·사진까지 준비한 뒤 「AI로 글 만들기」를 누르면 구독 확인으로 이동합니다.{" "}
+              <Link href={subscribeHref} className="font-semibold underline">
+                지금 구독하기
+              </Link>
+            </Notice>
           ) : null}
           {monthlyFull ? <Notice tone="warning">이번 달 블로그 작성 한도를 모두 사용했습니다.</Notice> : null}
           {genFull ? (
@@ -233,10 +247,10 @@ export default function GeneratePanel({
             <button
               type="button"
               className={`${btnPrimary} px-6 py-3 text-base`}
-              disabled={locked || monthlyFull || genFull || !keyword.trim()}
+              disabled={monthlyFull || genFull || !keyword.trim()}
               onClick={submit}
             >
-              {isFirst ? "AI로 글 만들기" : "전체 다시 만들기"}
+              {locked ? "AI로 글 만들기 (구독 확인)" : isFirst ? "AI로 글 만들기" : "전체 다시 만들기"}
             </button>
             <span className="text-xs text-slate-600">
               이번 글 AI {used}/{maxGen}회

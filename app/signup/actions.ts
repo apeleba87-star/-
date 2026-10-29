@@ -1,5 +1,6 @@
 "use server";
 
+import { authErrorMessage } from "@/lib/auth/auth-error-message";
 import { createClient } from "@/lib/supabase-server";
 
 /** 이메일 중복 여부 조회 (가입 전 전체 조회, 대소문자 무시). RPC는 SECURITY DEFINER로 DB에서 실행됩니다. */
@@ -9,7 +10,13 @@ export async function checkEmailAvailable(email: string) {
 
   const supabase = createClient();
   const { data, error } = await supabase.rpc("check_email_available", { email_input: trimmed });
-  if (error) return { ok: false, available: false, error: error.message };
+  if (error) {
+    return {
+      ok: false,
+      available: false,
+      error: authErrorMessage(error.message, "이메일 확인에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    };
+  }
   return { ok: true, available: data === true };
 }
 
@@ -20,6 +27,12 @@ export async function checkNicknameAvailable(nickname: string) {
 
   const supabase = createClient();
   const { data, error } = await supabase.rpc("check_display_name_available", { name_input: trimmed });
-  if (error) return { ok: false, available: false, error: error.message };
+  if (error) {
+    return {
+      ok: false,
+      available: false,
+      error: authErrorMessage(error.message, "별명 확인에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    };
+  }
   return { ok: true, available: data === true };
 }

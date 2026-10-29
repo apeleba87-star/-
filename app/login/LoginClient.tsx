@@ -17,6 +17,7 @@ import {
 import { MAGAM_APP_NAME, isMagamFromQuery } from "@/lib/magam/brand";
 import { MAGAM_DEFAULT_AUTH_NEXT, setMagamAuthNextCookie } from "@/lib/magam/auth-cookie";
 import { MAGAM_LOGIN_KAKAO_CTA, MAGAM_LOGIN_KAKAO_LOADING } from "@/lib/magam/copy";
+import { authErrorMessage } from "@/lib/auth/auth-error-message";
 import { oauthLoginErrorMessage } from "@/lib/auth/oauth-error-message";
 import { createClient } from "@/lib/supabase";
 
@@ -52,7 +53,7 @@ export default function LoginClient() {
     const supabase = createClient();
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) {
-      setError(err.message);
+      setError(authErrorMessage(err.message, "이메일 또는 비밀번호가 올바르지 않습니다."));
       setLoading(false);
       return;
     }
@@ -77,7 +78,7 @@ export default function LoginClient() {
       options: { redirectTo },
     });
     if (err) {
-      setError(err.message);
+      setError(authErrorMessage(err.message, "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요."));
       setOauthLoading(null);
     }
   }
