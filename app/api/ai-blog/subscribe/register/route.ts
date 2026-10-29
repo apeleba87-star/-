@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
-import { verifyReceipt, isBootpayConfigured, isBootpayReceiptSuccessStatus } from "@/lib/bootpay-server";
+import { isBootpayConfigured } from "@/lib/bootpay-server";
 import {
   getAiBlogAmountCents,
   getAiBlogFirstChargeAmount,
 } from "@/lib/ai-blog/billing-settings";
 import { activateAiBlogPaidSubscription } from "@/lib/ai-blog/activate-paid";
+import {
+  assertReceiptNotUsedByOther,
+  resolveVerifiedAiBlogBilling,
+} from "@/lib/ai-blog/subscribe-guard";
 
 export const runtime = "nodejs";
 
+/**
+ * AI 블로그 구독 등록 (팝업/SDK에서 billing_key+receipt_id를 받은 경우).
+ * receipt_id 필수 · Bootpay 검증 · 금액 교차확인 후에만 권한 부여.
+ */
 export async function POST(req: Request) {
   if (!isBootpayConfigured()) {
     return NextResponse.json({ error: "결제가 설정되지 않았습니다." }, { status: 503 });
@@ -22,16 +30,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { billing_key: string; receipt_id?: string; promo_months?: number };
+  let body: { billing_key?: string; receipt_id?: string; promo_months?: number };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   }
 
-  const { billing_key, receipt_id, promo_months: rawMonths } = body;
-  if (!billing_key || typeof billing_key !== "string") {
-    return NextResponse.json({ error: "billing_key가 필요합니다." }, { status: 400 });
+  const receiptId = typeof body.receipt_id === "string" ? body.receipt_id.trim() : "";
+  if (!receiptId) {
+    return NextResponse.json(
+      { error: "결제 영수증(receipt_id)이 필요합니다. 결제를 다시 진행해 주세요." },
+      { status: 400 },
+    );
   }
 
   let service;
@@ -42,21 +53,30 @@ export async function POST(req: Request) {
   }
 
   const promoMonths =
-    rawMonths != null && Number.isFinite(Number(rawMonths)) ? Math.round(Number(rawMonths)) : null;
+    body.promo_months != null && Number.isFinite(Number(body.promo_months))
+      ? Math.round(Number(body.promo_months))
+      : null;
   const charge = await getAiBlogFirstChargeAmount(service, promoMonths);
   const normalAmount = await getAiBlogAmountCents(service);
 
-  if (receipt_id) {
-    const verified = await verifyReceipt(receipt_id);
-    if (!verified || !isBootpayReceiptSuccessStatus(verified.status)) {
-      return NextResponse.json({ error: "결제 정보 검증에 실패했습니다." }, { status: 400 });
-    }
+  const reused = await assertReceiptNotUsedByOther(service, receiptId, user.id);
+  if (!reused.ok) {
+    return NextResponse.json({ error: reused.error }, { status: 400 });
+  }
+
+  const verified = await resolveVerifiedAiBlogBilling({
+    receiptId,
+    expectedPriceCents: charge.amountCents,
+    billingKeyHint: typeof body.billing_key === "string" ? body.billing_key : null,
+  });
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.error }, { status: 400 });
   }
 
   const result = await activateAiBlogPaidSubscription(service, {
     userId: user.id,
-    billingKey: billing_key,
-    receiptId: receipt_id,
+    billingKey: verified.billingKey,
+    receiptId,
     amountCents: normalAmount,
     promoMonths: charge.appliedPromo ? charge.promoMonths : 0,
     actorId: user.id,

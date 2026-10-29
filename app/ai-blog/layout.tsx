@@ -18,11 +18,11 @@ function AccessBanner({ access }: { access: AiAccess }) {
   if (access.state === "none") {
     return (
       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        현장 등록·사진 맞추기까지는 바로 할 수 있습니다. AI로 글을 만들 때만{" "}
+        현장 등록·사진 맞추기까지는 바로 할 수 있습니다. AI로 글을 만들 때는{" "}
         <Link href="/ai-blog/subscribe" className="font-semibold underline hover:text-amber-950">
-          구독
+          100원 특가 구독
         </Link>
-        이 필요합니다. 무료 체험이 남아 있으면 자동으로 부여됩니다.
+        후 이용할 수 있습니다.
       </div>
     );
   }
@@ -45,22 +45,14 @@ function AccessBanner({ access }: { access: AiAccess }) {
       </div>
     );
   }
-  if (access.state === "active" && access.plan_code === "TRIAL") {
-    return (
-      <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-        무료 체험 중입니다
-        {access.days_left != null
-          ? ` (남은 ${access.days_left === 0 ? "오늘" : `${access.days_left}일`} · 블로그 최대 3개)`
-          : ""}
-        . 계속 이용하려면{" "}
-        <Link href="/ai-blog/subscribe" className="font-semibold underline hover:text-sky-950">
-          100원 특가 구독
-        </Link>
-        을 선택해 주세요.
-      </div>
-    );
-  }
-  if (access.state === "active" && access.days_left != null && access.days_left <= EXPIRY_WARNING_DAYS) {
+  // TRIAL: 남은 일수·「무료 체험」카운트다운은 결제 유인을 깎으므로 노출하지 않음.
+  // 유료 만료 임박만 안내.
+  if (
+    access.state === "active" &&
+    access.plan_code !== "TRIAL" &&
+    access.days_left != null &&
+    access.days_left <= EXPIRY_WARNING_DAYS
+  ) {
     return (
       <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
         AI 블로그 이용 기간이 {access.days_left === 0 ? "오늘" : `${access.days_left}일 후`} 끝납니다 (만료일{" "}

@@ -149,7 +149,11 @@ function EfficiencyList({ title, rows }: { title: string; rows: StatProject[] })
   );
 }
 
-export default async function AiBlogHomePage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
+export default async function AiBlogHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ m?: string; subscribed?: string }>;
+}) {
   const got = await getAiBlogUser();
   if (!got) redirect("/login?next=/ai-blog");
   const { supabase, user } = got;
@@ -165,7 +169,8 @@ export default async function AiBlogHomePage({ searchParams }: { searchParams: P
     redirect("/ai-blog/profile?welcome=1");
   }
 
-  const { m } = await searchParams;
+  const { m, subscribed } = await searchParams;
+  const justSubscribed = subscribed === "1";
   const thisMonth = kstToday().slice(0, 7);
   const month = isMonthKey(m) && m <= thisMonth ? m : thisMonth;
   const prevMonth = shiftMonth(month, -1);
@@ -223,6 +228,12 @@ export default async function AiBlogHomePage({ searchParams }: { searchParams: P
         aria-hidden
         className="pointer-events-none absolute inset-x-0 -top-4 h-56 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.12),_transparent_55%),linear-gradient(180deg,#f8fafc_0%,transparent_100%)]"
       />
+
+      {justSubscribed ? (
+        <div className="relative rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          구독이 시작되었습니다. 이제 AI로 블로그 글을 만들 수 있습니다.
+        </div>
+      ) : null}
 
       <div className="relative flex flex-wrap items-end gap-4">
         <div className="min-w-0 flex-1">

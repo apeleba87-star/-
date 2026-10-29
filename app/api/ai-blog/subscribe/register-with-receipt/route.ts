@@ -1,17 +1,16 @@
 import { createClient as createSupabaseJwtClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
-import {
-  lookupBillingKeyByReceiptWithRetry,
-  isBootpayConfigured,
-  isBootpayReceiptSuccessStatus,
-  verifyReceipt,
-} from "@/lib/bootpay-server";
+import { isBootpayConfigured } from "@/lib/bootpay-server";
 import {
   getAiBlogAmountCents,
   getAiBlogFirstChargeAmount,
 } from "@/lib/ai-blog/billing-settings";
 import { activateAiBlogPaidSubscription } from "@/lib/ai-blog/activate-paid";
+import {
+  assertReceiptNotUsedByOther,
+  resolveVerifiedAiBlogBilling,
+} from "@/lib/ai-blog/subscribe-guard";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -56,38 +55,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
     }
 
-    const { receipt_id, billing_key: billingKeyFromClient, promo_months: rawMonths } = body;
-    if (!receipt_id || typeof receipt_id !== "string") {
+    const receiptId = typeof body.receipt_id === "string" ? body.receipt_id.trim() : "";
+    if (!receiptId) {
       return NextResponse.json({ error: "receipt_id가 필요합니다." }, { status: 400 });
-    }
-
-    let billing_key: string;
-
-    if (billingKeyFromClient && typeof billingKeyFromClient === "string" && billingKeyFromClient.trim()) {
-      const verified = await verifyReceipt(receipt_id);
-      if (verified && isBootpayReceiptSuccessStatus(verified.status)) {
-        billing_key = billingKeyFromClient.trim();
-      } else {
-        const result = await lookupBillingKeyByReceiptWithRetry(receipt_id);
-        if ("error" in result) {
-          return NextResponse.json(
-            {
-              error:
-                verified && !isBootpayReceiptSuccessStatus(verified.status)
-                  ? `결제 정보 검증에 실패했습니다. (상태 코드: ${verified.status})`
-                  : result.error,
-            },
-            { status: 400 },
-          );
-        }
-        billing_key = result.billing_key;
-      }
-    } else {
-      const result = await lookupBillingKeyByReceiptWithRetry(receipt_id);
-      if ("error" in result) {
-        return NextResponse.json({ error: result.error }, { status: 400 });
-      }
-      billing_key = result.billing_key;
     }
 
     let serviceSupabase;
@@ -101,14 +71,30 @@ export async function POST(req: Request) {
     }
 
     const promoMonths =
-      rawMonths != null && Number.isFinite(Number(rawMonths)) ? Math.round(Number(rawMonths)) : null;
+      body.promo_months != null && Number.isFinite(Number(body.promo_months))
+        ? Math.round(Number(body.promo_months))
+        : null;
     const charge = await getAiBlogFirstChargeAmount(serviceSupabase, promoMonths);
     const normalAmount = await getAiBlogAmountCents(serviceSupabase);
 
+    const reused = await assertReceiptNotUsedByOther(serviceSupabase, receiptId, user.id);
+    if (!reused.ok) {
+      return NextResponse.json({ error: reused.error }, { status: 400 });
+    }
+
+    const verified = await resolveVerifiedAiBlogBilling({
+      receiptId,
+      expectedPriceCents: charge.amountCents,
+      billingKeyHint: typeof body.billing_key === "string" ? body.billing_key : null,
+    });
+    if (!verified.ok) {
+      return NextResponse.json({ error: verified.error }, { status: 400 });
+    }
+
     const result = await activateAiBlogPaidSubscription(serviceSupabase, {
       userId: user.id,
-      billingKey: billing_key,
-      receiptId: receipt_id,
+      billingKey: verified.billingKey,
+      receiptId,
       amountCents: normalAmount,
       promoMonths: charge.appliedPromo ? charge.promoMonths : 0,
       actorId: user.id,

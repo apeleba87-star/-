@@ -5,6 +5,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2 } from "lucide-react";
 import Link from "next/link";
+import PaidTermsDisclosure from "@/components/subscribe/PaidTermsDisclosure";
 import { createClient } from "@/lib/supabase";
 
 /** API/예외에서 나온 값을 화면에 쓸 수 있는 문자열로 변환 ([object Object] 방지) */
@@ -65,6 +66,7 @@ export default function SubscribeCheckout({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bootpayReady, setBootpayReady] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedMonthlyBilling, setAgreedMonthlyBilling] = useState(false);
   const canPay = agreedToTerms && agreedMonthlyBilling;
@@ -184,7 +186,7 @@ export default function SubscribeCheckout({
 
   const handleSubscribe = useCallback(async () => {
     if (!agreedToTerms || !agreedMonthlyBilling) {
-      setError("결제 전 안내와 매달 자동결제·전체 동의에 모두 체크해 주세요.");
+      setError("아래 두 항목에 모두 체크해 주세요.");
       return;
     }
     const Bootpay = window.Bootpay ?? (window as unknown as { bootpay?: typeof window.Bootpay }).bootpay;
@@ -270,9 +272,9 @@ export default function SubscribeCheckout({
           <li>• 평균 계약 금액</li>
         </ul>
 
-        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
-          <p className="font-semibold text-amber-950">결제 전 필수 안내 (꼭 읽어 주세요)</p>
-          <ul className="mt-2 list-none space-y-1.5">
+        <PaidTermsDisclosure open={termsOpen} onOpenChange={setTermsOpen} accent="amber">
+          <p className="mb-2 font-semibold">결제 전 필수 안내</p>
+          <ul className="list-none space-y-1.5">
             <li>
               · <strong>매달 자동 결제</strong>되는 정기구독입니다. 해지하지 않으면 매월{" "}
               {amountCents.toLocaleString("ko-KR")}원이 등록 카드로 청구됩니다.
@@ -289,17 +291,7 @@ export default function SubscribeCheckout({
             <li>· 입찰·리포트·거래 관련 정보는 참고용이며, 회사는 특정 결과를 보장하지 않습니다.</li>
             <li>· 결제 오류·중복 결제 등 회사 귀책으로 판단되는 경우에만 별도 안내합니다.</li>
           </ul>
-          <p className="mt-2">
-            <Link
-              href="/subscribe/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-amber-700 underline hover:text-amber-900"
-            >
-              유료구독 약관 전문 보기
-            </Link>
-          </p>
-        </div>
+        </PaidTermsDisclosure>
 
         <div className="mb-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
           <label className="flex cursor-pointer items-start gap-3">
@@ -310,16 +302,17 @@ export default function SubscribeCheckout({
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
             />
             <span className="text-sm leading-snug text-slate-800">
-              <Link
-                href="/subscribe/terms"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
                 className="font-semibold text-amber-700 underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setTermsOpen(true);
+                }}
               >
                 유료구독 약관
-              </Link>
-              과 위 <strong>결제 전 필수 안내</strong>(매달 자동결제·환불 불가·해지 시 당월 이용 후 종료)를 모두
-              확인했습니다.
+              </button>
+              과 결제 안내(매달 자동결제·환불 불가·해지 시 당월 이용 후 종료)를 확인했습니다.
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-3">
@@ -358,7 +351,7 @@ export default function SubscribeCheckout({
         </button>
         {!canPay && !loading && (
           <p className="mt-2 text-center text-xs font-medium text-amber-700">
-            위 두 항목에 모두 체크해야 결제를 진행할 수 있습니다.
+            아래 두 항목에 모두 체크해야 결제를 진행할 수 있습니다.
           </p>
         )}
         {canPay && !bootpayReady && !loading && (

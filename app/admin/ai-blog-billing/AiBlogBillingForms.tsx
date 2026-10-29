@@ -166,7 +166,10 @@ export function TrialForm({ initialTrial }: { initialTrial: AiBlogTrialConfig })
   return (
     <form onSubmit={handleSubmit} className="max-w-md space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-5">
       <h2 className="text-lg font-semibold text-slate-900">무료 체험</h2>
-      <p className="text-xs text-slate-500">기본: 3일 · TRIAL 플랜(블로그 3개). 계정당 1회 자동 부여.</p>
+      <p className="text-xs text-slate-500">
+        기본: 3일 · TRIAL 플랜(블로그 3개). 켜면 AI 블로그 진입 시 계정당 1회 자동 부여됩니다.{" "}
+        <strong>교육생에게 바로 100원 결제를 유도할 때는 끄세요.</strong>
+      </p>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
         체험 활성화

@@ -3,8 +3,8 @@
 import { useState, useCallback, useEffect } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, Check } from "lucide-react";
-import Link from "next/link";
+import { Camera, Check, FilePenLine, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import PaidTermsDisclosure from "@/components/subscribe/PaidTermsDisclosure";
 import { createClient } from "@/lib/supabase";
 
 function toErrorString(value: unknown): string {
@@ -89,6 +89,7 @@ export default function AiBlogSubscribeCheckout({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bootpayReady, setBootpayReady] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedMonthlyBilling, setAgreedMonthlyBilling] = useState(false);
   const defaultMonths = monthOptions[0] ?? 1;
@@ -217,7 +218,7 @@ export default function AiBlogSubscribeCheckout({
 
   const handleSubscribe = useCallback(async () => {
     if (!agreedToTerms || !agreedMonthlyBilling) {
-      setError("결제 전 안내와 매달 자동결제·전체 동의에 모두 체크해 주세요.");
+      setError("아래 두 항목에 모두 체크해 주세요.");
       return;
     }
     const Bootpay = window.Bootpay ?? (window as unknown as { bootpay?: typeof window.Bootpay }).bootpay;
@@ -256,8 +257,8 @@ export default function AiBlogSubscribeCheckout({
       const billingKey = data?.data?.billing_key ?? data?.billing_key;
       const receiptId = data?.data?.receipt_id ?? data?.receipt_id;
 
-      if (!billingKey) {
-        setError("빌링키를 받지 못했습니다. 결제창에서 카드 등록을 완료해 주세요.");
+      if (!receiptId) {
+        setError("결제 영수증을 받지 못했습니다. 결제창에서 카드 등록을 완료해 주세요.");
         setLoading(false);
         return;
       }
@@ -274,7 +275,7 @@ export default function AiBlogSubscribeCheckout({
         headers,
         credentials: "include",
         body: JSON.stringify({
-          billing_key: billingKey,
+          billing_key: billingKey || undefined,
           receipt_id: receiptId,
           promo_months: promoEnabled ? selectedMonths : undefined,
         }),
@@ -311,6 +312,12 @@ export default function AiBlogSubscribeCheckout({
     router,
   ]);
 
+  const benefits = [
+    { Icon: Camera, title: "현장 사진으로 초안", desc: "전·후 사진만 맞추면 글 뼈대가 잡힙니다" },
+    { Icon: FilePenLine, title: "문단 다시쓰기", desc: "마음에 안 드는 부분만 골라 고칩니다" },
+    { Icon: RefreshCw, title: "네이버로 옮기기", desc: "완성된 글을 그대로 이전할 수 있습니다" },
+  ];
+
   return (
     <>
       <Script
@@ -322,50 +329,67 @@ export default function AiBlogSubscribeCheckout({
         }}
       />
 
+      <ul className="space-y-3">
+        {benefits.map(({ Icon, title, desc }) => (
+          <li key={title} className="flex gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+              <Icon className="h-4 w-4" aria-hidden />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{title}</p>
+              <p className="text-xs text-slate-500">{desc}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
       {promoEnabled && monthOptions.length > 0 && (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {monthOptions.map((m) => {
-            const selected = selectedMonths === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setSelectedMonths(m)}
-                disabled={loading}
-                className={`relative rounded-2xl border p-4 text-left transition ${
-                  selected
-                    ? "border-sky-500 bg-sky-50 ring-2 ring-sky-200"
-                    : "border-slate-200 bg-white hover:border-slate-300"
-                }`}
-              >
-                {selected && (
-                  <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-sky-500 text-white">
-                    <Check className="h-3.5 w-3.5" />
-                  </span>
-                )}
-                <p className="text-sm font-semibold text-slate-900">
-                  {promoAmountCents.toLocaleString("ko-KR")}원 · {m}개월
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {m}개월간 {promoAmountCents.toLocaleString("ko-KR")}원/월 → 이후 월{" "}
-                  {normalAmountCents.toLocaleString("ko-KR")}원 자동결제
-                </p>
-              </button>
-            );
-          })}
+        <div className="mt-6">
+          <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">특가 기간 선택</p>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {monthOptions.map((m) => {
+              const selected = selectedMonths === m;
+              const recommended = m === Math.max(...monthOptions);
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setSelectedMonths(m)}
+                  disabled={loading}
+                  className={`relative rounded-2xl border p-4 text-left transition ${
+                    selected
+                      ? "border-emerald-500 bg-emerald-50/80 shadow-sm ring-2 ring-emerald-200"
+                      : "border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30"
+                  }`}
+                >
+                  {recommended ? (
+                    <span className="absolute -top-2 left-3 rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-bold text-white">
+                      추천
+                    </span>
+                  ) : null}
+                  {selected ? (
+                    <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                  ) : null}
+                  <p className="text-base font-bold text-slate-900">
+                    {promoAmountCents.toLocaleString("ko-KR")}원
+                    <span className="ml-1 text-sm font-semibold text-slate-600">· {m}개월</span>
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    {m}개월간 특가 → 이후 월 {normalAmountCents.toLocaleString("ko-KR")}원
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <ul className="mb-4 space-y-2 text-sm text-slate-600">
-          <li>• 현장 사진 기반 AI 블로그 초안 작성</li>
-          <li>• 문단 다시쓰기 · 네이버 이전 지원</li>
-          <li>• 프로 요금제 월 작성 한도 적용</li>
-        </ul>
-
-        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
-          <p className="font-semibold text-amber-950">결제 전 필수 안내 (꼭 읽어 주세요)</p>
-          <ul className="mt-2 list-none space-y-1.5">
+      <div className="mt-6 space-y-4">
+        <PaidTermsDisclosure open={termsOpen} onOpenChange={setTermsOpen} accent="emerald">
+          <p className="mb-2 font-semibold text-slate-800">결제 전 필수 안내</p>
+          <ul className="list-none space-y-1.5">
             <li>
               · <strong>매달 자동 결제</strong>되는 정기구독입니다. 해지하지 않으면 매월{" "}
               {normalAmountCents.toLocaleString("ko-KR")}원이 등록 카드로 청구됩니다.
@@ -387,37 +411,28 @@ export default function AiBlogSubscribeCheckout({
             <li>· 해지는 AI 블로그 구독 페이지·마이페이지에서 직접 신청할 수 있습니다.</li>
             <li>· 결제 오류·중복 결제 등 회사 귀책으로 판단되는 경우에만 별도 안내합니다.</li>
           </ul>
-          <p className="mt-2">
-            <Link
-              href="/subscribe/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-sky-700 underline hover:text-sky-900"
-            >
-              유료구독 약관 전문 보기
-            </Link>
-          </p>
-        </div>
+        </PaidTermsDisclosure>
 
-        <div className="mb-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="space-y-3 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-3.5">
           <label className="flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               checked={agreedToTerms}
               onChange={(e) => setAgreedToTerms(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
             <span className="text-sm leading-snug text-slate-800">
-              <Link
-                href="/subscribe/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-sky-700 underline"
+              <button
+                type="button"
+                className="font-semibold text-emerald-800 underline decoration-emerald-300 underline-offset-2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setTermsOpen(true);
+                }}
               >
                 유료구독 약관
-              </Link>
-              과 위 <strong>결제 전 필수 안내</strong>(매달 자동결제·환불 불가·해지 시 당월 이용 후 종료)를 모두
-              확인했습니다.
+              </button>
+              과 결제 안내(매달 자동결제·환불 불가·해지 시 당월 이용 후 종료)를 확인했습니다.
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-3">
@@ -425,47 +440,50 @@ export default function AiBlogSubscribeCheckout({
               type="checkbox"
               checked={agreedMonthlyBilling}
               onChange={(e) => setAgreedMonthlyBilling(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
             <span className="text-sm leading-snug text-slate-800">
               <strong>매달 자동 결제</strong>되며, 해지하지 않으면 계속 청구되는 점과 환불·해지 조건을 포함한{" "}
-              <strong>위 모든 상황에 동의</strong>합니다. (체크하지 않으면 결제할 수 없습니다.)
+              <strong>위 모든 상황에 동의</strong>합니다.
             </span>
           </label>
         </div>
 
         {error != null && error !== "" && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{toErrorString(error)}</p>
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{toErrorString(error)}</p>
         )}
 
         <button
           type="button"
           onClick={handleSubscribe}
           disabled={loading || !bootpayReady || !canPay}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 py-3.5 font-medium text-white shadow-lg hover:from-sky-600 hover:to-blue-700 disabled:opacity-60"
+          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-slate-900 py-4 text-base font-bold text-white shadow-[0_12px_28px_-10px_rgba(15,23,42,0.55)] transition hover:bg-slate-800 hover:shadow-[0_16px_32px_-10px_rgba(15,23,42,0.6)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
-          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-          {loading
-            ? "처리 중…"
-            : promoEnabled
-              ? `${chargeCents.toLocaleString("ko-KR")}원으로 ${selectedMonths}개월 시작`
-              : `구독하기 (월 ${chargeCents.toLocaleString("ko-KR")}원)`}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-400/20 to-teal-400/0 opacity-0 transition group-hover:opacity-100"
+          />
+          {loading ? <Loader2 className="relative h-5 w-5 animate-spin" /> : <Sparkles className="relative h-5 w-5 text-emerald-300" />}
+          <span className="relative">
+            {loading
+              ? "처리 중…"
+              : promoEnabled
+                ? `${chargeCents.toLocaleString("ko-KR")}원으로 바로 시작`
+                : `월 ${chargeCents.toLocaleString("ko-KR")}원으로 시작`}
+          </span>
         </button>
         {!canPay && !loading && (
-          <p className="mt-2 text-center text-xs font-medium text-amber-700">
-            위 두 항목에 모두 체크해야 결제를 진행할 수 있습니다.
+          <p className="text-center text-xs font-medium text-slate-500">
+            두 항목에 모두 체크하면 시작할 수 있습니다.
           </p>
         )}
         {canPay && !bootpayReady && !loading && (
-          <p className="mt-2 text-center text-xs text-slate-500">결제 창을 불러오는 중…</p>
+          <p className="text-center text-xs text-slate-500">결제 창을 불러오는 중…</p>
+        )}
+        {canPay && bootpayReady && !loading && (
+          <p className="text-center text-xs text-emerald-700">동의 완료 · 바로 결제할 수 있습니다</p>
         )}
       </div>
-
-      <p className="mt-6 text-center">
-        <Link href="/ai-blog" className="text-sm text-slate-500 underline hover:text-slate-700">
-          AI 블로그로 돌아가기
-        </Link>
-      </p>
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase-server";
 
-/** AI 블로그 구독 취소. 다음 결제일 전까지는 이용 가능. */
+/** AI 블로그 구독 취소. 다음 결제일 전까지는 이용 가능. 쓰기는 service_role만. */
 export async function POST() {
   const supabase = await createServerSupabase();
   const {
@@ -11,7 +11,14 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const { data: sub, error: fetchError } = await supabase
+  let service;
+  try {
+    service = createServiceSupabase();
+  } catch {
+    return NextResponse.json({ ok: false, error: "서버 설정 오류입니다." }, { status: 503 });
+  }
+
+  const { data: sub, error: fetchError } = await service
     .from("ai_blog_subscriptions")
     .select("id, status, next_billing_at")
     .eq("user_id", user.id)
@@ -24,7 +31,7 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "활성 구독이 없습니다." }, { status: 400 });
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await service
     .from("ai_blog_subscriptions")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("user_id", user.id)
