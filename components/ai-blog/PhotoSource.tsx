@@ -1,7 +1,7 @@
 "use client";
 
 import { Notice, btnPrimary, btnSecondary } from "@/components/ai-blog/ui";
-import type { LocalPhotosState } from "@/components/ai-blog/useLocalPhotos";
+import type { LocalPhotosState, PhotoSide } from "@/components/ai-blog/useLocalPhotos";
 import { isPreviewable, type LocalPhoto } from "@/lib/ai-blog/local-media";
 
 export function PhotoSourceBar({ state }: { state: LocalPhotosState }) {
@@ -70,6 +70,77 @@ export function PhotoSourceBar({ state }: { state: LocalPhotosState }) {
       ) : null}
       {error ? <Notice tone="error">{error}</Notice> : null}
       {info ? <Notice tone="warning">{info}</Notice> : null}
+    </div>
+  );
+}
+
+/** 전/후 패널용: 폴더·파일 선택 + 해당 쪽 소스만 표시 */
+export function SideSourceControls({
+  state,
+  side,
+  compact,
+}: {
+  state: LocalPhotosState;
+  side: PhotoSide;
+  compact?: boolean;
+}) {
+  const { supported, loading, pendingRemembered, reopen, addFolder, addFiles, removeSource, sourcesForSide } = state;
+  const sideSources = sourcesForSide(side);
+  const label = side === "before" ? "전" : "후";
+  const btn = compact ? "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40" : btnSecondary;
+  const primaryBtn = compact
+    ? "inline-flex items-center justify-center rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-40"
+    : btnPrimary;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {supported ? (
+          <button type="button" className={primaryBtn} disabled={loading} onClick={() => void addFolder(side)}>
+            폴더 선택
+          </button>
+        ) : null}
+        <label className={`${supported ? btn : primaryBtn} cursor-pointer`}>
+          파일 선택
+          <input
+            type="file"
+            accept="image/*,.heic,.heif,.jfif"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) void addFiles(e.target.files, side);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {pendingRemembered.length ? (
+          <button type="button" className={btn} disabled={loading} onClick={() => void reopen()} title={pendingRemembered.join(", ")}>
+            이전 폴더
+          </button>
+        ) : null}
+      </div>
+      {sideSources.length ? (
+        <div className="flex flex-wrap gap-1">
+          {sideSources.map((s) => (
+            <span
+              key={s.name}
+              className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700"
+            >
+              <span className="truncate" title={s.name}>
+                {s.kind === "folder" ? "폴더" : "파일"} {s.name} · {s.count}
+              </span>
+              <button
+                type="button"
+                className="shrink-0 text-slate-400 hover:text-rose-600"
+                title={`${label} 목록에서 빼기`}
+                onClick={() => removeSource(s.name)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

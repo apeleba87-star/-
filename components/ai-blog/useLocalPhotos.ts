@@ -13,7 +13,15 @@ import {
   type LocalPhoto,
 } from "@/lib/ai-blog/local-media";
 
-export type PhotoSource = { name: string; kind: "folder" | "files"; count: number };
+export type PhotoSide = "before" | "after";
+
+export type PhotoSource = {
+  name: string;
+  kind: "folder" | "files";
+  count: number;
+  /** 전/후 패널에서 연 소스. 없으면 공통(전송 등) */
+  side?: PhotoSide;
+};
 
 export type LocalPhotosState = {
   photos: LocalPhoto[];
@@ -24,13 +32,43 @@ export type LocalPhotosState = {
   loading: boolean;
   error: string | null;
   info: string | null;
-  addFolder: () => Promise<void>;
+  addFolder: (side?: PhotoSide) => Promise<void>;
   reopen: () => Promise<void>;
-  addFiles: (files: FileList | File[]) => Promise<void>;
+  addFiles: (files: FileList | File[], side?: PhotoSide) => Promise<void>;
   removeSource: (name: string) => void;
+  photosForSide: (side: PhotoSide) => LocalPhoto[];
+  sourcesForSide: (side: PhotoSide) => PhotoSource[];
 };
 
 type Group = { source: PhotoSource; photos: LocalPhoto[] };
+
+const sideStoreKey = (projectId: string) => `ai-blog-photo-sides:${projectId}`;
+
+function loadSideMap(projectId: string): Record<string, PhotoSide> {
+  try {
+    const raw = localStorage.getItem(sideStoreKey(projectId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    const out: Record<string, PhotoSide> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v === "before" || v === "after") out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveSide(projectId: string, name: string, side: PhotoSide | undefined) {
+  try {
+    const map = loadSideMap(projectId);
+    if (side) map[name] = side;
+    else delete map[name];
+    localStorage.setItem(sideStoreKey(projectId), JSON.stringify(map));
+  } catch {
+    /* noop */
+  }
+}
 
 function emptyMessage(r: FolderRead): string {
   return r.scanned
@@ -64,29 +102,36 @@ export function useLocalPhotos(projectId: string): LocalPhotosState {
       const taken = new Set(others.flatMap((g) => g.photos.map((p) => p.key)));
       const fresh = photos.filter((p) => !taken.has(p.key));
       releasePhotos(photos.filter((p) => taken.has(p.key)));
-      const group = { source: { ...source, count: fresh.length }, photos: fresh };
+      const side = source.side ?? old?.source.side;
+      const group = { source: { ...source, side, count: fresh.length }, photos: fresh };
+      if (side) saveSide(projectId, source.name, side);
       commit(old ? prev.map((g) => (g.source.name === source.name ? group : g)) : [...prev, group]);
       setPendingRemembered((names) => names.filter((n) => n !== source.name));
     },
-    [commit],
+    [commit, projectId],
   );
 
   const applyReads = useCallback(
-    (reads: FolderRead[]) => {
+    (reads: FolderRead[], side?: PhotoSide) => {
       const errors: string[] = [];
       let skipped = 0;
+      const sideMap = loadSideMap(projectId);
       for (const r of reads) {
         if (!r.photos.length) {
           errors.push(emptyMessage(r));
           continue;
         }
         skipped += r.skipped;
-        upsert({ name: r.folderName, kind: "folder", count: r.photos.length }, r.photos);
+        const resolved = side ?? sideMap[r.folderName];
+        upsert(
+          { name: r.folderName, kind: "folder", count: r.photos.length, side: resolved },
+          r.photos,
+        );
       }
       if (errors.length) setError(errors.join(" "));
       if (skipped) setInfo(`읽지 못한 사진 ${skipped}장은 건너뛰었습니다. OneDrive 등 클라우드에만 있는 파일이면 PC에 내려받아 주세요.`);
     },
-    [upsert],
+    [upsert, projectId],
   );
 
   const run = useCallback(async (fn: () => Promise<void>) => {
@@ -131,10 +176,10 @@ export function useLocalPhotos(projectId: string): LocalPhotosState {
   useEffect(() => () => groupsRef.current.forEach((g) => releasePhotos(g.photos)), []);
 
   const addFolder = useCallback(
-    () =>
+    (side?: PhotoSide) =>
       run(async () => {
         const got = await pickFolder(projectId);
-        if (got) applyReads([got]);
+        if (got) applyReads([got], side);
       }),
     [projectId, applyReads, run],
   );
@@ -150,16 +195,17 @@ export function useLocalPhotos(projectId: string): LocalPhotosState {
   );
 
   const addFiles = useCallback(
-    (files: FileList | File[]) =>
+    (files: FileList | File[], side?: PhotoSide) =>
       run(async () => {
         const n = groupsRef.current.filter((g) => g.source.kind === "files").length + 1;
-        const name = `직접 선택 ${n}`;
+        const label = side === "before" ? "전" : side === "after" ? "후" : "직접";
+        const name = `${label} 선택 ${n}`;
         const photos = await filesToPhotos(Array.from(files), name);
         if (!photos.length) {
           setError("선택한 파일 중 사진이 없습니다. (지원 형식: JPG·PNG·HEIC·WEBP 등)");
           return;
         }
-        upsert({ name, kind: "files", count: photos.length }, photos);
+        upsert({ name, kind: "files", count: photos.length, side }, photos);
       }),
     [upsert, run],
   );
@@ -170,6 +216,7 @@ export function useLocalPhotos(projectId: string): LocalPhotosState {
       if (g) releasePhotos(g.photos);
       commit(groupsRef.current.filter((x) => x.source.name !== name));
       setPendingRemembered((names) => names.filter((n) => n !== name));
+      saveSide(projectId, name, undefined);
       if (g?.source.kind !== "files") void forgetFolder(projectId, name);
     },
     [commit, projectId],
@@ -177,6 +224,23 @@ export function useLocalPhotos(projectId: string): LocalPhotosState {
 
   const photos = useMemo(() => groups.flatMap((g) => g.photos), [groups]);
   const sources = useMemo(() => groups.map((g) => g.source), [groups]);
+
+  const photosForSide = useCallback(
+    (side: PhotoSide) => {
+      // side 없는 소스(이전 세션·공통 열기)는 전·후 양쪽에 보여 마이그레이션을 돕는다
+      const names = new Set(
+        groups.filter((g) => !g.source.side || g.source.side === side).map((g) => g.source.name),
+      );
+      if (!names.size) return [];
+      return photos.filter((p) => names.has(p.source));
+    },
+    [groups, photos],
+  );
+
+  const sourcesForSide = useCallback(
+    (side: PhotoSide) => sources.filter((s) => !s.side || s.side === side),
+    [sources],
+  );
 
   return {
     photos,
@@ -190,5 +254,7 @@ export function useLocalPhotos(projectId: string): LocalPhotosState {
     reopen,
     addFiles,
     removeSource,
+    photosForSide,
+    sourcesForSide,
   };
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { PhotoSourceBar, PhotoThumb } from "@/components/ai-blog/PhotoSource";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { PhotoThumb, SideSourceControls } from "@/components/ai-blog/PhotoSource";
 import { Notice, btnGhost, btnPrimary, btnSecondary, card, input } from "@/components/ai-blog/ui";
-import type { LocalPhotosState } from "@/components/ai-blog/useLocalPhotos";
-import { isPreviewable, matchPhoto, photoKey, type LocalPhoto } from "@/lib/ai-blog/local-media";
+import type { LocalPhotosState, PhotoSide } from "@/components/ai-blog/useLocalPhotos";
+import { matchPhoto, photoKey, type LocalPhoto } from "@/lib/ai-blog/local-media";
 import { apiJson } from "@/lib/ai-blog/messages";
 import { SPACE_TYPES, type MediaPair, type ProjectMedia } from "@/lib/ai-blog/types";
 
@@ -24,45 +24,14 @@ type PairDraft = {
   after: SlotMeta | null;
 };
 type Role = "before" | "after";
-/** 전만: 전 칸만 연달아 / 후만: 후 칸만 연달아 / 번갈아: 전→후→다음 세트 */
-type FillMode = "before" | "after" | "alternate";
+
+const DRAG_MIME = "application/x-ai-blog-photo";
 
 let uidSeq = 0;
 const newUid = () => `p${Date.now().toString(36)}${(uidSeq++).toString(36)}`;
 
 function emptyPair(): PairDraft {
   return { uid: newUid(), id: null, label: "", memo: "", before: null, after: null };
-}
-
-/** 이미 찬 칸은 건드리지 않고, 다음에 채울 빈 칸(또는 새 세트)을 찾는다 */
-function findNextSlot(
-  list: PairDraft[],
-  mode: FillMode,
-): { uid: string; role: Role; list: PairDraft[]; index: number } | null {
-  if (mode === "before") {
-    const index = list.findIndex((d) => !d.before);
-    if (index >= 0) return { uid: list[index].uid, role: "before", list, index };
-    if (list.length >= 40) return null;
-    const fresh = emptyPair();
-    return { uid: fresh.uid, role: "before", list: [...list, fresh], index: list.length };
-  }
-  if (mode === "after") {
-    // 전이 있는 세트의 빈 후 → 그다음 빈 후 → 새 세트
-    let index = list.findIndex((d) => d.before && !d.after);
-    if (index < 0) index = list.findIndex((d) => !d.after);
-    if (index >= 0) return { uid: list[index].uid, role: "after", list, index };
-    if (list.length >= 40) return null;
-    const fresh = emptyPair();
-    return { uid: fresh.uid, role: "after", list: [...list, fresh], index: list.length };
-  }
-  for (let index = 0; index < list.length; index++) {
-    const d = list[index];
-    if (!d.before) return { uid: d.uid, role: "before", list, index };
-    if (!d.after) return { uid: d.uid, role: "after", list, index };
-  }
-  if (list.length >= 40) return null;
-  const fresh = emptyPair();
-  return { uid: fresh.uid, role: "before", list: [...list, fresh], index: list.length };
 }
 
 function slotFromMedia(m: ProjectMedia | undefined): SlotMeta | null {
@@ -104,6 +73,76 @@ const slotKey = (s: SlotMeta) =>
 const slotMatch = (s: SlotMeta, photos: LocalPhoto[]) =>
   matchPhoto({ local_name: s.name, local_size: s.size, local_modified_at: s.modifiedAt }, photos);
 
+function SideTray({
+  side,
+  photos,
+  photosState,
+  usedBadge,
+  usedKeys,
+  onPick,
+}: {
+  side: PhotoSide;
+  photos: LocalPhoto[];
+  photosState: LocalPhotosState;
+  usedBadge: Map<string, string>;
+  usedKeys: Set<string>;
+  onPick: (photo: LocalPhoto) => void;
+}) {
+  const title = side === "before" ? "청소 전 사진" : "청소 후 사진";
+  const hint = side === "before" ? "클릭 또는 드래그 → 중앙 왼쪽" : "클릭 또는 드래그 → 중앙 오른쪽";
+  const accent = side === "before" ? "border-t-amber-500" : "border-t-sky-500";
+
+  return (
+    <aside className={`${card} flex min-h-[520px] flex-col overflow-hidden border-t-4 ${accent}`}>
+      <div className="space-y-2 border-b border-slate-200 bg-slate-50 px-3 py-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+          <p className="text-[11px] text-slate-500">폴더를 열면 여기 나열됩니다</p>
+        </div>
+        <SideSourceControls state={photosState} side={side} compact />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {photos.length ? (
+          <div className="grid grid-cols-2 gap-2">
+            {photos.map((p) => {
+              const used = usedKeys.has(p.key);
+              return (
+                <button
+                  key={p.key}
+                  type="button"
+                  draggable
+                  title={`${p.name}${usedBadge.get(p.key) ? ` · ${usedBadge.get(p.key)}` : ""}`}
+                  onClick={() => onPick(p)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(DRAG_MIME, JSON.stringify({ key: p.key, side }));
+                    e.dataTransfer.setData("text/plain", p.name);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  className={`relative aspect-square overflow-hidden rounded-lg border-2 bg-slate-100 text-left ${
+                    used ? "border-emerald-400 opacity-80" : "border-transparent hover:border-slate-300"
+                  }`}
+                >
+                  <PhotoThumb photo={p} className="h-full w-full" />
+                  <span className="absolute bottom-1 left-1 max-w-[90%] truncate rounded bg-black/60 px-1 text-[10px] text-white">
+                    {usedBadge.get(p.key) || p.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex h-full min-h-[200px] items-center justify-center px-3 text-center text-xs leading-relaxed text-slate-400">
+            위에서 폴더 또는 파일을 선택하세요.
+            <br />
+            사진은 PC에만 두고 서버로 보내지 않습니다.
+          </div>
+        )}
+      </div>
+      <div className="border-t border-slate-200 px-3 py-2 text-[11px] text-slate-500">{hint}</div>
+    </aside>
+  );
+}
+
 export default function PhotoSorter({
   projectId,
   media,
@@ -121,23 +160,18 @@ export default function PhotoSorter({
   onSaved: (media: ProjectMedia[], pairs: MediaPair[]) => void;
   onContinue?: () => void;
 }) {
-  const { photos, sources } = photosState;
-  const [sourceFilter, setSourceFilter] = useState("");
-  const [beforePick, setBeforePick] = useState("");
-  const [afterPick, setAfterPick] = useState("");
-  const names = sources.map((s) => s.name);
-  const filter = names.includes(sourceFilter) ? sourceFilter : "";
-  const trayPhotos = filter ? photos.filter((p) => p.source === filter) : photos;
-  const beforeSrc = names.includes(beforePick) ? beforePick : (names[0] ?? "");
-  const afterSrc = names.includes(afterPick) && afterPick !== beforeSrc ? afterPick : (names.find((n) => n !== beforeSrc) ?? "");
-  const [drafts, setDrafts] = useState<PairDraft[]>(() => toDrafts(media, pairs));
-  const [cursor, setCursor] = useState(0);
-  const [fillMode, setFillMode] = useState<FillMode>("before");
-  const [compareUid, setCompareUid] = useState<string | null>(null);
-  const [showAuto, setShowAuto] = useState(false);
+  const { photos, error, info, loading, photosForSide } = photosState;
+  const beforePhotos = photosForSide("before");
+  const afterPhotos = photosForSide("after");
+  const [drafts, setDrafts] = useState<PairDraft[]>(() => {
+    const initial = toDrafts(media, pairs);
+    return initial.length ? initial : [emptyPair()];
+  });
+  const [activeUid, setActiveUid] = useState<string>(() => drafts[0]?.uid ?? "");
+  const [dragOver, setDragOver] = useState<Role | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
   const update = (fn: (prev: PairDraft[]) => PairDraft[]) => {
@@ -145,6 +179,12 @@ export default function PhotoSorter({
     setSavedAt(null);
     setDrafts(fn);
   };
+
+  useEffect(() => {
+    if (!drafts.some((d) => d.uid === activeUid)) {
+      setActiveUid(drafts[0]?.uid ?? "");
+    }
+  }, [drafts, activeUid]);
 
   const usedKeys = useMemo(() => {
     const set = new Set<string>();
@@ -172,71 +212,24 @@ export default function PhotoSorter({
     return map;
   }, [drafts, photos]);
 
-  const nextSlot = useMemo(() => findNextSlot(drafts, fillMode), [drafts, fillMode]);
+  const active = drafts.find((d) => d.uid === activeUid) ?? drafts[0] ?? null;
+  const activeIndex = active ? drafts.findIndex((d) => d.uid === active.uid) : -1;
 
-  useEffect(() => {
-    if (cursor >= trayPhotos.length) setCursor(Math.max(0, trayPhotos.length - 1));
-  }, [trayPhotos.length, cursor]);
-
-  const current = trayPhotos[cursor] ?? null;
-
-  /** 빈 칸에만 넣음. 이미 쓴 사진이면 예전 칸에서만 빼고 옮김. 찬 칸은 덮지 않음. */
-  const putPhoto = (photo: LocalPhoto, mode: FillMode = fillMode) => {
+  /** 지정 세트·역할에 사진 넣기. 다른 칸에 쓰였으면 옮김. */
+  const putPhoto = (photo: LocalPhoto, role: Role, uid = active?.uid) => {
+    if (!uid) return;
     const slot = slotFromPhoto(photo);
-    let placed = false;
     update((prev) => {
       const clearDup = (s: SlotMeta | null) => (s && slotMatch(s, [photo]) ? null : s);
-      const cleared = prev.map((d) => ({ ...d, before: clearDup(d.before), after: clearDup(d.after) }));
-      const target = findNextSlot(cleared, mode);
-      if (!target) return cleared;
-      placed = true;
-      return target.list.map((d) => (d.uid === target.uid ? { ...d, [target.role]: slot } : d));
+      return prev.map((d) => {
+        const cleared = { ...d, before: clearDup(d.before), after: clearDup(d.after) };
+        return cleared.uid === uid ? { ...cleared, [role]: slot } : cleared;
+      });
     });
-    if (placed) {
-      setCompareUid(null);
-      setCursor((c) => Math.min(c + 1, Math.max(0, trayPhotos.length - 1)));
-    }
-  };
-
-  const putCurrent = () => {
-    if (!current) return;
-    putPhoto(current);
   };
 
   const clearSlot = (uid: string, role: Role) => {
     update((prev) => prev.map((d) => (d.uid === uid ? { ...d, [role]: null } : d)));
-  };
-
-  const replacePairs = (pairsOf: [LocalPhoto | undefined, LocalPhoto | undefined][]) => {
-    if (drafts.length && !window.confirm("지금 만든 짝을 모두 지우고 자동으로 다시 맞출까요?")) return;
-    const next = pairsOf.slice(0, 40).map(([b, a]) => ({
-      uid: newUid(),
-      id: null,
-      label: "",
-      memo: "",
-      before: b ? slotFromPhoto(b) : null,
-      after: a ? slotFromPhoto(a) : null,
-    }));
-    update(() => next);
-  };
-
-  const autoPair = (how: "alternate" | "half") => {
-    const list = trayPhotos;
-    if (list.length < 2) return;
-    const half = Math.floor(list.length / 2);
-    const count = how === "alternate" ? Math.ceil(list.length / 2) : half;
-    replacePairs(
-      Array.from({ length: count }, (_, i) =>
-        how === "alternate" ? [list[i * 2], list[i * 2 + 1]] : [list[i], list[half + i]],
-      ),
-    );
-  };
-
-  const autoPairFolders = () => {
-    const b = photos.filter((p) => p.source === beforeSrc);
-    const a = photos.filter((p) => p.source === afterSrc);
-    if (!b.length || !a.length || beforeSrc === afterSrc) return;
-    replacePairs(Array.from({ length: Math.max(b.length, a.length) }, (_, i) => [b[i], a[i]]));
   };
 
   const move = (uid: string, dir: -1 | 1) =>
@@ -252,9 +245,50 @@ export default function PhotoSorter({
   const setField = (uid: string, field: "label" | "memo", value: string) =>
     update((prev) => prev.map((d) => (d.uid === uid ? { ...d, [field]: value } : d)));
 
+  const parseDrag = (e: DragEvent): { key: string; side: PhotoSide } | null => {
+    try {
+      const raw = e.dataTransfer.getData(DRAG_MIME) || e.dataTransfer.getData("text/plain");
+      if (!raw) return null;
+      const data = JSON.parse(raw) as { key?: string; side?: PhotoSide };
+      if (!data.key || (data.side !== "before" && data.side !== "after")) return null;
+      return { key: data.key, side: data.side };
+    } catch {
+      return null;
+    }
+  };
+
+  const onDropSlot = (role: Role, e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(null);
+    const data = parseDrag(e);
+    if (!data) return;
+    if (data.side !== role) return;
+    const list = role === "before" ? beforePhotos : afterPhotos;
+    const photo = list.find((p) => p.key === data.key) ?? photos.find((p) => p.key === data.key);
+    if (photo) putPhoto(photo, role);
+  };
+
+  const autoPairSides = () => {
+    if (!beforePhotos.length || !afterPhotos.length) return;
+    if (drafts.some((d) => d.before || d.after) && !window.confirm("지금 만든 짝을 모두 지우고 좌·우 폴더 순서대로 맞출까요?")) {
+      return;
+    }
+    const count = Math.min(40, Math.max(beforePhotos.length, afterPhotos.length));
+    const next = Array.from({ length: count }, (_, i) => ({
+      uid: newUid(),
+      id: null,
+      label: "",
+      memo: "",
+      before: beforePhotos[i] ? slotFromPhoto(beforePhotos[i]) : null,
+      after: afterPhotos[i] ? slotFromPhoto(afterPhotos[i]) : null,
+    }));
+    update(() => next);
+    setActiveUid(next[0]?.uid ?? "");
+  };
+
   const save = async (andContinue = false) => {
     setSaving(true);
-    setError(null);
+    setSaveError(null);
     const mediaBody: Record<string, unknown>[] = [];
     const seen = new Set<string>();
     const ref = (s: SlotMeta | null, role: "BEFORE" | "AFTER"): string | null => {
@@ -286,13 +320,15 @@ export default function PhotoSorter({
         `/api/ai-blog/projects/${projectId}/media`,
         { method: "PUT", body: JSON.stringify({ media: mediaBody, pairs: pairsBody }) },
       );
-      setDrafts(toDrafts(data.media, data.pairs));
+      const next = toDrafts(data.media, data.pairs);
+      setDrafts(next.length ? next : [emptyPair()]);
+      setActiveUid(next[0]?.uid ?? "");
       setDirty(false);
       setSavedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
       onSaved(data.media, data.pairs);
       if (andContinue) onContinue?.();
     } catch (e) {
-      setError((e as Error).message);
+      setSaveError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -300,70 +336,53 @@ export default function PhotoSorter({
 
   const missing = drafts.some((d) => [d.before, d.after].some((s) => s && !slotMatch(s, photos)));
   const usable = drafts.filter((d) => d.before || d.after).length;
-  const compareDraft = compareUid ? drafts.find((d) => d.uid === compareUid) : null;
-  const compareBefore = compareDraft?.before ? slotMatch(compareDraft.before, photos) : null;
 
-  const renderPairSlot = (d: PairDraft, role: Role, index: number) => {
-    const s = d[role];
+  const renderCenterSlot = (role: Role) => {
+    if (!active) return null;
+    const s = active[role];
     const photo = s ? slotMatch(s, photos) : null;
-    const isNext = nextSlot?.uid === d.uid && nextSlot.role === role;
+    const over = dragOver === role;
+    const label = role === "before" ? "청소 전" : "청소 후";
     return (
       <div
-        key={role}
-        className={`relative min-h-[200px] flex-1 overflow-hidden rounded-xl border-2 ${
-          isNext
-            ? "border-emerald-500 ring-2 ring-emerald-200"
+        className={`relative flex min-h-[280px] flex-1 flex-col overflow-hidden rounded-xl border-2 transition ${
+          over
+            ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
             : s
-              ? "border-slate-200"
-              : "border-dashed border-slate-300"
+              ? "border-slate-200 bg-slate-50"
+              : "border-dashed border-slate-300 bg-slate-50"
         }`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(role);
+        }}
+        onDragLeave={() => setDragOver((v) => (v === role ? null : v))}
+        onDrop={(e) => onDropSlot(role, e)}
       >
-        {s ? (
-          <button type="button" className="block h-full w-full" onClick={() => setCompareUid(d.uid)}>
-            <PhotoThumb photo={photo} name={s.name} className="h-48 w-full object-contain sm:h-56" />
-          </button>
-        ) : (
-          <div className="flex h-48 w-full flex-col items-center justify-center gap-1 text-sm text-slate-400 sm:h-56">
-            <span className="text-lg font-bold text-slate-500">{role === "before" ? "전" : "후"}</span>
-            <span>{isNext ? "다음에 여기 ←" : "비어 있음"}</span>
-          </div>
-        )}
-        <span
-          className={`absolute left-2 top-2 rounded px-2 py-0.5 text-xs font-bold text-white ${
-            role === "before" ? "bg-slate-700" : "bg-emerald-600"
-          }`}
-        >
-          {String(index + 1).padStart(2, "0")} {role === "before" ? "전" : "후"}
-        </span>
-        {isNext ? (
-          <span className="absolute bottom-2 left-2 rounded bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">
-            다음에 넣을 칸
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2">
+          <span className={`text-xs font-bold ${role === "before" ? "text-amber-700" : "text-sky-700"}`}>
+            {String(Math.max(activeIndex, 0) + 1).padStart(2, "0")} {label}
           </span>
-        ) : null}
-        {s ? (
-          <button
-            type="button"
-            className="absolute right-2 top-2 rounded bg-white/95 px-2 py-0.5 text-sm font-medium text-slate-700 shadow"
-            onClick={() => clearSlot(d.uid, role)}
-          >
-            빼기
-          </button>
-        ) : null}
-      </div>
-    );
-  };
-
-  if (!photos.length) {
-    return (
-      <div className="space-y-4">
-        <div className={`${card} space-y-4 p-8 text-center`}>
-          <h3 className="text-lg font-bold text-slate-900">이 작업 사진이 있는 폴더를 열어 주세요</h3>
-          <p className="text-sm text-slate-600">사진은 PC에만 두고, 우리 서버로 보내지 않습니다.</p>
-          <PhotoSourceBar state={photosState} />
+          {s ? (
+            <button type="button" className={btnGhost} onClick={() => clearSlot(active.uid, role)}>
+              비우기
+            </button>
+          ) : null}
+        </div>
+        <div className="relative flex min-h-[240px] flex-1 items-center justify-center">
+          {s ? (
+            <PhotoThumb photo={photo} name={s.name} className="absolute inset-0 h-full w-full object-contain" />
+          ) : (
+            <p className="px-4 text-center text-sm text-slate-400">
+              {role === "before" ? "왼쪽" : "오른쪽"} 목록에서
+              <br />
+              사진을 넣으세요
+            </p>
+          )}
         </div>
       </div>
     );
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -371,327 +390,168 @@ export default function PhotoSorter({
         <h2 className="text-lg font-bold text-slate-900">사진을 크게 보고 전·후 맞추기</h2>
         <span className="text-sm text-slate-500">전후 {usable}세트</span>
         <div className="flex-1" />
-        <PhotoSourceBar state={photosState} />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {(
-          [
-            { id: "before" as const, label: "전만 넣기", hint: "청소 전 사진을 연달아" },
-            { id: "after" as const, label: "후만 넣기", hint: "청소 후 사진을 연달아" },
-            { id: "alternate" as const, label: "전·후 번갈아", hint: "한 세트씩" },
-          ] as const
-        ).map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setFillMode(m.id)}
-            className={`rounded-xl px-4 py-2.5 text-left transition ${
-              fillMode === m.id
-                ? "bg-slate-900 text-white shadow"
-                : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            <span className="block text-sm font-bold">{m.label}</span>
-            <span className={`block text-xs ${fillMode === m.id ? "text-slate-300" : "text-slate-500"}`}>{m.hint}</span>
+        {beforePhotos.length && afterPhotos.length ? (
+          <button type="button" className={btnGhost} onClick={autoPairSides}>
+            좌·우 순서대로 한 번에 맞추기
           </button>
-        ))}
+        ) : null}
       </div>
       <p className="text-sm text-slate-600">
-        {fillMode === "before"
-          ? "전 사진만 연달아 넣습니다. 이미 넣은 장은 덮어쓰지 않습니다."
-          : fillMode === "after"
-            ? "후가 비어 있는 세트부터 순서대로 채웁니다. 이미 넣은 장은 덮어쓰지 않습니다."
-            : "전 → 후 → 다음 세트 순으로 빈 칸만 채웁니다."}
-        {nextSlot ? (
-          <span className="ml-1 font-semibold text-emerald-700">
-            다음: {String(nextSlot.index + 1).padStart(2, "0")} {nextSlot.role === "before" ? "전" : "후"}
-          </span>
-        ) : (
-          <span className="ml-1 text-amber-700">세트가 가득 찼습니다 (최대 40).</span>
-        )}
+        왼쪽에서 청소 전 폴더, 오른쪽에서 청소 후 폴더를 연 뒤 · 클릭하거나 드래그해서 중앙에 넣습니다.
       </p>
 
+      {loading ? <Notice tone="info">사진을 읽는 중…</Notice> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
+      {info ? <Notice tone="warning">{info}</Notice> : null}
       {missing ? (
         <Notice tone="warning">
           저장된 짝 중 일부 사진이 지금 열린 사진에 없습니다. 그 사진이 들어 있는 폴더도 함께 열어 주세요.
         </Notice>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-5">
-        <section className={`${card} space-y-3 p-4 xl:col-span-3`}>
-          {compareBefore && current ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="mb-1 text-sm font-semibold text-slate-700">왼쪽이 전</p>
-                <div className="overflow-hidden rounded-xl bg-slate-100">
-                  <PhotoThumb photo={compareBefore} className="max-h-[420px] w-full object-contain" />
-                </div>
-              </div>
-              <div>
-                <p className="mb-1 text-sm font-semibold text-slate-700">오른쪽이 지금 고르는 사진</p>
-                <div className="overflow-hidden rounded-xl bg-slate-100">
-                  {isPreviewable(current.name) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={current.url} alt={current.name} className="max-h-[420px] w-full object-contain" />
-                  ) : (
-                    <PhotoThumb photo={current} className="max-h-[420px] w-full" />
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-xl bg-slate-100">
-              {current && isPreviewable(current.name) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={current.url}
-                  alt={current.name}
-                  className="mx-auto max-h-[min(70vh,520px)] w-full object-contain"
-                />
-              ) : current ? (
-                <div className="flex h-[320px] flex-col items-center justify-center gap-2 text-slate-500">
-                  <PhotoThumb photo={current} className="h-40 w-40" />
-                  <p className="text-sm">이 형식은 미리보기가 어렵습니다. 그래도 전·후에 넣을 수 있습니다.</p>
-                </div>
-              ) : (
-                <div className="flex h-[240px] items-center justify-center text-slate-400">사진 없음</div>
-              )}
-            </div>
-          )}
+      <div className="grid gap-3 xl:grid-cols-[240px_minmax(0,1fr)_240px]">
+        <SideTray
+          side="before"
+          photos={beforePhotos}
+          photosState={photosState}
+          usedBadge={usedBadge}
+          usedKeys={usedKeys}
+          onPick={(p) => putPhoto(p, "before")}
+        />
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              className={`${btnSecondary} px-4 py-2 text-base`}
-              disabled={cursor <= 0}
-              onClick={() => setCursor((c) => Math.max(0, c - 1))}
-            >
-              ← 이전
-            </button>
-            <span className="min-w-[5rem] text-center text-base font-semibold text-slate-800">
-              {trayPhotos.length ? `${cursor + 1} / ${trayPhotos.length}` : "0 / 0"}
+        <section className={`${card} flex flex-col gap-3 p-4`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900">전후 미리보기</h3>
+            <span className="text-xs text-slate-500">
+              세트 {activeIndex >= 0 ? activeIndex + 1 : 0} / {drafts.length}
             </span>
-            <button
-              type="button"
-              className={`${btnSecondary} px-4 py-2 text-base`}
-              disabled={cursor >= trayPhotos.length - 1}
-              onClick={() => setCursor((c) => Math.min(trayPhotos.length - 1, c + 1))}
-            >
-              다음 →
-            </button>
-          </div>
-
-          {current ? (
-            <p className="truncate text-center text-xs text-slate-500" title={current.name}>
-              {current.name}
-              {usedBadge.get(current.key) ? ` · 이미 ${usedBadge.get(current.key)}` : ""}
-            </p>
-          ) : null}
-
-          {fillMode === "alternate" ? (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                className="rounded-xl bg-slate-800 px-4 py-4 text-base font-bold text-white hover:bg-slate-700 disabled:opacity-40"
-                disabled={!current || !findNextSlot(drafts, "before")}
-                onClick={() => current && putPhoto(current, "before")}
-              >
-                전에 넣기
-              </button>
-              <button
-                type="button"
-                className="rounded-xl bg-emerald-600 px-4 py-4 text-base font-bold text-white hover:bg-emerald-500 disabled:opacity-40"
-                disabled={!current || !findNextSlot(drafts, "after")}
-                onClick={() => current && putPhoto(current, "after")}
-              >
-                후에 넣기
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className={`w-full rounded-xl px-4 py-5 text-lg font-bold text-white disabled:opacity-40 ${
-                fillMode === "before" ? "bg-slate-800 hover:bg-slate-700" : "bg-emerald-600 hover:bg-emerald-500"
-              }`}
-              disabled={!current || !nextSlot}
-              onClick={putCurrent}
-            >
-              {fillMode === "before" ? "전에 넣기" : "후에 넣기"}
-              {nextSlot
-                ? ` · ${String(nextSlot.index + 1).padStart(2, "0")} ${nextSlot.role === "before" ? "전" : "후"}`
-                : ""}
-            </button>
-          )}
-
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {trayPhotos.map((p, i) => (
-              <button
-                key={p.key}
-                type="button"
-                onClick={() => setCursor(i)}
-                className={`relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border-2 ${
-                  i === cursor ? "border-emerald-500" : usedKeys.has(p.key) ? "border-slate-200 opacity-60" : "border-slate-200"
-                }`}
-                title={p.name}
-              >
-                <PhotoThumb photo={p} className="h-full w-full" />
-                {usedBadge.get(p.key) ? (
-                  <span className="absolute bottom-1 left-1 rounded bg-emerald-600 px-1 text-[10px] text-white">
-                    {usedBadge.get(p.key)}
-                  </span>
-                ) : (
-                  <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1 text-[10px] text-white">{i + 1}</span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {sources.length > 1 ? (
-            <div className="flex flex-wrap gap-1">
-              {["", ...names].map((n) => (
-                <button
-                  key={n || "all"}
-                  type="button"
-                  onClick={() => {
-                    setSourceFilter(n);
-                    setCursor(0);
-                  }}
-                  className={`rounded-full px-3 py-1 text-xs ${
-                    filter === n ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {n || `전체 ${photos.length}`}
-                  {n ? ` ${sources.find((s) => s.name === n)?.count ?? 0}` : ""}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <div>
-            <button type="button" className="text-xs text-slate-500 underline" onClick={() => setShowAuto((v) => !v)}>
-              {showAuto ? "한 번에 짝 맞추기 접기" : "한 번에 짝 맞추기"}
-            </button>
-            {showAuto ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button type="button" className={btnGhost} disabled={trayPhotos.length < 2} onClick={() => autoPair("alternate")}>
-                  번갈아 짝
-                </button>
-                <button type="button" className={btnGhost} disabled={trayPhotos.length < 2} onClick={() => autoPair("half")}>
-                  절반씩 짝
-                </button>
-                {sources.length > 1 ? (
-                  <>
-                    <select
-                      className="rounded border border-slate-300 bg-white px-2 py-1 text-xs"
-                      value={beforeSrc}
-                      onChange={(e) => setBeforePick(e.target.value)}
-                    >
-                      {names.map((n) => (
-                        <option key={n} value={n}>
-                          전: {n}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="rounded border border-slate-300 bg-white px-2 py-1 text-xs"
-                      value={afterSrc}
-                      onChange={(e) => setAfterPick(e.target.value)}
-                    >
-                      {names
-                        .filter((n) => n !== beforeSrc)
-                        .map((n) => (
-                          <option key={n} value={n}>
-                            후: {n}
-                          </option>
-                        ))}
-                    </select>
-                    <button type="button" className={btnGhost} disabled={!afterSrc} onClick={autoPairFolders}>
-                      폴더끼리 짝
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section className={`${card} space-y-3 p-4 xl:col-span-2`}>
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">맞춘 전·후 ({drafts.length}세트)</h3>
             <div className="flex-1" />
             <button
               type="button"
               className={btnGhost}
               disabled={drafts.length >= 40}
               onClick={() => {
-                update((prev) => [...prev, emptyPair()]);
+                const fresh = emptyPair();
+                update((prev) => [...prev, fresh]);
+                setActiveUid(fresh.uid);
               }}
             >
               + 세트 추가
             </button>
           </div>
-          <datalist id="pair-label-suggestions">
-            {[...new Set([...labelSuggestions, ...SPACE_TYPES])].map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-          <ol className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-            {drafts.map((d, i) => (
-              <li key={d.uid} className="space-y-2 rounded-xl border border-slate-200 p-3">
-                <div className="flex gap-2">
-                  {renderPairSlot(d, "before", i)}
-                  {renderPairSlot(d, "after", i)}
-                </div>
-                <input
-                  className={input}
-                  list="pair-label-suggestions"
-                  placeholder="사진 제목 (예: 욕실 물때) — 글 소제목에 쓰입니다"
-                  value={d.label}
-                  maxLength={50}
-                  onChange={(e) => setField(d.uid, "label", e.target.value)}
-                />
-                <details className="rounded-lg bg-slate-50 px-2 py-1.5" open={Boolean(d.memo)}>
-                  <summary className="cursor-pointer text-xs text-slate-600">
-                    오염 상태 (선택) · 안 적어도 됩니다
-                  </summary>
+
+          <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
+            {renderCenterSlot("before")}
+            <div className="flex items-center justify-center text-xl font-bold text-slate-300">→</div>
+            {renderCenterSlot("after")}
+          </div>
+
+          {active ? (
+            <>
+              <datalist id="pair-label-suggestions">
+                {[...new Set([...labelSuggestions, ...SPACE_TYPES])].map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-slate-600">장소 / 제목</span>
                   <input
-                    className={`${input} mt-1.5`}
-                    placeholder="예: 물때, 곰팡이, 수전 주변 하얀 때"
-                    value={d.memo}
-                    maxLength={200}
-                    onChange={(e) => setField(d.uid, "memo", e.target.value)}
+                    className={input}
+                    list="pair-label-suggestions"
+                    placeholder="예: 욕실 물때"
+                    value={active.label}
+                    maxLength={50}
+                    onChange={(e) => setField(active.uid, "label", e.target.value)}
                   />
-                  <p className="mt-1 text-[11px] text-slate-500">이 오염이 그 사진 문단에 들어갑니다. 앱에서 고른 내용도 여기 보입니다.</p>
-                </details>
-                <div className="flex flex-wrap gap-1">
-                  <button type="button" className={btnGhost} disabled={i === 0} onClick={() => move(d.uid, -1)}>
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    className={btnGhost}
-                    disabled={i === drafts.length - 1}
-                    onClick={() => move(d.uid, 1)}
-                  >
-                    ▼
-                  </button>
-                  <button
-                    type="button"
-                    className={`${btnGhost} text-rose-600`}
-                    onClick={() => update((prev) => prev.filter((x) => x.uid !== d.uid))}
-                  >
-                    세트 삭제
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ol>
-          {!drafts.length ? (
-            <p className="py-6 text-center text-sm text-slate-500">
-              왼쪽에서 사진을 보고 「{fillMode === "after" ? "후에 넣기" : "전에 넣기"}」를 연달아 누르세요.
-            </p>
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-slate-600">오염 메모 (선택)</span>
+                  <input
+                    className={input}
+                    placeholder="예: 물때, 곰팡이"
+                    value={active.memo}
+                    maxLength={200}
+                    onChange={(e) => setField(active.uid, "memo", e.target.value)}
+                  />
+                </label>
+              </div>
+            </>
           ) : null}
+
+          <div className="space-y-2 border-t border-slate-200 pt-3">
+            <h4 className="text-xs font-semibold text-slate-500">맞춘 전·후 ({usable}세트)</h4>
+            <ol className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+              {drafts.map((d, i) => {
+                const b = d.before ? slotMatch(d.before, photos) : null;
+                const a = d.after ? slotMatch(d.after, photos) : null;
+                const selected = d.uid === active?.uid;
+                return (
+                  <li key={d.uid}>
+                    <div
+                      className={`flex items-center gap-2 rounded-xl border p-2 ${
+                        selected ? "border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-200" : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <button type="button" className="flex flex-1 items-center gap-2 text-left" onClick={() => setActiveUid(d.uid)}>
+                        <span className="w-6 shrink-0 text-xs font-bold text-slate-500">{String(i + 1).padStart(2, "0")}</span>
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
+                          {d.before ? (
+                            <PhotoThumb photo={b} name={d.before.name} className="h-full w-full" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-[10px] text-slate-400">전</div>
+                          )}
+                        </div>
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
+                          {d.after ? (
+                            <PhotoThumb photo={a} name={d.after.name} className="h-full w-full" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-[10px] text-slate-400">후</div>
+                          )}
+                        </div>
+                        <span className="min-w-0 flex-1 truncate text-xs text-slate-600">
+                          {d.label || d.memo || "제목 없음"}
+                        </span>
+                      </button>
+                      <button type="button" className={btnGhost} disabled={i === 0} onClick={() => move(d.uid, -1)}>
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        className={btnGhost}
+                        disabled={i === drafts.length - 1}
+                        onClick={() => move(d.uid, 1)}
+                      >
+                        ▼
+                      </button>
+                      <button
+                        type="button"
+                        className={`${btnGhost} text-rose-600`}
+                        onClick={() => {
+                          update((prev) => {
+                            const next = prev.filter((x) => x.uid !== d.uid);
+                            return next.length ? next : [emptyPair()];
+                          });
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
         </section>
+
+        <SideTray
+          side="after"
+          photos={afterPhotos}
+          photosState={photosState}
+          usedBadge={usedBadge}
+          usedKeys={usedKeys}
+          onPick={(p) => putPhoto(p, "after")}
+        />
       </div>
 
       <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white/95 px-1 py-3 backdrop-blur">
@@ -711,7 +571,7 @@ export default function PhotoSorter({
           {saving ? "저장 중…" : `전후 ${usable}세트 · 글 쓰기로 →`}
         </button>
       </div>
-      {error ? <Notice tone="error">{error}</Notice> : null}
+      {saveError ? <Notice tone="error">{saveError}</Notice> : null}
     </div>
   );
 }
