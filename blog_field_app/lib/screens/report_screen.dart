@@ -121,8 +121,19 @@ class _ReportScreenState extends State<ReportScreen> {
                     "${(i + 1).toString().padLeft(2, "0")}  ${places[i].label}",
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
-                  _PhotoBlock(label: "청소 전", path: _paths[places[i].before?.mediaId]),
-                  _PhotoBlock(label: "청소 후", path: _paths[places[i].after?.mediaId]),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _PhotoBlock(label: "청소 전", path: _paths[places[i].before?.mediaId]),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _PhotoBlock(label: "청소 후", path: _paths[places[i].after?.mediaId]),
+                      ),
+                    ],
+                  ),
                 ],
                 const SizedBox(height: 20),
                 const Text(
@@ -187,8 +198,7 @@ class _PhotoBlock extends StatelessWidget {
     final file = path == null ? null : File(path!);
     final ready = file != null && file.existsSync();
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xFFE4E4E7)),
         borderRadius: BorderRadius.circular(12),
@@ -199,19 +209,24 @@ class _PhotoBlock extends StatelessWidget {
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                TextSpan(text: label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 TextSpan(
                   text: ready ? "  1장" : "  0장",
-                  style: const TextStyle(color: Color(0xFFA1A1AA)),
+                  style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          if (ready)
-            Image.file(file, height: 220, fit: BoxFit.contain)
-          else
-            const Text("없음", style: TextStyle(color: Color(0xFFA1A1AA))),
+          AspectRatio(
+            aspectRatio: 3 / 4,
+            child: ready
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(file, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                  )
+                : const Center(child: Text("없음", style: TextStyle(color: Color(0xFFA1A1AA)))),
+          ),
         ],
       ),
     );

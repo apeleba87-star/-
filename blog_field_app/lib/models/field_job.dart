@@ -1,5 +1,47 @@
 enum ShotUpload { local, uploading, done, failed }
 
+/// AI 블로그 글 상태. null 이면 글 없음.
+enum ContentWriteStatus { drafting, ready, done, archived }
+
+enum JobListBucket { writing, done, other }
+
+extension ContentWriteStatusX on ContentWriteStatus {
+  String get badgeLabel => switch (this) {
+        ContentWriteStatus.drafting => "글 쓰는 중",
+        ContentWriteStatus.ready => "네이버 준비됨",
+        ContentWriteStatus.done => "글쓰기 완료",
+        ContentWriteStatus.archived => "보관",
+      };
+
+  JobListBucket get bucket => switch (this) {
+        ContentWriteStatus.done => JobListBucket.done,
+        ContentWriteStatus.drafting || ContentWriteStatus.ready => JobListBucket.writing,
+        ContentWriteStatus.archived => JobListBucket.other,
+      };
+
+  static ContentWriteStatus? fromDb(String? raw) {
+    switch (raw) {
+      case "DRAFT":
+        return ContentWriteStatus.drafting;
+      case "READY":
+        return ContentWriteStatus.ready;
+      case "DONE":
+        return ContentWriteStatus.done;
+      case "ARCHIVED":
+        return ContentWriteStatus.archived;
+      default:
+        return null;
+    }
+  }
+
+  String get dbValue => switch (this) {
+        ContentWriteStatus.drafting => "DRAFT",
+        ContentWriteStatus.ready => "READY",
+        ContentWriteStatus.done => "DONE",
+        ContentWriteStatus.archived => "ARCHIVED",
+      };
+}
+
 class FieldShot {
   FieldShot({
     required this.mediaId,
@@ -153,6 +195,7 @@ class FieldJob {
     required this.createdAt,
     this.synced = false,
     this.places = const [],
+    this.contentStatus,
   });
 
   final String id;
@@ -162,8 +205,12 @@ class FieldJob {
   final DateTime createdAt;
   final bool synced;
   final List<FieldPlace> places;
+  /// 현장당 가장 최근 글 상태. null = 글 없음 → 기타 탭.
+  final ContentWriteStatus? contentStatus;
 
   int get pairCount => places.where((p) => p.before != null && p.after != null).length;
+
+  JobListBucket get listBucket => contentStatus?.bucket ?? JobListBucket.other;
 
   String get statusLabel {
     final shots = places.expand((p) => [p.before, p.after]).whereType<FieldShot>();
@@ -182,7 +229,7 @@ class FieldJob {
     return "원본 보관 $days일 남음";
   }
 
-  FieldJob copyWith({bool? synced, List<FieldPlace>? places}) {
+  FieldJob copyWith({bool? synced, List<FieldPlace>? places, ContentWriteStatus? contentStatus, bool clearContentStatus = false}) {
     return FieldJob(
       id: id,
       name: name,
@@ -191,6 +238,7 @@ class FieldJob {
       createdAt: createdAt,
       synced: synced ?? this.synced,
       places: places ?? this.places,
+      contentStatus: clearContentStatus ? null : (contentStatus ?? this.contentStatus),
     );
   }
 
@@ -202,6 +250,7 @@ class FieldJob {
         "createdAt": createdAt.toIso8601String(),
         "synced": synced,
         "places": places.map((p) => p.toJson()).toList(),
+        "contentStatus": contentStatus?.dbValue,
       };
 
   factory FieldJob.fromJson(Map<String, dynamic> json) {
@@ -216,6 +265,7 @@ class FieldJob {
         for (final raw in (json["places"] as List? ?? const []))
           FieldPlace.fromJson(Map<String, dynamic>.from(raw as Map)),
       ],
+      contentStatus: ContentWriteStatusX.fromDb(json["contentStatus"] as String?),
     );
   }
 }
@@ -290,7 +340,13 @@ List<FieldJob> mergeJobs(List<FieldJob> local, List<FieldJob> remote) {
       for (final place in prev.places)
         if (!remotePlaceIds.contains(place.id)) place,
     ]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-    merged.add(remoteJob.copyWith(synced: true, places: places));
+    merged.add(
+      remoteJob.copyWith(
+        synced: true,
+        places: places,
+        contentStatus: remoteJob.contentStatus ?? prev.contentStatus,
+      ),
+    );
   }
   for (final job in local) {
     if (!job.synced && !remoteIds.contains(job.id)) merged.add(job);

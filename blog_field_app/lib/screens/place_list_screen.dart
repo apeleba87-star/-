@@ -50,7 +50,7 @@ class PlaceListScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: store.accessActive ? () => _addPlace(context, store) : null,
+            onPressed: store.canManageJobs ? () => _addPlace(context, store) : null,
             child: const Text("장소 추가"),
           ),
         ],

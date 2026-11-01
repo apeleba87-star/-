@@ -12,6 +12,23 @@ void main() {
     expect(fieldJobTitle(dong: "자양동 34평", service: "입주청소"), "자양동 34평 · 입주청소");
   });
 
+  test("글 상태로 현장 목록 탭을 나눈다", () {
+    expect(ContentWriteStatusX.fromDb("DONE")!.bucket, JobListBucket.done);
+    expect(ContentWriteStatusX.fromDb("DRAFT")!.bucket, JobListBucket.writing);
+    expect(ContentWriteStatusX.fromDb("READY")!.bucket, JobListBucket.writing);
+    expect(ContentWriteStatusX.fromDb("ARCHIVED")!.bucket, JobListBucket.other);
+    expect(
+      FieldJob(
+        id: "1",
+        name: "a",
+        serviceType: "입주청소",
+        title: "a",
+        createdAt: DateTime(2026, 1, 1),
+      ).listBucket,
+      JobListBucket.other,
+    );
+  });
+
   test("미리보기는 긴 변을 720으로 줄인다", () {
     final source = img.Image(width: 1440, height: 720);
     final bytes = Uint8List.fromList(img.encodeJpg(source));

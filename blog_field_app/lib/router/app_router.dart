@@ -3,7 +3,10 @@ import "package:go_router/go_router.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 
 import "../data/field_store.dart";
+import "../screens/account_profile_screen.dart";
 import "../screens/account_screen.dart";
+import "../screens/account_usage_screen.dart";
+import "../screens/business_profile_screen.dart";
 import "../screens/camera_screen.dart";
 import "../screens/job_create_screen.dart";
 import "../screens/job_list_screen.dart";
@@ -38,6 +41,9 @@ GoRouter buildRouter(AuthRefresh auth) {
       GoRoute(path: "/login", builder: (context, state) => const LoginScreen()),
       GoRoute(path: "/", builder: (context, state) => const JobListScreen()),
       GoRoute(path: "/account", builder: (context, state) => const AccountScreen()),
+      GoRoute(path: "/account/profile", builder: (context, state) => const AccountProfileScreen()),
+      GoRoute(path: "/account/business", builder: (context, state) => const BusinessProfileScreen()),
+      GoRoute(path: "/account/usage", builder: (context, state) => const AccountUsageScreen()),
       GoRoute(path: "/jobs/new", builder: (context, state) => const JobCreateScreen()),
       GoRoute(
         path: "/jobs/:id",

@@ -18,16 +18,20 @@ Future<void> main() async {
     runApp(const ConfigMissingApp());
     return;
   }
-  await Supabase.initialize(
-    url: AppConfig.supabaseUrl,
-    publishableKey: AppConfig.supabaseAnonKey,
-  );
-  final store = FieldStore();
-  final auth = AuthRefresh(store);
-  if (Supabase.instance.client.auth.currentSession != null) {
-    await store.bindSession();
+  try {
+    await Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      publishableKey: AppConfig.supabaseAnonKey,
+    );
+    final store = FieldStore();
+    final auth = AuthRefresh(store);
+    if (Supabase.instance.client.auth.currentSession != null) {
+      await store.bindSession();
+    }
+    runApp(FieldApp(store: store, auth: auth));
+  } catch (e) {
+    runApp(BootErrorApp(message: e.toString()));
   }
-  runApp(FieldApp(store: store, auth: auth));
 }
 
 class FieldApp extends StatefulWidget {
@@ -76,6 +80,26 @@ class ConfigMissingApp extends StatelessWidget {
             child: Text(
               "blog_field_app/env.sample 을 .env 로 복사한 뒤\nSUPABASE_URL, SUPABASE_ANON_KEY 를 입력하세요.",
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BootErrorApp extends StatelessWidget {
+  const BootErrorApp({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text("앱을 시작하지 못했습니다.\n\n$message"),
           ),
         ),
       ),

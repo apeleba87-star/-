@@ -26,13 +26,28 @@ class FieldStore extends ChangeNotifier {
   String? error;
   String? companyId;
   bool isAdmin = false;
+  bool siteAdmin = false;
+  /// AI 글 권한(체험·구독). 사이트 관리자는 항상 true.
   bool accessActive = false;
   String? blockReason;
+
+  String get accessSummary {
+    if (siteAdmin) return "사이트 관리자 · AI 블로그 이용 가능";
+    if (accessActive) return "AI 블로그 이용 가능";
+    if (blockReason != null && blockReason!.isNotEmpty) return blockReason!;
+    return "AI 글 만들기는 구독·체험 후 이용할 수 있습니다. 현장·사진은 가능합니다.";
+  }
 
   var _syncing = false;
 
   SupabaseClient get _client => Supabase.instance.client;
   SupabaseQuerySchema get _db => _client.schema("cleanidex");
+
+  /// 웹과 동일: 업체 대표·사이트 관리자면 현장·사진은 구독 없이도 가능.
+  bool get canManageJobs => companyId != null && isAdmin;
+
+  List<FieldJob> jobsInBucket(JobListBucket bucket) =>
+      jobs.where((job) => job.listBucket == bucket).toList();
 
   Future<void> bindSession() async {
     error = null;
@@ -41,6 +56,9 @@ class FieldStore extends ChangeNotifier {
     if (user == null) {
       jobs = [];
       companyId = null;
+      isAdmin = false;
+      siteAdmin = false;
+      accessActive = false;
       notifyListeners();
       return;
     }
@@ -56,16 +74,27 @@ class FieldStore extends ChangeNotifier {
     notifyListeners();
     try {
       await _loadAccess(user.id);
-      if (companyId != null && (isAdmin || accessActive)) {
-        final remote = await _fetchRemote();
-        jobs = mergeJobs(jobs, remote);
-        await _saveLocal(user.id);
-        await pushPending();
-        await _saveUnsavedToGallery();
-      }
     } catch (e) {
-      error = "현장을 불러오지 못했습니다.";
-      debugPrint("$e");
+      error = "계정 권한을 확인하지 못했습니다. 인터넷 연결 후 다시 당겨 주세요.";
+      debugPrint("loadAccess $e");
+      loading = false;
+      notifyListeners();
+      return;
+    }
+    if (!canManageJobs) {
+      loading = false;
+      notifyListeners();
+      return;
+    }
+    try {
+      final remote = await _fetchRemote();
+      jobs = mergeJobs(jobs, remote);
+      await _saveLocal(user.id);
+      await pushPending();
+      await _saveUnsavedToGallery();
+    } catch (e) {
+      error = "현장을 불러오지 못했습니다. 아래로 당겨 다시 시도해 주세요.";
+      debugPrint("fetchRemote $e");
     } finally {
       loading = false;
       notifyListeners();
@@ -73,8 +102,8 @@ class FieldStore extends ChangeNotifier {
   }
 
   Future<String?> createJob(String name, String serviceType) async {
-    if (!accessActive) {
-      error = blockReason ?? "이용 기간에만 새 현장을 만들 수 있습니다.";
+    if (!canManageJobs) {
+      error = blockReason ?? "업체가 연결된 대표 계정으로 로그인해 주세요.";
       notifyListeners();
       return null;
     }
@@ -221,7 +250,7 @@ class FieldStore extends ChangeNotifier {
   }
 
   Future<void> pushPending() async {
-    if (_syncing || companyId == null || !accessActive) return;
+    if (_syncing || !canManageJobs) return;
     if (!await _online()) return;
     _syncing = true;
     notifyListeners();
@@ -452,7 +481,7 @@ class FieldStore extends ChangeNotifier {
     companyId = context?["company_id"] as String?;
     final role = context?["role_code"] as String?;
     final profile = await _client.from("profiles").select("role").eq("id", userId).maybeSingle();
-    final siteAdmin = profile != null && profile["role"] == "admin";
+    siteAdmin = profile != null && profile["role"] == "admin";
     isAdmin = siteAdmin || role == "admin";
     if (companyId == null) {
       accessActive = false;
@@ -464,6 +493,7 @@ class FieldStore extends ChangeNotifier {
       blockReason = "업체 대표 계정만 사용할 수 있습니다.";
       return;
     }
+    // 현장·사진은 대표/사이트 관리자면 가능. 아래는 AI 글 권한 안내만.
     if (siteAdmin) {
       accessActive = true;
       blockReason = null;
@@ -472,17 +502,19 @@ class FieldStore extends ChangeNotifier {
     final access = await _db.from("ai_blog_access").select("status, expires_on").eq("user_id", userId).maybeSingle();
     if (access == null) {
       accessActive = false;
-      blockReason = "AI 블로그 사용 권한이 없습니다.";
+      blockReason = null;
       return;
     }
     if (access["status"] == "suspended") {
       accessActive = false;
-      blockReason = "AI 블로그 사용이 정지되었습니다.";
+      blockReason = "AI 글 생성이 정지되었습니다. 현장·사진 촬영은 계속할 수 있습니다.";
       return;
     }
     final expires = access["expires_on"] as String? ?? "";
     accessActive = expires.compareTo(_today()) >= 0;
-    blockReason = accessActive ? null : "이용 기간이 끝났습니다. 이미 올린 현장은 볼 수 있습니다.";
+    blockReason = accessActive
+        ? null
+        : "AI 이용 기간이 끝났습니다. 현장·사진 촬영은 계속할 수 있습니다.";
   }
 
   Future<List<FieldJob>> _fetchRemote() async {
@@ -495,6 +527,11 @@ class FieldStore extends ChangeNotifier {
     final mediaRows = await _db
         .from("project_media")
         .select("id, project_id, media_type, storage_path, preview_path, original_expires_at");
+    final contentRows = await _db
+        .from("contents")
+        .select("project_id, status, updated_at")
+        .isFilter("deleted_at", null)
+        .order("updated_at", ascending: false);
     final mediaById = <String, Map<String, dynamic>>{
       for (final raw in mediaRows as List) (raw as Map)["id"] as String: Map<String, dynamic>.from(raw),
     };
@@ -503,9 +540,22 @@ class FieldStore extends ChangeNotifier {
       final row = Map<String, dynamic>.from(raw as Map);
       pairsByProject.putIfAbsent(row["project_id"] as String, () => []).add(row);
     }
+    final statusByProject = <String, ContentWriteStatus>{};
+    for (final raw in contentRows as List) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final projectId = row["project_id"] as String?;
+      if (projectId == null || statusByProject.containsKey(projectId)) continue;
+      final status = ContentWriteStatusX.fromDb(row["status"] as String?);
+      if (status != null) statusByProject[projectId] = status;
+    }
     return [
       for (final raw in projectRows as List)
-        _jobFromRemote(Map<String, dynamic>.from(raw as Map), pairsByProject, mediaById),
+        _jobFromRemote(
+          Map<String, dynamic>.from(raw as Map),
+          pairsByProject,
+          mediaById,
+          statusByProject,
+        ),
     ];
   }
 
@@ -513,12 +563,14 @@ class FieldStore extends ChangeNotifier {
     Map<String, dynamic> row,
     Map<String, List<Map<String, dynamic>>> pairsByProject,
     Map<String, Map<String, dynamic>> mediaById,
+    Map<String, ContentWriteStatus> statusByProject,
   ) {
-    final pairs = [...?pairsByProject[row["id"] as String]]..sort(
+    final projectId = row["id"] as String;
+    final pairs = [...?pairsByProject[projectId]]..sort(
         (a, b) => ((a["sort_order"] as num?) ?? 0).compareTo((b["sort_order"] as num?) ?? 0),
       );
     return FieldJob(
-      id: row["id"] as String,
+      id: projectId,
       name: (row["region_dong"] as String?) ?? "",
       serviceType: (row["service_type"] as String?) ?? "",
       title: fieldJobTitle(
@@ -530,6 +582,7 @@ class FieldStore extends ChangeNotifier {
       ),
       createdAt: DateTime.tryParse(row["created_at"] as String? ?? "") ?? DateTime.now(),
       synced: true,
+      contentStatus: statusByProject[projectId],
       places: [
         for (final pair in pairs)
           FieldPlace(

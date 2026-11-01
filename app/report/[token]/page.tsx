@@ -70,8 +70,10 @@ export default async function FieldReportPage({ params }: Params) {
                 <span className="mr-2">{String(index + 1).padStart(2, "0")}</span>
                 {place.label}
               </h2>
-              <PhotoGroup label="청소 전" url={place.beforeUrl} />
-              <PhotoGroup label="청소 후" url={place.afterUrl} />
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <PhotoGroup label="청소 전" url={place.beforeUrl} />
+                <PhotoGroup label="청소 후" url={place.afterUrl} />
+              </div>
             </section>
           ))
         )}
@@ -84,14 +86,14 @@ export default async function FieldReportPage({ params }: Params) {
 function PhotoGroup({ label, url }: { label: string; url: string | null }) {
   const count = url ? 1 : 0;
   return (
-    <div className="mt-3 rounded-xl border border-[#e4e4e7] p-3">
+    <div className="rounded-xl border border-[#e4e4e7] p-3">
       <p className="text-sm">
         <span className="font-semibold">{label}</span> <span className="text-[#a1a1aa]">{count}장</span>
       </p>
       {url ? (
         // 서명 주소는 요청마다 바뀌므로 최적화 캐시를 쓰지 않는다.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={label} className="mt-2 max-h-72 w-auto max-w-full rounded-md object-contain" />
+        <img src={url} alt={label} className="mt-2 h-44 w-full rounded-md object-cover" />
       ) : (
         <p className="mt-3 text-sm text-[#a1a1aa]">없음</p>
       )}
