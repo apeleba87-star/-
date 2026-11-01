@@ -301,11 +301,19 @@ export default function Header() {
               className="flex min-h-[44px] min-w-0 items-center gap-1.5 touch-manipulation sm:gap-2"
             >
               <motion.span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-md lg:h-10 lg:w-10"
+                className="relative flex h-9 w-9 shrink-0 overflow-hidden rounded-lg shadow-md ring-1 ring-black/5 lg:h-10 lg:w-10"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
               >
-                C
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/brand/cleanidex-icon.png"
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="h-full w-full object-cover"
+                  decoding="async"
+                />
               </motion.span>
               <span className="hidden text-sm font-bold text-slate-800 xs:inline xs:max-w-[10rem] xs:truncate sm:max-w-none sm:overflow-visible sm:whitespace-normal sm:text-base lg:text-lg">
                 클린아이덱스

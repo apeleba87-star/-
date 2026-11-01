@@ -196,6 +196,16 @@ class FieldJob {
     this.synced = false,
     this.places = const [],
     this.contentStatus,
+    this.regionSido,
+    this.regionSigungu,
+    this.regionDong,
+    this.propertyType,
+    this.areaPyeong,
+    this.workerCount,
+    this.workMinutes,
+    this.price,
+    this.workDate,
+    this.description,
   });
 
   final String id;
@@ -207,6 +217,16 @@ class FieldJob {
   final List<FieldPlace> places;
   /// 현장당 가장 최근 글 상태. null = 글 없음 → 기타 탭.
   final ContentWriteStatus? contentStatus;
+  final String? regionSido;
+  final String? regionSigungu;
+  final String? regionDong;
+  final String? propertyType;
+  final double? areaPyeong;
+  final int? workerCount;
+  final int? workMinutes;
+  final int? price;
+  final String? workDate;
+  final String? description;
 
   int get pairCount => places.where((p) => p.before != null && p.after != null).length;
 
@@ -229,16 +249,48 @@ class FieldJob {
     return "원본 보관 $days일 남음";
   }
 
-  FieldJob copyWith({bool? synced, List<FieldPlace>? places, ContentWriteStatus? contentStatus, bool clearContentStatus = false}) {
+  FieldJob copyWith({
+    String? name,
+    String? serviceType,
+    String? title,
+    bool? synced,
+    List<FieldPlace>? places,
+    ContentWriteStatus? contentStatus,
+    bool clearContentStatus = false,
+    String? regionSido,
+    String? regionSigungu,
+    String? regionDong,
+    String? propertyType,
+    double? areaPyeong,
+    int? workerCount,
+    int? workMinutes,
+    int? price,
+    String? workDate,
+    String? description,
+    bool clearAreaPyeong = false,
+    bool clearWorkerCount = false,
+    bool clearWorkMinutes = false,
+    bool clearPrice = false,
+  }) {
     return FieldJob(
       id: id,
-      name: name,
-      serviceType: serviceType,
-      title: title,
+      name: name ?? this.name,
+      serviceType: serviceType ?? this.serviceType,
+      title: title ?? this.title,
       createdAt: createdAt,
       synced: synced ?? this.synced,
       places: places ?? this.places,
       contentStatus: clearContentStatus ? null : (contentStatus ?? this.contentStatus),
+      regionSido: regionSido ?? this.regionSido,
+      regionSigungu: regionSigungu ?? this.regionSigungu,
+      regionDong: regionDong ?? this.regionDong,
+      propertyType: propertyType ?? this.propertyType,
+      areaPyeong: clearAreaPyeong ? null : (areaPyeong ?? this.areaPyeong),
+      workerCount: clearWorkerCount ? null : (workerCount ?? this.workerCount),
+      workMinutes: clearWorkMinutes ? null : (workMinutes ?? this.workMinutes),
+      price: clearPrice ? null : (price ?? this.price),
+      workDate: workDate ?? this.workDate,
+      description: description ?? this.description,
     );
   }
 
@@ -251,6 +303,16 @@ class FieldJob {
         "synced": synced,
         "places": places.map((p) => p.toJson()).toList(),
         "contentStatus": contentStatus?.dbValue,
+        "regionSido": regionSido,
+        "regionSigungu": regionSigungu,
+        "regionDong": regionDong,
+        "propertyType": propertyType,
+        "areaPyeong": areaPyeong,
+        "workerCount": workerCount,
+        "workMinutes": workMinutes,
+        "price": price,
+        "workDate": workDate,
+        "description": description,
       };
 
   factory FieldJob.fromJson(Map<String, dynamic> json) {
@@ -266,6 +328,16 @@ class FieldJob {
           FieldPlace.fromJson(Map<String, dynamic>.from(raw as Map)),
       ],
       contentStatus: ContentWriteStatusX.fromDb(json["contentStatus"] as String?),
+      regionSido: json["regionSido"] as String?,
+      regionSigungu: json["regionSigungu"] as String?,
+      regionDong: json["regionDong"] as String?,
+      propertyType: json["propertyType"] as String?,
+      areaPyeong: (json["areaPyeong"] as num?)?.toDouble(),
+      workerCount: (json["workerCount"] as num?)?.toInt(),
+      workMinutes: (json["workMinutes"] as num?)?.toInt(),
+      price: (json["price"] as num?)?.toInt(),
+      workDate: json["workDate"] as String?,
+      description: json["description"] as String?,
     );
   }
 }

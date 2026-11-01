@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 import "dart:math";
@@ -10,6 +11,7 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "package:uuid/uuid.dart";
 
 import "../models/field_job.dart";
+import "../services/month_stats.dart";
 import "../services/phone_gallery.dart";
 import "../services/preview_jpeg.dart";
 
@@ -39,6 +41,13 @@ class FieldStore extends ChangeNotifier {
   }
 
   var _syncing = false;
+  var _hydrating = false;
+  Future<void>? _refreshFuture;
+
+  /// 현황 탭 짧은 캐시 (서버 왕복·비용 절감). RLS로 회사 범위만.
+  List<StatProject>? _statsCache;
+  DateTime? _statsCacheAt;
+  static const _statsTtl = Duration(minutes: 3);
 
   SupabaseClient get _client => Supabase.instance.client;
   SupabaseQuerySchema get _db => _client.schema("cleanidex");
@@ -59,19 +68,35 @@ class FieldStore extends ChangeNotifier {
       isAdmin = false;
       siteAdmin = false;
       accessActive = false;
+      _statsCache = null;
+      _statsCacheAt = null;
       notifyListeners();
       return;
     }
+    // 로컬 목록을 먼저 보여 준 뒤 서버 동기화는 백그라운드.
     await _loadLocal(user.id);
-    await refresh();
+    notifyListeners();
+    unawaited(refresh());
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh() {
+    final existing = _refreshFuture;
+    if (existing != null) return existing;
+    late final Future<void> started;
+    started = _refreshBody().whenComplete(() {
+      if (identical(_refreshFuture, started)) _refreshFuture = null;
+    });
+    _refreshFuture = started;
+    return started;
+  }
+
+  Future<void> _refreshBody() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
-    loading = true;
+    // 캐시가 있으면 스피너 없이 조용히 갱신 (체감 끊김 감소).
+    loading = jobs.isEmpty;
     error = null;
-    notifyListeners();
+    if (loading) notifyListeners();
     try {
       await _loadAccess(user.id);
     } catch (e) {
@@ -87,18 +112,83 @@ class FieldStore extends ChangeNotifier {
       return;
     }
     try {
-      final remote = await _fetchRemote();
+      // 목록용: projects + contents 만 병렬 (쌍·미디어는 뒤·상세에서).
+      final remote = await _fetchRemoteSummary();
       jobs = mergeJobs(jobs, remote);
       await _saveLocal(user.id);
-      await pushPending();
-      await _saveUnsavedToGallery();
+      loading = false;
+      notifyListeners();
+      unawaited(_afterListRefresh(user.id));
     } catch (e) {
       error = "현장을 불러오지 못했습니다. 아래로 당겨 다시 시도해 주세요.";
       debugPrint("fetchRemote $e");
-    } finally {
       loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _afterListRefresh(String userId) async {
+    unawaited(pushPending(quiet: true));
+    try {
+      await _hydrateAllPlaces();
+      await _saveLocal(userId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint("hydratePlaces $e");
+    }
+    unawaited(_saveUnsavedToGallery());
+  }
+
+  /// 현장 상세 진입 시 장소가 비어 있으면 해당 현장만 보강 (전체 media 재조회 방지).
+  Future<void> ensureJobDetails(String jobId) async {
+    if (!canManageJobs) return;
+    final job = _job(jobId);
+    if (job == null) return;
+    if (job.places.isNotEmpty) return;
+    try {
+      await _hydratePlacesForJobs([jobId]);
+      final userId = _client.auth.currentUser?.id;
+      if (userId != null) await _saveLocal(userId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint("ensureJobDetails $e");
+    }
+  }
+
+  Future<List<StatProject>> loadStatsProjects({bool force = false}) async {
+    final now = DateTime.now();
+    if (!force &&
+        _statsCache != null &&
+        _statsCacheAt != null &&
+        now.difference(_statsCacheAt!) < _statsTtl) {
+      return _statsCache!;
+    }
+    if (!canManageJobs) return const [];
+    final rows = await _db
+        .from("projects")
+        .select("id, service_type, worker_count, work_minutes, price, work_date, created_at")
+        .isFilter("deleted_at", null)
+        .limit(2000);
+    final projects = <StatProject>[
+      for (final raw in rows as List)
+        StatProject(
+          id: (raw as Map)["id"] as String,
+          serviceType: (raw["service_type"] as String?) ?? "",
+          workerCount: (raw["worker_count"] as num?)?.toInt(),
+          workMinutes: (raw["work_minutes"] as num?)?.toInt(),
+          price: (raw["price"] as num?)?.toInt(),
+          workDate: raw["work_date"] as String?,
+          createdAt: DateTime.tryParse(raw["created_at"] as String? ?? "") ?? DateTime.now(),
+        ),
+    ];
+    _statsCache = projects;
+    _statsCacheAt = now;
+    return projects;
+  }
+
+  void invalidateStatsCache() {
+    _statsCache = null;
+    _statsCacheAt = null;
   }
 
   Future<String?> createJob(String name, String serviceType) async {
@@ -107,18 +197,149 @@ class FieldStore extends ChangeNotifier {
       notifyListeners();
       return null;
     }
+    final dong = name.trim();
     final job = FieldJob(
       id: _uuid.v4(),
-      name: name.trim(),
+      name: dong,
       serviceType: serviceType.trim(),
-      title: fieldJobTitle(dong: name.trim(), service: serviceType.trim()),
+      title: fieldJobTitle(dong: dong, service: serviceType.trim()),
       createdAt: DateTime.now(),
+      regionDong: dong,
+      workDate: _today(),
     );
     jobs = [job, ...jobs];
     notifyListeners();
     await _saveLocal(_client.auth.currentUser!.id);
     await pushPending();
     return job.id;
+  }
+
+  /// 기타 버킷(글 없음·보관) 현장만 soft-delete. 웹 DELETE 와 동일.
+  Future<String?> deleteJob(String jobId) async {
+    if (!canManageJobs) {
+      return blockReason ?? "업체가 연결된 대표 계정으로 로그인해 주세요.";
+    }
+    final current = _job(jobId);
+    if (current == null) return "현장을 찾지 못했습니다.";
+    if (current.listBucket != JobListBucket.other) {
+      return "글이 있는 현장은 기타로 보낸 뒤 지울 수 있습니다.";
+    }
+
+    jobs = [for (final job in jobs) if (job.id != jobId) job];
+    notifyListeners();
+    final userId = _client.auth.currentUser?.id;
+    if (userId != null) await _saveLocal(userId);
+
+    if (!await _online()) {
+      return "인터넷 연결 후 다시 지워 주세요. 목록에서는 잠시 숨겼습니다.";
+    }
+    try {
+      if (!current.synced) {
+        // 아직 서버에 없는 로컬 현장은 로컬만 제거.
+        invalidateStatsCache();
+        return null;
+      }
+      await _db.from("projects").update({
+        "deleted_at": DateTime.now().toUtc().toIso8601String(),
+      }).eq("id", jobId);
+      invalidateStatsCache();
+      return null;
+    } catch (e) {
+      debugPrint("deleteJob $e");
+      // 실패 시 목록 복구를 위해 새로고침
+      unawaited(refresh());
+      return "지우지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    }
+  }
+
+  /// 웹 ProjectForm 과 같은 현장 메타 저장.
+  Future<String?> updateJobInfo({
+    required String jobId,
+    required String serviceType,
+    String? regionSido,
+    String? regionSigungu,
+    String? regionDong,
+    String? propertyType,
+    double? areaPyeong,
+    int? workerCount,
+    int? workMinutes,
+    int? price,
+    String? workDate,
+    String? description,
+  }) async {
+    if (!canManageJobs) {
+      return blockReason ?? "업체가 연결된 대표 계정으로 로그인해 주세요.";
+    }
+    final service = serviceType.trim();
+    if (service.isEmpty) return "청소 종류를 선택해 주세요.";
+    final dong = (regionDong ?? "").trim();
+    final sigungu = (regionSigungu ?? "").trim();
+    final sido = (regionSido ?? "").trim();
+    final property = (propertyType ?? "").trim();
+    final title = fieldJobTitle(
+      sigungu: sigungu.isEmpty ? null : sigungu,
+      dong: dong.isEmpty ? null : dong,
+      property: property.isEmpty ? null : property,
+      pyeong: areaPyeong,
+      service: service,
+    );
+    final name = dong.isNotEmpty ? dong : (sigungu.isNotEmpty ? sigungu : service);
+    jobs = [
+      for (final job in jobs)
+        if (job.id != jobId)
+          job
+        else
+          job.copyWith(
+            name: name,
+            serviceType: service,
+            title: title.isEmpty ? job.title : title,
+            regionSido: sido.isEmpty ? "" : sido,
+            regionSigungu: sigungu.isEmpty ? "" : sigungu,
+            regionDong: dong.isEmpty ? "" : dong,
+            propertyType: property.isEmpty ? "" : property,
+            areaPyeong: areaPyeong,
+            clearAreaPyeong: areaPyeong == null,
+            workerCount: workerCount,
+            clearWorkerCount: workerCount == null,
+            workMinutes: workMinutes,
+            clearWorkMinutes: workMinutes == null,
+            price: price,
+            clearPrice: price == null,
+            workDate: workDate ?? "",
+            description: (description ?? "").trim(),
+          ),
+    ];
+    notifyListeners();
+    final userId = _client.auth.currentUser?.id;
+    if (userId != null) await _saveLocal(userId);
+
+    final current = _job(jobId);
+    if (current == null) return "현장을 찾지 못했습니다.";
+    if (!await _online()) return "인터넷 연결 후 다시 저장해 주세요.";
+    try {
+      if (!current.synced) {
+        await _pushJob(current);
+      }
+      await _db.from("projects").update({
+        "service_type": service,
+        "region_sido": sido.isEmpty ? null : sido,
+        "region_sigungu": sigungu.isEmpty ? null : sigungu,
+        "region_dong": dong.isEmpty ? null : dong,
+        "property_type": property.isEmpty ? null : property,
+        "area_pyeong": areaPyeong,
+        "worker_count": workerCount,
+        "work_minutes": workMinutes,
+        "price": price,
+        "work_date": (workDate ?? "").trim().isEmpty ? null : workDate!.trim(),
+        "description": (description ?? "").trim().isEmpty ? null : description!.trim(),
+        "updated_at": DateTime.now().toUtc().toIso8601String(),
+      }).eq("id", jobId).isFilter("deleted_at", null);
+      invalidateStatsCache();
+      return null;
+    } catch (e) {
+      debugPrint("updateJobInfo $e");
+      return "저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    }
   }
 
   Future<void> addPlace(String jobId, String label, {String condition = ""}) async {
@@ -185,9 +406,12 @@ class FieldStore extends ChangeNotifier {
       galleryName: previous?.galleryName,
     );
     _replaceShot(jobId, placeId, role, shot);
-    await publishJobGallery(jobId, refreshMediaId: mediaId);
     await _saveLocal(userId);
-    await pushPending();
+    // 갤러리·업로드는 뒤에서 — 촬영 직후 UI가 안 멈추게.
+    unawaited(() async {
+      await publishJobGallery(jobId, refreshMediaId: mediaId);
+      await pushPending(quiet: true);
+    }());
   }
 
   Future<void> publishJobGallery(String jobId, {String? refreshMediaId}) async {
@@ -209,10 +433,19 @@ class FieldStore extends ChangeNotifier {
       if (!saved) continue;
       final afterSave = _job(jobId)?.places.where((item) => item.id == plan.placeId).firstOrNull?.shotFor(plan.role);
       if (afterSave == null) continue;
-      _replaceShot(jobId, plan.placeId, plan.role, afterSave.copyWith(gallerySaved: true, galleryName: plan.fileName));
+      _replaceShot(
+        jobId,
+        plan.placeId,
+        plan.role,
+        afterSave.copyWith(gallerySaved: true, galleryName: plan.fileName),
+        notify: false,
+      );
       changed = true;
     }
-    if (changed) await _saveLocal(userId);
+    if (changed) {
+      await _saveLocal(userId);
+      notifyListeners();
+    }
   }
 
   Future<void> _saveUnsavedToGallery() async {
@@ -249,11 +482,11 @@ class FieldStore extends ChangeNotifier {
     }
   }
 
-  Future<void> pushPending() async {
+  Future<void> pushPending({bool quiet = false}) async {
     if (_syncing || !canManageJobs) return;
     if (!await _online()) return;
     _syncing = true;
-    notifyListeners();
+    if (!quiet) notifyListeners();
     try {
       final userId = _client.auth.currentUser!.id;
       for (final job in List<FieldJob>.from(jobs)) {
@@ -267,9 +500,23 @@ class FieldStore extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    final userId = _client.auth.currentUser?.id;
     await _client.auth.signOut();
     jobs = [];
     companyId = null;
+    isAdmin = false;
+    siteAdmin = false;
+    accessActive = false;
+    blockReason = null;
+    invalidateStatsCache();
+    if (userId != null) {
+      try {
+        final file = await _file(userId);
+        if (file.existsSync()) await file.delete();
+      } catch (e) {
+        debugPrint("clear local $e");
+      }
+    }
     notifyListeners();
   }
 
@@ -280,7 +527,7 @@ class FieldStore extends ChangeNotifier {
     return null;
   }
 
-  void _replaceShot(String jobId, String placeId, String role, FieldShot shot) {
+  void _replaceShot(String jobId, String placeId, String role, FieldShot shot, {bool notify = true}) {
     jobs = [
       for (final job in jobs)
         if (job.id != jobId)
@@ -299,7 +546,7 @@ class FieldStore extends ChangeNotifier {
                 ),
           ]),
     ];
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   Future<void> _pushJob(FieldJob job) async {
@@ -309,7 +556,16 @@ class FieldStore extends ChangeNotifier {
           "id": job.id,
           "company_id": companyId,
           "service_type": job.serviceType,
-          "region_dong": job.name,
+          "region_sido": job.regionSido,
+          "region_sigungu": job.regionSigungu,
+          "region_dong": job.regionDong ?? job.name,
+          "property_type": job.propertyType,
+          "area_pyeong": job.areaPyeong,
+          "worker_count": job.workerCount,
+          "work_minutes": job.workMinutes,
+          "price": job.price,
+          "work_date": job.workDate,
+          "description": job.description,
           "created_by": _client.auth.currentUser!.id,
         });
         _markJob(job.id, synced: true);
@@ -517,31 +773,26 @@ class FieldStore extends ChangeNotifier {
         : "AI 이용 기간이 끝났습니다. 현장·사진 촬영은 계속할 수 있습니다.";
   }
 
-  Future<List<FieldJob>> _fetchRemote() async {
-    final projectRows = await _db
-        .from("projects")
-        .select("id, service_type, region_sido, region_sigungu, region_dong, property_type, area_pyeong, created_at")
-        .isFilter("deleted_at", null)
-        .order("created_at", ascending: false);
-    final pairRows = await _db.from("media_pairs").select("id, project_id, label, memo, before_media_id, after_media_id, sort_order");
-    final mediaRows = await _db
-        .from("project_media")
-        .select("id, project_id, media_type, storage_path, preview_path, original_expires_at");
-    final contentRows = await _db
-        .from("contents")
-        .select("project_id, status, updated_at")
-        .isFilter("deleted_at", null)
-        .order("updated_at", ascending: false);
-    final mediaById = <String, Map<String, dynamic>>{
-      for (final raw in mediaRows as List) (raw as Map)["id"] as String: Map<String, dynamic>.from(raw),
-    };
-    final pairsByProject = <String, List<Map<String, dynamic>>>{};
-    for (final raw in pairRows as List) {
-      final row = Map<String, dynamic>.from(raw as Map);
-      pairsByProject.putIfAbsent(row["project_id"] as String, () => []).add(row);
-    }
+  /// 목록용: 프로젝트 메타 + 글 상태만 (RLS 회사 범위). 쌍·미디어는 hydrate.
+  Future<List<FieldJob>> _fetchRemoteSummary() async {
+    final results = await Future.wait([
+      _db
+          .from("projects")
+          .select(
+            "id, service_type, region_sido, region_sigungu, region_dong, property_type, area_pyeong, worker_count, work_minutes, price, work_date, description, created_at",
+          )
+          .isFilter("deleted_at", null)
+          .order("created_at", ascending: false),
+      _db
+          .from("contents")
+          .select("project_id, status, updated_at")
+          .isFilter("deleted_at", null)
+          .order("updated_at", ascending: false),
+    ]);
+    final projectRows = results[0] as List;
+    final contentRows = results[1] as List;
     final statusByProject = <String, ContentWriteStatus>{};
-    for (final raw in contentRows as List) {
+    for (final raw in contentRows) {
       final row = Map<String, dynamic>.from(raw as Map);
       final projectId = row["project_id"] as String?;
       if (projectId == null || statusByProject.containsKey(projectId)) continue;
@@ -549,52 +800,130 @@ class FieldStore extends ChangeNotifier {
       if (status != null) statusByProject[projectId] = status;
     }
     return [
-      for (final raw in projectRows as List)
-        _jobFromRemote(
+      for (final raw in projectRows)
+        _jobFromRemoteRow(
           Map<String, dynamic>.from(raw as Map),
-          pairsByProject,
-          mediaById,
+          const {},
+          const {},
           statusByProject,
         ),
     ];
   }
 
-  FieldJob _jobFromRemote(
+  Future<void> _hydrateAllPlaces() async {
+    if (_hydrating || !canManageJobs) return;
+    _hydrating = true;
+    try {
+      await _hydratePlacesForJobs(null);
+    } finally {
+      _hydrating = false;
+    }
+  }
+
+  /// [jobIds] null 이면 회사 전체(RLS). 지정 시 해당 현장만 — 트래픽·비용 절감.
+  Future<void> _hydratePlacesForJobs(List<String>? jobIds) async {
+    late final List pairRows;
+    late final List mediaRows;
+    if (jobIds != null && jobIds.length == 1) {
+      final id = jobIds.first;
+      final results = await Future.wait([
+        _db
+            .from("media_pairs")
+            .select("id, project_id, label, memo, before_media_id, after_media_id, sort_order")
+            .eq("project_id", id),
+        _db
+            .from("project_media")
+            .select("id, project_id, media_type, storage_path, preview_path, original_expires_at")
+            .eq("project_id", id),
+      ]);
+      pairRows = results[0] as List;
+      mediaRows = results[1] as List;
+    } else {
+      final results = await Future.wait([
+        _db.from("media_pairs").select("id, project_id, label, memo, before_media_id, after_media_id, sort_order"),
+        _db
+            .from("project_media")
+            .select("id, project_id, media_type, storage_path, preview_path, original_expires_at"),
+      ]);
+      pairRows = results[0] as List;
+      mediaRows = results[1] as List;
+    }
+    final mediaById = <String, Map<String, dynamic>>{
+      for (final raw in mediaRows) (raw as Map)["id"] as String: Map<String, dynamic>.from(raw),
+    };
+    final pairsByProject = <String, List<Map<String, dynamic>>>{};
+    for (final raw in pairRows) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      pairsByProject.putIfAbsent(row["project_id"] as String, () => []).add(row);
+    }
+    // 전체 jobs 를 remote 로 넘겨 mergeJobs 가 일부만 남겨 버리지 않게 한다.
+    final remote = <FieldJob>[
+      for (final job in jobs)
+        job.copyWith(
+          places: jobIds == null || jobIds.contains(job.id)
+              ? _placesFromRemote(job.id, pairsByProject, mediaById)
+              : job.places,
+          synced: job.synced || jobIds == null || jobIds.contains(job.id),
+        ),
+    ];
+    jobs = mergeJobs(jobs, remote);
+  }
+
+  List<FieldPlace> _placesFromRemote(
+    String projectId,
+    Map<String, List<Map<String, dynamic>>> pairsByProject,
+    Map<String, Map<String, dynamic>> mediaById,
+  ) {
+    final pairs = [...?pairsByProject[projectId]]
+      ..sort((a, b) => ((a["sort_order"] as num?) ?? 0).compareTo((b["sort_order"] as num?) ?? 0));
+    return [
+      for (final pair in pairs)
+        FieldPlace(
+          id: pair["id"] as String,
+          label: (pair["label"] as String?) ?? "",
+          condition: (pair["memo"] as String?) ?? "",
+          sortOrder: (pair["sort_order"] as num?)?.toInt() ?? 0,
+          synced: true,
+          before: _shotFromMedia(mediaById[pair["before_media_id"]], "BEFORE"),
+          after: _shotFromMedia(mediaById[pair["after_media_id"]], "AFTER"),
+        ),
+    ];
+  }
+
+  FieldJob _jobFromRemoteRow(
     Map<String, dynamic> row,
     Map<String, List<Map<String, dynamic>>> pairsByProject,
     Map<String, Map<String, dynamic>> mediaById,
     Map<String, ContentWriteStatus> statusByProject,
   ) {
     final projectId = row["id"] as String;
-    final pairs = [...?pairsByProject[projectId]]..sort(
-        (a, b) => ((a["sort_order"] as num?) ?? 0).compareTo((b["sort_order"] as num?) ?? 0),
-      );
+    final dong = row["region_dong"] as String?;
+    final service = (row["service_type"] as String?) ?? "";
     return FieldJob(
       id: projectId,
-      name: (row["region_dong"] as String?) ?? "",
-      serviceType: (row["service_type"] as String?) ?? "",
+      name: dong ?? "",
+      serviceType: service,
       title: fieldJobTitle(
         sigungu: row["region_sigungu"] as String?,
-        dong: row["region_dong"] as String?,
+        dong: dong,
         property: row["property_type"] as String?,
         pyeong: row["area_pyeong"] as num?,
-        service: (row["service_type"] as String?) ?? "",
+        service: service,
       ),
       createdAt: DateTime.tryParse(row["created_at"] as String? ?? "") ?? DateTime.now(),
       synced: true,
       contentStatus: statusByProject[projectId],
-      places: [
-        for (final pair in pairs)
-          FieldPlace(
-            id: pair["id"] as String,
-            label: (pair["label"] as String?) ?? "",
-            condition: (pair["memo"] as String?) ?? "",
-            sortOrder: (pair["sort_order"] as num?)?.toInt() ?? 0,
-            synced: true,
-            before: _shotFromMedia(mediaById[pair["before_media_id"]], "BEFORE"),
-            after: _shotFromMedia(mediaById[pair["after_media_id"]], "AFTER"),
-          ),
-      ],
+      regionSido: row["region_sido"] as String?,
+      regionSigungu: row["region_sigungu"] as String?,
+      regionDong: dong,
+      propertyType: row["property_type"] as String?,
+      areaPyeong: (row["area_pyeong"] as num?)?.toDouble(),
+      workerCount: (row["worker_count"] as num?)?.toInt(),
+      workMinutes: (row["work_minutes"] as num?)?.toInt(),
+      price: (row["price"] as num?)?.toInt(),
+      workDate: row["work_date"] as String?,
+      description: row["description"] as String?,
+      places: _placesFromRemote(projectId, pairsByProject, mediaById),
     );
   }
 

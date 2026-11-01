@@ -21,7 +21,16 @@ export default function AiBlogNav({ usage, access }: { usage: UsageSummary | nul
   return (
     <div className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-        <Link href="/ai-blog" className="text-sm font-bold text-slate-900">
+        <Link href="/ai-blog" className="inline-flex items-center gap-2 text-sm font-bold text-slate-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/cleanidex-icon.png"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-md object-cover ring-1 ring-black/5"
+            decoding="async"
+          />
           AI 블로그
         </Link>
         <nav className="flex items-center gap-1">

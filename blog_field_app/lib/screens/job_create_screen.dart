@@ -67,7 +67,7 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text("평수와 금액은 사무실 PC에서 입력합니다."),
+          const Text("평수·금액은 만든 뒤 현장 정보에서 넣을 수 있습니다."),
           const SizedBox(height: 20),
           FilledButton(
             onPressed: _busy ? null : _save,

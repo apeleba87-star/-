@@ -7,6 +7,7 @@ import "config/app_config.dart";
 import "data/field_store.dart";
 import "field_scope.dart";
 import "router/app_router.dart";
+import "theme/app_theme.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,10 +26,11 @@ Future<void> main() async {
     );
     final store = FieldStore();
     final auth = AuthRefresh(store);
-    if (Supabase.instance.client.auth.currentSession != null) {
-      await store.bindSession();
-    }
+    // 화면을 먼저 띄우고, 세션·동기화는 뒤에서 (체감 기동 속도).
     runApp(FieldApp(store: store, auth: auth));
+    if (Supabase.instance.client.auth.currentSession != null) {
+      store.bindSession();
+    }
   } catch (e) {
     runApp(BootErrorApp(message: e.toString()));
   }
@@ -54,6 +56,7 @@ class _FieldAppState extends State<FieldApp> {
       child: MaterialApp.router(
         title: "블로그 촬영",
         debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(),
         locale: const Locale("ko", "KR"),
         supportedLocales: const [Locale("ko", "KR")],
         localizationsDelegates: const [

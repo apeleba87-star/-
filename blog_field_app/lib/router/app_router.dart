@@ -8,7 +8,9 @@ import "../screens/account_screen.dart";
 import "../screens/account_usage_screen.dart";
 import "../screens/business_profile_screen.dart";
 import "../screens/camera_screen.dart";
+import "../screens/dashboard_screen.dart";
 import "../screens/job_create_screen.dart";
+import "../screens/job_info_screen.dart";
 import "../screens/job_list_screen.dart";
 import "../screens/login_screen.dart";
 import "../screens/naver_guide_screen.dart";
@@ -40,6 +42,7 @@ GoRouter buildRouter(AuthRefresh auth) {
     routes: [
       GoRoute(path: "/login", builder: (context, state) => const LoginScreen()),
       GoRoute(path: "/", builder: (context, state) => const JobListScreen()),
+      GoRoute(path: "/dashboard", builder: (context, state) => const DashboardScreen()),
       GoRoute(path: "/account", builder: (context, state) => const AccountScreen()),
       GoRoute(path: "/account/profile", builder: (context, state) => const AccountProfileScreen()),
       GoRoute(path: "/account/business", builder: (context, state) => const BusinessProfileScreen()),
@@ -48,6 +51,10 @@ GoRouter buildRouter(AuthRefresh auth) {
       GoRoute(
         path: "/jobs/:id",
         builder: (context, state) => PlaceListScreen(jobId: state.pathParameters["id"]!),
+      ),
+      GoRoute(
+        path: "/jobs/:id/info",
+        builder: (context, state) => JobInfoScreen(jobId: state.pathParameters["id"]!),
       ),
       GoRoute(
         path: "/jobs/:id/naver",
