@@ -1,5 +1,16 @@
+import Image from "next/image";
 import type { CSSProperties } from "react";
 import { BEFORE_AFTER_FRAME_ASPECT } from "@/lib/knowledge-hub/media/product-before-after-types";
+
+function canOptimize(src: string): boolean {
+  if (src.startsWith("/")) return true;
+  try {
+    const host = new URL(src).hostname;
+    return host.includes("supabase.co") || host.includes("pstatic.net");
+  } catch {
+    return false;
+  }
+}
 
 const BORDER = "#e8edf3";
 const TEXT = "#1a2a3a";
@@ -67,19 +78,37 @@ function Panel({
         }}
       >
         {url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={url}
-            alt={alt}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: `${focalX}% ${focalY}%`,
-              display: "block",
-            }}
-            loading="lazy"
-          />
+          canOptimize(url) ? (
+            <Image
+              src={url}
+              alt={alt}
+              width={640}
+              height={480}
+              sizes="(max-width: 768px) 50vw, 320px"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: `${focalX}% ${focalY}%`,
+                display: "block",
+              }}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={url}
+              alt={alt}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: `${focalX}% ${focalY}%`,
+                display: "block",
+              }}
+              loading="lazy"
+              decoding="async"
+            />
+          )
         ) : (
           <div
             style={{

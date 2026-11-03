@@ -9,11 +9,8 @@ const FOOTER_LINK_CLASS =
   "text-slate-400 hover:text-teal-300 transition-colors touch-manipulation py-1 text-xs sm:py-2 sm:text-sm";
 
 const ADMIN_LINKS = [
-  { href: "/cleanidex", label: "클린아이덱스" },
-  { href: "/listings", label: "현장 마켓" },
-  { href: "/partners", label: "협력 센터" },
-  { href: "/jobs", label: "인력 센터" },
-  { href: "/archive", label: "뉴스레터 아카이브" },
+  { href: "/admin", label: "관리자" },
+  { href: "/admin/vault", label: "보관함" },
 ];
 
 /** 푸터 3행 — 관리자만 (SSR cookies 회피) */

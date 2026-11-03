@@ -12,6 +12,7 @@ import type {
   QuestionListItem,
   QuestionRow,
 } from "@/lib/questions/types";
+import { unstable_cache } from "next/cache";
 import {
   createClient,
   createServerSupabase,
@@ -221,9 +222,9 @@ export async function listPublishedQuestions(
   return { items, total: count ?? items.length };
 }
 
-export async function listQuestionsForProduct(
+async function loadQuestionsForProduct(
   productId: string,
-  limit = PRODUCT_QUESTIONS_PREVIEW,
+  limit: number,
 ): Promise<QuestionListItem[]> {
   const supabase = createClient();
   const { data: links } = await supabase
@@ -267,6 +268,19 @@ export async function listQuestionsForProduct(
     primary_product_id: productId,
     primary_product_name: null,
   }));
+}
+
+export function listQuestionsForProduct(
+  productId: string,
+  limit = PRODUCT_QUESTIONS_PREVIEW,
+): Promise<QuestionListItem[]> {
+  const id = productId.trim();
+  const capped = Math.min(Math.max(limit, 1), 20);
+  return unstable_cache(
+    () => loadQuestionsForProduct(id, capped),
+    ["questions-for-product", id, String(capped)],
+    { revalidate: 3600, tags: [`product-questions:${id}`] },
+  )();
 }
 
 export async function getPublishedQuestionById(

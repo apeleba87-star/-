@@ -15,7 +15,7 @@ const secondaryBtnClass =
 
 export default function HomeBottomCta({ isLoggedIn }: Props) {
   const tendersHref = isLoggedIn ? "/tenders?category=both" : "/login?next=%2Ftenders%3Fcategory%3Dboth";
-  const newsHref = isLoggedIn ? "/news" : "/login?next=%2Fnews";
+  const tertiaryHref = isLoggedIn ? "/tenders" : "/login?next=%2Ftenders";
   const secondaryHref = isLoggedIn ? "/mypage" : "/login";
   const secondaryLabel = isLoggedIn ? "마이페이지" : HOME_LANDING.bottomSecondary;
 
@@ -47,7 +47,7 @@ export default function HomeBottomCta({ isLoggedIn }: Props) {
             {secondaryLabel}
           </Link>
           <Link
-            href={newsHref}
+            href={tertiaryHref}
             className="inline-flex min-h-[44px] items-center justify-center text-sm font-medium text-zinc-500 underline-offset-4 transition hover:text-violet-600 hover:underline sm:min-h-0"
           >
             {HOME_LANDING.bottomTertiary}

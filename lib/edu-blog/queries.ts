@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase-server";
 import {
   EDU_BLOG_SOURCE_TYPE,
@@ -102,6 +103,72 @@ export async function listPublishedEduBlogPosts(): Promise<EduBlogPost[]> {
   return (data ?? [])
     .map((row) => normalizePost(row as Parameters<typeof normalizePost>[0]))
     .filter((p): p is EduBlogPost => p != null);
+}
+
+/** 제품 상세 카드용 — body 제외, 해당 product_id만, 짧게 캐시 */
+export type EduBlogPostLite = Omit<EduBlogPost, "body"> & { body: null };
+
+const SELECT_COLS_LITE =
+  "id, title, slug, excerpt, edu_intent, edu_category_id, next_slug, related_slugs, product_ids, published_at, updated_at";
+const SELECT_COLS_LITE_LEGACY =
+  "id, title, slug, excerpt, edu_intent, next_slug, related_slugs, product_ids, published_at, updated_at";
+
+async function loadPublishedEduBlogPostsForProduct(
+  productId: string,
+  limit: number,
+): Promise<EduBlogPostLite[]> {
+  const id = productId.trim();
+  if (!id) return [];
+  const supabase = createClient();
+  const nowIso = new Date().toISOString();
+  const capped = Math.min(Math.max(limit, 1), 12);
+
+  const run = async (cols: string) => {
+    const result = await supabase
+      .from("posts")
+      .select(cols)
+      .eq("source_type", EDU_BLOG_SOURCE_TYPE)
+      .contains("product_ids", [id])
+      .not("published_at", "is", null)
+      .lte("published_at", nowIso)
+      .eq("is_private", false)
+      .not("slug", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(capped);
+    return { data: result.data as unknown[] | null, error: result.error };
+  };
+
+  let { data, error } = await run(SELECT_COLS_LITE);
+  if (error && isMissingEduCategoryColumn(error.message)) {
+    ({ data, error } = await run(SELECT_COLS_LITE_LEGACY));
+  }
+  if (error) {
+    console.error("[edu-blog] listPublishedEduBlogPostsForProduct:", error.message);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((row) =>
+      normalizePost({
+        ...(row as Parameters<typeof normalizePost>[0]),
+        body: null,
+      }),
+    )
+    .filter((p): p is EduBlogPost => p != null)
+    .map((p) => ({ ...p, body: null as null }));
+}
+
+export function listPublishedEduBlogPostsForProduct(
+  productId: string,
+  limit = 4,
+): Promise<EduBlogPostLite[]> {
+  const id = productId.trim();
+  const capped = Math.min(Math.max(limit, 1), 12);
+  return unstable_cache(
+    () => loadPublishedEduBlogPostsForProduct(id, capped),
+    ["edu-blog-for-product", id, String(capped)],
+    { revalidate: 3600, tags: [`edu-blog-product:${id}`] },
+  )();
 }
 
 /** 공개 칸(카테고리)별 목록 */

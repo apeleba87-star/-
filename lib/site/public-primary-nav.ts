@@ -5,15 +5,12 @@ import {
   Droplets,
   FileText,
   Gavel,
-  Handshake,
   Home,
-  Landmark,
   Layers,
   MessageCircleQuestion,
   PenLine,
   Sparkles,
   Trophy,
-  UserPlus,
   Calculator,
 } from "lucide-react";
 import { KNOWLEDGE_NAV, PRACTICE_NAV } from "@/lib/edu-blog/constants";
@@ -232,33 +229,8 @@ const RAW_PRIMARY_NAV_ITEMS: PrimaryNavEntry[] = [
         items: [
           { href: "/tenders", label: "입찰공고", Icon: Gavel },
           { href: "/tender-awards", label: "낙찰공고", Icon: Trophy },
-          { href: "/jobs/public", label: "채용 공고", Icon: Landmark },
         ],
       },
-      {
-        title: "리포트",
-        items: [
-          { href: "/news?section=report&category=report", label: "입찰", Icon: Gavel },
-          {
-            href: "/news?section=report&category=award_report",
-            label: "낙찰",
-            Icon: Trophy,
-          },
-          { href: "/marketing-report", label: "마케팅", Icon: Sparkles },
-          { href: "/job-market-report", label: "일당", Icon: Landmark },
-        ],
-      },
-    ],
-  },
-  {
-    kind: "group",
-    label: "서비스",
-    Icon: Layers,
-    adminOnly: true,
-    items: [
-      { href: "/listings", label: "현장 마켓", Icon: Briefcase },
-      { href: "/partners", label: "협력 센터", Icon: Handshake },
-      { href: "/jobs", label: "인력 센터", Icon: UserPlus },
     ],
   },
 ];

@@ -29,72 +29,12 @@
       "schedule": "55 14 * * *"
     },
     {
-      "path": "/api/cron/naver-trend-report",
-      "schedule": "0 18 * * *"
-    },
-    {
-      "path": "/api/cron/job-wage-daily-report",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/job-wage-daily-report",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/job-wage-daily-report",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/job-wage-daily-report",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/ingest-demand-keywords",
-      "schedule": "30 18 * * *"
-    },
-    {
-      "path": "/api/cron/sync-worknet-jobs",
-      "schedule": "15 1,13 * * *"
-    },
-    {
       "path": "/api/cron/fetch-scsbid-award-raw",
       "schedule": "50 19 * * *"
     },
     {
-      "path": "/api/cron/cleanidex-purge-trashed-contracts",
-      "schedule": "30 18 * * *"
-    },
-    {
       "path": "/api/cron/purge-old-notifications",
       "schedule": "40 18 * * *"
-    },
-    {
-      "path": "/api/cron/ingest-demand-rtms-seoul",
-      "schedule": "1 15 31 1,3,5,7,8,10,12 *"
-    },
-    {
-      "path": "/api/cron/ingest-demand-rtms-seoul",
-      "schedule": "1 15 30 4,6,9,11 *"
-    },
-    {
-      "path": "/api/cron/ingest-demand-rtms-seoul",
-      "schedule": "1 15 28 2 *"
-    },
-    {
-      "path": "/api/cron/ingest-demand-rtms-seoul",
-      "schedule": "1 15 29 2 *"
-    },
-    {
-      "path": "/api/cron/ingest-demand-searchad",
-      "schedule": "0 16 1 * *"
-    },
-    {
-      "path": "/api/cron/generate-demand-sales-report",
-      "schedule": "30 16 1 * *"
-    },
-    {
-      "path": "/api/cron/generate-move-rtms-seo",
-      "schedule": "20 21 * * *"
     },
     {
       "path": "/api/cron/publish-scheduled-edu-blog",

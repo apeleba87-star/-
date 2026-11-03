@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { CSSProperties } from "react";
 
 type Props = {
@@ -7,6 +8,20 @@ type Props = {
   variant?: "hero" | "inline";
   style?: CSSProperties;
 };
+
+function canOptimize(src: string): boolean {
+  if (src.startsWith("/") || src.startsWith("data:")) return src.startsWith("/");
+  try {
+    const host = new URL(src).hostname;
+    return (
+      host.includes("supabase.co") ||
+      host.includes("pstatic.net") ||
+      host.endsWith("cleanidex.co.kr")
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 지식 허브 대표 이미지 — 비율 무관 전체 노출 (contain).
@@ -18,6 +33,16 @@ export default function KnowledgeHeroImage({
   variant = "hero",
   style,
 }: Props) {
+  const maxH = variant === "hero" ? 316 : 224;
+  const imgStyle: CSSProperties = {
+    width: "auto",
+    height: "auto",
+    maxWidth: "100%",
+    maxHeight: maxH,
+    objectFit: "contain",
+    display: "block",
+  };
+
   return (
     <div
       style={{
@@ -43,22 +68,28 @@ export default function KnowledgeHeroImage({
         ...style,
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        width={800}
-        height={800}
-        style={{
-          width: "auto",
-          height: "auto",
-          maxWidth: "100%",
-          maxHeight: variant === "hero" ? 316 : 224,
-          objectFit: "contain",
-          display: "block",
-        }}
-        loading={variant === "hero" ? "eager" : "lazy"}
-      />
+      {canOptimize(src) ? (
+        <Image
+          src={src}
+          alt={alt}
+          width={800}
+          height={800}
+          priority={variant === "hero"}
+          sizes="(max-width: 768px) 92vw, 640px"
+          style={imgStyle}
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={alt}
+          width={800}
+          height={800}
+          style={imgStyle}
+          loading={variant === "hero" ? "eager" : "lazy"}
+          decoding="async"
+        />
+      )}
     </div>
   );
 }

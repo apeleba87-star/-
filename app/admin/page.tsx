@@ -7,16 +7,12 @@ export default async function AdminDashboardPage() {
 
   const [
     { count: postsCount },
-    { count: queueCount },
-    { count: ugcPending },
     { count: reportsCount },
     { count: usersCount },
     betaRes,
     inquiryRes,
   ] = await Promise.all([
     supabase.from("posts").select("*", { count: "exact", head: true }),
-    supabase.from("newsletter_queue").select("*", { count: "exact", head: true }).is("used_in_issue_id", null),
-    supabase.from("ugc").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("reports").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
     supabase.from("beta_applications").select("*", { count: "exact", head: true }).eq("review_status", "new"),
@@ -82,10 +78,17 @@ export default async function AdminDashboardPage() {
             <h3 className="font-bold text-slate-900">지식 허브 (마스터)</h3>
             <p className="mt-1 text-sm text-slate-500">제품 판매 링크 · 가이드 편집 링크</p>
           </Link>
+          <Link
+            href="/admin/vault"
+            className="block rounded-2xl border border-dashed border-amber-300 bg-amber-50/50 px-5 py-4 transition hover:border-amber-400"
+          >
+            <h3 className="font-bold text-amber-950">보관함 (숨김 기능)</h3>
+            <p className="mt-1 text-sm text-amber-900/80">마감·마켓·레이더 등 — cron 중지, 화면만 보관</p>
+          </Link>
         </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Link href="/admin/users" className="card block hover:border-blue-200">
           <h3 className="text-sm font-medium text-slate-500">총 사용자</h3>
           <p className="mt-1 text-2xl font-bold text-slate-800">{usersCount ?? 0}명</p>
@@ -101,14 +104,6 @@ export default async function AdminDashboardPage() {
         <Link href="/admin/posts" className="card block hover:border-blue-200">
           <h3 className="text-sm font-medium text-slate-500">글</h3>
           <p className="mt-1 text-2xl font-bold text-slate-800">{postsCount ?? 0}개</p>
-        </Link>
-        <Link href="/admin/newsletter" className="card block hover:border-blue-200">
-          <h3 className="text-sm font-medium text-slate-500">큐 (미사용)</h3>
-          <p className="mt-1 text-2xl font-bold text-slate-800">{queueCount ?? 0}개</p>
-        </Link>
-        <Link href="/admin/ugc" className="card block hover:border-blue-200">
-          <h3 className="text-sm font-medium text-slate-500">UGC 검수 대기</h3>
-          <p className="mt-1 text-2xl font-bold text-slate-800">{ugcPending ?? 0}건</p>
         </Link>
         <Link href="/admin/reports" className="card block hover:border-blue-200">
           <h3 className="text-sm font-medium text-slate-500">신고 대기</h3>

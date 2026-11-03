@@ -1,3 +1,5 @@
+import { VAULT_ADMIN_LINKS } from "@/lib/admin/vault-config";
+
 export type AdminNavItem = {
   href: string;
   label: string;
@@ -17,7 +19,7 @@ export const ADMIN_HUBS: AdminHub[] = [
     id: "content",
     label: "콘텐츠·리포트",
     href: "/admin/content",
-    description: "검색어 가이드, 지식 허브, 글·뉴스레터",
+    description: "검색어 가이드, 지식 허브, 청소지식·실무",
     items: [
       {
         href: "/admin/solutions",
@@ -60,8 +62,6 @@ export const ADMIN_HUBS: AdminHub[] = [
         description: "칸(메뉴) 관리 · 실무 글 작성·수정·삭제 · /practice 발행",
       },
       { href: "/admin/posts", label: "글 관리", description: "블로그·리포트 글 작성·수정" },
-      { href: "/admin/newsletter", label: "뉴스레터 큐·발송", description: "큐 관리 및 발송" },
-      { href: "/admin/ugc", label: "UGC 검수", description: "사용자 제출 콘텐츠 검수" },
       {
         href: "/admin/questions",
         label: "질문 게시판",
@@ -75,7 +75,7 @@ export const ADMIN_HUBS: AdminHub[] = [
     id: "moderation",
     label: "검수·신고",
     href: "/admin/moderation",
-    description: "콘텐츠 신고 및 노쇼 신고 처리",
+    description: "콘텐츠·질문 신고",
     items: [
       { href: "/admin/reports", label: "신고", description: "콘텐츠·댓글 신고 검토" },
       {
@@ -83,24 +83,19 @@ export const ADMIN_HUBS: AdminHub[] = [
         label: "질문 게시판",
         description: "태그 지정 · 스팸 삭제 · 작성 정지",
       },
-      { href: "/admin/magam-listings", label: "마감링크 공고", description: "공고 신고·강제 마감·이용 정지" },
-      { href: "/admin/job-reports", label: "노쇼 신고", description: "일자리 노쇼 신고 처리" },
     ],
   },
   {
     id: "monetization",
     label: "광고·구독",
     href: "/admin/monetization",
-    description: "광고 슬롯, 입주레이더 광고, 구독·열람권",
+    description: "광고 슬롯, AI·프리미엄 구독",
     items: [
-      { href: "/admin/ads", label: "광고 슬롯", description: "홈·입찰·낙찰 광고 슬롯" },
-      { href: "/admin/radar-ads", label: "입주레이더 광고", description: "광고 대시보드·배너 A·B 관리" },
-      { href: "/admin/magam-stats", label: "마감앱 통계", description: "마감앱 사용자·광고 성과(기간별)" },
+      { href: "/admin/ads", label: "광고 슬롯", description: "입찰·낙찰·견적 등 광고 슬롯" },
       { href: "/admin/subscriptions", label: "구독 관리", description: "프리미엄 구독자 목록" },
       { href: "/admin/subscription-config", label: "구독 금액", description: "요금·프로모 설정" },
       { href: "/admin/ai-blog-billing", label: "AI 블로그 결제", description: "체험·프로모·정상가" },
       { href: "/admin/product-sales-clicks", label: "구매하기 클릭", description: "제품 구매 CTA 클릭 집계" },
-      { href: "/admin/share-unlocks", label: "공유 열람권 로그", description: "공유 링크 열람 기록" },
       { href: "/admin/beta-applications", label: "베타 지원", description: "베타 신청 검토" },
     ],
   },
@@ -108,27 +103,24 @@ export const ADMIN_HUBS: AdminHub[] = [
     id: "data",
     label: "데이터·수집",
     href: "/admin/data",
-    description: "나라장터·공공데이터 수집, 입찰·트렌드·리포트 소스",
+    description: "나라장터·낙찰 수집 (입찰 전용)",
     items: [
       { href: "/admin/g2b-ingest", label: "나라장터 입찰 수집", description: "G2B 입찰 공고 수동·Cron 수집" },
       { href: "/admin/scsbid-award-ingest", label: "낙찰(용역) 원천", description: "조달청 낙찰 데이터 수집" },
       { href: "/admin/tender-keywords", label: "입찰 키워드", description: "입찰 검색 키워드 관리" },
-      { href: "/admin/open-data-ingest", label: "데이터 수집", description: "이사검색·RTMS·키워드·워크넷 수동 실행" },
-      { href: "/admin/naver-trend-keywords", label: "네이버 트렌드", description: "트렌드 키워드·엑셀 업로드" },
-      { href: "/admin/job-wage-report", label: "일당 리포트", description: "일당 리포트 수동 입력" },
     ],
   },
   {
     id: "operations",
-    label: "현장·협력",
+    label: "문의·견적",
     href: "/admin/operations",
-    description: "현장거래·채용 외부 등록, 협력센터",
+    description: "견적 문의 응대",
     items: [
-      { href: "/admin/listings/external", label: "현장거래 등록(외부)", description: "외부 현장거래 일괄·개별 등록" },
-      { href: "/admin/jobs/external", label: "인력구인 등록(외부)", description: "외부 채용 공고 등록" },
-      { href: "/admin/listings/deal-completions", label: "거래 완료 신고", description: "거래 완료 신고 확인" },
-      { href: "/admin/cleaning-inquiries", label: "견적 문의", description: "정기·입주 청소 견적 문의" },
-      { href: "/admin/partners", label: "협력센터 관리", description: "협력 업체·포트폴리오" },
+      {
+        href: "/admin/cleaning-inquiries",
+        label: "견적 문의",
+        description: "정기·입주 청소 견적 문의",
+      },
     ],
   },
   {
@@ -142,6 +134,13 @@ export const ADMIN_HUBS: AdminHub[] = [
       { href: "/admin/industries", label: "업종 관리", description: "업종 마스터 데이터" },
       { href: "/admin/estimate-config", label: "견적 단가", description: "견적 계산 단가 설정" },
     ],
+  },
+  {
+    id: "vault",
+    label: "보관함 (숨김 기능)",
+    href: "/admin/vault",
+    description: "비용 cron 중지·메뉴 숨김 기능 — 코드는 유지",
+    items: VAULT_ADMIN_LINKS,
   },
 ];
 

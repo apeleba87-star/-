@@ -310,11 +310,24 @@ export default function ProductDetailView({
     })),
   ].slice(0, 4);
 
-  const nextProduct = relatedProducts[0] ?? null;
-  const withFrom = (href: string) => {
-    const join = href.includes("?") ? "&" : "?";
-    return `${href}${join}from=${encodeURIComponent(product.id)}`;
-  };
+  /** 직전 제품은 URL ?from= 대신 sessionStorage로 제외 — 서버 ISR 유지 */
+  const [visibleRelated, setVisibleRelated] = useState(() => relatedProducts.slice(0, 6));
+  useEffect(() => {
+    const key = "kh-product-nav-from";
+    try {
+      const from = sessionStorage.getItem(key);
+      sessionStorage.setItem(key, product.id);
+      const filtered =
+        from && from !== product.id
+          ? relatedProducts.filter((p) => !p.href.includes(`/products/${encodeURIComponent(from)}`) && !p.href.endsWith(`/products/${from}`))
+          : relatedProducts;
+      setVisibleRelated(filtered.slice(0, 6));
+    } catch {
+      setVisibleRelated(relatedProducts.slice(0, 6));
+    }
+  }, [product.id, relatedProducts]);
+
+  const nextProduct = visibleRelated[0] ?? null;
   const tabs = [
     { id: "howto", label: "기본 사용법" },
     { id: "situations", label: "상황별 사용법" },
@@ -1036,7 +1049,7 @@ export default function ProductDetailView({
         <section ref={setSectionRef(5)} id="explore" style={{ marginBottom: 22 }}>
           <SectionHead title="이어서 탐색하기" color="#e67e22" />
 
-          {relatedProducts.length ? (
+          {visibleRelated.length ? (
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: TEXT, marginBottom: 10 }}>같은 오염 · 다른 제품</div>
               <div
@@ -1048,10 +1061,10 @@ export default function ProductDetailView({
                   scrollbarWidth: "none",
                 }}
               >
-                {relatedProducts.map((p, i) => (
+                {visibleRelated.map((p, i) => (
                   <Link
                     key={p.href}
-                    href={withFrom(p.href)}
+                    href={p.href}
                     style={{
                       width: 160,
                       flexShrink: 0,
@@ -1271,7 +1284,7 @@ export default function ProductDetailView({
                   </div>
                 </div>
                 <Link
-                  href={withFrom(nextProduct.href)}
+                  href={nextProduct.href}
                   style={{
                     flexShrink: 0,
                     borderRadius: 12,

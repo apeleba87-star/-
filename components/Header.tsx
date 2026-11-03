@@ -45,7 +45,7 @@ const primaryNavItems: PrimaryNavEntry[] =
 /** 모바일 드로어 + 데스크톱 오른쪽 (관리자·편집자) */
 const adminNavItems: NavItem[] = [
   { href: "/admin", label: "관리자 모드", shortLabel: "관리자", Icon: Shield, adminOnly: true },
-  { href: "/archive", label: "뉴스레터 아카이브", shortLabel: "아카이브", Icon: FileText, adminOnly: true },
+  { href: "/admin/vault", label: "보관함", shortLabel: "보관함", Icon: FileText, adminOnly: true },
 ];
 
 const iconBtnClass =

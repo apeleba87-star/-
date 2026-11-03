@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import ProductDetailView, {
   type ProductExploreLink,
 } from "@/components/knowledge-hub/ProductDetailView";
-import { listPublishedEduBlogPosts } from "@/lib/edu-blog/queries";
+import { listPublishedEduBlogPostsForProduct } from "@/lib/edu-blog/queries";
 import {
   getCleaningKnowledgeDb,
   getContaminantById,
@@ -25,7 +25,6 @@ export const revalidate = 3600;
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string }>;
 };
 
 /** 너무 넓어서 제품끼리 엉켜 붙는 오염 ID — 단독 매칭만으로는 추천하지 않음 */
@@ -106,24 +105,30 @@ function relatedScore(
   return score;
 }
 
-export default async function ProductDetailPage({ params, searchParams }: Props) {
+export default async function ProductDetailPage({ params }: Props) {
   const { id } = await params;
-  const { from } = await searchParams;
-  const base = await getMergedProductById(id);
+
+  // 카탈로그·판매·전후·관련글·질문을 병렬로 — 순차 await 제거
+  const [allProducts, salesMap, productBeforeAfter, blogs, relatedQuestions] = await Promise.all([
+    listMergedProducts(),
+    getProductSalesMap(),
+    getProductBeforeAfter(id),
+    listPublishedEduBlogPostsForProduct(id, 4).catch(() => []),
+    listQuestionsForProduct(id).catch(() => []),
+  ]);
+
+  const base = allProducts.find((p) => p.id === id);
   if (!base) notFound();
 
-  const salesMap = await getProductSalesMap();
   const product = applySalesToProduct(base, salesMap);
   const purchase = resolveProductPurchase(product);
   const db = getCleaningKnowledgeDb();
   const recipes = db.recipes.filter((r) => r.productId === id);
-  const productBeforeAfter = await getProductBeforeAfter(id);
 
   const sourceRecipeIds = recipeContaminantIds(db.recipes, id);
   const sourceProductIds = new Set(product.contaminantIds ?? []);
   const allSourceIds = new Set([...sourceRecipeIds, ...sourceProductIds]);
 
-  const allProducts = await listMergedProducts();
   const recipeIdsByProduct = new Map<string, Set<string>>();
   for (const r of db.recipes) {
     if (!r.productId || !r.contaminantId) continue;
@@ -134,7 +139,6 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
 
   const scored = allProducts
     .filter((p) => p.id !== id && p.status !== "draft")
-    .filter((p) => from == null || from === "" || p.id !== from)
     .map((p) => {
       const candRecipeIds = recipeIdsByProduct.get(p.id) ?? new Set<string>();
       const score = relatedScore(p, candRecipeIds, sourceRecipeIds, sourceProductIds);
@@ -142,7 +146,6 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
     })
     .filter(({ p, score }) => {
       if (score < 2) return false;
-      // 약한 오염만 겹치면 제외
       const candIds = new Set([...(p.contaminantIds ?? []), ...(recipeIdsByProduct.get(p.id) ?? [])]);
       const shared = [...allSourceIds].filter((c) => candIds.has(c));
       if (shared.length === 0) return false;
@@ -151,7 +154,8 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
     })
     .sort((a, b) => b.score - a.score || a.p.name.localeCompare(b.p.name, "ko"));
 
-  const relatedProducts: ProductExploreLink[] = scored.slice(0, 6).map(({ p }) => toRelatedProduct(p));
+  // 직전 제품 제외는 클라이언트(sessionStorage). 여기선 여유분 포함
+  const relatedProducts: ProductExploreLink[] = scored.slice(0, 8).map(({ p }) => toRelatedProduct(p));
 
   const relatedPollutions: ProductExploreLink[] = [...allSourceIds]
     .filter((cid) => !WEAK_CONTAMINANT_IDS.has(cid) || sourceRecipeIds.has(cid))
@@ -168,31 +172,15 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
       readTime: "3분 읽기",
     }));
 
-  let relatedBlogs: ProductExploreLink[] = [];
-  try {
-    const blogs = await listPublishedEduBlogPosts();
-    relatedBlogs = blogs
-      .filter((b) => b.product_ids.includes(id))
-      .slice(0, 4)
-      .map((b) => ({
-        href: `/blog/${b.slug}`,
-        title: b.title,
-        subtitle: "청소지식",
-        category: "청소지식",
-        icon: "book",
-        desc: b.excerpt?.slice(0, 70) || "관련 청소 지식을 이어 읽으세요",
-        readTime: "4분 읽기",
-      }));
-  } catch {
-    relatedBlogs = [];
-  }
-
-  let relatedQuestions: Awaited<ReturnType<typeof listQuestionsForProduct>> = [];
-  try {
-    relatedQuestions = await listQuestionsForProduct(id);
-  } catch {
-    relatedQuestions = [];
-  }
+  const relatedBlogs: ProductExploreLink[] = blogs.map((b) => ({
+    href: `/blog/${b.slug}`,
+    title: b.title,
+    subtitle: "청소지식",
+    category: "청소지식",
+    icon: "book",
+    desc: b.excerpt?.slice(0, 70) || "관련 청소 지식을 이어 읽으세요",
+    readTime: "4분 읽기",
+  }));
 
   return (
     <div className="px-0 py-0 sm:py-0">
