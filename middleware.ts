@@ -236,6 +236,52 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
+  // 보관함(숨김) 공개 화면 — 메뉴·sitemap에서 뺐고, 직접 URL도 홈으로 보냄 (코드는 유지)
+  const vaultHiddenExact = new Set([
+    "/advertise",
+    "/archive",
+    "/ugc",
+    "/industry-news",
+    "/facilities",
+    "/listings",
+    "/jobs",
+    "/partners",
+    "/marketing-report",
+    "/job-market-report",
+    "/magam",
+  ]);
+  if (
+    vaultHiddenExact.has(pathname) ||
+    pathname.startsWith("/listings/") ||
+    pathname.startsWith("/jobs/") ||
+    pathname.startsWith("/partners/") ||
+    pathname.startsWith("/magam/") ||
+    pathname.startsWith("/ugc/") ||
+    pathname.startsWith("/marketing-report/") ||
+    pathname.startsWith("/job-market-report/") ||
+    pathname === "/p" ||
+    pathname.startsWith("/p/")
+  ) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url, 302);
+  }
+
+  // 숨김 기능 공개 API — 호출해도 비용·데이터 안 나가게 410 (admin ingest·cron 시크릿 경로는 유지)
+  if (
+    pathname.startsWith("/api/demand/") ||
+    pathname.startsWith("/api/magam/") ||
+    pathname.startsWith("/api/jobs/") ||
+    pathname.startsWith("/api/jobs-public/") ||
+    pathname === "/api/move/budget-candidates" ||
+    pathname.startsWith("/api/partners/")
+  ) {
+    return NextResponse.json(
+      { error: "gone", message: "이 API는 보관(중지) 상태입니다." },
+      { status: 410 },
+    );
+  }
+
   if (pathname === "/services/pollution" || pathname === "/guides/pollution") {
     const url = req.nextUrl.clone();
     url.pathname = "/guides";

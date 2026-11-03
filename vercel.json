@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/cron/publish-scheduled-edu-blog",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/process-subscriptions",

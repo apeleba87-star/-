@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  VAULT_ACTIVE_CRONS_NOTE,
   VAULT_ADMIN_LINKS,
   VAULT_PAUSED_CRONS,
   VAULT_PUBLIC_PREVIEWS,
@@ -25,6 +26,12 @@ export default function AdminVaultPage() {
               <code className="text-xs">{c.path}</code>
               <span className="text-amber-800/80"> — {c.note}</span>
             </li>
+          ))}
+        </ul>
+        <h3 className="mb-2 mt-6 text-sm font-semibold text-slate-700">계속 도는 cron</h3>
+        <ul className="list-inside list-disc space-y-1 text-sm text-slate-600">
+          {VAULT_ACTIVE_CRONS_NOTE.map((line) => (
+            <li key={line}>{line}</li>
           ))}
         </ul>
       </section>

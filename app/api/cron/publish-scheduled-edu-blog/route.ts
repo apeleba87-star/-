@@ -16,7 +16,8 @@ import { PRACTICE_BLOG_SOURCE_TYPE, practiceBlogPath } from "@/lib/practice-blog
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const LOOKBACK_MS = 30 * 60 * 1000;
+/** cron이 30분이므로 창은 그보다 넓게 (한 번 실패해도 다음 실행에서 커버) */
+const LOOKBACK_MS = 45 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   return handlePublishScheduled(req);
