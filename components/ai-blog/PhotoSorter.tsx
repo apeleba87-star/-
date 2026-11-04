@@ -15,23 +15,27 @@ type SlotMeta = {
   modifiedAt: string | null;
   takenAt: string | null;
 };
+/** pair = 전후 세트, single = 일반 나열(한 장) */
+type DraftKind = "pair" | "single";
 type PairDraft = {
   uid: string;
   id: string | null;
+  kind: DraftKind;
   label: string;
   memo: string;
   before: SlotMeta | null;
   after: SlotMeta | null;
 };
 type Role = "before" | "after";
+type WorkMode = "pair" | "single";
 
 const DRAG_MIME = "application/x-ai-blog-photo";
 
 let uidSeq = 0;
 const newUid = () => `p${Date.now().toString(36)}${(uidSeq++).toString(36)}`;
 
-function emptyPair(): PairDraft {
-  return { uid: newUid(), id: null, label: "", memo: "", before: null, after: null };
+function emptyPair(kind: DraftKind = "pair"): PairDraft {
+  return { uid: newUid(), id: null, kind, label: "", memo: "", before: null, after: null };
 }
 
 function slotFromMedia(m: ProjectMedia | undefined): SlotMeta | null {
@@ -57,14 +61,25 @@ function slotFromPhoto(p: LocalPhoto): SlotMeta {
 
 function toDrafts(media: ProjectMedia[], pairs: MediaPair[]): PairDraft[] {
   const byId = new Map(media.map((m) => [m.id, m]));
-  return pairs.map((p) => ({
-    uid: newUid(),
-    id: p.id,
-    label: p.label,
-    memo: p.memo,
-    before: slotFromMedia(p.before_media_id ? byId.get(p.before_media_id) : undefined),
-    after: slotFromMedia(p.after_media_id ? byId.get(p.after_media_id) : undefined),
-  }));
+  return pairs.map((p) => {
+    const before = slotFromMedia(p.before_media_id ? byId.get(p.before_media_id) : undefined);
+    const after = slotFromMedia(p.after_media_id ? byId.get(p.after_media_id) : undefined);
+    if (before && after) {
+      return { uid: newUid(), id: p.id, kind: "pair" as const, label: p.label, memo: p.memo, before, after };
+    }
+    if (before || after) {
+      return {
+        uid: newUid(),
+        id: p.id,
+        kind: "single" as const,
+        label: p.label,
+        memo: p.memo,
+        before: before ?? after,
+        after: null,
+      };
+    }
+    return { uid: newUid(), id: p.id, kind: "pair" as const, label: p.label, memo: p.memo, before: null, after: null };
+  });
 }
 
 const slotKey = (s: SlotMeta) =>
@@ -80,6 +95,7 @@ function SideTray({
   usedBadge,
   usedKeys,
   onPick,
+  hint,
 }: {
   side: PhotoSide;
   photos: LocalPhoto[];
@@ -87,9 +103,9 @@ function SideTray({
   usedBadge: Map<string, string>;
   usedKeys: Set<string>;
   onPick: (photo: LocalPhoto) => void;
+  hint: string;
 }) {
   const title = side === "before" ? "청소 전 사진" : "청소 후 사진";
-  const hint = side === "before" ? "클릭 또는 드래그 → 중앙 왼쪽" : "클릭 또는 드래그 → 중앙 오른쪽";
   const accent = side === "before" ? "border-t-amber-500" : "border-t-sky-500";
 
   return (
@@ -165,10 +181,17 @@ export default function PhotoSorter({
   const afterPhotos = photosForSide("after");
   const [drafts, setDrafts] = useState<PairDraft[]>(() => {
     const initial = toDrafts(media, pairs);
-    return initial.length ? initial : [emptyPair()];
+    return initial.length ? initial : [emptyPair("pair")];
+  });
+  const [mode, setMode] = useState<WorkMode>(() => {
+    const initial = toDrafts(media, pairs);
+    const hasPair = initial.some((d) => d.kind === "pair" && (d.before || d.after));
+    const hasSingle = initial.some((d) => d.kind === "single");
+    if (hasSingle && !hasPair) return "single";
+    return "pair";
   });
   const [activeUid, setActiveUid] = useState<string>(() => drafts[0]?.uid ?? "");
-  const [dragOver, setDragOver] = useState<Role | null>(null);
+  const [dragOver, setDragOver] = useState<Role | "single" | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -180,11 +203,13 @@ export default function PhotoSorter({
     setDrafts(fn);
   };
 
+  const modeDrafts = useMemo(() => drafts.filter((d) => d.kind === mode), [drafts, mode]);
+
   useEffect(() => {
-    if (!drafts.some((d) => d.uid === activeUid)) {
-      setActiveUid(drafts[0]?.uid ?? "");
+    if (!modeDrafts.some((d) => d.uid === activeUid)) {
+      setActiveUid(modeDrafts[0]?.uid ?? "");
     }
-  }, [drafts, activeUid]);
+  }, [modeDrafts, activeUid]);
 
   const usedKeys = useMemo(() => {
     const set = new Set<string>();
@@ -200,22 +225,33 @@ export default function PhotoSorter({
 
   const usedBadge = useMemo(() => {
     const map = new Map<string, string>();
-    drafts.forEach((d, i) => {
-      const no = String(i + 1).padStart(2, "0");
-      for (const role of ["before", "after"] as Role[]) {
-        const s = d[role];
-        if (!s) continue;
+    let pairNo = 0;
+    let singleNo = 0;
+    drafts.forEach((d) => {
+      if (d.kind === "pair") {
+        pairNo += 1;
+        const no = String(pairNo).padStart(2, "0");
+        for (const role of ["before", "after"] as Role[]) {
+          const s = d[role];
+          if (!s) continue;
+          const p = slotMatch(s, photos);
+          if (p) map.set(p.key, `${no}${role === "before" ? "전" : "후"}`);
+        }
+      } else {
+        singleNo += 1;
+        const no = String(singleNo).padStart(2, "0");
+        const s = d.before;
+        if (!s) return;
         const p = slotMatch(s, photos);
-        if (p) map.set(p.key, `${no}${role === "before" ? "전" : "후"}`);
+        if (p) map.set(p.key, `${no}`);
       }
     });
     return map;
   }, [drafts, photos]);
 
-  const active = drafts.find((d) => d.uid === activeUid) ?? drafts[0] ?? null;
-  const activeIndex = active ? drafts.findIndex((d) => d.uid === active.uid) : -1;
+  const active = modeDrafts.find((d) => d.uid === activeUid) ?? modeDrafts[0] ?? null;
+  const activeIndex = active ? modeDrafts.findIndex((d) => d.uid === active.uid) : -1;
 
-  /** 지정 세트·역할에 사진 넣기. 다른 칸에 쓰였으면 옮김. */
   const putPhoto = (photo: LocalPhoto, role: Role, uid = active?.uid) => {
     if (!uid) return;
     const slot = slotFromPhoto(photo);
@@ -223,27 +259,47 @@ export default function PhotoSorter({
       const clearDup = (s: SlotMeta | null) => (s && slotMatch(s, [photo]) ? null : s);
       return prev.map((d) => {
         const cleared = { ...d, before: clearDup(d.before), after: clearDup(d.after) };
-        return cleared.uid === uid ? { ...cleared, [role]: slot } : cleared;
+        if (cleared.uid !== uid) return cleared;
+        if (cleared.kind === "single") {
+          return { ...cleared, before: slot, after: null };
+        }
+        return { ...cleared, [role]: slot };
       });
     });
   };
 
   const clearSlot = (uid: string, role: Role) => {
-    update((prev) => prev.map((d) => (d.uid === uid ? { ...d, [role]: null } : d)));
+    update((prev) =>
+      prev.map((d) => {
+        if (d.uid !== uid) return d;
+        if (d.kind === "single") return { ...d, before: null, after: null };
+        return { ...d, [role]: null };
+      }),
+    );
   };
 
   const move = (uid: string, dir: -1 | 1) =>
     update((prev) => {
-      const i = prev.findIndex((d) => d.uid === uid);
+      const modeItems = prev.filter((d) => d.kind === mode);
+      const others = prev.filter((d) => d.kind !== mode);
+      const i = modeItems.findIndex((d) => d.uid === uid);
       const j = i + dir;
-      if (i < 0 || j < 0 || j >= prev.length) return prev;
-      const next = [...prev];
-      [next[i], next[j]] = [next[j], next[i]];
-      return next;
+      if (i < 0 || j < 0 || j >= modeItems.length) return prev;
+      const nextMode = [...modeItems];
+      [nextMode[i], nextMode[j]] = [nextMode[j], nextMode[i]];
+      // 저장 순서는 전후 세트 먼저, 일반 나열 나중 (또는 모드별 상대 순서 유지)
+      return mode === "pair" ? [...nextMode, ...others] : [...others, ...nextMode];
     });
 
   const setField = (uid: string, field: "label" | "memo", value: string) =>
     update((prev) => prev.map((d) => (d.uid === uid ? { ...d, [field]: value } : d)));
+
+  const addDraft = () => {
+    if (modeDrafts.length >= 40) return;
+    const fresh = emptyPair(mode);
+    update((prev) => (mode === "pair" ? [...prev.filter((d) => d.kind === "pair"), fresh, ...prev.filter((d) => d.kind === "single")] : [...prev.filter((d) => d.kind === "pair"), ...prev.filter((d) => d.kind === "single"), fresh]));
+    setActiveUid(fresh.uid);
+  };
 
   const parseDrag = (e: DragEvent): { key: string; side: PhotoSide } | null => {
     try {
@@ -257,33 +313,36 @@ export default function PhotoSorter({
     }
   };
 
-  const onDropSlot = (role: Role, e: DragEvent) => {
+  const onDropSlot = (role: Role | "single", e: DragEvent) => {
     e.preventDefault();
     setDragOver(null);
     const data = parseDrag(e);
     if (!data) return;
-    if (data.side !== role) return;
-    const list = role === "before" ? beforePhotos : afterPhotos;
+    if (role !== "single" && data.side !== role) return;
+    const list = data.side === "before" ? beforePhotos : afterPhotos;
     const photo = list.find((p) => p.key === data.key) ?? photos.find((p) => p.key === data.key);
-    if (photo) putPhoto(photo, role);
+    if (photo) putPhoto(photo, role === "single" ? "before" : role);
   };
 
   const autoPairSides = () => {
     if (!beforePhotos.length || !afterPhotos.length) return;
-    if (drafts.some((d) => d.before || d.after) && !window.confirm("지금 만든 짝을 모두 지우고 좌·우 폴더 순서대로 맞출까요?")) {
+    const pairDrafts = drafts.filter((d) => d.kind === "pair");
+    if (pairDrafts.some((d) => d.before || d.after) && !window.confirm("지금 만든 전후 짝을 모두 지우고 좌·우 폴더 순서대로 맞출까요?")) {
       return;
     }
     const count = Math.min(40, Math.max(beforePhotos.length, afterPhotos.length));
-    const next = Array.from({ length: count }, (_, i) => ({
+    const nextPairs = Array.from({ length: count }, (_, i) => ({
       uid: newUid(),
-      id: null,
+      id: null as string | null,
+      kind: "pair" as const,
       label: "",
       memo: "",
       before: beforePhotos[i] ? slotFromPhoto(beforePhotos[i]) : null,
       after: afterPhotos[i] ? slotFromPhoto(afterPhotos[i]) : null,
     }));
-    update(() => next);
-    setActiveUid(next[0]?.uid ?? "");
+    update((prev) => [...nextPairs, ...prev.filter((d) => d.kind === "single")]);
+    setActiveUid(nextPairs[0]?.uid ?? "");
+    setMode("pair");
   };
 
   const save = async (andContinue = false) => {
@@ -291,7 +350,7 @@ export default function PhotoSorter({
     setSaveError(null);
     const mediaBody: Record<string, unknown>[] = [];
     const seen = new Set<string>();
-    const ref = (s: SlotMeta | null, role: "BEFORE" | "AFTER"): string | null => {
+    const ref = (s: SlotMeta | null, role: "BEFORE" | "AFTER" | "OTHER"): string | null => {
       if (!s) return null;
       const key = s.mediaId ?? slotKey(s);
       if (!seen.has(key)) {
@@ -308,21 +367,36 @@ export default function PhotoSorter({
       }
       return key;
     };
-    const pairsBody = drafts.map((d) => ({
-      id: d.id,
-      label: d.label,
-      memo: d.memo,
-      before: ref(d.before, "BEFORE"),
-      after: ref(d.after, "AFTER"),
-    }));
+    const ordered = [
+      ...drafts.filter((d) => d.kind === "pair"),
+      ...drafts.filter((d) => d.kind === "single"),
+    ];
+    const pairsBody = ordered.map((d) => {
+      if (d.kind === "single") {
+        return {
+          id: d.id,
+          label: d.label,
+          memo: d.memo,
+          before: ref(d.before, "OTHER"),
+          after: null,
+        };
+      }
+      return {
+        id: d.id,
+        label: d.label,
+        memo: d.memo,
+        before: ref(d.before, "BEFORE"),
+        after: ref(d.after, "AFTER"),
+      };
+    });
     try {
       const data = await apiJson<{ media: ProjectMedia[]; pairs: MediaPair[] }>(
         `/api/ai-blog/projects/${projectId}/media`,
         { method: "PUT", body: JSON.stringify({ media: mediaBody, pairs: pairsBody }) },
       );
       const next = toDrafts(data.media, data.pairs);
-      setDrafts(next.length ? next : [emptyPair()]);
-      setActiveUid(next[0]?.uid ?? "");
+      setDrafts(next.length ? next : [emptyPair(mode)]);
+      setActiveUid(next.find((d) => d.kind === mode)?.uid ?? next[0]?.uid ?? "");
       setDirty(false);
       setSavedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
       onSaved(data.media, data.pairs);
@@ -335,10 +409,12 @@ export default function PhotoSorter({
   };
 
   const missing = drafts.some((d) => [d.before, d.after].some((s) => s && !slotMatch(s, photos)));
-  const usable = drafts.filter((d) => d.before || d.after).length;
+  const usablePairs = drafts.filter((d) => d.kind === "pair" && (d.before || d.after)).length;
+  const usableSingles = drafts.filter((d) => d.kind === "single" && d.before).length;
+  const usable = usablePairs + usableSingles;
 
   const renderCenterSlot = (role: Role) => {
-    if (!active) return null;
+    if (!active || active.kind !== "pair") return null;
     const s = active[role];
     const photo = s ? slotMatch(s, photos) : null;
     const over = dragOver === role;
@@ -384,20 +460,95 @@ export default function PhotoSorter({
     );
   };
 
+  const renderSingleSlot = () => {
+    if (!active || active.kind !== "single") return null;
+    const s = active.before;
+    const photo = s ? slotMatch(s, photos) : null;
+    const over = dragOver === "single";
+    return (
+      <div
+        className={`relative flex min-h-[280px] flex-col overflow-hidden rounded-xl border-2 transition ${
+          over
+            ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
+            : s
+              ? "border-slate-200 bg-slate-50"
+              : "border-dashed border-slate-300 bg-slate-50"
+        }`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver("single");
+        }}
+        onDragLeave={() => setDragOver((v) => (v === "single" ? null : v))}
+        onDrop={(e) => onDropSlot("single", e)}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2">
+          <span className="text-xs font-bold text-slate-700">
+            {String(Math.max(activeIndex, 0) + 1).padStart(2, "0")} 일반 사진
+          </span>
+          {s ? (
+            <button type="button" className={btnGhost} onClick={() => clearSlot(active.uid, "before")}>
+              비우기
+            </button>
+          ) : null}
+        </div>
+        <div className="relative flex min-h-[240px] flex-1 items-center justify-center">
+          {s ? (
+            <PhotoThumb photo={photo} name={s.name} className="absolute inset-0 h-full w-full object-contain" />
+          ) : (
+            <p className="px-4 text-center text-sm text-slate-400">
+              왼쪽·오른쪽 목록에서
+              <br />
+              사진을 넣으세요
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const listTitle = mode === "pair" ? `맞춘 전·후 (${usablePairs}세트)` : `일반 사진 (${usableSingles}장)`;
+  const addLabel = mode === "pair" ? "+ 세트 추가" : "+ 사진 추가";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-bold text-slate-900">사진을 크게 보고 전·후 맞추기</h2>
-        <span className="text-sm text-slate-500">전후 {usable}세트</span>
+        <h2 className="text-lg font-bold text-slate-900">사진을 크게 보고 맞추기</h2>
+        <span className="text-sm text-slate-500">
+          전후 {usablePairs}세트 · 일반 {usableSingles}장
+        </span>
         <div className="flex-1" />
-        {beforePhotos.length && afterPhotos.length ? (
+        {mode === "pair" && beforePhotos.length && afterPhotos.length ? (
           <button type="button" className={btnGhost} onClick={autoPairSides}>
             좌·우 순서대로 한 번에 맞추기
           </button>
         ) : null}
       </div>
+
+      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+        <button
+          type="button"
+          className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+            mode === "pair" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+          }`}
+          onClick={() => setMode("pair")}
+        >
+          전후 맞춤
+        </button>
+        <button
+          type="button"
+          className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+            mode === "single" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+          }`}
+          onClick={() => setMode("single")}
+        >
+          일반 나열
+        </button>
+      </div>
+
       <p className="text-sm text-slate-600">
-        왼쪽에서 청소 전 폴더, 오른쪽에서 청소 후 폴더를 연 뒤 · 클릭하거나 드래그해서 중앙에 넣습니다.
+        {mode === "pair"
+          ? "왼쪽에서 청소 전 폴더, 오른쪽에서 청소 후 폴더를 연 뒤 · 클릭하거나 드래그해서 중앙에 넣습니다."
+          : "왼쪽·오른쪽 폴더에서 사진을 골라 중앙에 넣고, 장소·메모를 적습니다. (전후 짝이 아닌 한 장씩)"}
       </p>
 
       {loading ? <Notice tone="info">사진을 읽는 중…</Notice> : null}
@@ -405,46 +556,40 @@ export default function PhotoSorter({
       {info ? <Notice tone="warning">{info}</Notice> : null}
       {missing ? (
         <Notice tone="warning">
-          저장된 짝 중 일부 사진이 지금 열린 사진에 없습니다. 그 사진이 들어 있는 폴더도 함께 열어 주세요.
+          저장된 사진 중 일부가 지금 열린 폴더에 없습니다. 그 사진이 들어 있는 폴더도 함께 열어 주세요.
         </Notice>
       ) : null}
 
-      <div className="grid gap-3 xl:grid-cols-[240px_minmax(0,1fr)_240px]">
+      <div className="grid gap-3 xl:grid-cols-[240px_minmax(0,1fr)_240px] xl:items-stretch">
         <SideTray
           side="before"
           photos={beforePhotos}
           photosState={photosState}
           usedBadge={usedBadge}
           usedKeys={usedKeys}
-          onPick={(p) => putPhoto(p, "before")}
+          onPick={(p) => putPhoto(p, mode === "single" ? "before" : "before")}
+          hint={mode === "pair" ? "클릭 또는 드래그 → 중앙 왼쪽" : "클릭 또는 드래그 → 중앙"}
         />
 
-        <section className={`${card} flex flex-col gap-3 p-4`}>
+        <section className={`${card} flex min-h-[520px] flex-col gap-3 p-4`}>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-bold text-slate-900">전후 미리보기</h3>
+            <h3 className="text-sm font-bold text-slate-900">
+              {mode === "pair" ? "전후 미리보기" : "일반 사진 미리보기"}
+            </h3>
             <span className="text-xs text-slate-500">
-              세트 {activeIndex >= 0 ? activeIndex + 1 : 0} / {drafts.length}
+              {mode === "pair" ? "세트" : "사진"} {activeIndex >= 0 ? activeIndex + 1 : 0} / {modeDrafts.length}
             </span>
-            <div className="flex-1" />
-            <button
-              type="button"
-              className={btnGhost}
-              disabled={drafts.length >= 40}
-              onClick={() => {
-                const fresh = emptyPair();
-                update((prev) => [...prev, fresh]);
-                setActiveUid(fresh.uid);
-              }}
-            >
-              + 세트 추가
-            </button>
           </div>
 
-          <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
-            {renderCenterSlot("before")}
-            <div className="flex items-center justify-center text-xl font-bold text-slate-300">→</div>
-            {renderCenterSlot("after")}
-          </div>
+          {mode === "pair" ? (
+            <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
+              {renderCenterSlot("before")}
+              <div className="flex items-center justify-center text-xl font-bold text-slate-300">→</div>
+              {renderCenterSlot("after")}
+            </div>
+          ) : (
+            renderSingleSlot()
+          )}
 
           {active ? (
             <>
@@ -479,10 +624,15 @@ export default function PhotoSorter({
             </>
           ) : null}
 
-          <div className="space-y-2 border-t border-slate-200 pt-3">
-            <h4 className="text-xs font-semibold text-slate-500">맞춘 전·후 ({usable}세트)</h4>
-            <ol className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
-              {drafts.map((d, i) => {
+          <div className="flex min-h-0 flex-1 flex-col space-y-2 border-t border-slate-200 pt-3">
+            <h4 className="shrink-0 text-xs font-semibold text-slate-500">{listTitle}</h4>
+            <ol className="min-h-[180px] flex-1 space-y-2 overflow-y-auto pr-1">
+              {modeDrafts.length === 0 ? (
+                <li className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400">
+                  아직 없습니다. 아래에서 추가하세요.
+                </li>
+              ) : null}
+              {modeDrafts.map((d, i) => {
                 const b = d.before ? slotMatch(d.before, photos) : null;
                 const a = d.after ? slotMatch(d.after, photos) : null;
                 const selected = d.uid === active?.uid;
@@ -493,22 +643,32 @@ export default function PhotoSorter({
                         selected ? "border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-200" : "border-slate-200 bg-white"
                       }`}
                     >
-                      <button type="button" className="flex flex-1 items-center gap-2 text-left" onClick={() => setActiveUid(d.uid)}>
-                        <span className="w-6 shrink-0 text-xs font-bold text-slate-500">{String(i + 1).padStart(2, "0")}</span>
+                      <button
+                        type="button"
+                        className="flex flex-1 items-center gap-2 text-left"
+                        onClick={() => setActiveUid(d.uid)}
+                      >
+                        <span className="w-6 shrink-0 text-xs font-bold text-slate-500">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
                         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
                           {d.before ? (
                             <PhotoThumb photo={b} name={d.before.name} className="h-full w-full" />
                           ) : (
-                            <div className="flex h-full items-center justify-center text-[10px] text-slate-400">전</div>
+                            <div className="flex h-full items-center justify-center text-[10px] text-slate-400">
+                              {mode === "pair" ? "전" : "사진"}
+                            </div>
                           )}
                         </div>
-                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
-                          {d.after ? (
-                            <PhotoThumb photo={a} name={d.after.name} className="h-full w-full" />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-[10px] text-slate-400">후</div>
-                          )}
-                        </div>
+                        {mode === "pair" ? (
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
+                            {d.after ? (
+                              <PhotoThumb photo={a} name={d.after.name} className="h-full w-full" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-[10px] text-slate-400">후</div>
+                            )}
+                          </div>
+                        ) : null}
                         <span className="min-w-0 flex-1 truncate text-xs text-slate-600">
                           {d.label || d.memo || "제목 없음"}
                         </span>
@@ -519,7 +679,7 @@ export default function PhotoSorter({
                       <button
                         type="button"
                         className={btnGhost}
-                        disabled={i === drafts.length - 1}
+                        disabled={i === modeDrafts.length - 1}
                         onClick={() => move(d.uid, 1)}
                       >
                         ▼
@@ -530,7 +690,8 @@ export default function PhotoSorter({
                         onClick={() => {
                           update((prev) => {
                             const next = prev.filter((x) => x.uid !== d.uid);
-                            return next.length ? next : [emptyPair()];
+                            if (next.some((x) => x.kind === mode)) return next;
+                            return [...next, emptyPair(mode)];
                           });
                         }}
                       >
@@ -541,6 +702,14 @@ export default function PhotoSorter({
                 );
               })}
             </ol>
+            <button
+              type="button"
+              className={`${btnSecondary} w-full shrink-0`}
+              disabled={modeDrafts.length >= 40}
+              onClick={addDraft}
+            >
+              {addLabel}
+            </button>
           </div>
         </section>
 
@@ -550,7 +719,8 @@ export default function PhotoSorter({
           photosState={photosState}
           usedBadge={usedBadge}
           usedKeys={usedKeys}
-          onPick={(p) => putPhoto(p, "after")}
+          onPick={(p) => putPhoto(p, mode === "single" ? "before" : "after")}
+          hint={mode === "pair" ? "클릭 또는 드래그 → 중앙 오른쪽" : "클릭 또는 드래그 → 중앙"}
         />
       </div>
 
@@ -565,10 +735,16 @@ export default function PhotoSorter({
           type="button"
           className={`${btnPrimary} px-5 py-2.5 text-base`}
           disabled={saving || usable < 1}
-          title={usable < 1 ? "전·후를 최소 1세트 맞춰 주세요." : undefined}
+          title={usable < 1 ? "사진을 최소 1장(또는 전후 1세트) 넣어 주세요." : undefined}
           onClick={() => void (dirty ? save(true) : onContinue?.())}
         >
-          {saving ? "저장 중…" : `전후 ${usable}세트 · 글 쓰기로 →`}
+          {saving
+            ? "저장 중…"
+            : usablePairs && usableSingles
+              ? `전후 ${usablePairs} · 일반 ${usableSingles} · 글 쓰기로 →`
+              : usableSingles
+                ? `일반 ${usableSingles}장 · 글 쓰기로 →`
+                : `전후 ${usablePairs}세트 · 글 쓰기로 →`}
         </button>
       </div>
       {saveError ? <Notice tone="error">{saveError}</Notice> : null}
